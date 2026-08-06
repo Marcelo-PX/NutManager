@@ -1,5 +1,6 @@
-using NutManager.Core;
+﻿using NutManager.Core;
 using NutManager.Infrastructure;
+using Xunit;
 
 namespace NutManager.Tests;
 
