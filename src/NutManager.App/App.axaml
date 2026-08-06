@@ -1,8 +1,24 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fluent="clr-namespace:Avalonia.Themes.Fluent;assembly=Avalonia.Themes.Fluent"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             xmlns:views="clr-namespace:NutManager.App.Views"
              x:Class="NutManager.App.App">
   <Application.Styles>
     <fluent:FluentTheme />
   </Application.Styles>
+  <Application.DataTemplates>
+    <DataTemplate DataType="viewModels:OverviewPageViewModel">
+      <views:OverviewPageView />
+    </DataTemplate>
+    <DataTemplate DataType="viewModels:DevicesPageViewModel">
+      <views:DevicesPageView />
+    </DataTemplate>
+    <DataTemplate DataType="viewModels:DiagnosticsPageViewModel">
+      <views:DiagnosticsPageView />
+    </DataTemplate>
+    <DataTemplate DataType="viewModels:SettingsPageViewModel">
+      <views:SettingsPageView />
+    </DataTemplate>
+  </Application.DataTemplates>
 </Application>

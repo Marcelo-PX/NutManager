@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\NutManager.App\NutManager.App.csproj" />
     <ProjectReference Include="..\..\src\NutManager.Core\NutManager.Core.csproj" />
     <ProjectReference Include="..\..\src\NutManager.Infrastructure\NutManager.Infrastructure.csproj" />
   </ItemGroup>

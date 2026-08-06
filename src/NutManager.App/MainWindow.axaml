@@ -1,10 +1,91 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
         x:Class="NutManager.App.MainWindow"
+        x:DataType="viewModels:MainWindowViewModel"
         Title="NUT Manager"
-        Width="480"
-        Height="240">
-  <TextBlock Text="NUT Manager"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+        Width="1120"
+        Height="720"
+        MinWidth="680"
+        MinHeight="440">
+  <Window.Styles>
+    <Style Selector="Button.navigation-item">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="2,0,0,0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="Margin" Value="0,2" />
+    </Style>
+    <Style Selector="Button.navigation-item:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}" />
+    </Style>
+    <Style Selector="Button.navigation-item.selected">
+      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListAccentLowBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAltAccentBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <Border Padding="28,18"
+            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+            BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="24">
+        <StackPanel Spacing="2">
+          <TextBlock Text="NUT Manager" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding CurrentPage.Title}"
+                     Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="Tema" VerticalAlignment="Center" />
+          <ComboBox Width="178"
+                    ItemsSource="{Binding ThemeOptions}"
+                    SelectedItem="{Binding SelectedThemeOption}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="viewModels:ThemeOption">
+                <TextBlock Text="{Binding Title}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="220,*">
+      <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="0,0,1,0"
+              Padding="14">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Navegação" FontSize="13" FontWeight="SemiBold" Margin="12,4,12,8" />
+          <ItemsControl ItemsSource="{Binding NavigationItems}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="viewModels:NavigationItemViewModel">
+                <Button Classes.navigation-item="True"
+                        Classes.selected="{Binding IsSelected}"
+                        AutomationProperties.Name="{Binding Title}"
+                        Command="{Binding NavigateCommand}">
+                  <Grid ColumnDefinitions="26,*,Auto" ColumnSpacing="8">
+                    <TextBlock Text="{Binding Symbol}" FontSize="16" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2"
+                               Text="Selecionado"
+                               FontSize="12"
+                               IsVisible="{Binding IsSelected}"
+                               VerticalAlignment="Center" />
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <ScrollViewer Grid.Column="1" Padding="32">
+        <ContentControl Content="{Binding CurrentPage}" />
+      </ScrollViewer>
+    </Grid>
+  </Grid>
 </Window>
