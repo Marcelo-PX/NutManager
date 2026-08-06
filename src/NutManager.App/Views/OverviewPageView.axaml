@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             x:Class="NutManager.App.Views.OverviewPageView"
+             x:DataType="viewModels:OverviewPageViewModel">
+  <StackPanel Spacing="12">
+    <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+    <TextBlock Text="{Binding Description}" MaxWidth="640" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>
