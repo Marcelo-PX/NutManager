@@ -14,10 +14,10 @@ Only one task should normally be in progress at a time.
 
 | ID | Status | Task | Primary outcome |
 |---|---|---|---|
-| T01 | READY | Create Avalonia solution | Compilable project skeleton |
-| T02 | TODO | Build visual shell and navigation | Modern themed application shell |
-| T03 | TODO | Define domain models | Stable UPS and connection models |
-| T04 | TODO | Implement mock provider | Deterministic simulated scenarios |
+| T01 | DONE | Create Avalonia solution | Compilable project skeleton |
+| T02 | DONE | Build visual shell and navigation | Modern themed application shell |
+| T03 | DONE | Define domain models | Stable UPS and connection models |
+| T04 | READY | Implement mock provider | Deterministic simulated scenarios |
 | T05 | TODO | Build overview dashboard | Functional UI using mock data |
 | T06 | TODO | Implement read-only NUT client | TCP protocol client with tests |
 | T07 | TODO | Add UPS discovery and selection | Device listing and details |
@@ -35,7 +35,7 @@ Only one task should normally be in progress at a time.
 
 ## T01 — Create Avalonia solution
 
-**Status:** READY
+**Status:** DONE
 
 ### Objective
 
@@ -93,19 +93,19 @@ dotnet test
 
 ## T02 — Build visual shell and navigation
 
-**Status:** TODO
+**Status:** DONE
 
 Create the modern application frame, side navigation, Overview, Devices, Diagnostics, and Settings placeholders, plus persisted theme selection. No NUT data access.
 
 ## T03 — Define domain models
 
-**Status:** TODO
+**Status:** DONE
 
 Create Core models and status parsing contracts for endpoints, UPS identity, variables, snapshots, connection state, freshness, and diagnostics. Include unit tests. No network access.
 
 ## T04 — Implement mock provider
 
-**Status:** TODO
+**Status:** READY
 
 Implement deterministic simulated scenarios defined in the architecture and expose them through the same application-facing abstraction intended for live data.
 
