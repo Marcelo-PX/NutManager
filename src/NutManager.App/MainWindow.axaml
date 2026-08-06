@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="NutManager.App.MainWindow"
+        Title="NUT Manager"
+        Width="480"
+        Height="240">
+  <TextBlock Text="NUT Manager"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center" />
+</Window>
