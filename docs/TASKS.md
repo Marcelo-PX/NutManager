@@ -20,8 +20,8 @@ Only one task should normally be in progress at a time.
 | T04 | DONE | Implement mock provider | Deterministic simulated scenarios |
 | T05 | DONE | Build overview dashboard | Functional UI using mock data |
 | T06 | DONE | Implement read-only NUT client | TCP protocol client with tests |
-| T07 | READY | Add UPS discovery and selection | Device listing and details |
-| T08 | TODO | Persist local settings | Atomic per-user settings storage |
+| T07 | DONE | Add UPS discovery and selection | Device listing and details |
+| T08 | READY | Persist local settings | Atomic per-user settings storage |
 | T09 | TODO | Add polling and stale-data handling | Robust refresh and reconnect behavior |
 | T10 | TODO | Complete MVP diagnostics | Read-only diagnostics page |
 | T11 | TODO | Package and validate MVP | Windows and Linux test packages |
@@ -123,13 +123,13 @@ Implement the minimum TCP protocol commands needed to list UPS devices and fetch
 
 ## T07 — Add UPS discovery and selection
 
-**Status:** READY
+**Status:** DONE
 
 Connect the Devices page to the NUT client, list exposed UPS devices, retain selection, and provide a raw variable details view.
 
 ## T08 — Persist local settings
 
-**Status:** TODO
+**Status:** READY
 
 Persist non-secret endpoint, preferred UPS, polling, timeout, theme, and mock-mode settings per user using versioned atomic JSON storage.
 
