@@ -8,10 +8,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IReadOnlyDictionary<AppPage, PageViewModel> _pages;
 
     public MainWindowViewModel(ThemePreference themePreference = ThemePreference.System)
+        : this(themePreference, new OverviewPageViewModel())
     {
+    }
+
+    public MainWindowViewModel(ThemePreference themePreference, OverviewPageViewModel overviewPage)
+    {
+        ArgumentNullException.ThrowIfNull(overviewPage);
+
         _pages = new Dictionary<AppPage, PageViewModel>
         {
-            [AppPage.Overview] = new OverviewPageViewModel(),
+            [AppPage.Overview] = overviewPage,
             [AppPage.Devices] = new DevicesPageViewModel(),
             [AppPage.Diagnostics] = new DiagnosticsPageViewModel(),
             [AppPage.Settings] = new SettingsPageViewModel()

@@ -4,6 +4,8 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using NutManager.App.Services;
 using NutManager.App.ViewModels;
+using NutManager.Core.Models;
+using NutManager.Infrastructure.Mock;
 
 namespace NutManager.App;
 
@@ -16,7 +18,14 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var themePreferenceStore = new ThemePreferenceStore();
-            var viewModel = new MainWindowViewModel(themePreferenceStore.Load());
+            var mockClient = new MockNutClient(MockScenario.Online, DateTimeOffset.UtcNow);
+            var overview = new OverviewPageViewModel(
+                mockClient,
+                new NutEndpoint("mock.nut.local"),
+                "mockups",
+                mockClient.ConnectionState,
+                mockClient.DataFreshness);
+            var viewModel = new MainWindowViewModel(themePreferenceStore.Load(), overview);
 
             ApplyTheme(viewModel.SelectedTheme);
             viewModel.ThemeChanged += preference =>
@@ -29,6 +38,8 @@ public partial class App : Application
             {
                 DataContext = viewModel
             };
+
+            _ = overview.InitializeAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
