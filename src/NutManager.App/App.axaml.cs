@@ -19,13 +19,15 @@ public partial class App : Application
         {
             var themePreferenceStore = new ThemePreferenceStore();
             var mockClient = new MockNutClient(MockScenario.Online, DateTimeOffset.UtcNow);
+            var endpoint = new NutEndpoint("mock.nut.local");
             var overview = new OverviewPageViewModel(
                 mockClient,
-                new NutEndpoint("mock.nut.local"),
+                endpoint,
                 "mockups",
                 mockClient.ConnectionState,
                 mockClient.DataFreshness);
-            var viewModel = new MainWindowViewModel(themePreferenceStore.Load(), overview);
+            var devices = new DevicesPageViewModel(mockClient, endpoint);
+            var viewModel = new MainWindowViewModel(themePreferenceStore.Load(), overview, devices);
 
             ApplyTheme(viewModel.SelectedTheme);
             viewModel.ThemeChanged += preference =>
@@ -40,6 +42,7 @@ public partial class App : Application
             };
 
             _ = overview.InitializeAsync();
+            _ = devices.InitializeAsync();
         }
 
         base.OnFrameworkInitializationCompleted();

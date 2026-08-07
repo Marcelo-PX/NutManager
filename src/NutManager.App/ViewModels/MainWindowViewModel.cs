@@ -13,13 +13,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     public MainWindowViewModel(ThemePreference themePreference, OverviewPageViewModel overviewPage)
+        : this(themePreference, overviewPage, new DevicesPageViewModel())
+    {
+    }
+
+    public MainWindowViewModel(
+        ThemePreference themePreference,
+        OverviewPageViewModel overviewPage,
+        DevicesPageViewModel devicesPage)
     {
         ArgumentNullException.ThrowIfNull(overviewPage);
+        ArgumentNullException.ThrowIfNull(devicesPage);
 
         _pages = new Dictionary<AppPage, PageViewModel>
         {
             [AppPage.Overview] = overviewPage,
-            [AppPage.Devices] = new DevicesPageViewModel(),
+            [AppPage.Devices] = devicesPage,
             [AppPage.Diagnostics] = new DiagnosticsPageViewModel(),
             [AppPage.Settings] = new SettingsPageViewModel()
         };

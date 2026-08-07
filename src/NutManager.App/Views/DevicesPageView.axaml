@@ -3,8 +3,80 @@
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.DevicesPageView"
              x:DataType="viewModels:DevicesPageViewModel">
-  <StackPanel Spacing="12">
-    <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
-    <TextBlock Text="{Binding Description}" MaxWidth="640" TextWrapping="Wrap" />
-  </StackPanel>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="20">
+      <StackPanel Spacing="8">
+        <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Description}" MaxWidth="640" TextWrapping="Wrap" />
+        <Button Content="Atualizar"
+                Command="{Binding RefreshCommand}"
+                HorizontalAlignment="Left"
+                IsEnabled="{Binding CanRefresh}" />
+      </StackPanel>
+
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsDiscovering}" Height="4" />
+      <TextBlock Text="{Binding DiscoveryError}" IsVisible="{Binding HasDiscoveryError}" TextWrapping="Wrap" />
+
+      <Grid ColumnDefinitions="200,16,*" RowDefinitions="Auto">
+        <Border Grid.Column="0" Padding="12" CornerRadius="8" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+          <StackPanel Spacing="8">
+            <TextBlock Text="UPS disponíveis" FontWeight="SemiBold" />
+            <TextBlock Text="Nenhum UPS encontrado." IsVisible="{Binding HasNoDevices}" TextWrapping="Wrap" />
+            <ListBox ItemsSource="{Binding Devices}"
+                     SelectedItem="{Binding SelectedDevice}"
+                     SelectionChanged="OnDeviceSelectionChanged"
+                     IsVisible="{Binding HasDevices}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="4" Spacing="2">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.75" TextWrapping="Wrap" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="2" Padding="16" CornerRadius="8" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Nenhum UPS selecionado." IsVisible="{Binding HasNoSelectedDevice}" />
+            <StackPanel Spacing="10" IsVisible="{Binding HasSelectedDevice}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="UPS selecionado:" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding SelectedDeviceName}" />
+                <TextBlock Text="Dados simulados" IsVisible="{Binding IsSimulated}" FontWeight="SemiBold" />
+              </StackPanel>
+              <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoadingDetails}" Height="4" />
+              <TextBlock Text="{Binding DetailsError}" IsVisible="{Binding HasDetailsError}" TextWrapping="Wrap" />
+
+              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+                <TextBlock Text="Descrição" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="1" Text="{Binding SelectedDeviceDescription}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="1" Text="Fabricante" FontWeight="SemiBold" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedDeviceManufacturer}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="2" Text="Modelo" FontWeight="SemiBold" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedDeviceModel}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="3" Text="Número de série" FontWeight="SemiBold" />
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedDeviceSerialNumber}" TextWrapping="Wrap" />
+              </Grid>
+
+              <TextBlock Text="Variáveis NUT" FontWeight="SemiBold" />
+              <TextBlock Text="Nenhuma variável disponível." IsVisible="{Binding HasNoRawVariables}" />
+              <ItemsControl ItemsSource="{Binding RawVariables}" IsVisible="{Binding HasRawVariables}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="Auto,12,*" Margin="0,2">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <TextBlock Grid.Column="2" Text="{Binding Value}" TextWrapping="Wrap" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

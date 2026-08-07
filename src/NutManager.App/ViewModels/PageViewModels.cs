@@ -206,14 +206,6 @@ public sealed partial class OverviewPageViewModel : PageViewModel
             });
 }
 
-public sealed class DevicesPageViewModel : PageViewModel
-{
-    public DevicesPageViewModel()
-        : base("Dispositivos", "Veja os dispositivos disponíveis quando uma conexão for configurada.")
-    {
-    }
-}
-
 public sealed class DiagnosticsPageViewModel : PageViewModel
 {
     public DiagnosticsPageViewModel()
