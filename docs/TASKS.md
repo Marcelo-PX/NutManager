@@ -18,8 +18,8 @@ Only one task should normally be in progress at a time.
 | T02 | DONE | Build visual shell and navigation | Modern themed application shell |
 | T03 | DONE | Define domain models | Stable UPS and connection models |
 | T04 | DONE | Implement mock provider | Deterministic simulated scenarios |
-| T05 | READY | Build overview dashboard | Functional UI using mock data |
-| T06 | TODO | Implement read-only NUT client | TCP protocol client with tests |
+| T05 | DONE | Build overview dashboard | Functional UI using mock data |
+| T06 | READY | Implement read-only NUT client | TCP protocol client with tests |
 | T07 | TODO | Add UPS discovery and selection | Device listing and details |
 | T08 | TODO | Persist local settings | Atomic per-user settings storage |
 | T09 | TODO | Add polling and stale-data handling | Robust refresh and reconnect behavior |
@@ -111,13 +111,13 @@ Implement deterministic simulated scenarios defined in the architecture and expo
 
 ## T05 — Build overview dashboard
 
-**Status:** READY
+**Status:** DONE
 
 Bind the overview UI to mock data. Include clear simulated-data labeling, accessible state presentation, missing-value rendering, and responsive metric cards.
 
 ## T06 — Implement read-only NUT client
 
-**Status:** TODO
+**Status:** READY
 
 Implement the minimum TCP protocol commands needed to list UPS devices and fetch variables. Include cancellation, timeout, partial-read, malformed-reply, and fake-server tests.
 

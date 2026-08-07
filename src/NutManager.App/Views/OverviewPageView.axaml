@@ -3,8 +3,103 @@
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.OverviewPageView"
              x:DataType="viewModels:OverviewPageViewModel">
-  <StackPanel Spacing="12">
-    <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
-    <TextBlock Text="{Binding Description}" MaxWidth="640" TextWrapping="Wrap" />
+  <StackPanel Spacing="24">
+    <StackPanel Spacing="8">
+      <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+      <TextBlock Text="{Binding Description}" MaxWidth="720" TextWrapping="Wrap" />
+      <Border IsVisible="{Binding IsSimulated}"
+              HorizontalAlignment="Left"
+              Padding="10,5"
+              Background="{DynamicResource SystemControlHighlightListLowBrush}">
+        <TextBlock Text="Dados simulados" FontWeight="SemiBold" />
+      </Border>
+      <TextBlock IsVisible="{Binding IsLoading}" Text="Carregando dados..." />
+      <TextBlock IsVisible="{Binding HasLoadError}" Text="{Binding LoadError}" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Border Padding="20"
+            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+            BorderThickness="1">
+      <StackPanel Spacing="14">
+        <TextBlock Text="UPS selecionado" FontSize="18" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+          <TextBlock Text="Descrição" FontWeight="SemiBold" />
+          <TextBlock Grid.Column="1" Text="{Binding Identity.Description}" TextWrapping="Wrap" />
+          <TextBlock Grid.Row="1" Text="Fabricante" FontWeight="SemiBold" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Identity.Manufacturer}" />
+          <TextBlock Grid.Row="2" Text="Modelo" FontWeight="SemiBold" />
+          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Identity.Model}" />
+          <TextBlock Grid.Row="3" Text="Nome NUT" FontWeight="SemiBold" />
+          <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Identity.Name}" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="20">
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Estado" FontSize="18" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding StatusItems}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="viewModels:OverviewStatusItemViewModel">
+                <Border Padding="10,6" Margin="0,2"
+                        Background="{DynamicResource SystemControlHighlightListLowBrush}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding StateText}" />
+                    <TextBlock Text=" · " />
+                    <TextBlock Text="{Binding SeverityText}" FontWeight="SemiBold" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="1" Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Conexão e atualização" FontSize="18" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+            <TextBlock Text="Conexão" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="{Binding ConnectionStateText}" />
+            <TextBlock Grid.Row="1" Text="Atualização" FontWeight="SemiBold" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DataFreshnessText}" />
+            <TextBlock Grid.Row="2" Text="Última leitura" FontWeight="SemiBold" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LastSuccessfulUpdateText}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <StackPanel Spacing="12">
+      <TextBlock Text="Métricas" FontSize="18" FontWeight="SemiBold" />
+      <ItemsControl ItemsSource="{Binding MetricCards}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel ItemWidth="190" ItemHeight="116" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:OverviewMetricViewModel">
+            <Border Margin="0,0,12,12" Padding="16"
+                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                    BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding DisplayValue}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
   </StackPanel>
 </UserControl>
