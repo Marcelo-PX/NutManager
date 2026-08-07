@@ -21,8 +21,8 @@ Only one task should normally be in progress at a time.
 | T05 | DONE | Build overview dashboard | Functional UI using mock data |
 | T06 | DONE | Implement read-only NUT client | TCP protocol client with tests |
 | T07 | DONE | Add UPS discovery and selection | Device listing and details |
-| T08 | READY | Persist local settings | Atomic per-user settings storage |
-| T09 | TODO | Add polling and stale-data handling | Robust refresh and reconnect behavior |
+| T08 | DONE | Persist local settings | Atomic per-user settings storage |
+| T09 | READY | Add polling and stale-data handling | Robust refresh and reconnect behavior |
 | T10 | TODO | Complete MVP diagnostics | Read-only diagnostics page |
 | T11 | TODO | Package and validate MVP | Windows and Linux test packages |
 | T12 | TODO | Design preserved NUT configuration parser | Post-MVP syntax model and tests |
@@ -129,13 +129,13 @@ Connect the Devices page to the NUT client, list exposed UPS devices, retain sel
 
 ## T08 — Persist local settings
 
-**Status:** READY
+**Status:** DONE
 
 Persist non-secret endpoint, preferred UPS, polling, timeout, theme, and mock-mode settings per user using versioned atomic JSON storage.
 
 ## T09 — Add polling and stale-data handling
 
-**Status:** TODO
+**Status:** READY
 
 Add bounded asynchronous polling, cancellation, reconnect behavior, stale snapshot retention, and timestamps without busy loops.
 

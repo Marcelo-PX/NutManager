@@ -20,7 +20,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         _rawVariables = Array.Empty<RawVariableViewModel>();
     }
 
-    public DevicesPageViewModel(INutClient nutClient, NutEndpoint endpoint)
+    public DevicesPageViewModel(INutClient nutClient, NutEndpoint endpoint, string? preferredUpsName = null)
         : this()
     {
         ArgumentNullException.ThrowIfNull(nutClient);
@@ -28,6 +28,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
         _nutClient = nutClient;
         _endpoint = endpoint;
+        PreferredUpsName = preferredUpsName;
     }
 
     [ObservableProperty]
@@ -53,6 +54,8 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     [ObservableProperty]
     private string? _detailsError;
+
+    public string? PreferredUpsName { get; }
 
     public bool HasDevices => Devices.Count > 0;
 
@@ -105,7 +108,8 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
             Devices = discoveredDevices.ToArray();
 
             var selectedDevice = previousName is null
-                ? Devices.FirstOrDefault()
+                ? Devices.FirstOrDefault(device => string.Equals(device.Name, PreferredUpsName, StringComparison.Ordinal))
+                    ?? Devices.FirstOrDefault()
                 : Devices.FirstOrDefault(device => string.Equals(device.Name, previousName, StringComparison.Ordinal))
                     ?? Devices.FirstOrDefault();
 

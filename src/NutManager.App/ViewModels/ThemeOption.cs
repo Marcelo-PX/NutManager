@@ -1,10 +1,5 @@
-namespace NutManager.App.ViewModels;
+using NutManager.Core.Models;
 
-public enum ThemePreference
-{
-    System,
-    Light,
-    Dark
-}
+namespace NutManager.App.ViewModels;
 
 public sealed record ThemeOption(ThemePreference Preference, string Title);
