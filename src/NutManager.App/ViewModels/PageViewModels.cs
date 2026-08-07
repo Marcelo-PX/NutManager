@@ -24,6 +24,7 @@ public sealed partial class OverviewPageViewModel : PageViewModel
     private readonly INutClient? _nutClient;
     private readonly NutEndpoint? _endpoint;
     private readonly string? _upsName;
+    private readonly IUpsPollingCoordinator? _polling;
 
     public OverviewPageViewModel()
         : base("Visão geral", "Acompanhe o estado geral do seu ambiente de energia.")
@@ -53,6 +54,24 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         _dataFreshness = dataFreshness;
         _metricCards = CreateMetricCards(null);
         _statusItems = Array.Empty<OverviewStatusItemViewModel>();
+    }
+
+    public OverviewPageViewModel(IUpsPollingCoordinator polling)
+        : this()
+    {
+        _polling = polling;
+        polling.StateChanged += ApplyPollingState;
+        ApplyPollingState(polling.State);
+    }
+
+    private void ApplyPollingState(PollingState state)
+    {
+        Snapshot = state.Snapshot;
+        ConnectionState = state.ConnectionState;
+        DataFreshness = state.DataFreshness;
+        LoadError = state.LastError;
+        StatusItems = state.Snapshot?.StatusTokens.Select(CreateStatusItem).ToArray() ?? Array.Empty<OverviewStatusItemViewModel>();
+        MetricCards = CreateMetricCards(state.Snapshot);
     }
 
     [ObservableProperty]
