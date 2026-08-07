@@ -72,7 +72,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public event Action<ThemePreference>? ThemeChanged;
 
-    public void SetTheme(ThemePreference preference) => SelectedThemeOption = ThemeOptions.Single(x => x.Preference == preference);
+    public void SetTheme(ThemePreference preference)
+    {
+        var option = ThemeOptions.Single(x => x.Preference == preference);
+        if (!Equals(SelectedThemeOption, option)) SelectedThemeOption = option;
+    }
 
     [RelayCommand]
     private void Navigate(AppPage page)

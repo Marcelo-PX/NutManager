@@ -60,7 +60,7 @@ public partial class App : Application
         {
             ApplyTheme(preference);
             settingsPage.ApplyTheme(preference);
-            try { await settingsPage.SaveCommand.ExecuteAsync(null); } catch (OperationCanceledException) { }
+            try { await settingsPage.PersistThemeAsync(preference); } catch (OperationCanceledException) { }
         };
         settingsPage.ThemeChanged += viewModel.SetTheme;
         ApplyTheme(settings.Theme);

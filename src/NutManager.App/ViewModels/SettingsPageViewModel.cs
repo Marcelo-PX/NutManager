@@ -8,6 +8,8 @@ namespace NutManager.App.ViewModels;
 public sealed partial class SettingsPageViewModel : PageViewModel
 {
     private readonly IApplicationSettingsStore? _store;
+    private ApplicationSettings _confirmedSettings;
+    private bool _canPersistThemeAutomatically = true;
 
     public SettingsPageViewModel() : this(new ApplicationSettings(), null) { }
 
@@ -15,6 +17,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         : base("Configurações", "Defina a conexão e as preferências locais do aplicativo.")
     {
         _store = store;
+        _confirmedSettings = settings;
         Apply(settings);
         ThemeOptions = [new(ThemePreference.System, "Seguir o sistema"), new(ThemePreference.Light, "Claro"), new(ThemePreference.Dark, "Escuro")];
         SelectedThemeOption = ThemeOptions.Single(x => x.Preference == settings.Theme);
@@ -43,6 +46,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         {
             var settings = CreateSettings();
             if (_store is not null) await _store.SaveAsync(settings, cancellationToken);
+            _confirmedSettings = settings;
+            _canPersistThemeAutomatically = true;
             IsSaved = true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
@@ -66,7 +71,47 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         ConnectionTimeoutSeconds = settings.ConnectionTimeout.TotalSeconds.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture); MockMode = settings.MockMode;
     }
 
-    public void SetLoadError(string message) => LoadError = message;
-    public void ApplyTheme(ThemePreference theme) => SelectedThemeOption = ThemeOptions.Single(x => x.Preference == theme);
+    public async Task PersistThemeAsync(ThemePreference theme, CancellationToken cancellationToken = default)
+    {
+        if (_store is null || !_canPersistThemeAutomatically)
+        {
+            return;
+        }
+
+        var settings = new ApplicationSettings(
+            _confirmedSettings.SchemaVersion,
+            _confirmedSettings.Host,
+            _confirmedSettings.Port,
+            _confirmedSettings.PreferredUpsName,
+            _confirmedSettings.PollingInterval,
+            _confirmedSettings.ConnectionTimeout,
+            theme,
+            _confirmedSettings.MockMode);
+        try
+        {
+            await _store.SaveAsync(settings, cancellationToken);
+            _confirmedSettings = settings;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            SaveError = "Não foi possível salvar o tema.";
+        }
+    }
+
+    public void SetLoadError(string message)
+    {
+        LoadError = message;
+        _canPersistThemeAutomatically = false;
+    }
+
+    public void ApplyTheme(ThemePreference theme)
+    {
+        var option = ThemeOptions.Single(x => x.Preference == theme);
+        if (!Equals(SelectedThemeOption, option)) SelectedThemeOption = option;
+    }
     partial void OnSelectedThemeOptionChanged(ThemeOption? value) { if (value is not null) ThemeChanged?.Invoke(value.Preference); }
 }
