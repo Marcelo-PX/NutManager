@@ -19,8 +19,8 @@ Only one task should normally be in progress at a time.
 | T03 | DONE | Define domain models | Stable UPS and connection models |
 | T04 | DONE | Implement mock provider | Deterministic simulated scenarios |
 | T05 | DONE | Build overview dashboard | Functional UI using mock data |
-| T06 | READY | Implement read-only NUT client | TCP protocol client with tests |
-| T07 | TODO | Add UPS discovery and selection | Device listing and details |
+| T06 | DONE | Implement read-only NUT client | TCP protocol client with tests |
+| T07 | READY | Add UPS discovery and selection | Device listing and details |
 | T08 | TODO | Persist local settings | Atomic per-user settings storage |
 | T09 | TODO | Add polling and stale-data handling | Robust refresh and reconnect behavior |
 | T10 | TODO | Complete MVP diagnostics | Read-only diagnostics page |
@@ -117,13 +117,13 @@ Bind the overview UI to mock data. Include clear simulated-data labeling, access
 
 ## T06 — Implement read-only NUT client
 
-**Status:** READY
+**Status:** DONE
 
 Implement the minimum TCP protocol commands needed to list UPS devices and fetch variables. Include cancellation, timeout, partial-read, malformed-reply, and fake-server tests.
 
 ## T07 — Add UPS discovery and selection
 
-**Status:** TODO
+**Status:** READY
 
 Connect the Devices page to the NUT client, list exposed UPS devices, retain selection, and provide a raw variable details view.
 
