@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NutManager.Core.Models;
 
 namespace NutManager.App.ViewModels;
 
@@ -8,19 +9,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IReadOnlyDictionary<AppPage, PageViewModel> _pages;
 
     public MainWindowViewModel(ThemePreference themePreference = ThemePreference.System)
-        : this(themePreference, new OverviewPageViewModel())
+        : this(themePreference, new OverviewPageViewModel(), new DevicesPageViewModel(), new SettingsPageViewModel())
     {
     }
 
     public MainWindowViewModel(ThemePreference themePreference, OverviewPageViewModel overviewPage)
-        : this(themePreference, overviewPage, new DevicesPageViewModel())
+        : this(themePreference, overviewPage, new DevicesPageViewModel(), new SettingsPageViewModel())
     {
     }
 
     public MainWindowViewModel(
         ThemePreference themePreference,
         OverviewPageViewModel overviewPage,
-        DevicesPageViewModel devicesPage)
+        DevicesPageViewModel devicesPage, SettingsPageViewModel? settingsPage = null)
     {
         ArgumentNullException.ThrowIfNull(overviewPage);
         ArgumentNullException.ThrowIfNull(devicesPage);
@@ -30,7 +31,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             [AppPage.Overview] = overviewPage,
             [AppPage.Devices] = devicesPage,
             [AppPage.Diagnostics] = new DiagnosticsPageViewModel(),
-            [AppPage.Settings] = new SettingsPageViewModel()
+            [AppPage.Settings] = settingsPage ?? new SettingsPageViewModel()
         };
 
         NavigationItems = new List<NavigationItemViewModel>
@@ -70,6 +71,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ThemePreference SelectedTheme => SelectedThemeOption?.Preference ?? ThemePreference.System;
 
     public event Action<ThemePreference>? ThemeChanged;
+
+    public void SetTheme(ThemePreference preference) => SelectedThemeOption = ThemeOptions.Single(x => x.Preference == preference);
 
     [RelayCommand]
     private void Navigate(AppPage page)

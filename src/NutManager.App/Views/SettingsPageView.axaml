@@ -3,8 +3,25 @@
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.SettingsPageView"
              x:DataType="viewModels:SettingsPageViewModel">
-  <StackPanel Spacing="12">
+  <StackPanel Spacing="12" MaxWidth="640">
     <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
-    <TextBlock Text="{Binding Description}" MaxWidth="640" TextWrapping="Wrap" />
+    <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+    <TextBlock Text="Servidor NUT" FontWeight="SemiBold" />
+    <TextBox PlaceholderText="Host" Text="{Binding Host}" />
+    <TextBox PlaceholderText="Porta" Text="{Binding Port}" />
+    <TextBlock Text="UPS preferido (opcional)" FontWeight="SemiBold" />
+    <TextBox Text="{Binding PreferredUpsName}" />
+    <TextBlock Text="Comunicação" FontWeight="SemiBold" />
+    <TextBox PlaceholderText="Timeout em segundos" Text="{Binding ConnectionTimeoutSeconds}" />
+    <TextBox PlaceholderText="Intervalo de polling em segundos" Text="{Binding PollingIntervalSeconds}" />
+    <CheckBox Content="Usar dados simulados (modo mock)" IsChecked="{Binding MockMode}" />
+    <TextBlock Text="Tema" FontWeight="SemiBold" />
+    <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}"><ComboBox.ItemTemplate><DataTemplate x:DataType="viewModels:ThemeOption"><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+    <TextBlock Text="Alterações de conexão serão aplicadas ao reiniciar o aplicativo." TextWrapping="Wrap" />
+    <Button Content="Salvar" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
+    <TextBlock Text="Salvando..." IsVisible="{Binding IsSaving}" />
+    <TextBlock Text="Configurações salvas." IsVisible="{Binding IsSaved}" />
+    <TextBlock Text="{Binding SaveError}" IsVisible="{Binding SaveError}" TextWrapping="Wrap" />
+    <TextBlock Text="{Binding LoadError}" IsVisible="{Binding LoadError}" TextWrapping="Wrap" />
   </StackPanel>
 </UserControl>

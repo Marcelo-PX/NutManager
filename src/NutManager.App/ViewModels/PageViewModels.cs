@@ -18,7 +18,6 @@ public abstract class PageViewModel : ObservableObject
 
     public string Description { get; }
 }
-
 public sealed partial class OverviewPageViewModel : PageViewModel
 {
     private const string UnavailableText = "Indisponível";
@@ -210,14 +209,6 @@ public sealed class DiagnosticsPageViewModel : PageViewModel
 {
     public DiagnosticsPageViewModel()
         : base("Diagnóstico", "Consulte informações de diagnóstico da aplicação.")
-    {
-    }
-}
-
-public sealed class SettingsPageViewModel : PageViewModel
-{
-    public SettingsPageViewModel()
-        : base("Configurações", "Ajuste as preferências visuais do aplicativo.")
     {
     }
 }
