@@ -11,6 +11,19 @@ public sealed class DevicesPageViewModelTests
     private static readonly NutEndpoint Endpoint = new("mock.nut.local");
 
     [Fact]
+    public async Task PreferredUpsUsesOrdinalMatchAndOtherwiseFallsBackToFirst()
+    {
+        var lower = new UpsIdentity("ups"); var exact = new UpsIdentity("UPS");
+        var client = new FakeNutClient { ListHandler = _ => Task.FromResult<IReadOnlyList<UpsIdentity>>([lower, exact]), SnapshotHandler = (name, _) => Task.FromResult(CreateSnapshot(name, DataSource.Live)) };
+        using var preferred = new DevicesPageViewModel(client, Endpoint, "UPS");
+        await preferred.InitializeAsync();
+        Assert.Equal("UPS", preferred.SelectedDevice?.Name);
+        using var fallback = new DevicesPageViewModel(client, Endpoint, "missing");
+        await fallback.InitializeAsync();
+        Assert.Equal("ups", fallback.SelectedDevice?.Name);
+    }
+
+    [Fact]
     public async Task DiscoveryKeepsTheServerOrderAndSelectsTheFirstUps()
     {
         var alpha = new UpsIdentity("alpha", "UPS Alpha");

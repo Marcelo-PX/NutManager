@@ -69,6 +69,42 @@ public sealed class SettingsPageViewModelTests
         Assert.Equal(ThemePreference.Dark, page.SelectedThemeOption?.Preference);
     }
 
+    [Fact]
+    public async Task ConstructorAndSaveHandleAllSettingsValues()
+    {
+        var saved = new List<ApplicationSettings>();
+        var source = new ApplicationSettings(host: "host", port: 4321, preferredUpsName: "ups", pollingInterval: TimeSpan.FromSeconds(8), connectionTimeout: TimeSpan.FromSeconds(4), theme: ThemePreference.Light, mockMode: false);
+        var viewModel = new SettingsPageViewModel(source, new RecordingStore(saved));
+        Assert.Equal("host", viewModel.Host); Assert.Equal("4321", viewModel.Port); Assert.Equal("ups", viewModel.PreferredUpsName);
+        await viewModel.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(source, Assert.Single(saved)); Assert.True(viewModel.IsSaved); Assert.False(viewModel.IsSaving);
+    }
+
+    [Theory]
+    [InlineData("bad", "5", "5", "localhost")]
+    [InlineData("0", "5", "5", "localhost")]
+    [InlineData("3493", "0", "5", "localhost")]
+    [InlineData("3493", "5", "0", "localhost")]
+    [InlineData("3493", "5", "5", " ")]
+    public async Task InvalidFormValuesSetSaveError(string port, string polling, string timeout, string host)
+    {
+        var viewModel = new SettingsPageViewModel(new ApplicationSettings(), new RecordingStore([])) { Port = port, PollingIntervalSeconds = polling, ConnectionTimeoutSeconds = timeout, Host = host };
+        await viewModel.SaveCommand.ExecuteAsync(null);
+        Assert.NotNull(viewModel.SaveError); Assert.False(viewModel.IsSaving); Assert.False(viewModel.IsSaved);
+    }
+
+    [Fact]
+    public async Task EmptyPreferredUpsIsSavedAndStoreFailureSetsError()
+    {
+        var saved = new List<ApplicationSettings>();
+        var viewModel = new SettingsPageViewModel(new ApplicationSettings(), new RecordingStore(saved)) { PreferredUpsName = "" };
+        await viewModel.SaveCommand.ExecuteAsync(null);
+        Assert.Null(Assert.Single(saved).PreferredUpsName);
+        var failure = new SettingsPageViewModel(new ApplicationSettings(), new FailingStore());
+        await failure.SaveCommand.ExecuteAsync(null);
+        Assert.NotNull(failure.SaveError); Assert.False(failure.IsSaving); Assert.False(failure.IsSaved);
+    }
+
     private sealed class RecordingStore : IApplicationSettingsStore
     {
         private readonly List<ApplicationSettings> _settings;
@@ -77,5 +113,11 @@ public sealed class SettingsPageViewModelTests
 
         public Task<ApplicationSettings> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(new ApplicationSettings());
         public Task SaveAsync(ApplicationSettings settings, CancellationToken cancellationToken) { _settings.Add(settings); return Task.CompletedTask; }
+    }
+
+    private sealed class FailingStore : IApplicationSettingsStore
+    {
+        public Task<ApplicationSettings> LoadAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task SaveAsync(ApplicationSettings settings, CancellationToken cancellationToken) => throw new IOException();
     }
 }

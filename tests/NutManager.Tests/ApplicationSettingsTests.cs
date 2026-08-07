@@ -32,6 +32,19 @@ public sealed class ApplicationSettingsTests
     }
 
     [Fact]
+    public void InvalidSchemaThemeAndNegativeIntervalsAreRejected()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(schemaVersion: 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(theme: (ThemePreference)99));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(pollingInterval: TimeSpan.FromSeconds(-1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(connectionTimeout: TimeSpan.FromSeconds(-1)));
+    }
+
+    [Fact]
+    public void WhitespacePreferredUpsIsNormalizedToNull() =>
+        Assert.Null(new ApplicationSettings(preferredUpsName: "  ").PreferredUpsName);
+
+    [Fact]
     public async Task StoreReturnsDefaultsWithoutCreatingAFile()
     {
         using var directory = new TemporaryDirectory();
@@ -58,6 +71,31 @@ public sealed class ApplicationSettingsTests
     }
 
     [Fact]
+    public async Task StoreRoundTripsNullPreferredUpsAndCreatesItsDirectory()
+    {
+        using var directory = new TemporaryDirectory();
+        var root = Path.Combine(directory.Path, "missing");
+        var store = new JsonApplicationSettingsStore(root);
+        await store.SaveAsync(new ApplicationSettings(preferredUpsName: null, mockMode: true), CancellationToken.None);
+
+        var settings = await store.LoadAsync(CancellationToken.None);
+        Assert.True(Directory.Exists(root));
+        Assert.Null(settings.PreferredUpsName);
+        Assert.True(settings.MockMode);
+    }
+
+    [Fact]
+    public async Task SecondSaveReplacesThePreviousSettings()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new JsonApplicationSettingsStore(directory.Path);
+        await store.SaveAsync(new ApplicationSettings(host: "first"), CancellationToken.None);
+        await store.SaveAsync(new ApplicationSettings(host: "second"), CancellationToken.None);
+
+        Assert.Equal("second", (await store.LoadAsync(CancellationToken.None)).Host);
+    }
+
+    [Fact]
     public async Task MalformedJsonIsReportedAndPreserved()
     {
         using var directory = new TemporaryDirectory();
@@ -66,6 +104,19 @@ public sealed class ApplicationSettingsTests
         await File.WriteAllTextAsync(store.SettingsPath, "{ invalid");
         await Assert.ThrowsAsync<ApplicationSettingsPersistenceException>(() => store.LoadAsync(CancellationToken.None));
         Assert.Equal("{ invalid", await File.ReadAllTextAsync(store.SettingsPath));
+    }
+
+    [Theory]
+    [InlineData("{\"schemaVersion\":2,\"host\":\"localhost\",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true}")]
+    [InlineData("{\"schemaVersion\":1,\"host\":\" \",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true}")]
+    public async Task UnsupportedOrInvalidJsonIsReportedAndPreserved(string json)
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new JsonApplicationSettingsStore(directory.Path);
+        Directory.CreateDirectory(directory.Path);
+        await File.WriteAllTextAsync(store.SettingsPath, json);
+        await Assert.ThrowsAsync<ApplicationSettingsPersistenceException>(() => store.LoadAsync(CancellationToken.None));
+        Assert.Equal(json, await File.ReadAllTextAsync(store.SettingsPath));
     }
 
     [Fact]
@@ -78,6 +129,20 @@ public sealed class ApplicationSettingsTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.LoadAsync(cancellation.Token));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.SaveAsync(new ApplicationSettings(), cancellation.Token));
         Assert.False(File.Exists(store.SettingsPath));
+    }
+
+    [Fact]
+    public async Task CancelledSavePreservesAnExistingFile()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new JsonApplicationSettingsStore(directory.Path);
+        await store.SaveAsync(new ApplicationSettings(host: "original"), CancellationToken.None);
+        var original = await File.ReadAllTextAsync(store.SettingsPath);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.SaveAsync(new ApplicationSettings(host: "new"), cancellation.Token));
+        Assert.Equal(original, await File.ReadAllTextAsync(store.SettingsPath));
     }
 
     private sealed class TemporaryDirectory : IDisposable
