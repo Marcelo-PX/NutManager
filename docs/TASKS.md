@@ -17,8 +17,8 @@ Only one task should normally be in progress at a time.
 | T01 | DONE | Create Avalonia solution | Compilable project skeleton |
 | T02 | DONE | Build visual shell and navigation | Modern themed application shell |
 | T03 | DONE | Define domain models | Stable UPS and connection models |
-| T04 | READY | Implement mock provider | Deterministic simulated scenarios |
-| T05 | TODO | Build overview dashboard | Functional UI using mock data |
+| T04 | DONE | Implement mock provider | Deterministic simulated scenarios |
+| T05 | READY | Build overview dashboard | Functional UI using mock data |
 | T06 | TODO | Implement read-only NUT client | TCP protocol client with tests |
 | T07 | TODO | Add UPS discovery and selection | Device listing and details |
 | T08 | TODO | Persist local settings | Atomic per-user settings storage |
@@ -105,13 +105,13 @@ Create Core models and status parsing contracts for endpoints, UPS identity, var
 
 ## T04 — Implement mock provider
 
-**Status:** READY
+**Status:** DONE
 
 Implement deterministic simulated scenarios defined in the architecture and expose them through the same application-facing abstraction intended for live data.
 
 ## T05 — Build overview dashboard
 
-**Status:** TODO
+**Status:** READY
 
 Bind the overview UI to mock data. Include clear simulated-data labeling, accessible state presentation, missing-value rendering, and responsive metric cards.
 
