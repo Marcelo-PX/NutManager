@@ -128,7 +128,12 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
             if (selectedDevice is not null)
             {
-                if (_polling is not null) await _polling.MonitorAsync(selectedDevice.Name, cancellationToken); else await LoadDetailsAsync(selectedDevice, cancellationToken);
+                if (_polling is not null)
+                {
+                    if (string.Equals(previousName, selectedDevice.Name, StringComparison.Ordinal)) await _polling.RefreshAsync(cancellationToken);
+                    else await _polling.MonitorAsync(selectedDevice.Name, cancellationToken);
+                }
+                else await LoadDetailsAsync(selectedDevice, cancellationToken);
             }
             else if (_polling is not null) await _polling.MonitorAsync(null, cancellationToken);
         }

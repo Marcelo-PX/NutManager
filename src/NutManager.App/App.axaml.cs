@@ -49,6 +49,7 @@ public partial class App : Application
         }
 
         var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
+        window.Closed += (_, _) => polling.Dispose();
         var overview = new OverviewPageViewModel(polling);
         var devices = new DevicesPageViewModel(client, endpoint, polling, settings.PreferredUpsName);
         var settingsPage = new SettingsPageViewModel(settings, store);
