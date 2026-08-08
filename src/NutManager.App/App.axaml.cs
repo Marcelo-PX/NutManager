@@ -9,6 +9,7 @@ using NutManager.Core.Services;
 using NutManager.Infrastructure.Mock;
 using NutManager.Infrastructure.NutProtocol;
 using NutManager.Infrastructure.Persistence;
+using NutManager.Infrastructure.Polling;
 
 namespace NutManager.App;
 
@@ -47,12 +48,10 @@ public partial class App : Application
             client = new NutTcpClient();
         }
 
-        var overview = settings.MockMode || settings.PreferredUpsName is not null
-            ? new OverviewPageViewModel(client, endpoint, settings.MockMode ? "mockups" : settings.PreferredUpsName!,
-                settings.MockMode ? ConnectionState.Connected : ConnectionState.Disconnected,
-                settings.MockMode ? DataFreshness.Fresh : DataFreshness.Unavailable)
-            : new OverviewPageViewModel();
-        var devices = new DevicesPageViewModel(client, endpoint, settings.PreferredUpsName);
+        var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
+        window.Closed += (_, _) => polling.Dispose();
+        var overview = new OverviewPageViewModel(polling);
+        var devices = new DevicesPageViewModel(client, endpoint, polling, settings.PreferredUpsName);
         var settingsPage = new SettingsPageViewModel(settings, store);
         if (loadError is not null) settingsPage.SetLoadError(loadError);
         var viewModel = new MainWindowViewModel(settings.Theme, overview, devices, settingsPage);
@@ -65,7 +64,6 @@ public partial class App : Application
         settingsPage.ThemeChanged += viewModel.SetTheme;
         ApplyTheme(settings.Theme);
         window.DataContext = viewModel;
-        await overview.InitializeAsync();
         await devices.InitializeAsync();
     }
 

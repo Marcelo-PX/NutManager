@@ -10,6 +10,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     private const string UnavailableText = "Indisponível";
     private readonly INutClient? _nutClient;
     private readonly NutEndpoint? _endpoint;
+    private readonly IUpsPollingCoordinator? _polling;
     private CancellationTokenSource? _detailsCancellation;
     private int _detailsGeneration;
 
@@ -29,6 +30,13 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         _nutClient = nutClient;
         _endpoint = endpoint;
         PreferredUpsName = preferredUpsName;
+    }
+
+    public DevicesPageViewModel(INutClient nutClient, NutEndpoint endpoint, IUpsPollingCoordinator polling, string? preferredUpsName = null)
+        : this(nutClient, endpoint, preferredUpsName)
+    {
+        _polling = polling;
+        polling.StateChanged += ApplyPollingState;
     }
 
     [ObservableProperty]
@@ -114,15 +122,20 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
                     ?? Devices.FirstOrDefault();
 
             SelectedDevice = selectedDevice;
-            SelectedSnapshot = null;
-            RawVariables = Array.Empty<RawVariableViewModel>();
+            if (!string.Equals(SelectedSnapshot?.Identity.Name, selectedDevice?.Name, StringComparison.Ordinal)) { SelectedSnapshot = null; RawVariables = Array.Empty<RawVariableViewModel>(); }
             DetailsError = null;
             OnSelectionStateChanged();
 
             if (selectedDevice is not null)
             {
-                await LoadDetailsAsync(selectedDevice, cancellationToken);
+                if (_polling is not null)
+                {
+                    if (string.Equals(previousName, selectedDevice.Name, StringComparison.Ordinal)) await _polling.RefreshAsync(cancellationToken);
+                    else await _polling.MonitorAsync(selectedDevice.Name, cancellationToken);
+                }
+                else await LoadDetailsAsync(selectedDevice, cancellationToken);
             }
+            else if (_polling is not null) await _polling.MonitorAsync(null, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -148,7 +161,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
         if (device is not null)
         {
-            await LoadDetailsAsync(device, cancellationToken);
+            if (_polling is not null) await _polling.MonitorAsync(device.Name, cancellationToken); else await LoadDetailsAsync(device, cancellationToken);
         }
     }
 
@@ -207,6 +220,17 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         _detailsCancellation?.Cancel();
         _detailsCancellation?.Dispose();
         _detailsCancellation = null;
+        if (_polling is not null) _polling.StateChanged -= ApplyPollingState;
+    }
+
+    private void ApplyPollingState(PollingState state)
+    {
+        if (!string.Equals(state.UpsName, SelectedDevice?.Name, StringComparison.Ordinal)) return;
+        DetailsError = state.LastError;
+        if (state.Snapshot is null) return;
+        SelectedSnapshot = state.Snapshot;
+        RawVariables = state.Snapshot.Variables.Values.OrderBy(variable => variable.Name, StringComparer.Ordinal).Select(variable => new RawVariableViewModel(variable.Name, variable.Value)).ToArray();
+        OnSelectionStateChanged();
     }
 
     partial void OnDevicesChanged(IReadOnlyList<UpsIdentity> value)
