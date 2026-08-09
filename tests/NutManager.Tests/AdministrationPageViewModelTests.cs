@@ -181,6 +181,7 @@ public sealed class AdministrationPageViewModelTests
         await viewModel.DiscardChangesAsync();
 
         Assert.True(viewModel.IsBusy);
+        Assert.False(viewModel.CanEditEntries);
         Assert.False(viewModel.CanDiscard);
         Assert.True(viewModel.HasDraftChanges);
         Assert.Equal("netserver", mode.DraftValue);
@@ -192,6 +193,7 @@ public sealed class AdministrationPageViewModelTests
 
         Assert.True(viewModel.HasDraftChanges);
         Assert.True(viewModel.HasPreview);
+        Assert.True(viewModel.CanEditEntries);
     }
 
     [Fact]
@@ -215,6 +217,7 @@ public sealed class AdministrationPageViewModelTests
         await viewModel.DiscardChangesAsync();
 
         Assert.True(viewModel.IsBusy);
+        Assert.False(viewModel.CanEditEntries);
         Assert.False(viewModel.CanDiscard);
         Assert.True(viewModel.HasDraftChanges);
         Assert.True(viewModel.HasPreview);
@@ -228,6 +231,67 @@ public sealed class AdministrationPageViewModelTests
         Assert.False(viewModel.HasDraftChanges);
         Assert.False(viewModel.HasPreview);
         Assert.Equal("netserver", GetEntry(viewModel, "MODE").DraftValue);
+        Assert.True(viewModel.CanEditEntries);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PendingInstallationOperationFreezesEditingAndPreservesDraftCreatedDuringTheWait(bool inspectDirectory)
+    {
+        var installationA = CreateInstallation("/context-a/nut", "/context-a/nut/etc", "nut.conf");
+        var installationB = CreateInstallation("/context-b/nut", "/context-b/nut/etc", "nut.conf");
+        var detector = new TestInstallationDetector(installationA);
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/context-a/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        var viewModel = new AdministrationPageViewModel(detector, pipeline);
+        await viewModel.InitializeAsync();
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
+        var mode = GetEntry(viewModel, "MODE");
+        var operationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var operationCompletion = new TaskCompletionSource<NutInstallationInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (inspectDirectory)
+        {
+            detector.InspectStarted = operationStarted;
+            detector.NextInspectCompletion = operationCompletion;
+        }
+        else
+        {
+            detector.DetectStarted = operationStarted;
+            detector.NextDetectCompletion = operationCompletion;
+        }
+
+        var loadCallsBeforeOperation = pipeline.LoadCalls;
+        var operation = inspectDirectory
+            ? viewModel.InspectInstallationDirectoryAsync("/context-b/nut")
+            : viewModel.RefreshInstallationAsync();
+        await operationStarted.Task;
+
+        Assert.True(viewModel.IsDetectingInstallation);
+        Assert.False(viewModel.CanEditEntries);
+        Assert.False(viewModel.CanReview);
+        Assert.False(viewModel.CanReload);
+        Assert.False(viewModel.CanDiscard);
+        Assert.False(viewModel.CanSelectConfigurationFile);
+        Assert.False(viewModel.CanChangeInstallation);
+
+        await viewModel.ReviewChangesAsync();
+        await viewModel.ReloadSelectedFileAsync();
+        Assert.Equal(loadCallsBeforeOperation, pipeline.LoadCalls);
+
+        mode.DraftValue = "netserver";
+        operationCompletion.SetResult(installationB);
+        await operation;
+
+        Assert.False(viewModel.IsDetectingInstallation);
+        Assert.True(viewModel.CanEditEntries);
+        Assert.Equal("/context-a/nut/etc", viewModel.ConfigurationDirectoryText);
+        Assert.Equal("/context-a/nut/etc/nut.conf", viewModel.SelectedFile!.FullPath);
+        Assert.Equal("netserver", mode.DraftValue);
+        Assert.True(viewModel.HasDraftChanges);
+        Assert.Equal("A instalação não foi atualizada porque surgiram alterações locais durante a operação.", viewModel.StatusMessage);
+        Assert.Equal(loadCallsBeforeOperation, pipeline.LoadCalls);
+        Assert.Equal(0, pipeline.ApplyCalls);
     }
 
     [Fact]
@@ -650,17 +714,27 @@ public sealed class AdministrationPageViewModelTests
 
         public int InspectCalls { get; private set; }
 
+        public TaskCompletionSource<bool>? DetectStarted { get; set; }
+
+        public TaskCompletionSource<NutInstallationInfo>? NextDetectCompletion { get; set; }
+
+        public TaskCompletionSource<bool>? InspectStarted { get; set; }
+
+        public TaskCompletionSource<NutInstallationInfo>? NextInspectCompletion { get; set; }
+
         public Task<NutInstallationInfo> DetectAsync(CancellationToken cancellationToken)
         {
             DetectCalls++;
-            return Task.FromResult(DetectResult);
+            DetectStarted?.TrySetResult(true);
+            return NextDetectCompletion?.Task ?? Task.FromResult(DetectResult);
         }
 
         public Task<NutInstallationInfo> InspectDirectoryAsync(string installationOrConfigurationDirectory, CancellationToken cancellationToken)
         {
             InspectCalls++;
             LastManualDirectory = installationOrConfigurationDirectory;
-            return Task.FromResult(InspectionResult ?? DetectResult with
+            InspectStarted?.TrySetResult(true);
+            return NextInspectCompletion?.Task ?? Task.FromResult(InspectionResult ?? DetectResult with
             {
                 InstallationDirectory = installationOrConfigurationDirectory,
                 ConfigurationDirectory = installationOrConfigurationDirectory

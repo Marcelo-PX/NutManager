@@ -81,7 +81,7 @@
                 <TextBlock Text="{Binding SelectedFileEncodingText}" Grid.Row="2" Grid.Column="1" />
               </Grid>
 
-              <ItemsControl ItemsSource="{Binding Sections}">
+              <ItemsControl ItemsSource="{Binding Sections}" IsEnabled="{Binding CanEditEntries}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="viewModels:NutConfigurationSectionViewModel">
                     <Expander Header="{Binding Name}" IsExpanded="True" Margin="0,4">

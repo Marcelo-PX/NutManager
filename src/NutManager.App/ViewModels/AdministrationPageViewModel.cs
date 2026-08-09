@@ -103,13 +103,15 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool HasRecoveryPath => !string.IsNullOrWhiteSpace(RecoveryPath);
 
-    public bool CanReview => HasLoadedFile && HasDraftChanges && !IsBusy;
+    public bool CanEditEntries => HasLoadedFile && !IsBusy && !IsDetectingInstallation;
 
-    public bool CanApply => HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy;
+    public bool CanReview => HasLoadedFile && HasDraftChanges && !IsBusy && !IsDetectingInstallation;
+
+    public bool CanApply => HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy && !IsDetectingInstallation;
 
     public bool CanDiscard => (HasDraftChanges || HasPreview) && !IsBusy && !IsDetectingInstallation;
 
-    public bool CanReload => SelectedFile is not null && !HasDraftChanges && !IsBusy;
+    public bool CanReload => SelectedFile is not null && !HasDraftChanges && !IsBusy && !IsDetectingInstallation;
 
     public bool CanChangeInstallation => !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
 
@@ -139,9 +141,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
         IsDetectingInstallation = true;
         SetStatus(null);
+        var detectionDraftVersion = _draftVersion;
+        var detectionInstallationContextVersion = _installationContextVersion;
         try
         {
-            ApplyInstallation(await _installationDetector.DetectAsync(cancellationToken));
+            var installation = await _installationDetector.DetectAsync(cancellationToken);
+            TryApplyDetectedInstallation(installation, detectionDraftVersion, detectionInstallationContextVersion);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -149,8 +154,10 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
         catch (Exception)
         {
-            ApplyInstallation(NutInstallationInfo.NotDetected());
-            SetStatus("Não foi possível detectar a instalação local do NUT.");
+            if (TryApplyDetectedInstallation(NutInstallationInfo.NotDetected(), detectionDraftVersion, detectionInstallationContextVersion))
+            {
+                SetStatus("Não foi possível detectar a instalação local do NUT.");
+            }
         }
         finally
         {
@@ -175,9 +182,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
         IsDetectingInstallation = true;
         SetStatus(null);
+        var detectionDraftVersion = _draftVersion;
+        var detectionInstallationContextVersion = _installationContextVersion;
         try
         {
-            ApplyInstallation(await _installationDetector.InspectDirectoryAsync(directory, cancellationToken));
+            var installation = await _installationDetector.InspectDirectoryAsync(directory, cancellationToken);
+            TryApplyDetectedInstallation(installation, detectionDraftVersion, detectionInstallationContextVersion);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -336,6 +346,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public async Task ReloadSelectedFileAsync(CancellationToken cancellationToken = default)
     {
+        if (IsBusy || IsDetectingInstallation)
+        {
+            SetStatus("Aguarde a operação atual antes de recarregar o arquivo.");
+            return;
+        }
+
         if (HasDraftChanges)
         {
             SetStatus("Há alterações locais. Descarte-as antes de recarregar o arquivo.");
@@ -477,6 +493,24 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             filesByName.TryGetValue(file.FileName, out var info);
             file.ApplyInstallationInfo(info);
         }
+    }
+
+    private bool TryApplyDetectedInstallation(
+        NutInstallationInfo installation,
+        int detectionDraftVersion,
+        int detectionInstallationContextVersion)
+    {
+        if (_draftVersion != detectionDraftVersion ||
+            _installationContextVersion != detectionInstallationContextVersion ||
+            HasDraftChanges ||
+            HasPreview)
+        {
+            SetStatus("A instalação não foi atualizada porque surgiram alterações locais durante a operação.");
+            return false;
+        }
+
+        ApplyInstallation(installation);
+        return true;
     }
 
     private void BuildEntries(NutConfigurationDocument document)
@@ -687,6 +721,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(HasDraftChanges));
         OnPropertyChanged(nameof(HasPreview));
+        OnPropertyChanged(nameof(CanEditEntries));
         OnPropertyChanged(nameof(CanReview));
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(CanDiscard));
