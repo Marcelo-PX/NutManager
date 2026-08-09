@@ -14,12 +14,12 @@ public sealed record NutServiceInfo(string ServiceName, string DisplayName, NutS
     public bool IsAssociated => AssociationConfidence is not NutAssociationConfidence.None;
 }
 
-public sealed record NutPermissionAssessment(NutPermissionState State, string? Identity, string? UserSid, bool HasExplicitDeny, string? Message, IReadOnlyList<string> AffectedPaths)
+public sealed record NutPermissionAssessment(NutPermissionState State, string? Identity, string? UserSid, bool HasExplicitDeny, string? Message, IReadOnlyList<string> AffectedPaths, IReadOnlyList<string>? EffectiveIdentitySids = null)
 {
     public static NutPermissionAssessment Unsupported() => new(NutPermissionState.Unknown, null, null, false, "A administração local do Windows não está disponível nesta plataforma.", Array.Empty<string>());
 }
 
-public sealed record NutPermissionRepairPlan(string ConfigurationDirectory, string UserIdentity, string UserSid, IReadOnlyList<string> AffectedPaths, string Right = "Modify");
+public sealed record NutPermissionRepairPlan(string ConfigurationDirectory, string UserIdentity, string UserSid, IReadOnlyList<string> AffectedPaths, string Right = "Modify", IReadOnlyList<string>? EffectiveIdentitySids = null);
 
 public sealed record NutProcessInfo(string Name, int ProcessId, string? ExecutablePath, NutAssociationConfidence AssociationConfidence);
 public sealed record NutEventLogEntry(DateTimeOffset Timestamp, string LogName, string Provider, int EventId, string Level, string Message);

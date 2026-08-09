@@ -25,4 +25,11 @@ internal static class WindowsPath
         if (!TryCanonicalize(candidate, out var path) || !TryCanonicalize(directory, out var root)) return false;
         return string.Equals(path, root, StringComparison.OrdinalIgnoreCase) || IsInside(path, root);
     }
+
+    public static bool HasExactParent(string path, string expectedParent)
+    {
+        if (!TryCanonicalize(path, out var canonicalPath) || !TryCanonicalize(expectedParent, out var canonicalParent)) return false;
+        var separator = canonicalPath.LastIndexOf('\\');
+        return separator > 2 && string.Equals(canonicalPath[..separator], canonicalParent, StringComparison.OrdinalIgnoreCase);
+    }
 }

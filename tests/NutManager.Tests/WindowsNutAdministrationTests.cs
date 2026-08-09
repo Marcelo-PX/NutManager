@@ -66,11 +66,11 @@ public sealed class WindowsNutAdministrationTests
         var identities = new HashSet<string>(["S-1-5-21-user"], StringComparer.OrdinalIgnoreCase);
         var combined = WindowsAclPermissionEvaluation.Assess(
             [
-                new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.Read),
-                new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.Modify & ~WindowsAclRights.Read)
+                new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.ReadData),
+                new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.Modify & ~WindowsAclRights.ReadData)
             ], identities);
         var partial = WindowsAclPermissionEvaluation.Assess(
-            [new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.Write)], identities);
+            [new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.WriteData)], identities);
 
         Assert.Equal(NutPermissionState.Modifiable, combined);
         Assert.Equal(NutPermissionState.Insufficient, partial);
@@ -106,6 +106,27 @@ public sealed class WindowsNutAdministrationTests
         Assert.Equal(expected + "\\0123456789abcdef0123456789abcdef.response.json", responsePath);
         Assert.False(WindowsPrivilegeElevationBroker.TryValidateRequestPath("C:\\temp\\0123456789abcdef0123456789abcdef.request.json", expected, out _, out _, out _));
         Assert.False(WindowsPrivilegeElevationBroker.TryValidateRequestPath(expected + "\\not-a-guid.request.json", expected, out _, out _, out _));
+        Assert.False(WindowsPrivilegeElevationBroker.TryValidateRequestPath(expected + "\\subdir\\0123456789abcdef0123456789abcdef.request.json", expected, out _, out _, out _));
+    }
+
+    [Fact]
+    public void ExistingResponsePathIsDetectedBeforeAnyCreateNewWrite()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"NutManager.T16.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var responsePath = Path.Combine(directory, "response.json");
+        try
+        {
+            File.WriteAllText(responsePath, "existing-response");
+
+            Assert.True(WindowsPrivilegeElevationBroker.PathAlreadyExistsOrIsReparsePoint(responsePath));
+            Assert.Equal("existing-response", File.ReadAllText(responsePath));
+        }
+        finally
+        {
+            try { Directory.Delete(directory, recursive: true); }
+            catch { }
+        }
     }
 
     [Theory]
@@ -121,7 +142,7 @@ public sealed class WindowsNutAdministrationTests
     {
         var backend = new FakeBackend();
         var broker = new FakeBroker(PrivilegeState.StandardUser);
-        var administration = new WindowsLocalNutAdministration(backend, broker);
+        var administration = new WindowsLocalNutAdministration(backend, broker, new FakeRevalidator());
         var request = new NutAdministrativeActionRequest(Guid.Empty, NutAdministrativeAction.StartService, "C:\\NUT", "C:\\NUT\\etc", "NetworkUpsTools");
 
         var result = await administration.ExecuteAsync(request, CancellationToken.None);
@@ -134,7 +155,7 @@ public sealed class WindowsNutAdministrationTests
     [Fact]
     public void PermissionRepairRequestOnlyAcceptsModifyForTheExplicitUserSid()
     {
-        var plan = new NutPermissionRepairPlan("C:\\NUT\\etc", "TEST\\user", "S-1-5-21-123", ["C:\\NUT\\etc", "C:\\NUT\\etc\\ups.conf"]);
+        var plan = new NutPermissionRepairPlan("C:\\NUT\\etc", "TEST\\user", "S-1-5-21-123", ["C:\\NUT\\etc", "C:\\NUT\\etc\\ups.conf"], EffectiveIdentitySids: ["S-1-5-21-123"]);
         var request = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.RepairConfigurationPermissions, "C:\\NUT", "C:\\NUT\\etc", PermissionRepairPlan: plan);
 
         Assert.True(WindowsNutAdministrativeRequestValidator.IsValid(request));
@@ -142,12 +163,14 @@ public sealed class WindowsNutAdministrationTests
         Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { AffectedPaths = ["C:\\Other\\ups.conf"] } }));
         Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { AffectedPaths = ["C:\\NUT\\etc\\arbitrary.txt"] } }));
         Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { AffectedPaths = ["C:\\NUT\\etc\\..\\outside.txt"] } }));
+        Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { EffectiveIdentitySids = ["S-1-5-32-555"] } }));
+        Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { EffectiveIdentitySids = ["not-a-sid", "S-1-5-21-123"] } }));
     }
 
     [Fact]
     public void PermissionRepairRequestAcceptsOnlyRecognizedFilesAndConfigurationDirectory()
     {
-        var plan = new NutPermissionRepairPlan("C:\\NUT\\etc", "TEST\\user", "S-1-5-21-123", ["C:\\NUT\\etc", "C:\\NUT\\etc\\upsd.users"]);
+        var plan = new NutPermissionRepairPlan("C:\\NUT\\etc", "TEST\\user", "S-1-5-21-123", ["C:\\NUT\\etc", "C:\\NUT\\etc\\upsd.users"], EffectiveIdentitySids: ["S-1-5-21-123"]);
         var request = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.RepairConfigurationPermissions, "C:\\NUT", "C:\\NUT\\etc", PermissionRepairPlan: plan);
 
         Assert.True(WindowsNutAdministrativeRequestValidator.IsValid(request));
@@ -170,7 +193,7 @@ public sealed class WindowsNutAdministrationTests
     {
         var backend = new FakeBackend();
         var broker = new FakeBroker(PrivilegeState.StandardUser);
-        var administration = new WindowsLocalNutAdministration(backend, broker);
+        var administration = new WindowsLocalNutAdministration(backend, broker, new FakeRevalidator());
         var request = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.StartService, "C:\\NUT", "C:\\NUT\\etc", "NetworkUpsTools");
 
         var result = await administration.ExecuteAsync(request, CancellationToken.None);
@@ -185,7 +208,7 @@ public sealed class WindowsNutAdministrationTests
     {
         var backend = new FakeBackend();
         var broker = new FakeBroker(PrivilegeState.Elevated);
-        var administration = new WindowsLocalNutAdministration(backend, broker);
+        var administration = new WindowsLocalNutAdministration(backend, broker, new FakeRevalidator());
         var request = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.StopService, "C:\\NUT", "C:\\NUT\\etc", "NetworkUpsTools");
 
         var result = await administration.ExecuteAsync(request, CancellationToken.None);
@@ -196,10 +219,72 @@ public sealed class WindowsNutAdministrationTests
     }
 
     [Fact]
+    public async Task ElevatedProcessRejectsAnInstallationThatFailsFinalRedetection()
+    {
+        var backend = new FakeBackend();
+        var broker = new FakeBroker(PrivilegeState.Elevated);
+        var revalidator = new FakeRevalidator { IsDetected = false };
+        var administration = new WindowsLocalNutAdministration(backend, broker, revalidator);
+        var request = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.RestartService, "C:\\NUT", "C:\\NUT\\etc", "NetworkUpsTools");
+
+        var result = await administration.ExecuteAsync(request, CancellationToken.None);
+
+        Assert.Equal(NutAdministrativeActionStatus.InvalidRequest, result.Status);
+        Assert.Equal(0, backend.ExecuteCalls);
+        Assert.Equal(0, broker.ExecuteCalls);
+    }
+
+    [Fact]
+    public void AclTransactionRestoresTheDistinctOriginalDescriptorAfterSecondWriteFailure()
+    {
+        var accessor = new FakeAclAccessor { FailCandidateWriteAt = 2 };
+        var targets = CreateAclTargets();
+
+        var result = WindowsAclRepairTransaction.Apply(accessor, targets, "S-1-user", new HashSet<string>(["S-1-user"]), NutAdministrativeAction.RepairConfigurationPermissions);
+
+        Assert.Equal(NutAdministrativeActionStatus.Failed, result.Status);
+        Assert.Equal("A0", accessor.Current["A"].Value);
+        Assert.Equal("B0", accessor.Current["B"].Value);
+        Assert.DoesNotContain("modify:S-1-user", accessor.Current["A"].Value);
+    }
+
+    [Fact]
+    public void AclTransactionDoesNotLeaveTheFirstTargetChangedWhenItsWriteFails()
+    {
+        var accessor = new FakeAclAccessor { FailCandidateWriteAt = 1 };
+
+        var result = WindowsAclRepairTransaction.Apply(accessor, CreateAclTargets(), "S-1-user", new HashSet<string>(["S-1-user"]), NutAdministrativeAction.RepairConfigurationPermissions);
+
+        Assert.Equal(NutAdministrativeActionStatus.Failed, result.Status);
+        Assert.Equal("A0", accessor.Current["A"].Value);
+    }
+
+    [Fact]
+    public void AclTransactionRollsBackAfterUnauthorizedWriteFailure()
+    {
+        var accessor = new FakeAclAccessor { FailCandidateWriteAt = 2, ThrowUnauthorized = true };
+
+        var result = WindowsAclRepairTransaction.Apply(accessor, CreateAclTargets(), "S-1-user", new HashSet<string>(["S-1-user"]), NutAdministrativeAction.RepairConfigurationPermissions);
+
+        Assert.Equal(NutAdministrativeActionStatus.AccessDenied, result.Status);
+        Assert.Equal("A0", accessor.Current["A"].Value);
+    }
+
+    [Fact]
+    public void AclTransactionReportsManualInterventionWhenRollbackFails()
+    {
+        var accessor = new FakeAclAccessor { FailCandidateWriteAt = 2, FailRollbackForA = true };
+
+        var result = WindowsAclRepairTransaction.Apply(accessor, CreateAclTargets(), "S-1-user", new HashSet<string>(["S-1-user"]), NutAdministrativeAction.RepairConfigurationPermissions);
+
+        Assert.Equal(NutAdministrativeActionStatus.ManualInterventionRequired, result.Status);
+    }
+
+    [Fact]
     public async Task InspectionIsReadOnlyAndReturnsTheBackendSnapshot()
     {
         var backend = new FakeBackend();
-        var administration = new WindowsLocalNutAdministration(backend, new FakeBroker(PrivilegeState.Elevated));
+        var administration = new WindowsLocalNutAdministration(backend, new FakeBroker(PrivilegeState.Elevated), new FakeRevalidator());
         var installation = new NutInstallationInfo(true, "C:\\NUT", "C:\\NUT\\etc", null, new Dictionary<string, string>(), Array.Empty<NutConfigurationFileInfo>(), "test");
 
         var snapshot = await administration.InspectAsync(installation, CancellationToken.None);
@@ -234,5 +319,71 @@ public sealed class WindowsNutAdministrationTests
             ExecuteCalls++;
             return Task.FromResult(new NutAdministrativeActionResult(NutAdministrativeActionStatus.ElevationCancelled, request.Action, "cancelled", request.ServiceName));
         }
+    }
+
+    private sealed class FakeRevalidator : IWindowsNutInstallationRevalidator
+    {
+        public bool IsDetected { get; set; } = true;
+
+        public Task<NutInstallationInfo> InspectAsync(string installationDirectory, CancellationToken cancellationToken) =>
+            Task.FromResult(IsDetected
+                ? new NutInstallationInfo(true, "C:\\NUT", "C:\\NUT\\etc", null, new Dictionary<string, string>(), Array.Empty<NutConfigurationFileInfo>(), "test")
+                : NutInstallationInfo.NotDetected());
+    }
+
+    private static IReadOnlyList<WindowsAclTarget> CreateAclTargets() => [new WindowsAclTarget("A", true), new WindowsAclTarget("B", false)];
+
+    private sealed class FakeAclAccessor : IWindowsAclAccessor
+    {
+        private int _candidateWriteCount;
+
+        public Dictionary<string, FakeSecurity> Current { get; } = new(StringComparer.Ordinal)
+        {
+            ["A"] = new("A0"),
+            ["B"] = new("B0")
+        };
+
+        public int? FailCandidateWriteAt { get; init; }
+
+        public bool ThrowUnauthorized { get; init; }
+
+        public bool FailRollbackForA { get; init; }
+
+        public object CaptureSecurity(WindowsAclTarget target) => Current[target.Path];
+
+        public object CloneSecurity(object security, bool isDirectory) => ((FakeSecurity)security).Clone();
+
+        public IReadOnlyList<WindowsAclRule> GetRules(object security) => ((FakeSecurity)security).Rules;
+
+        public void AddModify(object candidateSecurity, string userSid, bool isDirectory) => ((FakeSecurity)candidateSecurity).Value += $"|modify:{userSid}";
+
+        public void WriteSecurity(WindowsAclTarget target, object security)
+        {
+            var candidate = (FakeSecurity)security;
+            if (candidate.Value.Contains("modify:", StringComparison.Ordinal))
+            {
+                _candidateWriteCount++;
+                if (_candidateWriteCount == FailCandidateWriteAt)
+                {
+                    if (ThrowUnauthorized) throw new UnauthorizedAccessException();
+                    throw new IOException();
+                }
+            }
+            else if (FailRollbackForA && target.Path == "A")
+            {
+                throw new IOException();
+            }
+
+            Current[target.Path] = candidate;
+        }
+    }
+
+    private sealed class FakeSecurity(string value)
+    {
+        public string Value { get; set; } = value;
+
+        public IReadOnlyList<WindowsAclRule> Rules { get; } = Array.Empty<WindowsAclRule>();
+
+        public FakeSecurity Clone() => new(Value);
     }
 }

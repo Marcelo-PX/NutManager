@@ -510,7 +510,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
-        var plan = new NutPermissionRepairPlan(_currentInstallation!.ConfigurationDirectory!, identity, sid, assessment.AffectedPaths);
+        var effectiveIdentities = assessment.EffectiveIdentitySids ?? [sid];
+        var plan = new NutPermissionRepairPlan(_currentInstallation!.ConfigurationDirectory!, identity, sid, assessment.AffectedPaths, EffectiveIdentitySids: effectiveIdentities);
         PendingAdministrativeAction = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.RepairConfigurationPermissions, _currentInstallation.InstallationDirectory!, _currentInstallation.ConfigurationDirectory!, PermissionRepairPlan: plan);
         IsAdministrativeActionConfirmed = false;
         AdministrativeStatusMessage = null;

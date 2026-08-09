@@ -14,14 +14,14 @@ public sealed class WindowsPrivilegeElevationBroker : IWindowsPrivilegeElevation
     public async Task<NutAdministrativeActionResult> ExecuteElevatedAsync(NutAdministrativeActionRequest request, CancellationToken cancellationToken)
     {
         if (!OperatingSystem.IsWindows()) return new(NutAdministrativeActionStatus.PlatformUnsupported, request.Action, "A administração local do Windows não está disponível nesta plataforma.");
-        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NutManager", "AdminRequests");
-        Directory.CreateDirectory(directory);
+        if (!TryGetAdministrativeDirectory(create: true, out var directory)) return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "O diretório administrativo não é seguro para a operação.");
         var requestPath = Path.Combine(directory, $"{request.RequestId:N}.request.json");
         var responsePath = GetResponsePath(requestPath);
+        if (PathAlreadyExistsOrIsReparsePoint(responsePath)) return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "Já existe uma resposta administrativa para esta solicitação.");
         var helperStarted = false;
         try
         {
-            await File.WriteAllTextAsync(requestPath, JsonSerializer.Serialize(new ElevatedRequest(1, DateTimeOffset.UtcNow, request)), cancellationToken);
+            await WriteNewJsonAsync(requestPath, new ElevatedRequest(1, DateTimeOffset.UtcNow, request), cancellationToken);
             var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true, Verb = "runas" };
             start.ArgumentList.Add("--elevated-nut-admin"); start.ArgumentList.Add(requestPath);
             try { using var process = Process.Start(start); if (process is null) return new(NutAdministrativeActionStatus.Failed, request.Action, "Não foi possível iniciar o helper elevado."); helperStarted = true; await process.WaitForExitAsync(); }
@@ -35,19 +35,51 @@ public sealed class WindowsPrivilegeElevationBroker : IWindowsPrivilegeElevation
         finally { TryDelete(requestPath); TryDelete(responsePath); }
     }
 
-    private static void TryDelete(string path) { try { if (File.Exists(path)) File.Delete(path); } catch { } }
+    private static void TryDelete(string path) { try { if (File.Exists(path) && (new FileInfo(path).Attributes & FileAttributes.ReparsePoint) == 0) File.Delete(path); } catch { } }
+
+    public static bool PathAlreadyExistsOrIsReparsePoint(string path)
+    {
+        try { _ = File.GetAttributes(path); return true; }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
+        catch { return true; }
+    }
+
+    private static async Task WriteNewJsonAsync<T>(string path, T value, CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, useAsync: true);
+        await JsonSerializer.SerializeAsync(stream, value, cancellationToken: cancellationToken);
+        await stream.FlushAsync(cancellationToken);
+    }
+
+    internal static bool TryGetAdministrativeDirectory(bool create, out string directory)
+    {
+        directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NutManager", "AdminRequests");
+        try
+        {
+            var parent = Directory.GetParent(directory)?.FullName;
+            if (parent is null) return false;
+            if (create) Directory.CreateDirectory(parent);
+            var parentInfo = new DirectoryInfo(parent);
+            if (!parentInfo.Exists || (parentInfo.Attributes & FileAttributes.ReparsePoint) != 0) return false;
+            if (create) Directory.CreateDirectory(directory);
+            var info = new DirectoryInfo(directory);
+            return info.Exists && (info.Attributes & FileAttributes.ReparsePoint) == 0;
+        }
+        catch { return false; }
+    }
     public static string GetResponsePath(string requestPath) => requestPath.EndsWith(".request.json", StringComparison.OrdinalIgnoreCase) ? requestPath[..^".request.json".Length] + ".response.json" : throw new ArgumentException("Nome de request inválido.", nameof(requestPath));
 
     public static bool TryValidateRequestPath(string requestPath, string expectedDirectory, out Guid requestId, out string canonicalRequestPath, out string canonicalResponsePath)
     {
         requestId = Guid.Empty; canonicalRequestPath = string.Empty; canonicalResponsePath = string.Empty;
-        if (!WindowsPath.TryCanonicalize(requestPath, out var request) || !WindowsPath.TryCanonicalize(expectedDirectory, out var directory) || !WindowsPath.IsInside(request, directory)) return false;
+        if (!WindowsPath.TryCanonicalize(requestPath, out var request) || !WindowsPath.TryCanonicalize(expectedDirectory, out var directory) || !WindowsPath.HasExactParent(request, directory)) return false;
         const string suffix = ".request.json";
         var name = request[(request.LastIndexOf('\\') + 1)..];
         if (!name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) || !Guid.TryParseExact(name[..^suffix.Length], "N", out requestId)) return false;
         canonicalRequestPath = request;
         canonicalResponsePath = request[..^suffix.Length] + ".response.json";
-        return WindowsPath.IsInside(canonicalResponsePath, directory);
+        return WindowsPath.HasExactParent(canonicalResponsePath, directory);
     }
 }
 
@@ -57,8 +89,7 @@ public static class WindowsElevatedHelper
     {
         exitCode = 0;
         if (args.Length != 2 || args[0] != "--elevated-nut-admin") return false;
-        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NutManager", "AdminRequests");
-        if (!WindowsPrivilegeElevationBroker.TryValidateRequestPath(args[1], directory, out _, out var requestPath, out var responsePath)) { exitCode = 2; return true; }
+        if (!WindowsPrivilegeElevationBroker.TryGetAdministrativeDirectory(create: false, out var directory) || !WindowsPrivilegeElevationBroker.TryValidateRequestPath(args[1], directory, out _, out var requestPath, out var responsePath)) { exitCode = 2; return true; }
         if (!IsExpectedRequestFile(requestPath)) { exitCode = 2; return true; }
         exitCode = Handle(requestPath, responsePath).GetAwaiter().GetResult();
         return true;
@@ -69,7 +100,8 @@ public static class WindowsElevatedHelper
         try
         {
             var info = new FileInfo(requestPath);
-            return info.Exists && (info.Attributes & FileAttributes.ReparsePoint) == 0;
+            var attributes = File.GetAttributes(requestPath);
+            return info.Exists && (attributes & (FileAttributes.ReparsePoint | FileAttributes.Directory)) == 0;
         }
         catch { return false; }
     }
@@ -88,16 +120,29 @@ public static class WindowsElevatedHelper
             else
             {
                 requestId = request.Action.RequestId;
-                var ownerSid = new FileInfo(requestPath).GetAccessControl().GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
-                var detected = await new WindowsNutInstallationDetector().InspectDirectoryAsync(request.Action.InstallationDirectory, CancellationToken.None);
-                if (request.Action.PermissionRepairPlan is { } plan && !string.Equals(plan.UserSid, ownerSid?.Value, StringComparison.OrdinalIgnoreCase)) result = new(NutAdministrativeActionStatus.InvalidRequest, request.Action.Action, "O SID do plano não corresponde ao solicitante.", request.Action.ServiceName);
-                else if (!detected.IsDetected || !WindowsPath.TryCanonicalize(detected.ConfigurationDirectory, out var detectedConfig) || !WindowsPath.TryCanonicalize(request.Action.ConfigurationDirectory, out var requestConfig) || !string.Equals(detectedConfig, requestConfig, StringComparison.OrdinalIgnoreCase)) result = new(NutAdministrativeActionStatus.InvalidRequest, request.Action.Action, "A solicitação não corresponde à instalação NUT atual.", request.Action.ServiceName);
-                else result = await new WindowsNutAdministrationBackend().ExecuteAsync(request.Action, CancellationToken.None);
+                SecurityIdentifier? ownerSid;
+                try { ownerSid = new FileInfo(requestPath).GetAccessControl().GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier; }
+                catch { ownerSid = null; }
+                if (ownerSid is null) result = new(NutAdministrativeActionStatus.InvalidRequest, request.Action.Action, "Não foi possível validar o solicitante da ação administrativa.", request.Action.ServiceName);
+                else
+                {
+                    var detected = await new WindowsNutInstallationDetector().InspectDirectoryAsync(request.Action.InstallationDirectory, CancellationToken.None);
+                    if (request.Action.PermissionRepairPlan is { } plan && !string.Equals(plan.UserSid, ownerSid.Value, StringComparison.OrdinalIgnoreCase)) result = new(NutAdministrativeActionStatus.InvalidRequest, request.Action.Action, "O SID do plano não corresponde ao solicitante.", request.Action.ServiceName);
+                    else if (!detected.IsDetected || !WindowsPath.TryCanonicalize(detected.ConfigurationDirectory, out var detectedConfig) || !WindowsPath.TryCanonicalize(request.Action.ConfigurationDirectory, out var requestConfig) || !string.Equals(detectedConfig, requestConfig, StringComparison.OrdinalIgnoreCase)) result = new(NutAdministrativeActionStatus.InvalidRequest, request.Action.Action, "A solicitação não corresponde à instalação NUT atual.", request.Action.ServiceName);
+                    else result = await new WindowsNutAdministrationBackend().ExecuteAsync(request.Action, CancellationToken.None);
+                }
             }
         }
         catch { result = new(NutAdministrativeActionStatus.Failed, NutAdministrativeAction.StartService, "O helper administrativo não pôde concluir a ação."); }
-        await File.WriteAllTextAsync(responsePath, JsonSerializer.Serialize(new ElevatedResponse(requestId, result)));
-        try { File.Delete(requestPath); } catch { }
+        try
+        {
+            if (WindowsPrivilegeElevationBroker.PathAlreadyExistsOrIsReparsePoint(responsePath)) return 3;
+            await using var stream = new FileStream(responsePath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, useAsync: true);
+            await JsonSerializer.SerializeAsync(stream, new ElevatedResponse(requestId, result));
+            await stream.FlushAsync();
+        }
+        catch { return 3; }
+        try { if ((new FileInfo(requestPath).Attributes & FileAttributes.ReparsePoint) == 0) File.Delete(requestPath); } catch { }
         return result.IsSuccess ? 0 : 1;
     }
 }

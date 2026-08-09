@@ -33,12 +33,17 @@ public enum WindowsAclAccessControlType { Allow, Deny }
 public enum WindowsAclRights
 {
     None = 0,
-    Read = 1,
-    Write = 2,
-    Delete = 4,
-    ReadPermissions = 8,
-    Synchronize = 16,
-    Modify = Read | Write | Delete | ReadPermissions | Synchronize
+    ReadData = 1,
+    WriteData = 2,
+    AppendData = 4,
+    ReadExtendedAttributes = 8,
+    WriteExtendedAttributes = 16,
+    ExecuteFile = 32,
+    ReadAttributes = 64,
+    WriteAttributes = 128,
+    Delete = 256,
+    ReadPermissions = 512,
+    Modify = ReadData | WriteData | AppendData | ReadExtendedAttributes | WriteExtendedAttributes | ExecuteFile | ReadAttributes | WriteAttributes | Delete | ReadPermissions
 }
 
 public sealed record WindowsAclRule(string IdentitySid, WindowsAclAccessControlType AccessControlType, WindowsAclRights Rights);
