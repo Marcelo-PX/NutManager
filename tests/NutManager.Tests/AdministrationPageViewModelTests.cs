@@ -163,6 +163,74 @@ public sealed class AdministrationPageViewModelTests
     }
 
     [Fact]
+    public async Task DiscardIsRejectedWhileReviewIsInProgressWithoutStartingAnotherLoad()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        var viewModel = await CreateLoadedNutConfAsync(pipeline);
+        var mode = GetEntry(viewModel, "MODE");
+        mode.DraftValue = "netserver";
+        var reviewLoadCompletion = new TaskCompletionSource<NutConfigurationLoadResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reviewLoadStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        pipeline.NextLoadCompletion = reviewLoadCompletion;
+        pipeline.LoadStarted = reviewLoadStarted;
+        var loadCallsBeforeReview = pipeline.LoadCalls;
+
+        var review = viewModel.ReviewChangesAsync();
+        await reviewLoadStarted.Task;
+        await viewModel.DiscardChangesAsync();
+
+        Assert.True(viewModel.IsBusy);
+        Assert.False(viewModel.CanDiscard);
+        Assert.True(viewModel.HasDraftChanges);
+        Assert.Equal("netserver", mode.DraftValue);
+        Assert.Equal(loadCallsBeforeReview + 1, pipeline.LoadCalls);
+        Assert.False(viewModel.HasPreview);
+
+        reviewLoadCompletion.SetResult(pipeline.CreateSuccessLoadResult("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n"));
+        await review;
+
+        Assert.True(viewModel.HasDraftChanges);
+        Assert.True(viewModel.HasPreview);
+    }
+
+    [Fact]
+    public async Task DiscardIsRejectedWhileApplyIsInProgressWithoutStartingAReload()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        var viewModel = await CreateLoadedNutConfAsync(pipeline);
+        var mode = GetEntry(viewModel, "MODE");
+        mode.DraftValue = "netserver";
+        await viewModel.ReviewChangesAsync();
+        viewModel.IsPreviewConfirmed = true;
+        var applyCompletion = new TaskCompletionSource<NutConfigurationApplyResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var applyStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        pipeline.NextApplyCompletion = applyCompletion;
+        pipeline.ApplyStarted = applyStarted;
+        var loadCallsBeforeApply = pipeline.LoadCalls;
+
+        var apply = viewModel.ApplyChangesAsync();
+        await applyStarted.Task;
+        await viewModel.DiscardChangesAsync();
+
+        Assert.True(viewModel.IsBusy);
+        Assert.False(viewModel.CanDiscard);
+        Assert.True(viewModel.HasDraftChanges);
+        Assert.True(viewModel.HasPreview);
+        Assert.Equal("netserver", mode.DraftValue);
+        Assert.Equal(loadCallsBeforeApply, pipeline.LoadCalls);
+        Assert.Equal(1, pipeline.ApplyCalls);
+
+        applyCompletion.SetResult(new NutConfigurationApplyResult(NutConfigurationApplyStatus.Success, "/session/backup.bak"));
+        await apply;
+
+        Assert.False(viewModel.HasDraftChanges);
+        Assert.False(viewModel.HasPreview);
+        Assert.Equal("netserver", GetEntry(viewModel, "MODE").DraftValue);
+    }
+
+    [Fact]
     public async Task SensitiveAssignmentNeverExposesCurrentSecretAndItsPreviewIsRedacted()
     {
         const string originalSecret = "fictional-password";
@@ -617,6 +685,10 @@ public sealed class AdministrationPageViewModelTests
 
         public TaskCompletionSource<NutConfigurationLoadResult>? NextLoadCompletion { get; set; }
 
+        public TaskCompletionSource<bool>? ApplyStarted { get; set; }
+
+        public TaskCompletionSource<NutConfigurationApplyResult>? NextApplyCompletion { get; set; }
+
         public NutConfigurationLoadStatus? ForcedLoadStatus { get; set; }
 
         public NutConfigurationApplyResult? NextApplyResult { get; set; }
@@ -701,6 +773,12 @@ public sealed class AdministrationPageViewModelTests
         {
             ApplyCalls++;
             LastAppliedChange = change;
+            ApplyStarted?.TrySetResult(true);
+            if (NextApplyCompletion is { } completion)
+            {
+                return CompleteApplyAsync(completion.Task, change);
+            }
+
             var result = NextApplyResult ?? new NutConfigurationApplyResult(NutConfigurationApplyStatus.Success, "/session/backup.bak");
             if (result.Status == NutConfigurationApplyStatus.Success)
             {
@@ -708,6 +786,19 @@ public sealed class AdministrationPageViewModelTests
             }
 
             return Task.FromResult(result);
+        }
+
+        private async Task<NutConfigurationApplyResult> CompleteApplyAsync(
+            Task<NutConfigurationApplyResult> completion,
+            NutConfigurationPreparedChange change)
+        {
+            var result = await completion;
+            if (result.Status == NutConfigurationApplyStatus.Success)
+            {
+                _files[change.Snapshot.TargetPath] = (change.Snapshot.FileKind, change.CandidateText);
+            }
+
+            return result;
         }
     }
 

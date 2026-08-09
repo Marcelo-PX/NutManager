@@ -107,7 +107,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanApply => HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy;
 
-    public bool CanDiscard => HasDraftChanges || HasPreview;
+    public bool CanDiscard => (HasDraftChanges || HasPreview) && !IsBusy && !IsDetectingInstallation;
 
     public bool CanReload => SelectedFile is not null && !HasDraftChanges && !IsBusy;
 
@@ -347,6 +347,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public async Task DiscardChangesAsync(CancellationToken cancellationToken = default)
     {
+        if (IsBusy || IsDetectingInstallation)
+        {
+            SetStatus("Aguarde a operação atual antes de descartar alterações.");
+            return;
+        }
+
         if (SelectedFile is null)
         {
             return;
