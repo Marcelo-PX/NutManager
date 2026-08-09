@@ -184,12 +184,14 @@ public sealed class NutConfigurationApplyResult
         NutConfigurationApplyStatus status,
         string? backupPath = null,
         string? message = null,
-        bool rollbackSucceeded = false)
+        bool rollbackSucceeded = false,
+        string? recoveryPath = null)
     {
         Status = status;
         BackupPath = backupPath;
         Message = message;
         RollbackSucceeded = rollbackSucceeded;
+        RecoveryPath = recoveryPath;
     }
 
     public NutConfigurationApplyStatus Status { get; }
@@ -199,4 +201,6 @@ public sealed class NutConfigurationApplyResult
     public string? Message { get; }
 
     public bool RollbackSucceeded { get; }
+
+    public string? RecoveryPath { get; }
 }

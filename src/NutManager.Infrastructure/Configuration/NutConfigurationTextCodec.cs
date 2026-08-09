@@ -39,6 +39,13 @@ internal static class NutConfigurationTextCodec
 
     private static (NutConfigurationTextEncoding Encoding, int BomLength) DetectEncoding(ReadOnlySpan<byte> bytes)
     {
+        if (bytes.Length >= 4 &&
+            (bytes[..4].SequenceEqual(new byte[] { 0xFF, 0xFE, 0x00, 0x00 }) ||
+             bytes[..4].SequenceEqual(new byte[] { 0x00, 0x00, 0xFE, 0xFF })))
+        {
+            throw new DecoderFallbackException("UTF-32 configuration encoding is not supported.");
+        }
+
         if (bytes.Length >= 3 && bytes[..3].SequenceEqual(new byte[] { 0xEF, 0xBB, 0xBF }))
         {
             return (NutConfigurationTextEncoding.Utf8Bom, 3);

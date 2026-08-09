@@ -7,6 +7,12 @@ namespace NutManager.Tests.Configuration;
 
 public sealed class NutConfigurationFilePipelineTests
 {
+    public static IEnumerable<object[]> UnsupportedUtf32BomCases()
+    {
+        yield return [new byte[] { 0xFF, 0xFE, 0x00, 0x00 }];
+        yield return [new byte[] { 0x00, 0x00, 0xFE, 0xFF }];
+    }
+
     [Theory]
     [InlineData(NutConfigurationTextEncoding.Utf8)]
     [InlineData(NutConfigurationTextEncoding.Utf8Bom)]
@@ -36,6 +42,20 @@ public sealed class NutConfigurationFilePipelineTests
         using var directory = new TemporaryDirectory();
         var targetPath = directory.FilePath("nut.conf");
         var originalBytes = new byte[] { 0x80, 0x81 };
+        await File.WriteAllBytesAsync(targetPath, originalBytes);
+
+        var result = await new NutConfigurationFilePipeline().LoadAsync(targetPath, NutConfigurationFileKind.NutConf);
+
+        Assert.Equal(NutConfigurationLoadStatus.UnsupportedEncoding, result.Status);
+        Assert.Equal(originalBytes, await File.ReadAllBytesAsync(targetPath));
+    }
+
+    [Theory]
+    [MemberData(nameof(UnsupportedUtf32BomCases))]
+    public async Task UnsupportedUtf32BomIsRejectedWithoutInterpretingItAsUtf16(byte[] originalBytes)
+    {
+        using var directory = new TemporaryDirectory();
+        var targetPath = directory.FilePath("nut.conf");
         await File.WriteAllBytesAsync(targetPath, originalBytes);
 
         var result = await new NutConfigurationFilePipeline().LoadAsync(targetPath, NutConfigurationFileKind.NutConf);
@@ -336,7 +356,29 @@ public sealed class NutConfigurationFilePipelineTests
         Assert.True(result.RollbackSucceeded);
         Assert.Equal(originalBytes, await File.ReadAllBytesAsync(targetPath));
         Assert.Equal(originalBytes, await File.ReadAllBytesAsync(Assert.IsType<string>(result.BackupPath)));
+        Assert.Equal(prepared.CandidateBytes.ToArray(), await File.ReadAllBytesAsync(Assert.IsType<string>(result.RecoveryPath)));
         Assert.Empty(directory.Files("*.tmp"));
+    }
+
+    [Fact]
+    public async Task PostApplyExternalEditIsPreservedInRecoveryBackupWhileOriginalIsRestored()
+    {
+        using var directory = new TemporaryDirectory();
+        var targetPath = directory.FilePath("nut.conf");
+        var originalBytes = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var externalBytes = Encoding.UTF8.GetBytes("MODE=external-after-apply\n");
+        await File.WriteAllBytesAsync(targetPath, originalBytes);
+        var pipeline = new NutConfigurationFilePipeline(
+            postApplyValidator: new ExternalWritingPostApplyValidator(targetPath, externalBytes));
+        var prepared = await PrepareModeChangeAsync(pipeline, targetPath, "netserver");
+
+        var result = await pipeline.ApplyAsync(prepared);
+
+        Assert.Equal(NutConfigurationApplyStatus.PostApplyValidationFailedRolledBack, result.Status);
+        Assert.True(result.RollbackSucceeded);
+        Assert.Equal(originalBytes, await File.ReadAllBytesAsync(targetPath));
+        Assert.Equal(originalBytes, await File.ReadAllBytesAsync(Assert.IsType<string>(result.BackupPath)));
+        Assert.Equal(externalBytes, await File.ReadAllBytesAsync(Assert.IsType<string>(result.RecoveryPath)));
     }
 
     [Fact]
@@ -407,6 +449,26 @@ public sealed class NutConfigurationFilePipelineTests
         var prepared = await PrepareModeChangeAsync(pipeline, targetPath, "netserver");
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
+
+        var result = await pipeline.ApplyAsync(prepared, cancellation.Token);
+
+        Assert.Equal(NutConfigurationApplyStatus.Cancelled, result.Status);
+        Assert.Equal(originalBytes, await File.ReadAllBytesAsync(targetPath));
+        Assert.Empty(directory.Files("*.bak"));
+        Assert.Empty(directory.Files("*.tmp"));
+    }
+
+    [Fact]
+    public async Task CancellationDuringInitialFileExistsReturnsCancelledWithoutThrowing()
+    {
+        using var directory = new TemporaryDirectory();
+        var targetPath = directory.FilePath("nut.conf");
+        var originalBytes = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        await File.WriteAllBytesAsync(targetPath, originalBytes);
+        using var cancellation = new CancellationTokenSource();
+        var fileSystem = new FaultInjectingFileSystem { CancelDuringFileExists = cancellation };
+        var pipeline = new NutConfigurationFilePipeline(fileSystem);
+        var prepared = await PrepareModeChangeAsync(pipeline, targetPath, "netserver");
 
         var result = await pipeline.ApplyAsync(prepared, cancellation.Token);
 
@@ -558,6 +620,24 @@ public sealed class NutConfigurationFilePipelineTests
             throw new InvalidOperationException("Synthetic post-apply failure.");
     }
 
+    private sealed class ExternalWritingPostApplyValidator : INutConfigurationPostApplyValidator
+    {
+        private readonly string _targetPath;
+        private readonly byte[] _externalBytes;
+
+        public ExternalWritingPostApplyValidator(string targetPath, byte[] externalBytes)
+        {
+            _targetPath = targetPath;
+            _externalBytes = externalBytes;
+        }
+
+        public Task<NutConfigurationValidationResult> ValidateAsync(NutConfigurationPreparedChange change, CancellationToken cancellationToken)
+        {
+            File.WriteAllBytes(_targetPath, _externalBytes);
+            return Task.FromResult(NutConfigurationValidationResult.Failure());
+        }
+    }
+
     private sealed class CancellingPostApplyValidator : INutConfigurationPostApplyValidator
     {
         private readonly CancellationTokenSource _cancellation;
@@ -607,14 +687,23 @@ public sealed class NutConfigurationFilePipelineTests
 
         public bool FailReadWithAccessDenied { get; init; }
 
+        public CancellationTokenSource? CancelDuringFileExists { get; init; }
+
         public Action<string>? BeforePrimaryReplace { get; init; }
 
         public Action<string>? AfterPrimaryReplace { get; init; }
 
         public int PrimaryReplaceCount { get; private set; }
 
-        public Task<bool> FileExistsAsync(string path, CancellationToken cancellationToken) =>
-            FailReadWithAccessDenied ? Task.FromResult(true) : _inner.FileExistsAsync(path, cancellationToken);
+        public Task<bool> FileExistsAsync(string path, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.CanBeCanceled)
+            {
+                CancelDuringFileExists?.Cancel();
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return FailReadWithAccessDenied ? Task.FromResult(true) : _inner.FileExistsAsync(path, cancellationToken);
+        }
 
         public Task<byte[]> ReadAllBytesAsync(string path, CancellationToken cancellationToken)
         {
@@ -641,22 +730,26 @@ public sealed class NutConfigurationFilePipelineTests
 
         public async Task ReplaceAsync(string sourcePath, string destinationPath, string? backupPath, CancellationToken cancellationToken)
         {
+            var isPrimaryReplace = backupPath is not null && PrimaryReplaceCount == 0;
             if (backupPath is not null)
             {
                 PrimaryReplaceCount++;
-                BeforePrimaryReplace?.Invoke(destinationPath);
-                if (FailPrimaryReplace)
+                if (isPrimaryReplace)
+                {
+                    BeforePrimaryReplace?.Invoke(destinationPath);
+                    if (FailPrimaryReplace)
+                    {
+                        throw new IOException();
+                    }
+                }
+                else if (FailRollbackReplace)
                 {
                     throw new IOException();
                 }
             }
-            else if (FailRollbackReplace)
-            {
-                throw new IOException();
-            }
 
             await _inner.ReplaceAsync(sourcePath, destinationPath, backupPath, cancellationToken);
-            if (backupPath is not null)
+            if (isPrimaryReplace)
             {
                 AfterPrimaryReplace?.Invoke(destinationPath);
             }

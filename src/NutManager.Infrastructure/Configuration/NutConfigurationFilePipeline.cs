@@ -101,17 +101,17 @@ public sealed class NutConfigurationFilePipeline
         }
 
         var targetPath = change.Snapshot.TargetPath;
-        if (!await _fileSystem.FileExistsAsync(targetPath, cancellationToken))
-        {
-            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.TargetNotFound, message: "Configuration file was not found.");
-        }
-
         var tempPath = CreateTemporaryPath(targetPath);
         var backupPath = CreateBackupPath(targetPath);
         var replaced = false;
 
         try
         {
+            if (!await _fileSystem.FileExistsAsync(targetPath, cancellationToken))
+            {
+                return new NutConfigurationApplyResult(NutConfigurationApplyStatus.TargetNotFound, message: "Configuration file was not found.");
+            }
+
             var currentBytes = await _fileSystem.ReadAllBytesAsync(targetPath, cancellationToken);
             if (!MatchesOriginal(change.Snapshot, currentBytes))
             {
@@ -176,12 +176,13 @@ public sealed class NutConfigurationFilePipeline
                 var replacedBackup = await _fileSystem.ReadAllBytesAsync(backupPath, CancellationToken.None);
                 if (!MatchesOriginal(change.Snapshot, replacedBackup))
                 {
-                    var restored = await RestoreFromBackupAsync(backupPath, targetPath, Fingerprint(replacedBackup));
+                    var rollback = await RestoreFromBackupAsync(backupPath, targetPath, Fingerprint(replacedBackup));
                     return new NutConfigurationApplyResult(
-                        restored ? NutConfigurationApplyStatus.ChangedExternally : NutConfigurationApplyStatus.ChangedExternallyRollbackFailed,
+                        rollback.Succeeded ? NutConfigurationApplyStatus.ChangedExternally : NutConfigurationApplyStatus.ChangedExternallyRollbackFailed,
                         backupPath,
                         "Configuration changed externally during replacement.",
-                        restored);
+                        rollback.Succeeded,
+                        rollback.RecoveryPath);
                 }
 
                 var destinationBytes = await _fileSystem.ReadAllBytesAsync(targetPath, CancellationToken.None);
@@ -294,27 +295,36 @@ public sealed class NutConfigurationFilePipeline
         string expectedFingerprint,
         string message)
     {
-        var restored = await RestoreFromBackupAsync(backupPath, targetPath, expectedFingerprint);
-        return new NutConfigurationApplyResult(restored ? rollbackSucceededStatus : rollbackFailedStatus, backupPath, message, restored);
+        var rollback = await RestoreFromBackupAsync(backupPath, targetPath, expectedFingerprint);
+        return new NutConfigurationApplyResult(
+            rollback.Succeeded ? rollbackSucceededStatus : rollbackFailedStatus,
+            backupPath,
+            message,
+            rollback.Succeeded,
+            rollback.RecoveryPath);
     }
 
-    private async Task<bool> RestoreFromBackupAsync(string backupPath, string targetPath, string expectedFingerprint)
+    private async Task<RollbackResult> RestoreFromBackupAsync(string backupPath, string targetPath, string expectedFingerprint)
     {
         var rollbackTempPath = CreateTemporaryPath(targetPath);
+        var recoveryPath = CreateRecoveryBackupPath(targetPath);
         try
         {
             await _fileSystem.CopyFileAsync(backupPath, rollbackTempPath, CancellationToken.None);
-            await _fileSystem.ReplaceAsync(rollbackTempPath, targetPath, backupPath: null, CancellationToken.None);
+            await _fileSystem.ReplaceAsync(rollbackTempPath, targetPath, recoveryPath, CancellationToken.None);
             var restoredBytes = await _fileSystem.ReadAllBytesAsync(targetPath, CancellationToken.None);
-            return string.Equals(Fingerprint(restoredBytes), expectedFingerprint, StringComparison.Ordinal);
+            _ = await _fileSystem.ReadAllBytesAsync(recoveryPath, CancellationToken.None);
+            return new RollbackResult(
+                string.Equals(Fingerprint(restoredBytes), expectedFingerprint, StringComparison.Ordinal),
+                recoveryPath);
         }
         catch (IOException)
         {
-            return false;
+            return new RollbackResult(false, await FindExistingRecoveryPathAsync(recoveryPath));
         }
         catch (UnauthorizedAccessException)
         {
-            return false;
+            return new RollbackResult(false, await FindExistingRecoveryPathAsync(recoveryPath));
         }
         finally
         {
@@ -390,6 +400,9 @@ public sealed class NutConfigurationFilePipeline
     private static string CreateBackupPath(string targetPath) =>
         Path.Combine(GetDirectory(targetPath), $"{Path.GetFileName(targetPath)}.nutmanager-{DateTime.UtcNow:yyyyMMddTHHmmssfffffffZ}-{Guid.NewGuid():N}.bak");
 
+    private static string CreateRecoveryBackupPath(string targetPath) =>
+        Path.Combine(GetDirectory(targetPath), $"{Path.GetFileName(targetPath)}.nutmanager-recovery-{DateTime.UtcNow:yyyyMMddTHHmmssfffffffZ}-{Guid.NewGuid():N}.bak");
+
     private static string GetDirectory(string targetPath) =>
         Path.GetDirectoryName(targetPath) ?? throw new ArgumentException("A target path must include a directory.", nameof(targetPath));
 
@@ -409,6 +422,22 @@ public sealed class NutConfigurationFilePipeline
         }
     }
 
+    private async Task<string?> FindExistingRecoveryPathAsync(string recoveryPath)
+    {
+        try
+        {
+            return await _fileSystem.FileExistsAsync(recoveryPath, CancellationToken.None) ? recoveryPath : null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     private sealed class AcceptingCandidateValidator : INutConfigurationCandidateValidator
     {
         public static AcceptingCandidateValidator Instance { get; } = new();
@@ -424,4 +453,6 @@ public sealed class NutConfigurationFilePipeline
         public Task<NutConfigurationValidationResult> ValidateAsync(NutConfigurationPreparedChange change, CancellationToken cancellationToken) =>
             Task.FromResult(NutConfigurationValidationResult.Success());
     }
+
+    private readonly record struct RollbackResult(bool Succeeded, string? RecoveryPath);
 }
