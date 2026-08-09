@@ -268,8 +268,7 @@ internal static class WindowsNutPermissions
             }
             return new(NutAdministrativeActionStatus.Success, request.Action, "A permissão Modify foi adicionada sem substituir ACLs existentes.");
         }
-        catch (UnauthorizedAccessException) { return new(NutAdministrativeActionStatus.AccessDenied, request.Action, "Permissão insuficiente para ajustar ACL."); }
-        catch
+        catch (Exception exception)
         {
             var restored = true;
             foreach (var original in modified.AsEnumerable().Reverse())
@@ -277,9 +276,10 @@ internal static class WindowsNutPermissions
                 try { SetSecurity(original.Path, original.IsDirectory, original.Security); }
                 catch { restored = false; }
             }
-            return restored
-                ? new(NutAdministrativeActionStatus.Failed, request.Action, "A correção de permissões falhou e as ACLs já alteradas foram restauradas.")
-                : new(NutAdministrativeActionStatus.ManualInterventionRequired, request.Action, "A correção de permissões falhou parcialmente; é necessária recuperação manual.");
+            if (!restored) return new(NutAdministrativeActionStatus.ManualInterventionRequired, request.Action, "A correção de permissões falhou parcialmente; é necessária recuperação manual.");
+            return exception is UnauthorizedAccessException
+                ? new(NutAdministrativeActionStatus.AccessDenied, request.Action, "Permissão insuficiente para ajustar ACL; as ACLs já alteradas foram restauradas.")
+                : new(NutAdministrativeActionStatus.Failed, request.Action, "A correção de permissões falhou e as ACLs já alteradas foram restauradas.");
         }
     }
 
