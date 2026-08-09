@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using NutManager.App.ViewModels;
+using NutManager.Core.Administration;
 using NutManager.Core.Configuration;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
@@ -660,6 +661,39 @@ public sealed class AdministrationPageViewModelTests
         return viewModel;
     }
 
+    [Fact]
+    public async Task PermissionRepairReviewExposesOnlyAclPlanMetadata()
+    {
+        var pipeline = new TestPipeline();
+        var installation = CreateInstallation("/session/nut", "/session/nut/etc", "nut.conf");
+        var administration = new TestWindowsAdministration();
+        var viewModel = new AdministrationPageViewModel(new TestInstallationDetector(installation), pipeline, administration);
+
+        await viewModel.InitializeAsync();
+        viewModel.PreparePermissionRepair();
+
+        Assert.True(viewModel.IsPermissionRepairPending);
+        Assert.Equal("TEST\\user", viewModel.PendingPermissionIdentity);
+        Assert.Equal("S-1-5-21-123", viewModel.PendingPermissionSid);
+        Assert.Equal("/session/nut/etc", viewModel.PendingPermissionDirectory);
+        Assert.Contains("/session/nut/etc/ups.conf", viewModel.PendingPermissionTargets);
+    }
+
+    [Fact]
+    public async Task EventLogAccessDiagnosticRemainsDistinctFromNoEvents()
+    {
+        var pipeline = new TestPipeline();
+        var installation = CreateInstallation("/session/nut", "/session/nut/etc", "nut.conf");
+        var administration = new TestWindowsAdministration { EventStatus = NutEventLogStatus.AccessDenied, EventDiagnostic = "Acesso negado ao Event Log." };
+        var viewModel = new AdministrationPageViewModel(new TestInstallationDetector(installation), pipeline, administration);
+
+        await viewModel.InitializeAsync();
+
+        Assert.Empty(viewModel.WindowsEvents);
+        Assert.Equal(NutEventLogStatus.AccessDenied, viewModel.WindowsEventLogStatus);
+        Assert.Equal("Acesso negado ao Event Log.", viewModel.WindowsEventLogDiagnosticMessage);
+    }
+
     private static async Task<AdministrationPageViewModel> CreateInitializedViewModelAsync(TestPipeline pipeline, params string[] availableFiles)
     {
         var installation = CreateInstallation("/session/nut", "/session/nut/etc", availableFiles);
@@ -874,6 +908,27 @@ public sealed class AdministrationPageViewModelTests
 
             return result;
         }
+    }
+
+    private sealed class TestWindowsAdministration : ILocalNutWindowsAdministration
+    {
+        public NutEventLogStatus EventStatus { get; set; } = NutEventLogStatus.Success;
+
+        public string? EventDiagnostic { get; set; }
+
+        public Task<NutWindowsAdministrationSnapshot> InspectAsync(NutInstallationInfo installation, CancellationToken cancellationToken) =>
+            Task.FromResult(new NutWindowsAdministrationSnapshot(
+                true,
+                PrivilegeState.StandardUser,
+                Array.Empty<NutServiceInfo>(),
+                new NutPermissionAssessment(NutPermissionState.Modifiable, "TEST\\user", "S-1-5-21-123", false, "Modify confirmado.", [installation.ConfigurationDirectory!, installation.ConfigurationDirectory! + "/ups.conf"]),
+                Array.Empty<NutProcessInfo>(),
+                Array.Empty<NutEventLogEntry>(),
+                EventLogStatus: EventStatus,
+                EventLogDiagnosticMessage: EventDiagnostic));
+
+        public Task<NutAdministrativeActionResult> ExecuteAsync(NutAdministrativeActionRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new NutAdministrativeActionResult(NutAdministrativeActionStatus.Success, request.Action, "ok"));
     }
 
     private sealed class TemporaryDirectory : IDisposable

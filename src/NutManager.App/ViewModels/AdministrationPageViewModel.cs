@@ -102,6 +102,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private IReadOnlyList<NutEventLogEntry> _windowsEvents = Array.Empty<NutEventLogEntry>();
 
     [ObservableProperty]
+    private NutEventLogStatus _windowsEventLogStatus = NutEventLogStatus.Success;
+
+    [ObservableProperty]
+    private string? _windowsEventLogDiagnosticMessage;
+
+    [ObservableProperty]
     private NutAdministrativeActionRequest? _pendingAdministrativeAction;
 
     [ObservableProperty]
@@ -175,6 +181,16 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool CanRestartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService?.State is NutServiceState.Running or NutServiceState.Stopped;
 
     public string AdministrativeCriticalText => "CRÍTICO — a operação administrativa requer atenção manual.";
+
+    public bool IsPermissionRepairPending => PendingAdministrativeAction?.Action == NutAdministrativeAction.RepairConfigurationPermissions;
+
+    public string PendingPermissionIdentity => PendingAdministrativeAction?.PermissionRepairPlan?.UserIdentity ?? UnavailableText;
+
+    public string PendingPermissionSid => PendingAdministrativeAction?.PermissionRepairPlan?.UserSid ?? UnavailableText;
+
+    public string PendingPermissionDirectory => PendingAdministrativeAction?.PermissionRepairPlan?.ConfigurationDirectory ?? UnavailableText;
+
+    public IReadOnlyList<string> PendingPermissionTargets => PendingAdministrativeAction?.PermissionRepairPlan?.AffectedPaths ?? Array.Empty<string>();
 
     public string CriticalResultText => "CRÍTICO — a configuração pode necessitar recuperação manual.";
 
@@ -656,6 +672,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         WindowsPermissionAssessment = snapshot.Permissions;
         WindowsProcesses = snapshot.Processes;
         WindowsEvents = snapshot.Events;
+        WindowsEventLogStatus = snapshot.EventLogStatus;
+        WindowsEventLogDiagnosticMessage = snapshot.EventLogDiagnosticMessage;
         AdministrativeStatusMessage = snapshot.DiagnosticMessage;
         IsAdministrativeCritical = false;
         NotifyAdministrativePropertiesChanged();
@@ -923,6 +941,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanStartWindowsService));
         OnPropertyChanged(nameof(CanStopWindowsService));
         OnPropertyChanged(nameof(CanRestartWindowsService));
+        OnPropertyChanged(nameof(IsPermissionRepairPending));
+        OnPropertyChanged(nameof(PendingPermissionIdentity));
+        OnPropertyChanged(nameof(PendingPermissionSid));
+        OnPropertyChanged(nameof(PendingPermissionDirectory));
+        OnPropertyChanged(nameof(PendingPermissionTargets));
     }
 
     private static IReadOnlyList<NutConfigurationFileItemViewModel> CreateFileItems() =>

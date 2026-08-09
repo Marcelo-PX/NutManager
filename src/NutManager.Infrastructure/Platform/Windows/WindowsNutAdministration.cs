@@ -69,8 +69,8 @@ public sealed class WindowsNutAdministrationBackend : IWindowsNutAdministrationB
         var services = await WindowsNutServiceController.DiscoverAsync(installation.InstallationDirectory, cancellationToken);
         var permissions = WindowsNutPermissions.Assess(installation.ConfigurationDirectory, installation.ConfigurationFiles);
         var processes = WindowsNutProcessInspector.Inspect(installation.InstallationDirectory);
-        var events = WindowsNutEventLogReader.Read(services, 50);
-        return new NutWindowsAdministrationSnapshot(true, GetPrivilegeState(), services, permissions, processes, events);
+        var eventResult = WindowsNutEventLogReader.Read(services, 50);
+        return new NutWindowsAdministrationSnapshot(true, GetPrivilegeState(), services, permissions, processes, eventResult.Events, EventLogStatus: eventResult.Status, EventLogDiagnosticMessage: eventResult.DiagnosticMessage);
     }
 
     public async Task<NutAdministrativeActionResult> ExecuteAsync(NutAdministrativeActionRequest request, CancellationToken cancellationToken)
@@ -95,31 +95,31 @@ public sealed class WindowsNutAdministrationBackend : IWindowsNutAdministrationB
 
 public static class WindowsNutAdministrativeRequestValidator
 {
+    private static readonly string[] RecognizedConfigurationFiles = ["nut.conf", "ups.conf", "upsd.conf", "upsd.users", "upsmon.conf"];
     public static bool IsPathInsideDirectory(string candidate, string directory)
-    {
-        var root = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var path = Path.GetFullPath(candidate);
-        return path.StartsWith(root, StringComparison.OrdinalIgnoreCase);
-    }
+        => WindowsPath.IsInside(candidate, directory);
 
     public static bool IsValid(NutAdministrativeActionRequest request)
     {
-        if (!Enum.IsDefined(request.Action) || request.RequestId == Guid.Empty || !Path.IsPathFullyQualified(request.InstallationDirectory) || !Path.IsPathFullyQualified(request.ConfigurationDirectory)) return false;
-        var install = Path.GetFullPath(request.InstallationDirectory);
-        var config = Path.GetFullPath(request.ConfigurationDirectory);
-        if (!IsPathInsideDirectory(config, install) && !string.Equals(config, install, StringComparison.OrdinalIgnoreCase)) return false;
+        if (!Enum.IsDefined(request.Action) || request.RequestId == Guid.Empty || !WindowsPath.TryCanonicalize(request.InstallationDirectory, out var install) || !WindowsPath.TryCanonicalize(request.ConfigurationDirectory, out var config)) return false;
+        if (!WindowsPath.IsSameOrInside(config, install)) return false;
         return request.Action == NutAdministrativeAction.RepairConfigurationPermissions
-            ? request.PermissionRepairPlan is { UserSid.Length: > 0, Right: "Modify" } plan && string.Equals(Path.GetFullPath(plan.ConfigurationDirectory), config, StringComparison.OrdinalIgnoreCase) && plan.AffectedPaths.All(path => IsPathInsideDirectory(path, config) || string.Equals(Path.GetFullPath(path), config, StringComparison.OrdinalIgnoreCase))
+            ? request.PermissionRepairPlan is { UserSid.Length: > 0, Right: "Modify" } plan && WindowsPath.TryCanonicalize(plan.ConfigurationDirectory, out var planDirectory) && string.Equals(planDirectory, config, StringComparison.OrdinalIgnoreCase) && plan.AffectedPaths.All(path => IsRecognizedConfigurationTarget(path, config))
             : !string.IsNullOrWhiteSpace(request.ServiceName) && request.PermissionRepairPlan is null;
+    }
+
+    private static bool IsRecognizedConfigurationTarget(string path, string configurationDirectory)
+    {
+        if (!WindowsPath.TryCanonicalize(path, out var target)) return false;
+        if (string.Equals(target, configurationDirectory, StringComparison.OrdinalIgnoreCase)) return true;
+        var separator = target.LastIndexOf('\\');
+        return separator > 2 && string.Equals(target[..separator], configurationDirectory, StringComparison.OrdinalIgnoreCase) && RecognizedConfigurationFiles.Contains(target[(separator + 1)..], StringComparer.OrdinalIgnoreCase);
     }
 }
 
 [SupportedOSPlatform("windows")]
 internal static class WindowsNutServiceController
 {
-    private static readonly string[] KnownServiceNames = ["NetworkUpsTools", "NUT"];
-    private static readonly string[] KnownDisplayNames = ["Network UPS Tools"];
-
     public static Task<IReadOnlyList<NutServiceInfo>> DiscoverAsync(string installationDirectory, CancellationToken cancellationToken) => Task.Run<IReadOnlyList<NutServiceInfo>>(() =>
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -170,33 +170,55 @@ internal static class WindowsNutServiceController
     private static NutServiceInfo CreateInfo(System.ServiceProcess.ServiceController service, string installationDirectory)
     {
         TryGetMetadata(service.ServiceName, out var imagePath, out var startMode);
-        var executable = TryExtractExecutablePath(imagePath);
-        var binaryPath = executable is not null ? Path.GetFullPath(executable) : null;
-        var isKnownComponent = binaryPath is not null && new[] { "upsd.exe", "upsmon.exe", "upsdrvctl.exe" }.Contains(Path.GetFileName(binaryPath), StringComparer.OrdinalIgnoreCase);
-        var confidence = binaryPath is not null && isKnownComponent && WindowsNutAdministrativeRequestValidator.IsPathInsideDirectory(binaryPath, installationDirectory)
-            ? NutAssociationConfidence.BinaryPath
-            : binaryPath is null && IsExactKnownName(service) ? NutAssociationConfidence.NameFallback : NutAssociationConfidence.None;
+        var (binaryPath, confidence) = WindowsNutServiceAssociation.Determine(service.ServiceName, service.DisplayName, imagePath, installationDirectory);
         return new(service.ServiceName, service.DisplayName, ToState(service.Status), startMode, binaryPath, confidence);
     }
-    private static bool IsExactKnownName(System.ServiceProcess.ServiceController service) => KnownServiceNames.Contains(service.ServiceName, StringComparer.OrdinalIgnoreCase) || KnownDisplayNames.Contains(service.DisplayName, StringComparer.OrdinalIgnoreCase);
     private static void TryGetMetadata(string serviceName, out string? imagePath, out NutServiceStartMode startMode)
     {
         imagePath = null; startMode = NutServiceStartMode.Unknown;
         try { using var key = Registry.LocalMachine.OpenSubKey($@"SYSTEM\CurrentControlSet\Services\{serviceName}"); imagePath = key?.GetValue("ImagePath") as string; startMode = Convert.ToInt32(key?.GetValue("Start") ?? -1) switch { 2 => NutServiceStartMode.Automatic, 3 => NutServiceStartMode.Manual, 4 => NutServiceStartMode.Disabled, _ => NutServiceStartMode.Unknown }; } catch { }
     }
-    internal static string? TryExtractExecutablePath(string? imagePath)
+    private static NutServiceState ToState(System.ServiceProcess.ServiceControllerStatus status) => status switch { System.ServiceProcess.ServiceControllerStatus.Running => NutServiceState.Running, System.ServiceProcess.ServiceControllerStatus.Stopped => NutServiceState.Stopped, System.ServiceProcess.ServiceControllerStatus.StartPending => NutServiceState.StartPending, System.ServiceProcess.ServiceControllerStatus.StopPending => NutServiceState.StopPending, System.ServiceProcess.ServiceControllerStatus.Paused => NutServiceState.Paused, _ => NutServiceState.Unknown };
+}
+
+public static class WindowsNutServiceAssociation
+{
+    private static readonly string[] KnownServiceNames = ["NetworkUpsTools", "NUT"];
+    private static readonly string[] KnownDisplayNames = ["Network UPS Tools"];
+    private static readonly string[] RecognizedExecutables = ["nut.exe", "upsd.exe", "upsmon.exe", "upsdrvctl.exe"];
+
+    public static (string? BinaryPath, NutAssociationConfidence Confidence) Determine(string serviceName, string displayName, string? imagePath, string installationDirectory)
+    {
+        var executable = TryExtractExecutablePath(imagePath);
+        var binaryPath = executable is not null && WindowsPath.TryCanonicalize(executable, out var canonicalExecutable) ? canonicalExecutable : null;
+        if (binaryPath is not null)
+        {
+            var name = binaryPath[(binaryPath.LastIndexOf('\\') + 1)..];
+            return (binaryPath, RecognizedExecutables.Contains(name, StringComparer.OrdinalIgnoreCase) && WindowsPath.IsInside(binaryPath, installationDirectory)
+                ? NutAssociationConfidence.BinaryPath
+                : NutAssociationConfidence.None);
+        }
+
+        return (null, KnownServiceNames.Contains(serviceName, StringComparer.OrdinalIgnoreCase) || KnownDisplayNames.Contains(displayName, StringComparer.OrdinalIgnoreCase)
+            ? NutAssociationConfidence.NameFallback
+            : NutAssociationConfidence.None);
+    }
+
+    public static string? TryExtractExecutablePath(string? imagePath)
     {
         if (string.IsNullOrWhiteSpace(imagePath)) return null;
         var expanded = Environment.ExpandEnvironmentVariables(imagePath.Trim());
         if (expanded[0] == '"') { var end = expanded.IndexOf('"', 1); return end > 1 ? expanded[1..end] : null; }
         var exe = expanded.IndexOf(".exe", StringComparison.OrdinalIgnoreCase); return exe >= 0 ? expanded[..(exe + 4)] : null;
     }
-    private static NutServiceState ToState(System.ServiceProcess.ServiceControllerStatus status) => status switch { System.ServiceProcess.ServiceControllerStatus.Running => NutServiceState.Running, System.ServiceProcess.ServiceControllerStatus.Stopped => NutServiceState.Stopped, System.ServiceProcess.ServiceControllerStatus.StartPending => NutServiceState.StartPending, System.ServiceProcess.ServiceControllerStatus.StopPending => NutServiceState.StopPending, System.ServiceProcess.ServiceControllerStatus.Paused => NutServiceState.Paused, _ => NutServiceState.Unknown };
 }
 
 [SupportedOSPlatform("windows")]
 internal static class WindowsNutPermissions
 {
+    private static readonly FileSystemRights ModifyRights = FileSystemRights.Modify;
+    private static readonly string[] RecognizedConfigurationFiles = ["nut.conf", "ups.conf", "upsd.conf", "upsd.users", "upsmon.conf"];
+
     public static NutPermissionAssessment Assess(string directory, IReadOnlyList<NutConfigurationFileInfo> files)
     {
         if (!OperatingSystem.IsWindows()) return NutPermissionAssessment.Unsupported();
@@ -205,11 +227,16 @@ internal static class WindowsNutPermissions
             var identity = WindowsIdentity.GetCurrent();
             var sid = identity.User?.Value;
             if (sid is null) return new(NutPermissionState.Unknown, identity.Name, null, false, "Não foi possível determinar o usuário atual.", Array.Empty<string>());
-            var rules = new DirectoryInfo(directory).GetAccessControl().GetAccessRules(true, true, typeof(SecurityIdentifier)).OfType<FileSystemAccessRule>().Where(rule => string.Equals(rule.IdentityReference.Value, sid, StringComparison.OrdinalIgnoreCase)).ToArray();
-            var deny = rules.Any(rule => rule.AccessControlType == AccessControlType.Deny && (rule.FileSystemRights & FileSystemRights.Modify) != 0);
-            var modify = rules.Any(rule => rule.AccessControlType == AccessControlType.Allow && (rule.FileSystemRights & FileSystemRights.Modify) != 0);
             var paths = files.Where(file => file.Exists).Select(file => file.FullPath).Prepend(directory).ToArray();
-            return deny ? new(NutPermissionState.ManualInterventionRequired, identity.Name, sid, true, "Há uma negação explícita que exige intervenção manual.", paths) : modify ? new(NutPermissionState.Modifiable, identity.Name, sid, false, "O usuário atual possui Modify.", paths) : new(NutPermissionState.Insufficient, identity.Name, sid, false, "O usuário atual não possui Modify confirmado.", paths);
+            var identities = identity.Groups?.Select(group => group.Value).Append(sid).Where(value => !string.IsNullOrWhiteSpace(value)).ToHashSet(StringComparer.OrdinalIgnoreCase)
+                ?? new HashSet<string>([sid], StringComparer.OrdinalIgnoreCase);
+            var pathStates = paths.Select(path => AssessPath(path, identities)).ToArray();
+            if (pathStates.Any(state => state == NutPermissionState.ManualInterventionRequired)) return new(NutPermissionState.ManualInterventionRequired, identity.Name, sid, true, "Há uma negação explícita relevante que exige intervenção manual.", paths);
+            if (pathStates.Any(state => state == NutPermissionState.AccessDenied)) return new(NutPermissionState.AccessDenied, identity.Name, sid, false, "Não foi possível ler as permissões de todos os alvos.", paths);
+            if (pathStates.Any(state => state == NutPermissionState.Unknown)) return new(NutPermissionState.Unknown, identity.Name, sid, false, "Não foi possível determinar as permissões efetivas de todos os alvos.", paths);
+            return pathStates.All(state => state == NutPermissionState.Modifiable)
+                ? new(NutPermissionState.Modifiable, identity.Name, sid, false, "O usuário atual possui Modify confirmado para o diretório e os arquivos reconhecidos.", paths)
+                : new(NutPermissionState.Insufficient, identity.Name, sid, false, "O usuário atual não possui Modify confirmado para todos os alvos.", paths);
         }
         catch (UnauthorizedAccessException) { return new(NutPermissionState.AccessDenied, null, null, false, "Não foi possível ler as permissões.", Array.Empty<string>()); }
         catch { return new(NutPermissionState.Unknown, null, null, false, "Não foi possível determinar as permissões efetivas.", Array.Empty<string>()); }
@@ -218,24 +245,97 @@ internal static class WindowsNutPermissions
     public static NutAdministrativeActionResult Repair(NutAdministrativeActionRequest request)
     {
         var plan = request.PermissionRepairPlan!;
+        if (!TryGetAllowedTargets(request, plan, out var targets)) return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "O plano contém alvos de ACL não reconhecidos.");
+        var before = Assess(request.ConfigurationDirectory, targets.Where(path => !IsDirectory(path)).Select(path => new NutConfigurationFileInfo(Path.GetFileName(path), path, true, true)).ToArray());
+        if (before.HasExplicitDeny) return new(NutAdministrativeActionStatus.ManualInterventionRequired, request.Action, "Há uma negação explícita relevante; a correção automática não foi aplicada.");
+        var originals = new List<(string Path, bool IsDirectory, ObjectSecurity Security)>();
+        var modified = new List<(string Path, bool IsDirectory, ObjectSecurity Security)>();
         try
         {
             var sid = new SecurityIdentifier(plan.UserSid);
-            foreach (var path in plan.AffectedPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+            foreach (var path in targets)
             {
-                if (Directory.Exists(path))
-                {
-                    var directory = new DirectoryInfo(path); var security = directory.GetAccessControl(); security.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.Modify, AccessControlType.Allow)); directory.SetAccessControl(security);
-                }
-                else if (File.Exists(path))
-                {
-                    var file = new FileInfo(path); var security = file.GetAccessControl(); security.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.Modify, AccessControlType.Allow)); file.SetAccessControl(security);
-                }
+                var isDirectory = IsDirectory(path);
+                originals.Add((path, isDirectory, CloneSecurity(GetSecurity(path, isDirectory), isDirectory)));
+            }
+            foreach (var original in originals)
+            {
+                var security = original.Security;
+                if (original.IsDirectory) ((DirectorySecurity)security).AddAccessRule(new FileSystemAccessRule(sid, ModifyRights, AccessControlType.Allow));
+                else ((FileSecurity)security).AddAccessRule(new FileSystemAccessRule(sid, ModifyRights, AccessControlType.Allow));
+                SetSecurity(original.Path, original.IsDirectory, security);
+                modified.Add(original);
             }
             return new(NutAdministrativeActionStatus.Success, request.Action, "A permissão Modify foi adicionada sem substituir ACLs existentes.");
         }
         catch (UnauthorizedAccessException) { return new(NutAdministrativeActionStatus.AccessDenied, request.Action, "Permissão insuficiente para ajustar ACL."); }
-        catch { return new(NutAdministrativeActionStatus.Failed, request.Action, "Não foi possível ajustar as permissões."); }
+        catch
+        {
+            var restored = true;
+            foreach (var original in modified.AsEnumerable().Reverse())
+            {
+                try { SetSecurity(original.Path, original.IsDirectory, original.Security); }
+                catch { restored = false; }
+            }
+            return restored
+                ? new(NutAdministrativeActionStatus.Failed, request.Action, "A correção de permissões falhou e as ACLs já alteradas foram restauradas.")
+                : new(NutAdministrativeActionStatus.ManualInterventionRequired, request.Action, "A correção de permissões falhou parcialmente; é necessária recuperação manual.");
+        }
+    }
+
+    private static NutPermissionState AssessPath(string path, IReadOnlySet<string> identities)
+    {
+        try
+        {
+            FileSystemSecurity security = IsDirectory(path)
+                ? new DirectoryInfo(path).GetAccessControl()
+                : new FileInfo(path).GetAccessControl();
+            var rules = security.GetAccessRules(true, true, typeof(SecurityIdentifier)).OfType<FileSystemAccessRule>().Where(rule => identities.Contains(rule.IdentityReference.Value)).ToArray();
+            if (rules.Any(rule => rule.AccessControlType == AccessControlType.Deny && (rule.FileSystemRights & ModifyRights) != 0)) return NutPermissionState.ManualInterventionRequired;
+            var allowed = rules.Where(rule => rule.AccessControlType == AccessControlType.Allow).Aggregate((FileSystemRights)0, (value, rule) => value | rule.FileSystemRights);
+            return (allowed & ModifyRights) == ModifyRights ? NutPermissionState.Modifiable : NutPermissionState.Insufficient;
+        }
+        catch (UnauthorizedAccessException) { return NutPermissionState.AccessDenied; }
+        catch { return NutPermissionState.Unknown; }
+    }
+
+    private static bool TryGetAllowedTargets(NutAdministrativeActionRequest request, NutPermissionRepairPlan plan, out IReadOnlyList<string> targets)
+    {
+        targets = Array.Empty<string>();
+        if (plan.Right != "Modify" || !WindowsPath.TryCanonicalize(request.ConfigurationDirectory, out var config) || !WindowsPath.TryCanonicalize(plan.ConfigurationDirectory, out var planDirectory) || !string.Equals(config, planDirectory, StringComparison.OrdinalIgnoreCase)) return false;
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { config };
+        foreach (var name in RecognizedConfigurationFiles)
+        {
+            var candidate = config + "\\" + name;
+            if (File.Exists(candidate)) allowed.Add(candidate);
+        }
+        var requested = plan.AffectedPaths.Select(path => WindowsPath.TryCanonicalize(path, out var canonical) ? canonical : null).ToArray();
+        if (requested.Any(path => path is null) || requested.Length == 0 || requested.Any(path => !allowed.Contains(path!))) return false;
+        targets = requested.Cast<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        return true;
+    }
+
+    private static bool IsDirectory(string path) => Directory.Exists(path);
+    private static ObjectSecurity GetSecurity(string path, bool isDirectory) => isDirectory
+        ? (ObjectSecurity)new DirectoryInfo(path).GetAccessControl()
+        : new FileInfo(path).GetAccessControl();
+    private static ObjectSecurity CloneSecurity(ObjectSecurity security, bool isDirectory)
+    {
+        if (isDirectory)
+        {
+            var copy = new DirectorySecurity();
+            copy.SetSecurityDescriptorBinaryForm(security.GetSecurityDescriptorBinaryForm());
+            return copy;
+        }
+
+        var fileCopy = new FileSecurity();
+        fileCopy.SetSecurityDescriptorBinaryForm(security.GetSecurityDescriptorBinaryForm());
+        return fileCopy;
+    }
+    private static void SetSecurity(string path, bool isDirectory, ObjectSecurity security)
+    {
+        if (isDirectory) new DirectoryInfo(path).SetAccessControl((DirectorySecurity)security);
+        else new FileInfo(path).SetAccessControl((FileSecurity)security);
     }
 }
 
@@ -251,7 +351,7 @@ internal static class WindowsNutProcessInspector
 [SupportedOSPlatform("windows")]
 internal static class WindowsNutEventLogReader
 {
-    public static IReadOnlyList<NutEventLogEntry> Read(IReadOnlyList<NutServiceInfo> services, int limit)
+    public static (IReadOnlyList<NutEventLogEntry> Events, NutEventLogStatus Status, string? DiagnosticMessage) Read(IReadOnlyList<NutServiceInfo> services, int limit)
     {
         var names = services.Select(service => service.ServiceName).Append("Network UPS Tools").ToArray();
         var events = new List<NutEventLogEntry>();
@@ -264,13 +364,14 @@ internal static class WindowsNutEventLogReader
                 {
                     if (!names.Any(name => entry.Source.Contains(name, StringComparison.OrdinalIgnoreCase) || entry.Message.Contains(name, StringComparison.OrdinalIgnoreCase))) continue;
                     events.Add(new NutEventLogEntry(entry.TimeGenerated, logName, entry.Source, (int)entry.InstanceId, entry.EntryType.ToString(), entry.Message));
-                    if (events.Count >= limit) return events;
+                    if (events.Count >= limit) return (events, NutEventLogStatus.Success, null);
                 }
             }
-            catch (System.ComponentModel.Win32Exception) { }
-            catch (UnauthorizedAccessException) { }
-            catch (InvalidOperationException) { }
+            catch (System.ComponentModel.Win32Exception exception) when (exception.NativeErrorCode == 5) { return (events, NutEventLogStatus.AccessDenied, "Não foi possível ler o Event Log por falta de permissão."); }
+            catch (UnauthorizedAccessException) { return (events, NutEventLogStatus.AccessDenied, "Não foi possível ler o Event Log por falta de permissão."); }
+            catch (InvalidOperationException) { return (events, NutEventLogStatus.Unavailable, "O Event Log não está disponível nesta instalação."); }
+            catch { return (events, NutEventLogStatus.Failed, "Não foi possível consultar o Event Log."); }
         }
-        return events;
+        return (events, NutEventLogStatus.Success, null);
     }
 }

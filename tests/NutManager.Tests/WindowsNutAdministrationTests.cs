@@ -25,12 +25,57 @@ public sealed class WindowsNutAdministrationTests
     public void CanonicalDirectoryContainmentDoesNotAcceptPrefixCollisions(string path, bool expected) =>
         Assert.Equal(expected, WindowsNutAdministrativeRequestValidator.IsPathInsideDirectory(path, "C:\\NUT"));
 
+    [Theory]
+    [InlineData("\"C:\\NUT\\bin\\nut.exe\" --service", NutAssociationConfidence.BinaryPath)]
+    [InlineData("\"C:\\NUT-malicious\\bin\\nut.exe\" --service", NutAssociationConfidence.None)]
+    [InlineData(null, NutAssociationConfidence.NameFallback)]
+    public void ServiceAssociationUsesExecutableContainmentAndExactFallback(string? imagePath, NutAssociationConfidence expected)
+    {
+        var (_, confidence) = WindowsNutServiceAssociation.Determine("NetworkUpsTools", "Network UPS Tools", imagePath, "C:\\NUT");
+
+        Assert.Equal(expected, confidence);
+    }
+
+    [Fact]
+    public void ServiceAssociationRejectsSubstringOnlyFallback()
+    {
+        var (_, confidence) = WindowsNutServiceAssociation.Determine("DonutService", "Nutcracker updater", null, "C:\\NUT");
+
+        Assert.Equal(NutAssociationConfidence.None, confidence);
+    }
+
+    [Fact]
+    public void ServiceImagePathParserExtractsQuotedExecutableWithoutArguments()
+    {
+        Assert.Equal("C:\\NUT\\bin\\nut.exe", WindowsNutServiceAssociation.TryExtractExecutablePath("\"C:\\NUT\\bin\\nut.exe\" --service"));
+    }
+
     [Fact]
     public void HelperResponsePathIsDerivedFromTheRequestPathOnly()
     {
         Assert.Equal("C:\\Users\\test\\AppData\\Local\\NutManager\\AdminRequests\\abc.response.json", WindowsPrivilegeElevationBroker.GetResponsePath("C:\\Users\\test\\AppData\\Local\\NutManager\\AdminRequests\\abc.request.json"));
         Assert.Throws<ArgumentException>(() => WindowsPrivilegeElevationBroker.GetResponsePath("C:\\temp\\arbitrary.json"));
     }
+
+    [Fact]
+    public void RequestPathValidationRejectsExternalPathsWithoutDerivingAnOutputPath()
+    {
+        var expected = "C:\\Users\\test\\AppData\\Local\\NutManager\\AdminRequests";
+        Assert.True(WindowsPrivilegeElevationBroker.TryValidateRequestPath(expected + "\\0123456789abcdef0123456789abcdef.request.json", expected, out var requestId, out var requestPath, out var responsePath));
+        Assert.Equal(Guid.ParseExact("0123456789abcdef0123456789abcdef", "N"), requestId);
+        Assert.Equal(expected + "\\0123456789abcdef0123456789abcdef.request.json", requestPath);
+        Assert.Equal(expected + "\\0123456789abcdef0123456789abcdef.response.json", responsePath);
+        Assert.False(WindowsPrivilegeElevationBroker.TryValidateRequestPath("C:\\temp\\0123456789abcdef0123456789abcdef.request.json", expected, out _, out _, out _));
+        Assert.False(WindowsPrivilegeElevationBroker.TryValidateRequestPath(expected + "\\not-a-guid.request.json", expected, out _, out _, out _));
+    }
+
+    [Theory]
+    [InlineData("C:\\NUT\\etc", true)]
+    [InlineData("C:\\NUT2\\etc", false)]
+    [InlineData("C:\\NUT\\..\\Other", false)]
+    [InlineData("..\\NUT\\etc", false)]
+    public void WindowsPathValidationIsHostIndependent(string path, bool expected) =>
+        Assert.Equal(expected, WindowsNutAdministrativeRequestValidator.IsPathInsideDirectory(path, "C:\\NUT"));
 
     [Fact]
     public async Task InvalidRequestIsRejectedBeforeAnyElevationOrBackendAction()
@@ -56,6 +101,29 @@ public sealed class WindowsNutAdministrationTests
         Assert.True(WindowsNutAdministrativeRequestValidator.IsValid(request));
         Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { Right = "FullControl" } }));
         Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { AffectedPaths = ["C:\\Other\\ups.conf"] } }));
+        Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { AffectedPaths = ["C:\\NUT\\etc\\arbitrary.txt"] } }));
+        Assert.False(WindowsNutAdministrativeRequestValidator.IsValid(request with { PermissionRepairPlan = plan with { AffectedPaths = ["C:\\NUT\\etc\\..\\outside.txt"] } }));
+    }
+
+    [Fact]
+    public void PermissionRepairRequestAcceptsOnlyRecognizedFilesAndConfigurationDirectory()
+    {
+        var plan = new NutPermissionRepairPlan("C:\\NUT\\etc", "TEST\\user", "S-1-5-21-123", ["C:\\NUT\\etc", "C:\\NUT\\etc\\upsd.users"]);
+        var request = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.RepairConfigurationPermissions, "C:\\NUT", "C:\\NUT\\etc", PermissionRepairPlan: plan);
+
+        Assert.True(WindowsNutAdministrativeRequestValidator.IsValid(request));
+    }
+
+    [Fact]
+    public void EventLogDiagnosticIsDistinctFromAnEmptySuccessfulList()
+    {
+        var noEvents = new NutWindowsAdministrationSnapshot(true, PrivilegeState.StandardUser, Array.Empty<NutServiceInfo>(), NutPermissionAssessment.Unsupported(), Array.Empty<NutProcessInfo>(), Array.Empty<NutEventLogEntry>());
+        var denied = noEvents with { EventLogStatus = NutEventLogStatus.AccessDenied, EventLogDiagnosticMessage = "Acesso negado" };
+
+        Assert.Equal(NutEventLogStatus.Success, noEvents.EventLogStatus);
+        Assert.Empty(noEvents.Events);
+        Assert.Equal(NutEventLogStatus.AccessDenied, denied.EventLogStatus);
+        Assert.Equal("Acesso negado", denied.EventLogDiagnosticMessage);
     }
 
     [Fact]

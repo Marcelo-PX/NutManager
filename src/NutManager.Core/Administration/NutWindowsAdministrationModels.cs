@@ -4,6 +4,7 @@ public enum NutServiceState { Unknown, Stopped, StartPending, StopPending, Runni
 public enum NutServiceStartMode { Unknown, Automatic, Manual, Disabled }
 public enum NutAssociationConfidence { None, NameFallback, BinaryPath }
 public enum NutPermissionState { Unknown, Readable, Writable, Modifiable, Insufficient, AccessDenied, ManualInterventionRequired }
+public enum NutEventLogStatus { Success, AccessDenied, Unavailable, Failed }
 public enum NutAdministrativeAction { StartService, StopService, RestartService, RepairConfigurationPermissions }
 public enum NutAdministrativeActionStatus { Success, AlreadyInRequestedState, ServiceNotFound, ServiceNotAssociated, AccessDenied, ElevationCancelled, Timeout, InvalidRequest, PlatformUnsupported, ManualInterventionRequired, Cancelled, Failed }
 public enum PrivilegeState { PlatformUnsupported, StandardUser, Elevated, Unknown }
@@ -30,7 +31,9 @@ public sealed record NutWindowsAdministrationSnapshot(
     NutPermissionAssessment Permissions,
     IReadOnlyList<NutProcessInfo> Processes,
     IReadOnlyList<NutEventLogEntry> Events,
-    string? DiagnosticMessage = null)
+    string? DiagnosticMessage = null,
+    NutEventLogStatus EventLogStatus = NutEventLogStatus.Success,
+    string? EventLogDiagnosticMessage = null)
 {
     public static NutWindowsAdministrationSnapshot Unsupported() => new(false, PrivilegeState.PlatformUnsupported, Array.Empty<NutServiceInfo>(), NutPermissionAssessment.Unsupported(), Array.Empty<NutProcessInfo>(), Array.Empty<NutEventLogEntry>(), "A administração local do Windows não está disponível nesta plataforma.");
 }
