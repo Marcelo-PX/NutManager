@@ -26,8 +26,8 @@ Only one task should normally be in progress at a time.
 | T10 | DONE | Complete MVP diagnostics | Read-only diagnostics page |
 | T11 | IN PROGRESS | Package and validate MVP | Official Windows x64 package and live Windows NUT validation |
 | T12 | DONE | Detect local NUT installation on Windows | Autodetect installation, executables, version, and configuration directory |
-| T13 | READY | Design syntax-preserving NUT configuration model | Safe model for managed and unmanaged configuration content |
-| T14 | TODO | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
+| T13 | DONE | Design syntax-preserving NUT configuration model | Safe model for managed and unmanaged configuration content |
+| T14 | READY | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
 | T15 | TODO | Build graphical NUT configuration editor | Windows-first configuration experience |
 | T16 | TODO | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
 | T17 | TODO | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
@@ -166,13 +166,13 @@ Discover a local Windows NUT installation, its executables, version, and configu
 
 ## T13 — Design syntax-preserving NUT configuration model
 
-**Status:** READY
+**Status:** DONE
 
 Design and test a document model for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf` that preserves comments, order, unknown directives, unmanaged sections, quoting, and relevant formatting. No real file writes.
 
 ## T14 — Add configuration backup, write, and rollback pipeline
 
-**Status:** TODO
+**Status:** READY
 
 Implement preview/diff, timestamped backup, temporary-file write, validation, safe replacement, activation testing, and rollback using temporary-directory tests.
 
