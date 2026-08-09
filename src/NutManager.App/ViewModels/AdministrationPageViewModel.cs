@@ -174,11 +174,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanExecuteAdministrativeAction => HasPendingAdministrativeAction && IsAdministrativeActionConfirmed && !HasDraftChanges && !HasPreview && !IsBusy && !IsDetectingInstallation && IsPendingAdministrativeActionCurrent();
 
-    public bool CanStartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService?.State == NutServiceState.Stopped;
+    public bool CanStartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { State: NutServiceState.Stopped, StartMode: not NutServiceStartMode.Disabled };
 
     public bool CanStopWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService?.State == NutServiceState.Running;
 
-    public bool CanRestartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService?.State is NutServiceState.Running or NutServiceState.Stopped;
+    public bool CanRestartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { StartMode: not NutServiceStartMode.Disabled } service && service.State is (NutServiceState.Running or NutServiceState.Stopped);
 
     public string AdministrativeCriticalText => "CRÍTICO — a operação administrativa requer atenção manual.";
 

@@ -694,6 +694,19 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal("Acesso negado ao Event Log.", viewModel.WindowsEventLogDiagnosticMessage);
     }
 
+    [Fact]
+    public async Task DisabledWindowsServiceCannotBeStartedOrRestarted()
+    {
+        var pipeline = new TestPipeline();
+        var installation = CreateInstallation("/session/nut", "/session/nut/etc", "nut.conf");
+        var viewModel = new AdministrationPageViewModel(new TestInstallationDetector(installation), pipeline, new TestWindowsAdministration());
+        await viewModel.InitializeAsync();
+        viewModel.SelectedWindowsService = new NutServiceInfo("NetworkUpsTools", "Network UPS Tools", NutServiceState.Stopped, NutServiceStartMode.Disabled, "C:\\NUT\\bin\\nut.exe", NutAssociationConfidence.BinaryPath);
+
+        Assert.False(viewModel.CanStartWindowsService);
+        Assert.False(viewModel.CanRestartWindowsService);
+    }
+
     private static async Task<AdministrationPageViewModel> CreateInitializedViewModelAsync(TestPipeline pipeline, params string[] availableFiles)
     {
         var installation = CreateInstallation("/session/nut", "/session/nut/etc", availableFiles);

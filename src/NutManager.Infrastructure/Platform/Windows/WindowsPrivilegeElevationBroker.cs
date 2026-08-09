@@ -7,6 +7,8 @@ using NutManager.Core.Administration;
 
 namespace NutManager.Infrastructure.Platform.Windows;
 
+internal enum WindowsElevatedHelperExitCode { Success = 0, ActionFailed = 1, RequestRejected = 2, ResultNotPersisted = 3 }
+
 public sealed class WindowsPrivilegeElevationBroker : IWindowsPrivilegeElevationBroker
 {
     public PrivilegeState GetPrivilegeState() => WindowsNutAdministrationBackend.GetPrivilegeState();
@@ -19,21 +21,43 @@ public sealed class WindowsPrivilegeElevationBroker : IWindowsPrivilegeElevation
         var responsePath = GetResponsePath(requestPath);
         if (PathAlreadyExistsOrIsReparsePoint(responsePath)) return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "Já existe uma resposta administrativa para esta solicitação.");
         var helperStarted = false;
+        var requestCreated = false;
+        var responseOwnedByCurrentFlow = false;
         try
         {
-            await WriteNewJsonAsync(requestPath, new ElevatedRequest(1, DateTimeOffset.UtcNow, request), cancellationToken);
+            await WriteNewJsonAsync(requestPath, new ElevatedRequest(1, DateTimeOffset.UtcNow, request), () => requestCreated = true, cancellationToken);
             var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true, Verb = "runas" };
             start.ArgumentList.Add("--elevated-nut-admin"); start.ArgumentList.Add(requestPath);
-            try { using var process = Process.Start(start); if (process is null) return new(NutAdministrativeActionStatus.Failed, request.Action, "Não foi possível iniciar o helper elevado."); helperStarted = true; await process.WaitForExitAsync(); }
+            int helperExitCode;
+            try
+            {
+                using var process = Process.Start(start);
+                if (process is null) return new(NutAdministrativeActionStatus.Failed, request.Action, "Não foi possível iniciar o helper elevado.");
+                helperStarted = true;
+                await process.WaitForExitAsync();
+                helperExitCode = process.ExitCode;
+            }
             catch (Win32Exception exception) when (exception.NativeErrorCode == 1223) { return new(NutAdministrativeActionStatus.ElevationCancelled, request.Action, "A operação foi cancelada na solicitação de elevação.", request.ServiceName); }
-            if (!File.Exists(responsePath)) return new(NutAdministrativeActionStatus.Failed, request.Action, "O helper elevado não retornou um resultado.", request.ServiceName);
+            if (helperExitCode == (int)WindowsElevatedHelperExitCode.RequestRejected) return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "O helper elevado rejeitou a solicitação administrativa.", request.ServiceName);
+            if (helperExitCode == (int)WindowsElevatedHelperExitCode.ResultNotPersisted) return IndeterminateResult(request);
+            if (helperExitCode is not ((int)WindowsElevatedHelperExitCode.Success or (int)WindowsElevatedHelperExitCode.ActionFailed)) return IndeterminateResult(request);
+            if (!File.Exists(responsePath) || PathAlreadyExistsOrIsReparsePoint(responsePath) is false) return IndeterminateResult(request);
             var response = JsonSerializer.Deserialize<ElevatedResponse>(await File.ReadAllTextAsync(responsePath, CancellationToken.None));
-            return response is null || response.RequestId != request.RequestId ? new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "A resposta administrativa não corresponde à solicitação.", request.ServiceName) : response.Result;
+            if (response is null || response.RequestId != request.RequestId) return IndeterminateResult(request);
+            responseOwnedByCurrentFlow = true;
+            return response.Result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !helperStarted) { return new(NutAdministrativeActionStatus.Cancelled, request.Action, "A ação administrativa foi cancelada.", request.ServiceName); }
         catch { return new(NutAdministrativeActionStatus.Failed, request.Action, "Não foi possível concluir a solicitação de elevação.", request.ServiceName); }
-        finally { TryDelete(requestPath); TryDelete(responsePath); }
+        finally
+        {
+            if (requestCreated) TryDelete(requestPath);
+            if (responseOwnedByCurrentFlow) TryDelete(responsePath);
+        }
     }
+
+    private static NutAdministrativeActionResult IndeterminateResult(NutAdministrativeActionRequest request) =>
+        new(NutAdministrativeActionStatus.ManualInterventionRequired, request.Action, "A ação pode ter sido executada, mas o resultado administrativo não pôde ser confirmado. Atualize o estado antes de tentar novamente.", request.ServiceName);
 
     private static void TryDelete(string path) { try { if (File.Exists(path) && (new FileInfo(path).Attributes & FileAttributes.ReparsePoint) == 0) File.Delete(path); } catch { } }
 
@@ -45,9 +69,10 @@ public sealed class WindowsPrivilegeElevationBroker : IWindowsPrivilegeElevation
         catch { return true; }
     }
 
-    private static async Task WriteNewJsonAsync<T>(string path, T value, CancellationToken cancellationToken)
+    private static async Task WriteNewJsonAsync<T>(string path, T value, Action onCreated, CancellationToken cancellationToken)
     {
         await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, useAsync: true);
+        onCreated();
         await JsonSerializer.SerializeAsync(stream, value, cancellationToken: cancellationToken);
         await stream.FlushAsync(cancellationToken);
     }
@@ -87,10 +112,10 @@ public static class WindowsElevatedHelper
 {
     public static bool TryHandle(string[] args, out int exitCode)
     {
-        exitCode = 0;
+        exitCode = (int)WindowsElevatedHelperExitCode.Success;
         if (args.Length != 2 || args[0] != "--elevated-nut-admin") return false;
-        if (!WindowsPrivilegeElevationBroker.TryGetAdministrativeDirectory(create: false, out var directory) || !WindowsPrivilegeElevationBroker.TryValidateRequestPath(args[1], directory, out _, out var requestPath, out var responsePath)) { exitCode = 2; return true; }
-        if (!IsExpectedRequestFile(requestPath)) { exitCode = 2; return true; }
+        if (!WindowsPrivilegeElevationBroker.TryGetAdministrativeDirectory(create: false, out var directory) || !WindowsPrivilegeElevationBroker.TryValidateRequestPath(args[1], directory, out _, out var requestPath, out var responsePath)) { exitCode = (int)WindowsElevatedHelperExitCode.RequestRejected; return true; }
+        if (!IsExpectedRequestFile(requestPath)) { exitCode = (int)WindowsElevatedHelperExitCode.RequestRejected; return true; }
         exitCode = Handle(requestPath, responsePath).GetAwaiter().GetResult();
         return true;
     }
@@ -127,23 +152,23 @@ public static class WindowsElevatedHelper
                 else
                 {
                     var detected = await new WindowsNutInstallationDetector().InspectDirectoryAsync(request.Action.InstallationDirectory, CancellationToken.None);
-                    if (request.Action.PermissionRepairPlan is { } plan && !string.Equals(plan.UserSid, ownerSid.Value, StringComparison.OrdinalIgnoreCase)) result = new(NutAdministrativeActionStatus.InvalidRequest, request.Action.Action, "O SID do plano não corresponde ao solicitante.", request.Action.ServiceName);
+                    if (request.Action.PermissionRepairPlan is not null && !WindowsNutAdministrativeRequestValidator.IsAuthorizedAclRequester(request.Action, ownerSid.Value)) result = new(NutAdministrativeActionStatus.InvalidRequest, request.Action.Action, "O SID do plano não corresponde ao solicitante.", request.Action.ServiceName);
                     else if (!detected.IsDetected || !WindowsPath.TryCanonicalize(detected.ConfigurationDirectory, out var detectedConfig) || !WindowsPath.TryCanonicalize(request.Action.ConfigurationDirectory, out var requestConfig) || !string.Equals(detectedConfig, requestConfig, StringComparison.OrdinalIgnoreCase)) result = new(NutAdministrativeActionStatus.InvalidRequest, request.Action.Action, "A solicitação não corresponde à instalação NUT atual.", request.Action.ServiceName);
-                    else result = await new WindowsNutAdministrationBackend().ExecuteAsync(request.Action, CancellationToken.None);
+                    else result = await new WindowsNutAdministrationBackend().ExecuteAsRequesterAsync(request.Action, ownerSid.Value, CancellationToken.None);
                 }
             }
         }
         catch { result = new(NutAdministrativeActionStatus.Failed, NutAdministrativeAction.StartService, "O helper administrativo não pôde concluir a ação."); }
         try
         {
-            if (WindowsPrivilegeElevationBroker.PathAlreadyExistsOrIsReparsePoint(responsePath)) return 3;
+            if (WindowsPrivilegeElevationBroker.PathAlreadyExistsOrIsReparsePoint(responsePath)) return (int)WindowsElevatedHelperExitCode.ResultNotPersisted;
             await using var stream = new FileStream(responsePath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, useAsync: true);
             await JsonSerializer.SerializeAsync(stream, new ElevatedResponse(requestId, result));
             await stream.FlushAsync();
         }
-        catch { return 3; }
+        catch { return (int)WindowsElevatedHelperExitCode.ResultNotPersisted; }
         try { if ((new FileInfo(requestPath).Attributes & FileAttributes.ReparsePoint) == 0) File.Delete(requestPath); } catch { }
-        return result.IsSuccess ? 0 : 1;
+        return result.IsSuccess ? (int)WindowsElevatedHelperExitCode.Success : (int)WindowsElevatedHelperExitCode.ActionFailed;
     }
 }
 

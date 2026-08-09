@@ -104,6 +104,15 @@ public sealed class WindowsNutAdministrationBackend : IWindowsNutAdministrationB
     public async Task<NutAdministrativeActionResult> ExecuteAsync(NutAdministrativeActionRequest request, CancellationToken cancellationToken)
     {
         if (!OperatingSystem.IsWindows()) return new(NutAdministrativeActionStatus.PlatformUnsupported, request.Action, "A administração local do Windows não está disponível nesta plataforma.");
+        var requesterSid = request.Action == NutAdministrativeAction.RepairConfigurationPermissions
+            ? TryGetCurrentUserSid()
+            : null;
+        return await ExecuteAsRequesterAsync(request, requesterSid, cancellationToken);
+    }
+
+    internal async Task<NutAdministrativeActionResult> ExecuteAsRequesterAsync(NutAdministrativeActionRequest request, string? requesterSid, CancellationToken cancellationToken)
+    {
+        if (!OperatingSystem.IsWindows()) return new(NutAdministrativeActionStatus.PlatformUnsupported, request.Action, "A administração local do Windows não está disponível nesta plataforma.");
         if (!WindowsNutAdministrativeRequestValidator.IsValid(request)) return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "A ação administrativa não é válida para a instalação atual.");
         try
         {
@@ -121,10 +130,14 @@ public sealed class WindowsNutAdministrationBackend : IWindowsNutAdministrationB
         {
             return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "Não foi possível validar a instalação NUT antes da ação.", request.ServiceName);
         }
+        if (request.Action == NutAdministrativeAction.RepairConfigurationPermissions && !WindowsNutAdministrativeRequestValidator.IsAuthorizedAclRequester(request, requesterSid))
+        {
+            return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "O SID do plano não corresponde ao solicitante autorizado.");
+        }
         return request.Action switch
         {
             NutAdministrativeAction.StartService or NutAdministrativeAction.StopService or NutAdministrativeAction.RestartService => await WindowsNutServiceController.ExecuteAsync(request, cancellationToken),
-            NutAdministrativeAction.RepairConfigurationPermissions => WindowsNutPermissions.Repair(request),
+            NutAdministrativeAction.RepairConfigurationPermissions => WindowsNutPermissions.Repair(request, requesterSid),
             _ => new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "A ação administrativa não é permitida.")
         };
     }
@@ -134,6 +147,13 @@ public sealed class WindowsNutAdministrationBackend : IWindowsNutAdministrationB
         if (!OperatingSystem.IsWindows()) return PrivilegeState.PlatformUnsupported;
         try { return new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator) ? PrivilegeState.Elevated : PrivilegeState.StandardUser; }
         catch { return PrivilegeState.Unknown; }
+    }
+
+    [SupportedOSPlatform("windows")]
+    internal static string? TryGetCurrentUserSid()
+    {
+        try { return WindowsIdentity.GetCurrent().User?.Value; }
+        catch { return null; }
     }
 }
 
@@ -168,6 +188,13 @@ public static class WindowsNutAdministrativeRequestValidator
         string.Equals(detectedInstallation, requestedInstallation, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(detectedConfiguration, requestedConfiguration, StringComparison.OrdinalIgnoreCase);
 
+    public static bool IsAuthorizedAclRequester(NutAdministrativeActionRequest request, string? requesterSid) =>
+        request.Action == NutAdministrativeAction.RepairConfigurationPermissions &&
+        request.PermissionRepairPlan is { } plan &&
+        !string.IsNullOrWhiteSpace(requesterSid) &&
+        string.Equals(plan.UserSid, requesterSid, StringComparison.OrdinalIgnoreCase) &&
+        plan.EffectiveIdentitySids?.Contains(requesterSid, StringComparer.OrdinalIgnoreCase) == true;
+
     private static bool IsRecognizedConfigurationTarget(string path, string configurationDirectory)
     {
         if (!WindowsPath.TryCanonicalize(path, out var target)) return false;
@@ -201,6 +228,7 @@ internal static class WindowsNutServiceController
 
     public static async Task<NutAdministrativeActionResult> ExecuteAsync(NutAdministrativeActionRequest request, CancellationToken cancellationToken)
     {
+        var mutationStarted = false;
         try
         {
             using var service = new System.ServiceProcess.ServiceController(request.ServiceName!);
@@ -212,26 +240,30 @@ internal static class WindowsNutServiceController
             if (request.Action == NutAdministrativeAction.StopService && current == NutServiceState.Stopped) return new(NutAdministrativeActionStatus.AlreadyInRequestedState, request.Action, "O serviço já está parado.", request.ServiceName);
             if (request.Action is NutAdministrativeAction.StopService or NutAdministrativeAction.RestartService && current != NutServiceState.Stopped)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 service.Stop();
-                await WaitAsync(service, System.ServiceProcess.ServiceControllerStatus.Stopped, cancellationToken);
+                mutationStarted = true;
+                await WaitAsync(service, System.ServiceProcess.ServiceControllerStatus.Stopped);
             }
             if (request.Action is NutAdministrativeAction.StartService or NutAdministrativeAction.RestartService)
             {
+                if (!mutationStarted) cancellationToken.ThrowIfCancellationRequested();
                 service.Start();
-                await WaitAsync(service, System.ServiceProcess.ServiceControllerStatus.Running, cancellationToken);
+                mutationStarted = true;
+                await WaitAsync(service, System.ServiceProcess.ServiceControllerStatus.Running);
             }
             return new(NutAdministrativeActionStatus.Success, request.Action, "A ação administrativa foi concluída.", request.ServiceName);
         }
-        catch (System.ServiceProcess.TimeoutException) { return new(NutAdministrativeActionStatus.Timeout, request.Action, "O serviço não alcançou o estado esperado no tempo limite.", request.ServiceName); }
+        catch (System.ServiceProcess.TimeoutException) { return new(NutAdministrativeActionStatus.Timeout, request.Action, mutationStarted ? "A ação iniciou, mas o serviço não alcançou o estado esperado. Atualize o estado antes de tentar novamente." : "O serviço não alcançou o estado esperado no tempo limite.", request.ServiceName); }
         catch (System.ComponentModel.Win32Exception exception) when (exception.NativeErrorCode == 5) { return new(NutAdministrativeActionStatus.AccessDenied, request.Action, "Permissão insuficiente para controlar o serviço.", request.ServiceName); }
         catch (InvalidOperationException) { return new(NutAdministrativeActionStatus.ServiceNotFound, request.Action, "O serviço não foi encontrado.", request.ServiceName); }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return new(NutAdministrativeActionStatus.Cancelled, request.Action, "A ação administrativa foi cancelada.", request.ServiceName); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !mutationStarted) { return new(NutAdministrativeActionStatus.Cancelled, request.Action, "A ação administrativa foi cancelada.", request.ServiceName); }
         catch { return new(NutAdministrativeActionStatus.Failed, request.Action, "Não foi possível executar a ação administrativa.", request.ServiceName); }
     }
 
-    private static async Task WaitAsync(System.ServiceProcess.ServiceController service, System.ServiceProcess.ServiceControllerStatus status, CancellationToken cancellationToken)
+    private static async Task WaitAsync(System.ServiceProcess.ServiceController service, System.ServiceProcess.ServiceControllerStatus status)
     {
-        await Task.Run(() => service.WaitForStatus(status, TimeSpan.FromSeconds(30)), cancellationToken);
+        await Task.Run(() => service.WaitForStatus(status, TimeSpan.FromSeconds(30)), CancellationToken.None);
     }
     private static NutServiceInfo CreateInfo(System.ServiceProcess.ServiceController service, string installationDirectory)
     {
@@ -300,9 +332,13 @@ internal static class WindowsNutPermissions
         catch { return new(NutPermissionState.Unknown, null, null, false, "Não foi possível determinar as permissões efetivas.", Array.Empty<string>()); }
     }
 
-    public static NutAdministrativeActionResult Repair(NutAdministrativeActionRequest request)
+    public static NutAdministrativeActionResult Repair(NutAdministrativeActionRequest request, string? requesterSid)
     {
         var plan = request.PermissionRepairPlan!;
+        if (!WindowsNutAdministrativeRequestValidator.IsAuthorizedAclRequester(request, requesterSid))
+        {
+            return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "O SID do plano não corresponde ao solicitante autorizado.");
+        }
         if (!TryGetAllowedTargets(request, plan, out var targets)) return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "O plano contém alvos de ACL não reconhecidos.");
         var identities = (plan.EffectiveIdentitySids ?? [plan.UserSid]).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (!identities.Contains(plan.UserSid)) return new(NutAdministrativeActionStatus.InvalidRequest, request.Action, "As identidades efetivas não incluem o SID do solicitante.");

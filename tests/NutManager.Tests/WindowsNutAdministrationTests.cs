@@ -177,6 +177,16 @@ public sealed class WindowsNutAdministrationTests
     }
 
     [Fact]
+    public void AclRepairRequiresTheAuthoritativeRequesterSidInBothExecutionPaths()
+    {
+        var plan = new NutPermissionRepairPlan("C:\\NUT\\etc", "TEST\\user", "S-1-5-21-123", ["C:\\NUT\\etc"], EffectiveIdentitySids: ["S-1-5-21-123", "S-1-5-32-555"]);
+        var request = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.RepairConfigurationPermissions, "C:\\NUT", "C:\\NUT\\etc", PermissionRepairPlan: plan);
+
+        Assert.True(WindowsNutAdministrativeRequestValidator.IsAuthorizedAclRequester(request, "S-1-5-21-123"));
+        Assert.False(WindowsNutAdministrativeRequestValidator.IsAuthorizedAclRequester(request, "S-1-5-21-other"));
+    }
+
+    [Fact]
     public void EventLogDiagnosticIsDistinctFromAnEmptySuccessfulList()
     {
         var noEvents = new NutWindowsAdministrationSnapshot(true, PrivilegeState.StandardUser, Array.Empty<NutServiceInfo>(), NutPermissionAssessment.Unsupported(), Array.Empty<NutProcessInfo>(), Array.Empty<NutEventLogEntry>());
