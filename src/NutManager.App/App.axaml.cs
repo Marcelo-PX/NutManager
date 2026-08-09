@@ -61,7 +61,12 @@ public partial class App : Application
             polling,
             devices,
             installationDetector);
-        var administration = new AdministrationPageViewModel(installationDetector, new NutConfigurationFilePipeline(), new WindowsLocalNutAdministration());
+        var configurationPipeline = new NutConfigurationFilePipeline();
+        var administration = new AdministrationPageViewModel(
+            installationDetector,
+            configurationPipeline,
+            new WindowsLocalNutAdministration(),
+            new WindowsNutDriverDiagnostics());
         var settingsPage = new SettingsPageViewModel(settings, store);
         window.Closed += (_, _) =>
         {

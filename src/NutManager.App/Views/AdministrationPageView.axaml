@@ -176,6 +176,95 @@
               BorderThickness="1"
               CornerRadius="8">
         <StackPanel Spacing="10">
+          <TextBlock Text="Dispositivos e drivers" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="A enumeração de portas é passiva: nenhuma porta COM é aberta para teste." TextWrapping="Wrap" />
+          <Button Content="Atualizar dispositivos e drivers" Command="{Binding RefreshDriverDiagnosticsCommand}" IsEnabled="{Binding CanRefreshDriverDiagnostics}" HorizontalAlignment="Left" />
+
+          <TextBlock Text="Dispositivos configurados" FontSize="16" FontWeight="SemiBold" />
+          <ListBox ItemsSource="{Binding ConfiguredDrivers}"
+                   SelectedItem="{Binding SelectedConfiguredDriver, Mode=TwoWay}"
+                   IsEnabled="{Binding CanPrepareDriverDiagnostic}">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="0,4" Spacing="2">
+                  <TextBlock Text="{Binding UpsName}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                  <TextBlock><Run Text="Driver: " /><Run Text="{Binding DriverName}" /></TextBlock>
+                  <TextBlock><Run Text="Porta: " /><Run Text="{Binding NormalizedComPort}" /></TextBlock>
+                  <TextBlock><Run Text="Protocolo: " /><Run Text="{Binding Protocol}" /></TextBlock>
+                  <TextBlock><Run Text="Driverpath: " /><Run Text="{Binding DriverPath}" /></TextBlock>
+                  <TextBlock><Run Text="Executável: " /><Run Text="{Binding Executable.Path}" /></TextBlock>
+                  <TextBlock><Run Text="Estado: " /><Run Text="{Binding Executable.State}" /></TextBlock>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <TextBlock Text="Portas COM" FontSize="16" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding ComPorts}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="Auto,12,*,12,*,12,*" Margin="0,2">
+                  <TextBlock Text="{Binding PortName}" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="2" Text="{Binding FriendlyName}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="4" Text="{Binding Manufacturer}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="6" Text="{Binding Status}" TextWrapping="Wrap" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Text="Diagnósticos do NUT" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding UpsdrvctlPath}" TextWrapping="Wrap" />
+          <WrapPanel ItemHeight="32" ItemWidth="245">
+            <Button Content="Ajuda do upsdrvctl" Click="UpsdrvctlHelpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
+            <Button Content="Listar drivers" Click="UpsdrvctlListButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
+            <Button Content="Consultar status" Click="UpsdrvctlStatusButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
+            <Button Content="Validar configuração do driver (simulação)" Click="UpsdrvctlDryRunButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
+            <Button Content="Ajuda do driver" Click="DriverHelpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
+            <Button Content="Versão do driver" Click="DriverVersionButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
+            <Button Content="Listar variáveis do driver" Click="DriverVariablesButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
+            <Button Content="Coletar diagnóstico do dispositivo" Click="DriverDataDumpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
+          </WrapPanel>
+          <TextBlock Text="A validação usa o modo de teste do NUT e não inicia o driver." TextWrapping="Wrap" />
+
+          <StackPanel IsVisible="{Binding HasPendingDriverDiagnostic}" Spacing="5">
+            <TextBlock Text="Revisão do diagnóstico" FontWeight="SemiBold" />
+            <TextBlock><Run Text="Operação: " /><Run Text="{Binding PendingDriverDiagnosticText}" /></TextBlock>
+            <TextBlock><Run Text="UPS: " /><Run Text="{Binding PendingDriverDiagnosticUpsName}" /></TextBlock>
+            <TextBlock><Run Text="Ferramenta: " /><Run Text="{Binding PendingDriverDiagnosticTool}" /></TextBlock>
+            <TextBlock><Run Text="Configuração: " /><Run Text="{Binding ConfigurationDirectoryText}" /></TextBlock>
+            <TextBlock><Run Text="Porta: " /><Run Text="{Binding PendingDriverDiagnosticPort}" /></TextBlock>
+            <TextBlock><Run Text="Contato com hardware: " /><Run Text="{Binding PendingDriverDiagnosticHardwareText}" /></TextBlock>
+            <TextBlock><Run Text="Serviço NUT: " /><Run Text="{Binding NutServiceStateForDriverDiagnostic}" /></TextBlock>
+            <TextBlock Text="Este diagnóstico abrirá o dispositivo configurado por meio do driver NUT."
+                       IsVisible="{Binding PendingDriverDiagnosticContactsHardware}"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap" />
+            <CheckBox Content="Confirmo que revisei este diagnóstico." IsChecked="{Binding IsDriverDiagnosticConfirmed, Mode=TwoWay}" />
+            <Button Content="Executar diagnóstico" Command="{Binding ExecuteDriverDiagnosticCommand}" IsEnabled="{Binding CanExecuteDriverDiagnostic}" HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding HasDriverDiagnosticResult}" Spacing="4">
+            <TextBlock Text="Resultado do diagnóstico" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding DriverDiagnosticCriticalText}" IsVisible="{Binding IsDriverDiagnosticCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock><Run Text="Status: " /><Run Text="{Binding DriverDiagnosticResult.Status}" /></TextBlock>
+            <TextBlock><Run Text="Ferramenta: " /><Run Text="{Binding DriverDiagnosticResult.ToolName}" /></TextBlock>
+            <TextBlock><Run Text="Código de saída: " /><Run Text="{Binding DriverDiagnosticResult.ExitCode}" /></TextBlock>
+            <TextBlock Text="{Binding DriverDiagnosticResult.Message}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding DriverDiagnosticResult.StandardOutput}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding DriverDiagnosticResult.StandardError}" TextWrapping="Wrap" />
+          </StackPanel>
+          <TextBlock Text="{Binding DriverDiagnosticStatusMessage}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1"
+              CornerRadius="8">
+        <StackPanel Spacing="10">
           <TextBlock Text="Administração do Windows" FontSize="20" FontWeight="SemiBold" />
           <Button Content="Atualizar estado" Command="{Binding RefreshWindowsAdministrationCommand}" HorizontalAlignment="Left" />
           <TextBlock Text="Serviço NUT" FontSize="16" FontWeight="SemiBold" />

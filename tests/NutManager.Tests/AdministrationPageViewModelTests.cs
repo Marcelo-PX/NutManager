@@ -707,6 +707,79 @@ public sealed class AdministrationPageViewModelTests
         Assert.False(viewModel.CanRestartWindowsService);
     }
 
+    [Fact]
+    public async Task DriverDiagnosticRequiresReviewConfirmationAndUsesTheTypedRequest()
+    {
+        var pipeline = new TestPipeline();
+        var diagnostics = new TestDriverDiagnostics();
+        var viewModel = new AdministrationPageViewModel(
+            new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "ups.conf")),
+            pipeline,
+            new TestWindowsAdministration(),
+            diagnostics);
+
+        await viewModel.InitializeAsync();
+
+        Assert.Single(viewModel.ConfiguredDrivers);
+        Assert.Equal("COM4", viewModel.ComPorts.Single().PortName);
+        viewModel.PrepareDriverDiagnostic(NutDriverDiagnosticKind.UpsdrvctlDryRunStart);
+
+        Assert.True(viewModel.HasPendingDriverDiagnostic);
+        Assert.False(viewModel.CanExecuteDriverDiagnostic);
+        Assert.Contains("simulação", viewModel.PendingDriverDiagnosticText, StringComparison.OrdinalIgnoreCase);
+        viewModel.IsDriverDiagnosticConfirmed = true;
+        Assert.True(viewModel.CanExecuteDriverDiagnostic);
+
+        await viewModel.ExecuteDriverDiagnosticAsync();
+
+        Assert.Equal(1, diagnostics.ExecuteCalls);
+        Assert.Equal(NutDriverDiagnosticKind.UpsdrvctlDryRunStart, diagnostics.LastRequest!.Kind);
+        Assert.NotNull(viewModel.DriverDiagnosticResult);
+    }
+
+    [Fact]
+    public async Task DriverDataDumpIsBlockedWhileTheNutServiceIsRunning()
+    {
+        var pipeline = new TestPipeline();
+        var diagnostics = new TestDriverDiagnostics();
+        var administration = new TestWindowsAdministration
+        {
+            Services = [new NutServiceInfo("NetworkUpsTools", "Network UPS Tools", NutServiceState.Running, NutServiceStartMode.Automatic, "C:\\NUT\\bin\\nut.exe", NutAssociationConfidence.BinaryPath)]
+        };
+        var viewModel = new AdministrationPageViewModel(
+            new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "ups.conf")),
+            pipeline,
+            administration,
+            diagnostics);
+        await viewModel.InitializeAsync();
+
+        viewModel.PrepareDriverDiagnostic(NutDriverDiagnosticKind.DriverDataDump);
+
+        Assert.False(viewModel.HasPendingDriverDiagnostic);
+        Assert.Contains("Pare-o explicitamente", viewModel.DriverDiagnosticStatusMessage);
+    }
+
+    [Fact]
+    public async Task DraftInvalidatesAPendingDriverDiagnostic()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/ups.conf", NutConfigurationFileKind.UpsConf, "[NOBREAK]\ndriver = nutdrv_qx\n");
+        var diagnostics = new TestDriverDiagnostics();
+        var viewModel = new AdministrationPageViewModel(
+            new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "ups.conf")),
+            pipeline,
+            new TestWindowsAdministration(),
+            diagnostics);
+        await viewModel.InitializeAsync();
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "ups.conf"));
+        viewModel.PrepareDriverDiagnostic(NutDriverDiagnosticKind.UpsdrvctlStatus);
+
+        GetEntry(viewModel, "driver").DraftValue = "other_driver";
+
+        Assert.False(viewModel.HasPendingDriverDiagnostic);
+        Assert.False(viewModel.CanExecuteDriverDiagnostic);
+    }
+
     private static async Task<AdministrationPageViewModel> CreateInitializedViewModelAsync(TestPipeline pipeline, params string[] availableFiles)
     {
         var installation = CreateInstallation("/session/nut", "/session/nut/etc", availableFiles);
@@ -929,11 +1002,13 @@ public sealed class AdministrationPageViewModelTests
 
         public string? EventDiagnostic { get; set; }
 
+        public IReadOnlyList<NutServiceInfo> Services { get; set; } = Array.Empty<NutServiceInfo>();
+
         public Task<NutWindowsAdministrationSnapshot> InspectAsync(NutInstallationInfo installation, CancellationToken cancellationToken) =>
             Task.FromResult(new NutWindowsAdministrationSnapshot(
                 true,
                 PrivilegeState.StandardUser,
-                Array.Empty<NutServiceInfo>(),
+                Services,
                 new NutPermissionAssessment(NutPermissionState.Modifiable, "TEST\\user", "S-1-5-21-123", false, "Modify confirmado.", [installation.ConfigurationDirectory!, installation.ConfigurationDirectory! + "/ups.conf"]),
                 Array.Empty<NutProcessInfo>(),
                 Array.Empty<NutEventLogEntry>(),
@@ -942,6 +1017,48 @@ public sealed class AdministrationPageViewModelTests
 
         public Task<NutAdministrativeActionResult> ExecuteAsync(NutAdministrativeActionRequest request, CancellationToken cancellationToken) =>
             Task.FromResult(new NutAdministrativeActionResult(NutAdministrativeActionStatus.Success, request.Action, "ok"));
+    }
+
+    private sealed class TestDriverDiagnostics : ILocalNutDriverDiagnostics
+    {
+        public int ExecuteCalls { get; private set; }
+
+        public NutDriverDiagnosticRequest? LastRequest { get; private set; }
+
+        public Task<NutDriverDiagnosticsSnapshot> InspectAsync(NutInstallationInfo installation, CancellationToken cancellationToken) =>
+            Task.FromResult(new NutDriverDiagnosticsSnapshot(
+                true,
+                [new NutComPortInfo("COM4", "Fictitious serial adapter", "Fictitious", null, "OK", 0, true)],
+                [new NutConfiguredDriver(
+                    "NOBREAK",
+                    "Fictitious UPS",
+                    "nutdrv_qx",
+                    "\\\\.\\COM4",
+                    "COM4",
+                    "q1",
+                    "C:\\NUT\\patched-driver",
+                    new NutDriverExecutableInfo("C:\\NUT\\patched-driver\\nutdrv_qx.exe", NutDriverExecutableState.Available, true),
+                    true,
+                    NutDriverRuntimeState.NotRunning)],
+                "C:\\NUT\\bin\\upsdrvctl.exe"));
+
+        public Task<NutDriverDiagnosticResult> ExecuteAsync(NutDriverDiagnosticRequest request, CancellationToken cancellationToken)
+        {
+            ExecuteCalls++;
+            LastRequest = request;
+            return Task.FromResult(new NutDriverDiagnosticResult(
+                request.Kind,
+                NutDriverDiagnosticStatus.Success,
+                "upsdrvctl.exe",
+                DateTimeOffset.UtcNow,
+                TimeSpan.Zero,
+                0,
+                "safe output",
+                string.Empty,
+                false,
+                request.Kind == NutDriverDiagnosticKind.DriverDataDump,
+                "O diagnóstico foi concluído."));
+        }
     }
 
     private sealed class TemporaryDirectory : IDisposable
