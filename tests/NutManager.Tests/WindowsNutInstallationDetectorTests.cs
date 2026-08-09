@@ -135,6 +135,7 @@ public sealed class WindowsNutInstallationDetectorTests
         Assert.Equal(configurationDirectory, fromRoot.ConfigurationDirectory);
         Assert.Equal(configurationDirectory, fromConfiguration.ConfigurationDirectory);
         Assert.Equal("Diretório selecionado manualmente", fromConfiguration.DetectionSource);
+        Assert.Equal(configurationDirectory, fileSystem.LastParentDirectoryRequest);
     }
 
     [Fact]
@@ -211,6 +212,7 @@ public sealed class WindowsNutInstallationDetectorTests
         public int WriteAttempts { get; private set; }
         public int ProcessStartAttempts { get; private set; }
         public int AdminRequests { get; private set; }
+        public string? LastParentDirectoryRequest { get; private set; }
 
         public void AddDirectory(string path)
         {
@@ -241,6 +243,14 @@ public sealed class WindowsNutInstallationDetectorTests
         public bool CanReadFile(string path) => _files.TryGetValue(Normalize(path), out var entry) && entry.Readable;
 
         public string? GetFileVersion(string path) => _files.TryGetValue(Normalize(path), out var entry) ? entry.Version : null;
+
+        public string? GetParentDirectory(string path)
+        {
+            LastParentDirectoryRequest = path;
+            var directory = Normalize(path);
+            var separatorIndex = directory.LastIndexOfAny(['\\', '/']);
+            return separatorIndex <= 0 ? null : directory[..separatorIndex];
+        }
 
         private static string Normalize(string path) => Path.TrimEndingDirectorySeparator(path);
 

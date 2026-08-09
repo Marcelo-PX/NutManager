@@ -78,7 +78,7 @@ public sealed class WindowsNutInstallationDetector : ILocalNutInstallationDetect
 
         cancellationToken.ThrowIfCancellationRequested();
         var installationDirectory = IsConfigurationDirectory(directory)
-            ? Directory.GetParent(directory)?.FullName ?? directory
+            ? _fileSystem.GetParentDirectory(directory) ?? directory
             : directory;
         var executables = InspectExecutables(installationDirectory, cancellationToken);
         var configuration = FindBestConfigurationDirectory(installationDirectory, directory, cancellationToken);

@@ -37,4 +37,6 @@ public sealed class WindowsNutInstallationFileSystem : IWindowsNutInstallationFi
             return null;
         }
     }
+
+    public string? GetParentDirectory(string path) => Path.GetDirectoryName(path);
 }

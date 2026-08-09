@@ -13,4 +13,6 @@ public interface IWindowsNutInstallationFileSystem
     bool CanReadFile(string path);
 
     string? GetFileVersion(string path);
+
+    string? GetParentDirectory(string path);
 }
