@@ -86,6 +86,32 @@
       </Grid>
 
       <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Instalação local do NUT" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding LocalInstallationStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+            <TextBlock Text="Diretório da instalação" Grid.Row="0" />
+            <TextBlock Text="{Binding InstallationDirectoryText}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Diretório de configuração" Grid.Row="1" />
+            <TextBlock Text="{Binding ConfigurationDirectoryText}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Versão" Grid.Row="2" />
+            <TextBlock Text="{Binding LocalInstallationVersionText}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Origem da detecção" Grid.Row="3" />
+            <TextBlock Text="{Binding DetectionSourceText}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
+          </Grid>
+          <TextBlock Text="Executáveis encontrados" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding ExecutablesText}" MaxWidth="900" TextWrapping="Wrap" />
+          <TextBlock Text="Arquivos de configuração" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding ConfigurationFilesText}" MaxWidth="900" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding LocalInstallationError}" IsVisible="{Binding HasLocalInstallationError}" MaxWidth="900" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Detectar novamente" Command="{Binding DetectLocalInstallationCommand}" />
+            <Button Content="Selecionar diretório..." Click="SelectDirectoryButton_OnClick" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
         <StackPanel Spacing="8">
           <TextBlock Text="Último erro" FontSize="20" FontWeight="SemiBold" />
           <TextBlock Text="{Binding LastErrorText}" MaxWidth="900" TextWrapping="Wrap" />

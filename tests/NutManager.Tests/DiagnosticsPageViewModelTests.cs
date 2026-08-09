@@ -173,11 +173,70 @@ public sealed class DiagnosticsPageViewModelTests
         Assert.Equal("Indisponível", viewModel.SerialNumber);
     }
 
+    [Fact]
+    public async Task LocalInstallationDetectionShowsLoadingSuccessAndManualInspectionStates()
+    {
+        var detector = new TestInstallationDetector();
+        var installation = new NutInstallationInfo(
+            true,
+            @"C:\NUT",
+            @"C:\NUT\etc",
+            "2.8.2",
+            new Dictionary<string, string> { ["upsc.exe"] = @"C:\NUT\bin\upsc.exe" },
+            [new NutConfigurationFileInfo("ups.conf", @"C:\NUT\etc\ups.conf", true, true)],
+            @"C:\NUT");
+        detector.DetectCompletion = new TaskCompletionSource<NutInstallationInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var viewModel = CreateViewModel(new ApplicationSettings(), installationDetector: detector);
+
+        Assert.Equal("Nenhuma instalação NUT local encontrada", viewModel.LocalInstallationStatusText);
+        var refresh = viewModel.RefreshLocalInstallationAsync();
+        await detector.DetectStarted.Task;
+        Assert.True(viewModel.IsDetectingLocalInstallation);
+        detector.DetectCompletion.SetResult(installation);
+        await refresh;
+
+        Assert.False(viewModel.IsDetectingLocalInstallation);
+        Assert.Equal("Instalação NUT encontrada", viewModel.LocalInstallationStatusText);
+        Assert.Equal(@"C:\NUT", viewModel.InstallationDirectoryText);
+        Assert.Equal(@"C:\NUT\etc", viewModel.ConfigurationDirectoryText);
+        Assert.Equal("2.8.2", viewModel.LocalInstallationVersionText);
+        Assert.Contains("upsc.exe", viewModel.ExecutablesText);
+        Assert.Contains("ups.conf: Disponível", viewModel.ConfigurationFilesText);
+
+        await viewModel.InspectLocalInstallationDirectoryAsync(@"D:\NUT");
+        Assert.Equal(@"D:\NUT", detector.LastInspectedDirectory);
+        Assert.Equal(1, detector.ManualInspectionCalls);
+    }
+
+    [Fact]
+    public async Task LocalInstallationDetectionShowsNotDetectedAndConciseErrors()
+    {
+        var detector = new TestInstallationDetector
+        {
+            DetectResult = NutInstallationInfo.NotDetected(),
+            InspectionException = new IOException("technical detail")
+        };
+        using var viewModel = CreateViewModel(new ApplicationSettings(), installationDetector: detector);
+
+        await viewModel.RefreshLocalInstallationAsync();
+        Assert.Equal("Nenhuma instalação NUT local encontrada", viewModel.LocalInstallationStatusText);
+        Assert.Equal("Indisponível", viewModel.InstallationDirectoryText);
+
+        await viewModel.InspectLocalInstallationDirectoryAsync(@"D:\Denied");
+        Assert.True(viewModel.HasLocalInstallationError);
+        Assert.Equal("Não foi possível inspecionar a instalação local do NUT.", viewModel.LocalInstallationError);
+        Assert.DoesNotContain("technical detail", viewModel.LocalInstallationError);
+
+        await viewModel.RefreshLocalInstallationAsync();
+        Assert.Equal(2, detector.DetectCalls);
+    }
+
     private static DiagnosticsPageViewModel CreateViewModel(
         ApplicationSettings settings,
         TestPollingCoordinator? coordinator = null,
-        DevicesPageViewModel? devices = null) =>
-        new(settings, RuntimeInfo, coordinator, devices);
+        DevicesPageViewModel? devices = null,
+        ILocalNutInstallationDetector? installationDetector = null) =>
+        new(settings, RuntimeInfo, coordinator, devices, installationDetector);
 
     private static UpsSnapshot CreateSnapshot(string name, DataSource source) => new(
         new UpsIdentity(name, "UPS de teste", "Fabricante", "Modelo", "Serial"),
@@ -213,6 +272,33 @@ public sealed class DiagnosticsPageViewModelTests
 
         public void Dispose()
         {
+        }
+    }
+
+    private sealed class TestInstallationDetector : ILocalNutInstallationDetector
+    {
+        public TaskCompletionSource<NutInstallationInfo> DetectStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<NutInstallationInfo>? DetectCompletion { get; set; }
+        public NutInstallationInfo DetectResult { get; set; } = NutInstallationInfo.NotDetected();
+        public Exception? InspectionException { get; set; }
+        public int DetectCalls { get; private set; }
+        public int ManualInspectionCalls { get; private set; }
+        public string? LastInspectedDirectory { get; private set; }
+
+        public Task<NutInstallationInfo> DetectAsync(CancellationToken cancellationToken)
+        {
+            DetectCalls++;
+            DetectStarted.TrySetResult(DetectResult);
+            return DetectCompletion?.Task ?? Task.FromResult(DetectResult);
+        }
+
+        public Task<NutInstallationInfo> InspectDirectoryAsync(string installationOrConfigurationDirectory, CancellationToken cancellationToken)
+        {
+            ManualInspectionCalls++;
+            LastInspectedDirectory = installationOrConfigurationDirectory;
+            return InspectionException is null
+                ? Task.FromResult(DetectResult)
+                : Task.FromException<NutInstallationInfo>(InspectionException);
         }
     }
 }
