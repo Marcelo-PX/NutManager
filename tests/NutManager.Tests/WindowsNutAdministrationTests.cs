@@ -51,6 +51,45 @@ public sealed class WindowsNutAdministrationTests
     }
 
     [Fact]
+    public void AclEvaluationAcceptsModifyGrantedThroughAGroup()
+    {
+        var result = WindowsAclPermissionEvaluation.Assess(
+            [new WindowsAclRule("S-1-5-32-555", WindowsAclAccessControlType.Allow, WindowsAclRights.Modify)],
+            new HashSet<string>(["S-1-5-21-user", "S-1-5-32-555"], StringComparer.OrdinalIgnoreCase));
+
+        Assert.Equal(NutPermissionState.Modifiable, result);
+    }
+
+    [Fact]
+    public void AclEvaluationAggregatesAllowRulesButRejectsPartialRights()
+    {
+        var identities = new HashSet<string>(["S-1-5-21-user"], StringComparer.OrdinalIgnoreCase);
+        var combined = WindowsAclPermissionEvaluation.Assess(
+            [
+                new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.Read),
+                new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.Modify & ~WindowsAclRights.Read)
+            ], identities);
+        var partial = WindowsAclPermissionEvaluation.Assess(
+            [new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.Write)], identities);
+
+        Assert.Equal(NutPermissionState.Modifiable, combined);
+        Assert.Equal(NutPermissionState.Insufficient, partial);
+    }
+
+    [Fact]
+    public void AclEvaluationTreatsGroupDenyAsManualIntervention()
+    {
+        var result = WindowsAclPermissionEvaluation.Assess(
+            [
+                new WindowsAclRule("S-1-5-21-user", WindowsAclAccessControlType.Allow, WindowsAclRights.Modify),
+                new WindowsAclRule("S-1-5-32-555", WindowsAclAccessControlType.Deny, WindowsAclRights.Modify)
+            ],
+            new HashSet<string>(["S-1-5-21-user", "S-1-5-32-555"], StringComparer.OrdinalIgnoreCase));
+
+        Assert.Equal(NutPermissionState.ManualInterventionRequired, result);
+    }
+
+    [Fact]
     public void HelperResponsePathIsDerivedFromTheRequestPathOnly()
     {
         Assert.Equal("C:\\Users\\test\\AppData\\Local\\NutManager\\AdminRequests\\abc.response.json", WindowsPrivilegeElevationBroker.GetResponsePath("C:\\Users\\test\\AppData\\Local\\NutManager\\AdminRequests\\abc.request.json"));

@@ -290,13 +290,26 @@ internal static class WindowsNutPermissions
             FileSystemSecurity security = IsDirectory(path)
                 ? new DirectoryInfo(path).GetAccessControl()
                 : new FileInfo(path).GetAccessControl();
-            var rules = security.GetAccessRules(true, true, typeof(SecurityIdentifier)).OfType<FileSystemAccessRule>().Where(rule => identities.Contains(rule.IdentityReference.Value)).ToArray();
-            if (rules.Any(rule => rule.AccessControlType == AccessControlType.Deny && (rule.FileSystemRights & ModifyRights) != 0)) return NutPermissionState.ManualInterventionRequired;
-            var allowed = rules.Where(rule => rule.AccessControlType == AccessControlType.Allow).Aggregate((FileSystemRights)0, (value, rule) => value | rule.FileSystemRights);
-            return (allowed & ModifyRights) == ModifyRights ? NutPermissionState.Modifiable : NutPermissionState.Insufficient;
+            var rules = security.GetAccessRules(true, true, typeof(SecurityIdentifier)).OfType<FileSystemAccessRule>()
+                .Select(rule => new WindowsAclRule(
+                    rule.IdentityReference.Value,
+                    rule.AccessControlType == AccessControlType.Allow ? WindowsAclAccessControlType.Allow : WindowsAclAccessControlType.Deny,
+                    ToAclRights(rule.FileSystemRights)));
+            return WindowsAclPermissionEvaluation.Assess(rules, identities);
         }
         catch (UnauthorizedAccessException) { return NutPermissionState.AccessDenied; }
         catch { return NutPermissionState.Unknown; }
+    }
+
+    private static WindowsAclRights ToAclRights(FileSystemRights rights)
+    {
+        var result = WindowsAclRights.None;
+        if ((rights & FileSystemRights.Read) == FileSystemRights.Read) result |= WindowsAclRights.Read;
+        if ((rights & FileSystemRights.Write) == FileSystemRights.Write) result |= WindowsAclRights.Write;
+        if ((rights & FileSystemRights.Delete) == FileSystemRights.Delete) result |= WindowsAclRights.Delete;
+        if ((rights & FileSystemRights.ReadPermissions) == FileSystemRights.ReadPermissions) result |= WindowsAclRights.ReadPermissions;
+        if ((rights & FileSystemRights.Synchronize) == FileSystemRights.Synchronize) result |= WindowsAclRights.Synchronize;
+        return result;
     }
 
     private static bool TryGetAllowedTargets(NutAdministrativeActionRequest request, NutPermissionRepairPlan plan, out IReadOnlyList<string> targets)
