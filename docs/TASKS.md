@@ -24,12 +24,19 @@ Only one task should normally be in progress at a time.
 | T08 | DONE | Persist local settings | Atomic per-user settings storage |
 | T09 | DONE | Add polling and stale-data handling | Robust refresh and reconnect behavior |
 | T10 | DONE | Complete MVP diagnostics | Read-only diagnostics page |
-| T11 | IN PROGRESS | Package and validate MVP | Windows and Linux test packages |
-| T12 | TODO | Design preserved NUT configuration parser | Post-MVP syntax model and tests |
-| T13 | TODO | Add backup and restoration pipeline | Recoverable configuration changes |
-| T14 | TODO | Add Windows administration | Services, permissions, and diagnostics |
-| T15 | TODO | Add Linux administration | systemd/OpenRC and permissions |
-| T16 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
+| T11 | IN PROGRESS | Package and validate MVP | Official Windows x64 package and live Windows NUT validation |
+| T12 | TODO | Detect local NUT installation on Windows | Autodetect installation, executables, version, and configuration directory |
+| T13 | TODO | Design syntax-preserving NUT configuration model | Safe model for managed and unmanaged configuration content |
+| T14 | TODO | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
+| T15 | TODO | Build graphical NUT configuration editor | Windows-first configuration experience |
+| T16 | TODO | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
+| T17 | TODO | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
+| T18 | TODO | Add managed server profiles | Separate local and remote monitoring and management profiles |
+| T19 | TODO | Add remote SSH/SFTP management | Manual remote directory selection and secure management transport |
+| T20 | TODO | Add secure credential storage | Protected remote-management credentials |
+| T21 | TODO | Validate full Windows local and remote administration | End-to-end Windows-first validation |
+| T22 | TODO | Evaluate Linux administrative compatibility | Secondary, best-effort compatibility assessment |
+| T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
 
 ---
 
@@ -149,33 +156,75 @@ Expose read-only endpoint, connection, discovery, polling, version, and applicat
 
 **Status:** IN PROGRESS
 
-Produce and test documented Windows x64 and mainstream Linux x64 packages. Record exact supported environments and known limitations.
+Produce and test the official self-contained Windows x64 package. Windows is the primary development, validation, and distribution platform; Linux has secondary, best-effort shared-code compatibility and no official package. T11 remains in progress until real Windows NUT validation is complete.
 
-## T12 — Design preserved NUT configuration parser
-
-**Status:** TODO
-
-After MVP stabilization, design and test a document model that preserves comments, order, unknown directives, unmanaged sections, and quoting. No real file writes.
-
-## T13 — Add backup and restoration pipeline
+## T12 — Detect local NUT installation on Windows
 
 **Status:** TODO
 
-Implement temporary-directory tests for timestamped backups, atomic writes, comparison, retention, restoration, and rollback behavior.
+Discover a local Windows NUT installation, its executables, version, and configuration directory. Allow a user to correct the path manually. Do not change configuration or services.
 
-## T14 — Add Windows administration
-
-**Status:** TODO
-
-Implement explicitly confirmed Windows service, process, Event Log, UAC, COM-port, and NUT-tool integrations behind platform interfaces.
-
-## T15 — Add Linux administration
+## T13 — Design syntax-preserving NUT configuration model
 
 **Status:** TODO
 
-Implement explicitly confirmed systemd and later OpenRC operations, permissions, `/dev/tty*` discovery, and journald/syslog diagnostics behind platform interfaces.
+Design and test a document model for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf` that preserves comments, order, unknown directives, unmanaged sections, quoting, and relevant formatting. No real file writes.
 
-## T16 — Evaluate upstream NUT improvements
+## T14 — Add configuration backup, write, and rollback pipeline
+
+**Status:** TODO
+
+Implement preview/diff, timestamped backup, temporary-file write, validation, safe replacement, activation testing, and rollback using temporary-directory tests.
+
+## T15 — Build graphical NUT configuration editor
+
+**Status:** TODO
+
+Build a Windows-first editor over the syntax-preserving model and recoverable write pipeline. Every administrative change requires explicit confirmation.
+
+## T16 — Add Windows service, UAC, and ACL administration
+
+**Status:** TODO
+
+Implement explicitly confirmed local Windows service, UAC, ACL, process, and Event Log actions behind platform interfaces.
+
+## T17 — Add Windows COM-port and driver workflows
+
+**Status:** TODO
+
+Implement explicitly confirmed local COM-port, driver, and NUT-tool diagnostics behind platform interfaces.
+
+## T18 — Add managed server profiles
+
+**Status:** TODO
+
+Add separate local and remote monitoring and management profiles. Local profiles use installation autodetection; remote profiles use manual directory selection.
+
+## T19 — Add remote SSH/SFTP management
+
+**Status:** TODO
+
+Add secure remote management transport. The user selects and NutManager validates the remote configuration directory; remote autodiscovery is not permitted.
+
+## T20 — Add secure credential storage
+
+**Status:** TODO
+
+Store remote-management credentials using platform-appropriate protected storage without exposing secrets in logs or the interface.
+
+## T21 — Validate full Windows local and remote administration
+
+**Status:** TODO
+
+Validate Windows-first local and remote administration, including recovery paths, without unsafe UPS operations.
+
+## T22 — Evaluate Linux administrative compatibility
+
+**Status:** TODO
+
+Evaluate secondary, best-effort Linux administrative compatibility without creating an official package commitment.
+
+## T23 — Evaluate upstream NUT improvements
 
 **Status:** TODO
 

@@ -2,21 +2,21 @@
 
 ## 1. Product vision
 
-NutManager is a modern desktop interface for Network UPS Tools (NUT). It should make UPS monitoring, diagnosis, and later administration understandable without hiding the underlying NUT concepts.
+NutManager is a Windows-first desktop interface for Network UPS Tools (NUT). Its final direction is to make NUT monitoring, configuration, and administration understandable for both local and remote NUT deployments without hiding the underlying NUT concepts.
 
-The application must use standard NUT protocols, commands, and configuration formats wherever possible. NutManager is a client and management layer; it is not a replacement UPS driver.
+The initial monitoring milestone is deliberately non-administrative and read-only. The final product direction adds safe configuration and administration rather than remaining a read-only product. NutManager uses standard NUT protocols, commands, and configuration formats wherever possible; it is a client and management layer, not a replacement UPS driver.
 
 ## 2. Intended users
 
-- system administrators running NUT on Windows or Linux;
+- system administrators running or managing NUT from Windows;
 - small organizations that need a practical UPS monitoring console;
 - advanced home-lab users;
-- NUT contributors diagnosing real device and platform behavior.
+- NUT contributors diagnosing real device and platform behavior, including users relying on secondary Linux compatibility.
 
 ## 3. Product principles
 
 1. Safety before automation.
-2. Read-only behavior before administrative behavior.
+2. Read-only monitoring before configuration and administrative behavior.
 3. Missing information is shown as unavailable, never fabricated.
 4. Platform-specific operations are explicit and isolated.
 5. Standard NUT compatibility is preferred over project-specific modifications.
@@ -25,7 +25,7 @@ The application must use standard NUT protocols, commands, and configuration for
 
 ## 4. MVP scope
 
-The MVP is a non-administrative, read-only desktop application.
+The initial monitoring milestone is a non-administrative, read-only desktop application. It does not limit the final product direction to read-only behavior.
 
 ### 4.1 Functional requirements
 
@@ -159,11 +159,11 @@ Configures endpoint, preferred UPS, polling interval, timeout, theme, and mock m
 
 ## 5. Non-functional requirements
 
-### NFR-001 — Cross-platform
+### NFR-001 — Windows-first platform strategy
 
-The shared application shall target Windows and mainstream desktop Linux distributions supported by the selected Avalonia and .NET versions.
+Windows x64 is the primary platform for development, manual testing, official distribution, and the first administrative capabilities. Linux has secondary, best-effort compatibility: shared code should remain portable where practical, but Linux has no official package or immediate administrative-feature commitment.
 
-Alpine Linux desktop support is not an MVP requirement.
+The shared architecture must avoid unnecessary Windows dependencies. Alpine Linux desktop is not validated or supported for the MVP.
 
 ### NFR-002 — Performance
 
@@ -193,39 +193,52 @@ Controls must be keyboard accessible, readable at common DPI scales, and not com
 
 Errors shall include an actionable summary and technical detail suitable for logs. Logs must remain bounded and exclude secrets.
 
-## 6. Planned post-MVP capabilities
+## 6. Product direction after the initial monitoring milestone
+
+The final product shall support monitoring, configuration, and administration of NUT servers. Monitoring and management are separate connections with independent state:
+
+- monitoring uses the NUT protocol over TCP, with port `3493` as the default;
+- management uses local filesystem and platform APIs for a local server, or a secure remote transport for a remote server.
+
+### Local management
+
+Windows local management is the priority. NutManager will automatically discover a local NUT installation, including its executables, version, and configuration directory. The user may correct the discovered path manually.
+
+### Remote management
+
+NutManager must not automatically discover a remote configuration directory. The user will enter or navigate to the remote directory, and NutManager will validate the selected directory. The first planned remote management transport is SSH/SFTP.
+
+## 7. Planned post-MVP capabilities
 
 These capabilities are intentionally deferred:
 
-1. multiple simultaneous NUT servers;
-2. historical charts and event retention;
-3. authenticated read/write operations;
-4. preserved-format editing of NUT configuration files;
-5. automatic timestamped backups and restoration;
-6. driver test workflows;
-7. Windows service control;
-8. systemd and OpenRC service control;
-9. serial-port discovery and direct driver diagnostics;
-10. installation and update workflows;
-11. remote administrative agent;
-12. notifications and shutdown-policy management.
+1. managed local and remote NUT server profiles;
+2. syntax-preserving editing of `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`;
+3. timestamped backups, validation, activation testing, and rollback;
+4. Windows service, UAC, ACL, COM-port, and driver workflows;
+5. SSH/SFTP remote management and secure credential storage;
+6. multiple simultaneous NUT servers;
+7. historical charts, notifications, and shutdown-policy management;
+8. evaluation of Linux administrative compatibility;
+9. installation and update workflows.
 
 Every administrative capability must require explicit confirmation and a rollback path.
 
-## 7. Configuration editing requirements for later phases
+## 8. Configuration editing requirements for later phases
 
-When implemented, configuration management must:
+Configuration management must use a syntax-preserving document model rather than a generic INI serializer. It must preserve comments, ordering, unknown directives, unmanaged sections, quoting, and relevant formatting.
 
-- parse NUT syntax without treating every file as a generic INI document;
-- preserve comments and unknown directives;
-- create a backup before writing;
-- validate generated configuration;
-- write to a temporary file and replace atomically;
-- restore the previous configuration if activation fails;
-- separate ordinary user operations from elevated operations;
-- never reveal stored credentials after saving.
+The required write pipeline is:
 
-## 8. Upstream strategy
+```text
+read → parse while preserving syntax → requested change → preview/diff → backup
+→ temporary file → validation → safe replacement → activation when necessary
+→ test → rollback on failure
+```
+
+The design must separate ordinary user operations from elevated operations and never reveal stored credentials after saving.
+
+## 9. Upstream strategy
 
 NutManager should first identify and document limitations through real usage. Improvements to NUT shall be proposed only when the limitation belongs in NUT rather than in the client application.
 
@@ -238,7 +251,7 @@ Upstream work shall use:
 
 The upstream repository shall not be embedded in the normal NutManager workspace.
 
-## 9. MVP acceptance criteria
+## 10. MVP acceptance criteria
 
 The MVP is complete when:
 
