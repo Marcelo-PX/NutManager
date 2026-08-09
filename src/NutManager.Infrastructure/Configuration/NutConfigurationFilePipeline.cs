@@ -4,7 +4,7 @@ using NutManager.Core.Configuration;
 
 namespace NutManager.Infrastructure.Configuration;
 
-public sealed class NutConfigurationFilePipeline
+public sealed class NutConfigurationFilePipeline : INutConfigurationFilePipeline
 {
     private const string RedactedText = "<redacted>";
 

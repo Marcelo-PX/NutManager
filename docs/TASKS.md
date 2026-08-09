@@ -28,8 +28,8 @@ Only one task should normally be in progress at a time.
 | T12 | DONE | Detect local NUT installation on Windows | Autodetect installation, executables, version, and configuration directory |
 | T13 | DONE | Design syntax-preserving NUT configuration model | Safe model for managed and unmanaged configuration content |
 | T14 | DONE | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
-| T15 | READY | Build graphical NUT configuration editor | Windows-first configuration experience |
-| T16 | TODO | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
+| T15 | DONE | Build graphical NUT configuration editor | Windows-first configuration experience |
+| T16 | READY | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
 | T17 | TODO | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
 | T18 | TODO | Add managed server profiles | Separate local and remote monitoring and management profiles |
 | T19 | TODO | Add remote SSH/SFTP management | Manual remote directory selection and secure management transport |
@@ -178,13 +178,13 @@ Implement preview/diff, timestamped backup, temporary-file write, validation, sa
 
 ## T15 — Build graphical NUT configuration editor
 
-**Status:** READY
+**Status:** DONE
 
 Build a Windows-first editor over the syntax-preserving model and recoverable write pipeline. Every administrative change requires explicit confirmation.
 
 ## T16 — Add Windows service, UAC, and ACL administration
 
-**Status:** TODO
+**Status:** READY
 
 Implement explicitly confirmed local Windows service, UAC, ACL, process, and Event Log actions behind platform interfaces.
 

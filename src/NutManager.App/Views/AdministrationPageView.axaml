@@ -1,0 +1,189 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             x:Class="NutManager.App.Views.AdministrationPageView"
+             x:DataType="viewModels:AdministrationPageViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="18">
+      <StackPanel Spacing="5">
+        <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Description}" MaxWidth="900" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding EditingScopeText}"
+                   MaxWidth="900"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+      </StackPanel>
+
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1"
+              CornerRadius="8">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Instalação local do NUT" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding InstallationStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+            <TextBlock Text="Diretório da instalação" Grid.Row="0" />
+            <TextBlock Text="{Binding InstallationDirectoryText}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Diretório de configuração" Grid.Row="1" />
+            <TextBlock Text="{Binding ConfigurationDirectoryText}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Versão" Grid.Row="2" />
+            <TextBlock Text="{Binding InstallationVersionText}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Detectar novamente" Command="{Binding DetectInstallationCommand}" IsEnabled="{Binding CanDetectInstallation}" />
+            <Button Content="Selecionar pasta..." Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanDetectInstallation}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Grid ColumnDefinitions="260,16,*" RowDefinitions="Auto">
+        <Border Grid.Column="0"
+                Padding="14"
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Arquivos de configuração" FontSize="20" FontWeight="SemiBold" />
+            <ListBox ItemsSource="{Binding ConfigurationFiles}"
+                     SelectedItem="{Binding SelectedFile, Mode=OneWay}"
+                     SelectionChanged="ConfigurationFileList_OnSelectionChanged">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:NutConfigurationFileItemViewModel">
+                  <StackPanel Margin="4" Spacing="2">
+                    <TextBlock Text="{Binding Category}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding FileName}" FontSize="12" Opacity="0.78" />
+                    <TextBlock Text="{Binding StatusText}" FontSize="12" TextWrapping="Wrap" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="2"
+                Padding="18"
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Nenhum arquivo carregado." IsVisible="{Binding HasNoLoadedFile}" />
+            <StackPanel Spacing="12" IsVisible="{Binding HasLoadedFile}">
+              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+                <TextBlock Text="Arquivo" Grid.Row="0" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding SelectedFileName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+                <TextBlock Text="Estado" Grid.Row="1" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding SelectedFileStatusText}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+                <TextBlock Text="Codificação" Grid.Row="2" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding SelectedFileEncodingText}" Grid.Row="2" Grid.Column="1" />
+              </Grid>
+
+              <ItemsControl ItemsSource="{Binding Sections}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="viewModels:NutConfigurationSectionViewModel">
+                    <Expander Header="{Binding Name}" IsExpanded="True" Margin="0,4">
+                      <StackPanel Spacing="9" Margin="0,8,0,0">
+                        <ItemsControl ItemsSource="{Binding Entries}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="viewModels:NutConfigurationEntryViewModel">
+                              <Border Padding="10"
+                                      Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                                      CornerRadius="6">
+                                <StackPanel Spacing="6">
+                                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                      <TextBlock Text="{Binding EntryTypeText}" FontSize="12" Opacity="0.75" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" FontSize="12" Opacity="0.75">
+                                      <Run Text="Linha " />
+                                      <Run Text="{Binding LineNumber}" />
+                                    </TextBlock>
+                                  </Grid>
+                                  <TextBlock Text="{Binding SensitiveHint}"
+                                             IsVisible="{Binding IsSensitive}"
+                                             TextWrapping="Wrap" />
+                                  <TextBlock Text="{Binding InputLabel}" FontWeight="SemiBold" />
+                                  <TextBox Text="{Binding DraftValue, Mode=TwoWay}"
+                                           IsVisible="{Binding IsNotSensitive}"
+                                           TextWrapping="Wrap" />
+                                  <TextBox Text="{Binding DraftValue, Mode=TwoWay}"
+                                           PasswordChar="●"
+                                           IsVisible="{Binding IsSensitive}"
+                                           TextWrapping="Wrap" />
+                                </StackPanel>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding RawContentSummary}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                   TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Expander>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Descartar alterações" Command="{Binding DiscardCommand}" IsEnabled="{Binding CanDiscard}" />
+                <Button Content="Recarregar arquivo" Command="{Binding ReloadCommand}" IsEnabled="{Binding CanReload}" />
+                <Button Content="Revisar alterações" Command="{Binding ReviewCommand}" IsEnabled="{Binding CanReview}" />
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              IsVisible="{Binding HasPreview}">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Revisão das alterações" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="O preview é gerado pelo pipeline seguro. Linhas sensíveis permanecem redigidas." TextWrapping="Wrap" />
+          <ItemsControl ItemsSource="{Binding PreviewLines}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="viewModels:NutConfigurationPreviewLineViewModel">
+                <Grid ColumnDefinitions="Auto,16,*,16,*" Margin="0,3">
+                  <TextBlock Text="{Binding LineNumber}" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="2" Text="{Binding OriginalText}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="3" Text="→" HorizontalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="{Binding CandidateText}" TextWrapping="Wrap" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <CheckBox Content="Confirmo que revisei as alterações e desejo aplicá-las."
+                    IsChecked="{Binding IsPreviewConfirmed, Mode=TwoWay}" />
+          <Button Content="Aplicar alterações" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" HorizontalAlignment="Left" />
+          <TextBlock Text="Um backup será criado antes da substituição. Alguns ajustes do NUT podem exigir recarregamento ou reinicialização de serviços."
+                     MaxWidth="900"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              IsVisible="{Binding HasStatusMessage}">
+        <StackPanel Spacing="7">
+          <TextBlock Text="Resultado" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding StatusMessage}" MaxWidth="900" TextWrapping="Wrap" />
+          <TextBlock Text="Backup:" IsVisible="{Binding HasBackupPath}" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding BackupPath}" IsVisible="{Binding HasBackupPath}" MaxWidth="900" TextWrapping="Wrap" />
+          <TextBlock Text="Recuperação:" IsVisible="{Binding HasRecoveryPath}" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding RecoveryPath}" IsVisible="{Binding HasRecoveryPath}" MaxWidth="900" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
