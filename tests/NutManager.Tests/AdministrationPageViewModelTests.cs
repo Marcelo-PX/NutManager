@@ -137,6 +137,7 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal(1, pipeline.ApplyCalls);
         Assert.Same(pipeline.LastPreparedChange, pipeline.LastAppliedChange);
         Assert.Equal("Configuração aplicada com sucesso.", viewModel.StatusMessage);
+        Assert.False(viewModel.IsCriticalResult);
         Assert.Equal("/session/backup.bak", viewModel.BackupPath);
         Assert.False(viewModel.HasPreview);
         Assert.False(viewModel.HasDraftChanges);
@@ -236,6 +237,7 @@ public sealed class AdministrationPageViewModelTests
         await viewModel.ReviewChangesAsync();
 
         Assert.Equal("O arquivo foi alterado externamente desde que foi carregado.", viewModel.StatusMessage);
+        Assert.False(viewModel.IsCriticalResult);
         Assert.True(viewModel.HasDraftChanges);
         Assert.False(viewModel.HasPreview);
         Assert.Equal(0, pipeline.ApplyCalls);
@@ -286,9 +288,145 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal("standalone", GetEntry(viewModel, "MODE").DraftValue);
     }
 
+    [Fact]
+    public async Task InstallationChangeIsBlockedWhileDraftChangesKeepTheLoadedContext()
+    {
+        var installationA = CreateInstallation("/context-a/nut", "/context-a/nut/etc", "nut.conf");
+        var installationB = CreateInstallation("/context-b/nut", "/context-b/nut/etc", "nut.conf");
+        var detector = new TestInstallationDetector(installationA) { InspectionResult = installationB };
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/context-a/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        var viewModel = new AdministrationPageViewModel(detector, pipeline);
+        await viewModel.InitializeAsync();
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
+        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+
+        await viewModel.InspectInstallationDirectoryAsync("/context-b/nut");
+
+        Assert.Equal(0, detector.InspectCalls);
+        Assert.Equal("Descarte ou aplique as alterações antes de trocar a instalação.", viewModel.StatusMessage);
+        Assert.Equal("/context-a/nut/etc", viewModel.ConfigurationDirectoryText);
+        Assert.Equal("/context-a/nut/etc/nut.conf", viewModel.SelectedFile!.FullPath);
+        Assert.Equal("netserver", GetEntry(viewModel, "MODE").DraftValue);
+        Assert.True(viewModel.HasLoadedFile);
+    }
+
+    [Fact]
+    public async Task InstallationChangeIsBlockedWhilePreviewKeepsTheCurrentContext()
+    {
+        var installationA = CreateInstallation("/context-a/nut", "/context-a/nut/etc", "nut.conf");
+        var installationB = CreateInstallation("/context-b/nut", "/context-b/nut/etc", "nut.conf");
+        var detector = new TestInstallationDetector(installationA);
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/context-a/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        var viewModel = new AdministrationPageViewModel(detector, pipeline);
+        await viewModel.InitializeAsync();
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
+        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        await viewModel.ReviewChangesAsync();
+        detector.DetectResult = installationB;
+        var detectCallsBeforeRefresh = detector.DetectCalls;
+
+        await viewModel.RefreshInstallationAsync();
+
+        Assert.Equal(detectCallsBeforeRefresh, detector.DetectCalls);
+        Assert.True(viewModel.HasPreview);
+        Assert.Equal("Descarte ou aplique as alterações antes de trocar a instalação.", viewModel.StatusMessage);
+        Assert.Equal("/context-a/nut/etc", viewModel.ConfigurationDirectoryText);
+        Assert.Equal("/context-a/nut/etc/nut.conf", viewModel.SelectedFile!.FullPath);
+    }
+
+    [Fact]
+    public async Task AcceptedInstallationChangeClearsTheLoadedDocumentAndRequiresExplicitNewSelection()
+    {
+        var installationA = CreateInstallation("/context-a/nut", "/context-a/nut/etc", "nut.conf");
+        var installationB = CreateInstallation("/context-b/nut", "/context-b/nut/etc", "nut.conf");
+        var detector = new TestInstallationDetector(installationA) { InspectionResult = installationB };
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/context-a/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        pipeline.SetFile("/context-b/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=netserver\n");
+        var viewModel = new AdministrationPageViewModel(detector, pipeline);
+        await viewModel.InitializeAsync();
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
+        var loadCallsBeforeChange = pipeline.LoadCalls;
+
+        await viewModel.InspectInstallationDirectoryAsync("/context-b/nut");
+        await viewModel.ReviewChangesAsync();
+        await viewModel.ApplyChangesAsync();
+
+        Assert.Equal(1, detector.InspectCalls);
+        Assert.False(viewModel.HasLoadedFile);
+        Assert.Null(viewModel.SelectedFile);
+        Assert.Empty(viewModel.Sections);
+        Assert.False(viewModel.HasPreview);
+        Assert.False(viewModel.IsPreviewConfirmed);
+        Assert.Equal("/context-b/nut/etc", viewModel.ConfigurationDirectoryText);
+        Assert.All(viewModel.ConfigurationFiles, file => Assert.StartsWith("/context-b/nut/etc/", file.FullPath));
+        Assert.Equal(loadCallsBeforeChange, pipeline.LoadCalls);
+        Assert.Equal(0, pipeline.ApplyCalls);
+    }
+
+    [Fact]
+    public async Task ConcurrentFileSelectionIsRejectedWhileTheCurrentLoadIsInProgress()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        pipeline.SetFile("/session/nut/etc/upsd.conf", NutConfigurationFileKind.UpsdConf, "LISTEN 127.0.0.1\n");
+        var viewModel = await CreateInitializedViewModelAsync(pipeline, "nut.conf", "upsd.conf");
+        var completion = new TaskCompletionSource<NutConfigurationLoadResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        pipeline.NextLoadCompletion = completion;
+        pipeline.LoadStarted = started;
+        var nutConf = viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf");
+        var upsdConf = viewModel.ConfigurationFiles.Single(file => file.FileName == "upsd.conf");
+
+        var firstSelection = viewModel.SelectFileAsync(nutConf);
+        await started.Task;
+        await viewModel.SelectFileAsync(upsdConf);
+
+        Assert.True(viewModel.IsBusy);
+        Assert.False(viewModel.CanSelectConfigurationFile);
+        Assert.Equal(1, pipeline.LoadCalls);
+        Assert.Same(nutConf, viewModel.SelectedFile);
+        completion.SetResult(pipeline.CreateSuccessLoadResult("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n"));
+        await firstSelection;
+
+        Assert.Equal(1, pipeline.LoadCalls);
+        Assert.Equal("nut.conf", viewModel.SelectedFile!.FileName);
+        Assert.True(viewModel.HasLoadedFile);
+    }
+
+    [Fact]
+    public async Task StaleLoadResultCannotReplaceTheCurrentSelectedFileContext()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        pipeline.SetFile("/session/nut/etc/upsd.conf", NutConfigurationFileKind.UpsdConf, "LISTEN 127.0.0.1\n");
+        var viewModel = await CreateInitializedViewModelAsync(pipeline, "nut.conf", "upsd.conf");
+        var completion = new TaskCompletionSource<NutConfigurationLoadResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        pipeline.NextLoadCompletion = completion;
+        pipeline.LoadStarted = started;
+        var nutConf = viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf");
+        var upsdConf = viewModel.ConfigurationFiles.Single(file => file.FileName == "upsd.conf");
+
+        var selection = viewModel.SelectFileAsync(nutConf);
+        await started.Task;
+        viewModel.SelectedFile = upsdConf;
+        completion.SetResult(pipeline.CreateSuccessLoadResult("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n"));
+        await selection;
+
+        Assert.Same(upsdConf, viewModel.SelectedFile);
+        Assert.False(viewModel.HasLoadedFile);
+        Assert.Empty(viewModel.Sections);
+    }
+
     [Theory]
     [InlineData(NutConfigurationApplyStatus.PostApplyValidationFailedRolledBack, false, "A validação falhou e a configuração original foi restaurada.")]
     [InlineData(NutConfigurationApplyStatus.PostApplyValidationFailedRollbackFailed, true, "A validação falhou e a configuração pode necessitar recuperação manual.")]
+    [InlineData(NutConfigurationApplyStatus.ChangedExternallyRollbackFailed, true, "O arquivo foi alterado externamente e a recuperação exige atenção manual.")]
+    [InlineData(NutConfigurationApplyStatus.VerificationFailedRollbackFailed, true, "A verificação falhou e a configuração pode necessitar recuperação manual.")]
+    [InlineData(NutConfigurationApplyStatus.Failed, true, "Não foi possível aplicar a configuração.")]
     [InlineData(NutConfigurationApplyStatus.Cancelled, false, "A aplicação das alterações foi cancelada.")]
     public async Task ApplyStatusesAreMappedWithoutRetry(
         NutConfigurationApplyStatus status,
@@ -310,6 +448,7 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal(1, pipeline.ApplyCalls);
         Assert.Equal(expectedMessage, viewModel.StatusMessage);
         Assert.Equal(critical, viewModel.IsCriticalResult);
+        Assert.Equal("CRÍTICO — a configuração pode necessitar recuperação manual.", viewModel.CriticalResultText);
         Assert.Equal("/session/backup.bak", viewModel.BackupPath);
         Assert.Equal("/session/recovery.bak", viewModel.RecoveryPath);
         Assert.False(viewModel.HasPreview);
@@ -428,21 +567,32 @@ public sealed class AdministrationPageViewModelTests
 
     private sealed class TestInstallationDetector : ILocalNutInstallationDetector
     {
-        private readonly NutInstallationInfo _installation;
-
         public TestInstallationDetector(NutInstallationInfo installation)
         {
-            _installation = installation;
+            DetectResult = installation;
         }
 
         public string? LastManualDirectory { get; private set; }
 
-        public Task<NutInstallationInfo> DetectAsync(CancellationToken cancellationToken) => Task.FromResult(_installation);
+        public NutInstallationInfo DetectResult { get; set; }
+
+        public NutInstallationInfo? InspectionResult { get; set; }
+
+        public int DetectCalls { get; private set; }
+
+        public int InspectCalls { get; private set; }
+
+        public Task<NutInstallationInfo> DetectAsync(CancellationToken cancellationToken)
+        {
+            DetectCalls++;
+            return Task.FromResult(DetectResult);
+        }
 
         public Task<NutInstallationInfo> InspectDirectoryAsync(string installationOrConfigurationDirectory, CancellationToken cancellationToken)
         {
+            InspectCalls++;
             LastManualDirectory = installationOrConfigurationDirectory;
-            return Task.FromResult(_installation with
+            return Task.FromResult(InspectionResult ?? DetectResult with
             {
                 InstallationDirectory = installationOrConfigurationDirectory,
                 ConfigurationDirectory = installationOrConfigurationDirectory
@@ -461,6 +611,12 @@ public sealed class AdministrationPageViewModelTests
 
         public int PrepareCalls { get; private set; }
 
+        public string? LastLoadPath { get; private set; }
+
+        public TaskCompletionSource<bool>? LoadStarted { get; set; }
+
+        public TaskCompletionSource<NutConfigurationLoadResult>? NextLoadCompletion { get; set; }
+
         public NutConfigurationLoadStatus? ForcedLoadStatus { get; set; }
 
         public NutConfigurationApplyResult? NextApplyResult { get; set; }
@@ -476,6 +632,13 @@ public sealed class AdministrationPageViewModelTests
         public Task<NutConfigurationLoadResult> LoadAsync(string targetPath, NutConfigurationFileKind fileKind, CancellationToken cancellationToken = default)
         {
             LoadCalls++;
+            LastLoadPath = targetPath;
+            LoadStarted?.TrySetResult(true);
+            if (NextLoadCompletion is { } completion)
+            {
+                return completion.Task;
+            }
+
             if (ForcedLoadStatus is { } status)
             {
                 return Task.FromResult(new NutConfigurationLoadResult(status));
@@ -486,10 +649,15 @@ public sealed class AdministrationPageViewModelTests
                 return Task.FromResult(new NutConfigurationLoadResult(NutConfigurationLoadStatus.TargetNotFound));
             }
 
-            var bytes = Encoding.UTF8.GetBytes(file.Text);
-            var document = _parser.Parse(fileKind, file.Text);
+            return Task.FromResult(CreateSuccessLoadResult(targetPath, fileKind, file.Text));
+        }
+
+        public NutConfigurationLoadResult CreateSuccessLoadResult(string targetPath, NutConfigurationFileKind fileKind, string text)
+        {
+            var bytes = Encoding.UTF8.GetBytes(text);
+            var document = _parser.Parse(fileKind, text);
             LastLoadedDocument = document;
-            return Task.FromResult(new NutConfigurationLoadResult(
+            return new NutConfigurationLoadResult(
                 NutConfigurationLoadStatus.Success,
                 new NutConfigurationFileSnapshot(
                     targetPath,
@@ -497,7 +665,7 @@ public sealed class AdministrationPageViewModelTests
                     document,
                     NutConfigurationTextEncoding.Utf8,
                     Convert.ToHexString(SHA256.HashData(bytes)),
-                    bytes.LongLength)));
+                    bytes.LongLength));
         }
 
         public NutConfigurationPreparedChange Prepare(NutConfigurationFileSnapshot snapshot)

@@ -18,6 +18,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private IReadOnlyList<NutConfigurationEntryViewModel> _entries = Array.Empty<NutConfigurationEntryViewModel>();
     private int _draftVersion;
     private int _preparedDraftVersion = -1;
+    private int _installationContextVersion;
 
     public AdministrationPageViewModel()
         : this(null, null)
@@ -110,13 +111,25 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanReload => SelectedFile is not null && !HasDraftChanges && !IsBusy;
 
-    public bool CanDetectInstallation => !IsDetectingInstallation;
+    public bool CanChangeInstallation => !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
+
+    public bool CanDetectInstallation => CanChangeInstallation;
+
+    public bool CanSelectConfigurationFile => !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
+
+    public string CriticalResultText => "CRÍTICO — a configuração pode necessitar recuperação manual.";
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default) =>
         await RefreshInstallationAsync(cancellationToken);
 
     public async Task RefreshInstallationAsync(CancellationToken cancellationToken = default)
     {
+        if (!CanChangeInstallation)
+        {
+            SetInstallationChangeBlockedStatus();
+            return;
+        }
+
         if (_installationDetector is null)
         {
             ApplyInstallation(NutInstallationInfo.NotDetected());
@@ -148,6 +161,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public async Task InspectInstallationDirectoryAsync(string directory, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        if (!CanChangeInstallation)
+        {
+            SetInstallationChangeBlockedStatus();
+            return;
+        }
+
         if (_installationDetector is null)
         {
             SetStatus("A detecção local não está disponível.");
@@ -188,6 +207,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
+        if (IsBusy || IsDetectingInstallation)
+        {
+            SetStatus("Aguarde a operação atual antes de trocar de arquivo.");
+            OnPropertyChanged(nameof(SelectedFile));
+            return;
+        }
+
         if (!file.CanLoad)
         {
             SetStatus(file.State switch
@@ -200,7 +226,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
 
         SelectedFile = file;
-        await LoadSelectedFileAsync(cancellationToken);
+        await LoadSelectedFileAsync(file, file.FullPath!, file.FileKind, _installationContextVersion, cancellationToken);
     }
 
     public async Task ReviewChangesAsync(CancellationToken cancellationToken = default)
@@ -357,6 +383,22 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
+        await LoadSelectedFileAsync(file, path, file.FileKind, _installationContextVersion, cancellationToken, preserveStatus);
+    }
+
+    private async Task LoadSelectedFileAsync(
+        NutConfigurationFileItemViewModel expectedFile,
+        string expectedPath,
+        NutConfigurationFileKind expectedFileKind,
+        int expectedInstallationContextVersion,
+        CancellationToken cancellationToken,
+        bool preserveStatus = false)
+    {
+        if (_configurationPipeline is null)
+        {
+            return;
+        }
+
         IsBusy = true;
         if (!preserveStatus)
         {
@@ -367,7 +409,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
         try
         {
-            var result = await _configurationPipeline.LoadAsync(path, file.FileKind, cancellationToken);
+            var result = await _configurationPipeline.LoadAsync(expectedPath, expectedFileKind, cancellationToken);
+            if (!IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
+            {
+                return;
+            }
+
             if (result.Status != NutConfigurationLoadStatus.Success || result.Snapshot is null)
             {
                 ClearLoadedDocument();
@@ -376,7 +423,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             }
 
             _loadedSnapshot = result.Snapshot;
-            file.SetLoaded();
+            expectedFile.SetLoaded();
             BuildEntries(result.Snapshot.Document);
             InvalidatePreview();
             OnPropertyChanged(nameof(SelectedFileEncodingText));
@@ -386,12 +433,18 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            SetStatus("O carregamento do arquivo foi cancelado.");
+            if (IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
+            {
+                SetStatus("O carregamento do arquivo foi cancelado.");
+            }
         }
         catch (Exception)
         {
-            ClearLoadedDocument();
-            SetStatus("Não foi possível carregar o arquivo de configuração.");
+            if (IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
+            {
+                ClearLoadedDocument();
+                SetStatus("Não foi possível carregar o arquivo de configuração.");
+            }
         }
         finally
         {
@@ -401,6 +454,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     private void ApplyInstallation(NutInstallationInfo installation)
     {
+        _installationContextVersion++;
+        ClearLoadedDocument(clearSelectedFile: true);
         InstallationStatusText = installation.IsDetected
             ? "Instalação NUT encontrada"
             : "Nenhuma instalação NUT local encontrada";
@@ -477,6 +532,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     }
 
     private void ClearLoadedDocument()
+        => ClearLoadedDocument(clearSelectedFile: false);
+
+    private void ClearLoadedDocument(bool clearSelectedFile)
     {
         foreach (var entry in _entries)
         {
@@ -487,10 +545,32 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _entries = Array.Empty<NutConfigurationEntryViewModel>();
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         InvalidatePreview();
+        if (clearSelectedFile)
+        {
+            SelectedFile = null;
+        }
+
         OnPropertyChanged(nameof(SelectedFileEncodingText));
         OnPropertyChanged(nameof(HasLoadedFile));
         OnPropertyChanged(nameof(HasNoLoadedFile));
         NotifyWorkflowPropertiesChanged();
+    }
+
+    private bool IsCurrentLoadTarget(
+        NutConfigurationFileItemViewModel expectedFile,
+        string expectedPath,
+        NutConfigurationFileKind expectedFileKind,
+        int expectedInstallationContextVersion) =>
+        expectedInstallationContextVersion == _installationContextVersion &&
+        ReferenceEquals(SelectedFile, expectedFile) &&
+        expectedFile.FileKind == expectedFileKind &&
+        string.Equals(expectedFile.FullPath, expectedPath, StringComparison.Ordinal);
+
+    private void SetInstallationChangeBlockedStatus()
+    {
+        SetStatus(HasDraftChanges || HasPreview
+            ? "Descarte ou aplique as alterações antes de trocar a instalação."
+            : "Aguarde a operação atual antes de trocar a instalação.");
     }
 
     private void OnEntryPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -605,6 +685,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(CanDiscard));
         OnPropertyChanged(nameof(CanReload));
+        OnPropertyChanged(nameof(CanChangeInstallation));
+        OnPropertyChanged(nameof(CanDetectInstallation));
+        OnPropertyChanged(nameof(CanSelectConfigurationFile));
     }
 
     private static IReadOnlyList<NutConfigurationFileItemViewModel> CreateFileItems() =>
@@ -634,7 +717,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     partial void OnIsBusyChanged(bool value) => NotifyWorkflowPropertiesChanged();
 
-    partial void OnIsDetectingInstallationChanged(bool value) => OnPropertyChanged(nameof(CanDetectInstallation));
+    partial void OnIsDetectingInstallationChanged(bool value) => NotifyWorkflowPropertiesChanged();
 
     partial void OnIsPreviewConfirmedChanged(bool value) => OnPropertyChanged(nameof(CanApply));
 

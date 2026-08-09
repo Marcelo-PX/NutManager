@@ -31,8 +31,8 @@
             <TextBlock Text="{Binding InstallationVersionText}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
           </Grid>
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Detectar novamente" Command="{Binding DetectInstallationCommand}" IsEnabled="{Binding CanDetectInstallation}" />
-            <Button Content="Selecionar pasta..." Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanDetectInstallation}" />
+            <Button Content="Detectar novamente" Command="{Binding DetectInstallationCommand}" IsEnabled="{Binding CanChangeInstallation}" />
+            <Button Content="Selecionar pasta..." Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanChangeInstallation}" />
           </StackPanel>
         </StackPanel>
       </Border>
@@ -47,6 +47,7 @@
           <StackPanel Spacing="10">
             <TextBlock Text="Arquivos de configuração" FontSize="20" FontWeight="SemiBold" />
             <ListBox ItemsSource="{Binding ConfigurationFiles}"
+                     IsEnabled="{Binding CanSelectConfigurationFile}"
                      SelectedItem="{Binding SelectedFile, Mode=OneWay}"
                      SelectionChanged="ConfigurationFileList_OnSelectionChanged">
               <ListBox.ItemTemplate>
@@ -177,6 +178,11 @@
               IsVisible="{Binding HasStatusMessage}">
         <StackPanel Spacing="7">
           <TextBlock Text="Resultado" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding CriticalResultText}"
+                     IsVisible="{Binding IsCriticalResult}"
+                     FontWeight="SemiBold"
+                     MaxWidth="900"
+                     TextWrapping="Wrap" />
           <TextBlock Text="{Binding StatusMessage}" MaxWidth="900" TextWrapping="Wrap" />
           <TextBlock Text="Backup:" IsVisible="{Binding HasBackupPath}" FontWeight="SemiBold" />
           <TextBlock Text="{Binding BackupPath}" IsVisible="{Binding HasBackupPath}" MaxWidth="900" TextWrapping="Wrap" />
