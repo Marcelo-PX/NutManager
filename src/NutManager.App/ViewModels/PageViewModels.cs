@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Threading;
 using NutManager.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 using NutManager.Core.Status;
@@ -228,7 +229,7 @@ public sealed partial class OverviewPageViewModel : PageViewModel
             });
 }
 
-public sealed class DiagnosticsPageViewModel : PageViewModel, IDisposable
+public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposable
 {
     private const string UnavailableText = "Indisponível";
     private const string NoSelectionText = "Nenhum UPS selecionado";
@@ -236,7 +237,9 @@ public sealed class DiagnosticsPageViewModel : PageViewModel, IDisposable
     private readonly ApplicationRuntimeInfo _runtimeInfo;
     private readonly IUpsPollingCoordinator? _polling;
     private readonly DevicesPageViewModel? _devices;
+    private readonly ILocalNutInstallationDetector? _installationDetector;
     private PollingState _pollingState;
+    private NutInstallationInfo _localInstallation = NutInstallationInfo.NotDetected();
 
     public DiagnosticsPageViewModel()
         : this(new ApplicationSettings(), new ApplicationRuntimeInfo(UnavailableText, UnavailableText, UnavailableText, UnavailableText))
@@ -247,7 +250,8 @@ public sealed class DiagnosticsPageViewModel : PageViewModel, IDisposable
         ApplicationSettings settings,
         ApplicationRuntimeInfo runtimeInfo,
         IUpsPollingCoordinator? polling = null,
-        DevicesPageViewModel? devices = null)
+        DevicesPageViewModel? devices = null,
+        ILocalNutInstallationDetector? installationDetector = null)
         : base("Diagnóstico", "Informações somente leitura para verificar o estado atual do NutManager.")
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -257,6 +261,7 @@ public sealed class DiagnosticsPageViewModel : PageViewModel, IDisposable
         _runtimeInfo = runtimeInfo;
         _polling = polling;
         _devices = devices;
+        _installationDetector = installationDetector;
         _pollingState = polling?.State ?? PollingState.Unavailable;
 
         if (_polling is not null)
@@ -304,6 +309,58 @@ public sealed class DiagnosticsPageViewModel : PageViewModel, IDisposable
         : _pollingState.Snapshot.LastSuccessfulUpdate.ToString("g", CultureInfo.CurrentCulture);
     public string LastErrorText => string.IsNullOrWhiteSpace(_pollingState.LastError) ? "Nenhum erro" : _pollingState.LastError;
 
+    public string LocalInstallationStatusText => _localInstallation.IsDetected
+        ? "Instalação NUT encontrada"
+        : "Nenhuma instalação NUT local encontrada";
+    public string InstallationDirectoryText => _localInstallation.InstallationDirectory ?? UnavailableText;
+    public string ConfigurationDirectoryText => _localInstallation.ConfigurationDirectory ?? UnavailableText;
+    public string LocalInstallationVersionText => _localInstallation.Version ?? UnavailableText;
+    public string DetectionSourceText => _localInstallation.DetectionSource ?? UnavailableText;
+    public string ExecutablesText => _localInstallation.Executables.Count == 0
+        ? "Nenhum executável encontrado"
+        : string.Join(Environment.NewLine, _localInstallation.Executables.Select(entry => $"{entry.Key}: {entry.Value}"));
+    public string ConfigurationFilesText => _localInstallation.ConfigurationFiles.Count == 0
+        ? "Nenhum arquivo encontrado"
+        : string.Join(Environment.NewLine, _localInstallation.ConfigurationFiles.Select(file =>
+            $"{file.Name}: {(file.Exists ? (file.IsReadable ? "Disponível" : "Sem acesso de leitura") : "Ausente")}"));
+    public string? LocalInstallationError { get; private set; }
+    public bool HasLocalInstallationError => !string.IsNullOrWhiteSpace(LocalInstallationError);
+    public bool IsDetectingLocalInstallation { get; private set; }
+
+    [RelayCommand]
+    private Task DetectLocalInstallationAsync() => RefreshLocalInstallationAsync(CancellationToken.None);
+
+    public async Task RefreshLocalInstallationAsync(CancellationToken cancellationToken = default)
+    {
+        if (_installationDetector is null)
+        {
+            ApplyLocalInstallation(NutInstallationInfo.NotDetected());
+            LocalInstallationError = "A detecção local não está disponível.";
+            NotifyLocalInstallationPropertiesChanged();
+            return;
+        }
+
+        await InspectLocalInstallationAsync(
+            token => _installationDetector.DetectAsync(token),
+            cancellationToken);
+    }
+
+    public Task InspectLocalInstallationDirectoryAsync(string directory, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        if (_installationDetector is null)
+        {
+            ApplyLocalInstallation(NutInstallationInfo.NotDetected());
+            LocalInstallationError = "A detecção local não está disponível.";
+            NotifyLocalInstallationPropertiesChanged();
+            return Task.CompletedTask;
+        }
+
+        return InspectLocalInstallationAsync(
+            token => _installationDetector.InspectDirectoryAsync(directory, token),
+            cancellationToken);
+    }
+
     public void Dispose()
     {
         if (_polling is not null)
@@ -318,6 +375,39 @@ public sealed class DiagnosticsPageViewModel : PageViewModel, IDisposable
     }
 
     private UpsIdentity? DisplayIdentity => _pollingState.Snapshot?.Identity ?? _devices?.SelectedDevice;
+
+    private async Task InspectLocalInstallationAsync(
+        Func<CancellationToken, Task<NutInstallationInfo>> inspectAsync,
+        CancellationToken cancellationToken)
+    {
+        IsDetectingLocalInstallation = true;
+        LocalInstallationError = null;
+        NotifyLocalInstallationPropertiesChanged();
+        try
+        {
+            ApplyLocalInstallation(await inspectAsync(cancellationToken));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            ApplyLocalInstallation(NutInstallationInfo.NotDetected());
+            LocalInstallationError = "Não foi possível inspecionar a instalação local do NUT.";
+        }
+        finally
+        {
+            IsDetectingLocalInstallation = false;
+            NotifyLocalInstallationPropertiesChanged();
+        }
+    }
+
+    private void ApplyLocalInstallation(NutInstallationInfo installation)
+    {
+        _localInstallation = installation;
+        LocalInstallationError = installation.ErrorMessage;
+    }
 
     private void OnPollingStateChanged(PollingState state) => RunOnUiThread(() =>
     {
@@ -356,6 +446,20 @@ public sealed class DiagnosticsPageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(Manufacturer));
         OnPropertyChanged(nameof(Model));
         OnPropertyChanged(nameof(SerialNumber));
+    }
+
+    private void NotifyLocalInstallationPropertiesChanged()
+    {
+        OnPropertyChanged(nameof(LocalInstallationStatusText));
+        OnPropertyChanged(nameof(InstallationDirectoryText));
+        OnPropertyChanged(nameof(ConfigurationDirectoryText));
+        OnPropertyChanged(nameof(LocalInstallationVersionText));
+        OnPropertyChanged(nameof(DetectionSourceText));
+        OnPropertyChanged(nameof(ExecutablesText));
+        OnPropertyChanged(nameof(ConfigurationFilesText));
+        OnPropertyChanged(nameof(LocalInstallationError));
+        OnPropertyChanged(nameof(HasLocalInstallationError));
+        OnPropertyChanged(nameof(IsDetectingLocalInstallation));
     }
 
     private static void RunOnUiThread(Action action)

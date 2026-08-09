@@ -11,6 +11,7 @@ using NutManager.Infrastructure.Mock;
 using NutManager.Infrastructure.NutProtocol;
 using NutManager.Infrastructure.Persistence;
 using NutManager.Infrastructure.Polling;
+using NutManager.Infrastructure.Platform.Windows;
 
 namespace NutManager.App;
 
@@ -52,7 +53,12 @@ public partial class App : Application
         var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
         var overview = new OverviewPageViewModel(polling);
         var devices = new DevicesPageViewModel(client, endpoint, polling, settings.PreferredUpsName);
-        var diagnostics = new DiagnosticsPageViewModel(settings, ApplicationRuntimeInfo.CreateCurrent(), polling, devices);
+        var diagnostics = new DiagnosticsPageViewModel(
+            settings,
+            ApplicationRuntimeInfo.CreateCurrent(),
+            polling,
+            devices,
+            new WindowsNutInstallationDetector());
         var settingsPage = new SettingsPageViewModel(settings, store);
         window.Closed += (_, _) =>
         {
@@ -72,6 +78,7 @@ public partial class App : Application
         ApplyTheme(settings.Theme);
         window.DataContext = viewModel;
         await devices.InitializeAsync();
+        await diagnostics.RefreshLocalInstallationAsync();
     }
 
     private void ApplyTheme(ThemePreference preference)

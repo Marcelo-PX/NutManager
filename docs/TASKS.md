@@ -25,8 +25,8 @@ Only one task should normally be in progress at a time.
 | T09 | DONE | Add polling and stale-data handling | Robust refresh and reconnect behavior |
 | T10 | DONE | Complete MVP diagnostics | Read-only diagnostics page |
 | T11 | IN PROGRESS | Package and validate MVP | Official Windows x64 package and live Windows NUT validation |
-| T12 | TODO | Detect local NUT installation on Windows | Autodetect installation, executables, version, and configuration directory |
-| T13 | TODO | Design syntax-preserving NUT configuration model | Safe model for managed and unmanaged configuration content |
+| T12 | DONE | Detect local NUT installation on Windows | Autodetect installation, executables, version, and configuration directory |
+| T13 | READY | Design syntax-preserving NUT configuration model | Safe model for managed and unmanaged configuration content |
 | T14 | TODO | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
 | T15 | TODO | Build graphical NUT configuration editor | Windows-first configuration experience |
 | T16 | TODO | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
@@ -160,13 +160,13 @@ Produce and test the official self-contained Windows x64 package. Windows is the
 
 ## T12 — Detect local NUT installation on Windows
 
-**Status:** TODO
+**Status:** DONE
 
 Discover a local Windows NUT installation, its executables, version, and configuration directory. Allow a user to correct the path manually. Do not change configuration or services.
 
 ## T13 — Design syntax-preserving NUT configuration model
 
-**Status:** TODO
+**Status:** READY
 
 Design and test a document model for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf` that preserves comments, order, unknown directives, unmanaged sections, quoting, and relevant formatting. No real file writes.
 
