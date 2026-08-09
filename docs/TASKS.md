@@ -27,8 +27,8 @@ Only one task should normally be in progress at a time.
 | T11 | IN PROGRESS | Package and validate MVP | Official Windows x64 package and live Windows NUT validation |
 | T12 | DONE | Detect local NUT installation on Windows | Autodetect installation, executables, version, and configuration directory |
 | T13 | DONE | Design syntax-preserving NUT configuration model | Safe model for managed and unmanaged configuration content |
-| T14 | READY | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
-| T15 | TODO | Build graphical NUT configuration editor | Windows-first configuration experience |
+| T14 | DONE | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
+| T15 | READY | Build graphical NUT configuration editor | Windows-first configuration experience |
 | T16 | TODO | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
 | T17 | TODO | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
 | T18 | TODO | Add managed server profiles | Separate local and remote monitoring and management profiles |
@@ -172,13 +172,13 @@ Design and test a document model for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.
 
 ## T14 — Add configuration backup, write, and rollback pipeline
 
-**Status:** READY
+**Status:** DONE
 
 Implement preview/diff, timestamped backup, temporary-file write, validation, safe replacement, activation testing, and rollback using temporary-directory tests.
 
 ## T15 — Build graphical NUT configuration editor
 
-**Status:** TODO
+**Status:** READY
 
 Build a Windows-first editor over the syntax-preserving model and recoverable write pipeline. Every administrative change requires explicit confirmation.
 
