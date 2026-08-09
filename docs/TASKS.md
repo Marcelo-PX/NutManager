@@ -24,7 +24,7 @@ Only one task should normally be in progress at a time.
 | T08 | DONE | Persist local settings | Atomic per-user settings storage |
 | T09 | DONE | Add polling and stale-data handling | Robust refresh and reconnect behavior |
 | T10 | DONE | Complete MVP diagnostics | Read-only diagnostics page |
-| T11 | READY | Package and validate MVP | Windows and Linux test packages |
+| T11 | IN PROGRESS | Package and validate MVP | Windows and Linux test packages |
 | T12 | TODO | Design preserved NUT configuration parser | Post-MVP syntax model and tests |
 | T13 | TODO | Add backup and restoration pipeline | Recoverable configuration changes |
 | T14 | TODO | Add Windows administration | Services, permissions, and diagnostics |
@@ -147,7 +147,7 @@ Expose read-only endpoint, connection, discovery, polling, version, and applicat
 
 ## T11 — Package and validate MVP
 
-**Status:** READY
+**Status:** IN PROGRESS
 
 Produce and test documented Windows x64 and mainstream Linux x64 packages. Record exact supported environments and known limitations.
 
