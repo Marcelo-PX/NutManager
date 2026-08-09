@@ -1,0 +1,104 @@
+name: Package MVP
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-windows:
+    name: Package Windows x64
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore, build and test
+        run: |
+          dotnet restore NutManager.sln
+          dotnet build NutManager.sln --configuration Release --no-restore
+          dotnet test NutManager.sln --configuration Release --no-build
+
+      - name: Publish and package
+        shell: pwsh
+        run: ./scripts/package.ps1 -Rid win-x64
+
+      - name: Smoke test published package
+        shell: pwsh
+        run: |
+          $extract = Join-Path $env:RUNNER_TEMP 'NutManager-win-x64-smoke'
+          Expand-Archive artifacts/packages/NutManager-win-x64.zip -DestinationPath $extract -Force
+          $application = Join-Path $extract 'NutManager.App.exe'
+          if (-not (Test-Path $application)) { throw 'Published executable was not found.' }
+          $process = Start-Process -FilePath $application -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            if ($process.HasExited) { throw "Published application exited early with code $($process.ExitCode)." }
+          }
+          finally {
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: NutManager-win-x64
+          path: artifacts/packages/NutManager-win-x64.zip
+          if-no-files-found: error
+
+  package-linux:
+    name: Package Linux x64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install Xvfb runtime dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Publish and package
+        run: bash scripts/package.sh linux-x64
+
+      - name: Smoke test published package
+        run: |
+          extract="$RUNNER_TEMP/NutManager-linux-x64-smoke"
+          mkdir -p "$extract"
+          tar -xzf artifacts/packages/NutManager-linux-x64.tar.gz -C "$extract"
+          test -x "$extract/NutManager.App"
+          xvfb-run -a "$extract/NutManager.App" > "$RUNNER_TEMP/nutmanager-smoke.log" 2>&1 &
+          application_pid=$!
+          sleep 5
+          if ! kill -0 "$application_pid" 2>/dev/null; then
+            cat "$RUNNER_TEMP/nutmanager-smoke.log"
+            exit 1
+          fi
+          kill "$application_pid"
+          wait "$application_pid" || true
+
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: NutManager-linux-x64
+          path: artifacts/packages/NutManager-linux-x64.tar.gz
+          if-no-files-found: error
