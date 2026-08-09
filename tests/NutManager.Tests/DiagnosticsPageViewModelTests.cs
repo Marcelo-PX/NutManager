@@ -1,0 +1,218 @@
+using NutManager.App.Services;
+using NutManager.App.ViewModels;
+using NutManager.Core.Models;
+using NutManager.Core.Services;
+using Xunit;
+
+namespace NutManager.Tests;
+
+public sealed class DiagnosticsPageViewModelTests
+{
+    private static readonly ApplicationRuntimeInfo RuntimeInfo = new("10.2.3-test", ".NET test runtime", "Test OS", "TestArchitecture");
+
+    [Fact]
+    public void ShowsDeterministicApplicationAndMockConfigurationInformation()
+    {
+        using var viewModel = CreateViewModel(new ApplicationSettings(
+            host: "nut.example",
+            port: 3494,
+            preferredUpsName: "preferred-ups",
+            pollingInterval: TimeSpan.FromSeconds(8),
+            connectionTimeout: TimeSpan.FromSeconds(3),
+            mockMode: true));
+
+        Assert.Equal("NutManager", viewModel.ApplicationName);
+        Assert.Equal("10.2.3-test", viewModel.ApplicationVersion);
+        Assert.Equal(".NET test runtime", viewModel.Runtime);
+        Assert.Equal("Test OS", viewModel.OperatingSystem);
+        Assert.Equal("TestArchitecture", viewModel.Architecture);
+        Assert.Equal("Dados simulados", viewModel.ModeText);
+        Assert.Equal("nut.example", viewModel.Host);
+        Assert.Equal("3494", viewModel.Port);
+        Assert.Equal("3 s", viewModel.ConnectionTimeoutText);
+        Assert.Equal("8 s", viewModel.PollingIntervalText);
+        Assert.Equal("preferred-ups", viewModel.PreferredUpsName);
+    }
+
+    [Fact]
+    public void ShowsLiveModeAndMissingPreferredUpsText()
+    {
+        using var viewModel = CreateViewModel(new ApplicationSettings(mockMode: false));
+
+        Assert.Equal("Servidor NUT real", viewModel.ModeText);
+        Assert.Equal("Não configurado", viewModel.PreferredUpsName);
+    }
+
+    [Fact]
+    public void MapsConnectionStatesAndDataFreshnessToPortugueseText()
+    {
+        var coordinator = new TestPollingCoordinator();
+        using var viewModel = CreateViewModel(new ApplicationSettings(), coordinator);
+
+        foreach (var (state, expected) in new[]
+        {
+            (ConnectionState.Disconnected, "Desconectado"),
+            (ConnectionState.Connecting, "Conectando"),
+            (ConnectionState.Connected, "Conectado"),
+            (ConnectionState.Reconnecting, "Reconectando"),
+            (ConnectionState.ConnectionFailed, "Falha de conexão")
+        })
+        {
+            coordinator.Publish(new PollingState(null, null, state, DataFreshness.Unavailable, null));
+            Assert.Equal(expected, viewModel.ConnectionStateText);
+        }
+
+        foreach (var (freshness, expected) in new[]
+        {
+            (DataFreshness.Unavailable, "Indisponível"),
+            (DataFreshness.Fresh, "Atualizado"),
+            (DataFreshness.Stale, "Dados desatualizados")
+        })
+        {
+            coordinator.Publish(new PollingState(null, null, ConnectionState.Disconnected, freshness, null));
+            Assert.Equal(expected, viewModel.DataFreshnessText);
+        }
+    }
+
+    [Fact]
+    public void ShowsExplicitEmptySnapshotAndNoErrorStates()
+    {
+        using var viewModel = CreateViewModel(new ApplicationSettings());
+
+        Assert.Equal("Sem snapshot disponível", viewModel.SnapshotStatusText);
+        Assert.Equal("Indisponível", viewModel.DataSourceText);
+        Assert.Equal("Indisponível", viewModel.LastSuccessfulUpdateText);
+        Assert.Equal("Nenhum erro", viewModel.LastErrorText);
+        Assert.Equal("Nenhum UPS selecionado", viewModel.SelectedUpsName);
+    }
+
+    [Fact]
+    public void ReflectsPollingStateAndRetainsSnapshotDataWhileStale()
+    {
+        var coordinator = new TestPollingCoordinator();
+        var snapshot = CreateSnapshot("ups-a", DataSource.Simulated);
+        using var viewModel = CreateViewModel(new ApplicationSettings(), coordinator);
+
+        coordinator.Publish(new PollingState("ups-a", snapshot, ConnectionState.Connected, DataFreshness.Fresh, null));
+
+        Assert.Equal("ups-a", viewModel.SelectedUpsName);
+        Assert.Equal("UPS de teste", viewModel.SelectedUpsDescription);
+        Assert.Equal("Fabricante", viewModel.Manufacturer);
+        Assert.Equal("Modelo", viewModel.Model);
+        Assert.Equal("Serial", viewModel.SerialNumber);
+        Assert.Equal("Snapshot disponível", viewModel.SnapshotStatusText);
+        Assert.Equal("Dados simulados", viewModel.DataSourceText);
+        Assert.Contains("2026", viewModel.LastSuccessfulUpdateText);
+
+        coordinator.Publish(new PollingState("ups-a", snapshot, ConnectionState.Reconnecting, DataFreshness.Stale, "Falha de atualização."));
+
+        Assert.Equal("Reconectando", viewModel.ConnectionStateText);
+        Assert.Equal("Dados desatualizados", viewModel.DataFreshnessText);
+        Assert.Equal("UPS de teste", viewModel.SelectedUpsDescription);
+        Assert.Equal("Falha de atualização.", viewModel.LastErrorText);
+    }
+
+    [Fact]
+    public void RecoveryAndUpsChangeUpdateTheDiagnostics()
+    {
+        var coordinator = new TestPollingCoordinator();
+        using var viewModel = CreateViewModel(new ApplicationSettings(), coordinator);
+        var first = CreateSnapshot("ups-a", DataSource.Simulated);
+        var recovered = CreateSnapshot("ups-b", DataSource.Live);
+
+        coordinator.Publish(new PollingState("ups-a", first, ConnectionState.Reconnecting, DataFreshness.Stale, "Erro anterior"));
+        coordinator.Publish(new PollingState("ups-b", recovered, ConnectionState.Connected, DataFreshness.Fresh, null));
+
+        Assert.Equal("ups-b", viewModel.SelectedUpsName);
+        Assert.Equal("Servidor NUT", viewModel.DataSourceText);
+        Assert.Equal("Conectado", viewModel.ConnectionStateText);
+        Assert.Equal("Atualizado", viewModel.DataFreshnessText);
+        Assert.Equal("Nenhum erro", viewModel.LastErrorText);
+    }
+
+    [Fact]
+    public void ReflectsSharedDiscoveryAndSelectedDeviceWithoutStartingOperations()
+    {
+        var coordinator = new TestPollingCoordinator();
+        using var devices = new DevicesPageViewModel();
+        using var viewModel = CreateViewModel(new ApplicationSettings(), coordinator, devices);
+
+        devices.Devices =
+        [
+            new UpsIdentity("ups-a", "Primeiro UPS"),
+            new UpsIdentity("ups-b", "Segundo UPS")
+        ];
+        devices.SelectedDevice = devices.Devices[1];
+
+        Assert.Equal(2, viewModel.DiscoveredUpsCount);
+        Assert.Equal("ups-b", viewModel.SelectedUpsName);
+        Assert.Equal("Segundo UPS", viewModel.SelectedUpsDescription);
+        Assert.Equal(0, coordinator.MonitorCalls);
+        Assert.Equal(0, coordinator.RefreshCalls);
+
+        devices.Devices = Array.Empty<UpsIdentity>();
+        devices.SelectedDevice = null;
+        coordinator.Publish(PollingState.Unavailable);
+
+        Assert.Equal(0, viewModel.DiscoveredUpsCount);
+        Assert.Equal("Nenhum UPS selecionado", viewModel.SelectedUpsName);
+    }
+
+    [Fact]
+    public void UsesUnavailableTextForOptionalIdentityValues()
+    {
+        var coordinator = new TestPollingCoordinator();
+        using var viewModel = CreateViewModel(new ApplicationSettings(), coordinator);
+        var snapshot = new UpsSnapshot(new UpsIdentity("ups"), [], new Dictionary<string, UpsVariable>(), DateTimeOffset.UtcNow, DataSource.Live);
+
+        coordinator.Publish(new PollingState("ups", snapshot, ConnectionState.Connected, DataFreshness.Fresh, null));
+
+        Assert.Equal("Indisponível", viewModel.SelectedUpsDescription);
+        Assert.Equal("Indisponível", viewModel.Manufacturer);
+        Assert.Equal("Indisponível", viewModel.Model);
+        Assert.Equal("Indisponível", viewModel.SerialNumber);
+    }
+
+    private static DiagnosticsPageViewModel CreateViewModel(
+        ApplicationSettings settings,
+        TestPollingCoordinator? coordinator = null,
+        DevicesPageViewModel? devices = null) =>
+        new(settings, RuntimeInfo, coordinator, devices);
+
+    private static UpsSnapshot CreateSnapshot(string name, DataSource source) => new(
+        new UpsIdentity(name, "UPS de teste", "Fabricante", "Modelo", "Serial"),
+        [],
+        new Dictionary<string, UpsVariable>(),
+        new DateTimeOffset(2026, 1, 1, 10, 0, 0, TimeSpan.Zero),
+        source);
+
+    private sealed class TestPollingCoordinator : IUpsPollingCoordinator
+    {
+        public PollingState State { get; private set; } = PollingState.Unavailable;
+        public event Action<PollingState>? StateChanged;
+        public int MonitorCalls { get; private set; }
+        public int RefreshCalls { get; private set; }
+
+        public Task MonitorAsync(string? upsName, CancellationToken cancellationToken = default)
+        {
+            MonitorCalls++;
+            return Task.CompletedTask;
+        }
+
+        public Task RefreshAsync(CancellationToken cancellationToken = default)
+        {
+            RefreshCalls++;
+            return Task.CompletedTask;
+        }
+
+        public void Publish(PollingState state)
+        {
+            State = state;
+            StateChanged?.Invoke(state);
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+}

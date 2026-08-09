@@ -3,8 +3,94 @@
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.DiagnosticsPageView"
              x:DataType="viewModels:DiagnosticsPageViewModel">
-  <StackPanel Spacing="12">
-    <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
-    <TextBlock Text="{Binding Description}" MaxWidth="640" TextWrapping="Wrap" />
-  </StackPanel>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Description}" MaxWidth="760" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="16">
+        <Border Grid.Row="0" Grid.Column="0" Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Aplicação" FontSize="20" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+              <TextBlock Text="Nome" Grid.Row="0" />
+              <TextBlock Text="{Binding ApplicationName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Versão" Grid.Row="1" />
+              <TextBlock Text="{Binding ApplicationVersion}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Runtime" Grid.Row="2" />
+              <TextBlock Text="{Binding Runtime}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Sistema operacional" Grid.Row="3" />
+              <TextBlock Text="{Binding OperatingSystem}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
+            </Grid>
+            <TextBlock Text="Arquitetura" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Architecture}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="0" Grid.Column="1" Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Servidor NUT" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding ModeText}" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+              <TextBlock Text="Host" Grid.Row="0" />
+              <TextBlock Text="{Binding Host}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Porta" Grid.Row="1" />
+              <TextBlock Text="{Binding Port}" Grid.Row="1" Grid.Column="1" />
+              <TextBlock Text="Timeout" Grid.Row="2" />
+              <TextBlock Text="{Binding ConnectionTimeoutText}" Grid.Row="2" Grid.Column="1" />
+              <TextBlock Text="Intervalo de polling" Grid.Row="3" />
+              <TextBlock Text="{Binding PollingIntervalText}" Grid.Row="3" Grid.Column="1" />
+              <TextBlock Text="UPS preferido" Grid.Row="4" />
+              <TextBlock Text="{Binding PreferredUpsName}" Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Grid.Column="0" Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Dispositivo" FontSize="20" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+              <TextBlock Text="UPS descobertos" Grid.Row="0" />
+              <TextBlock Text="{Binding DiscoveredUpsCount}" Grid.Row="0" Grid.Column="1" />
+              <TextBlock Text="UPS selecionado" Grid.Row="1" />
+              <TextBlock Text="{Binding SelectedUpsName}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Descrição" Grid.Row="2" />
+              <TextBlock Text="{Binding SelectedUpsDescription}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Fabricante / modelo" Grid.Row="3" />
+              <TextBlock Grid.Row="3" Grid.Column="1" TextWrapping="Wrap"><Run Text="{Binding Manufacturer}" /><Run Text=" / " /><Run Text="{Binding Model}" /></TextBlock>
+              <TextBlock Text="Número de série" Grid.Row="4" />
+              <TextBlock Text="{Binding SerialNumber}" Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Grid.Column="1" Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Polling" FontSize="20" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+              <TextBlock Text="Conexão" Grid.Row="0" />
+              <TextBlock Text="{Binding ConnectionStateText}" Grid.Row="0" Grid.Column="1" />
+              <TextBlock Text="Atualização" Grid.Row="1" />
+              <TextBlock Text="{Binding DataFreshnessText}" Grid.Row="1" Grid.Column="1" />
+              <TextBlock Text="Snapshot" Grid.Row="2" />
+              <TextBlock Text="{Binding SnapshotStatusText}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Origem dos dados" Grid.Row="3" />
+              <TextBlock Text="{Binding DataSourceText}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Última leitura" Grid.Row="4" />
+              <TextBlock Text="{Binding LastSuccessfulUpdateText}" Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" />
+            </Grid>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Último erro" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding LastErrorText}" MaxWidth="900" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>
