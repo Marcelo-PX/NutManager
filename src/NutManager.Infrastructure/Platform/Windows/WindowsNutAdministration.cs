@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Runtime.Versioning;
+using Microsoft.Win32;
 using NutManager.Core.Administration;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
@@ -94,14 +95,21 @@ public sealed class WindowsNutAdministrationBackend : IWindowsNutAdministrationB
 
 public static class WindowsNutAdministrativeRequestValidator
 {
+    public static bool IsPathInsideDirectory(string candidate, string directory)
+    {
+        var root = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var path = Path.GetFullPath(candidate);
+        return path.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+    }
+
     public static bool IsValid(NutAdministrativeActionRequest request)
     {
         if (!Enum.IsDefined(request.Action) || request.RequestId == Guid.Empty || !Path.IsPathFullyQualified(request.InstallationDirectory) || !Path.IsPathFullyQualified(request.ConfigurationDirectory)) return false;
         var install = Path.GetFullPath(request.InstallationDirectory);
         var config = Path.GetFullPath(request.ConfigurationDirectory);
-        if (!config.StartsWith(install.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && !string.Equals(config, install, StringComparison.OrdinalIgnoreCase)) return false;
+        if (!IsPathInsideDirectory(config, install) && !string.Equals(config, install, StringComparison.OrdinalIgnoreCase)) return false;
         return request.Action == NutAdministrativeAction.RepairConfigurationPermissions
-            ? request.PermissionRepairPlan is { UserSid.Length: > 0, Right: "Modify" } plan && string.Equals(Path.GetFullPath(plan.ConfigurationDirectory), config, StringComparison.OrdinalIgnoreCase) && plan.AffectedPaths.All(path => Path.GetFullPath(path).StartsWith(config + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || string.Equals(Path.GetFullPath(path), config, StringComparison.OrdinalIgnoreCase))
+            ? request.PermissionRepairPlan is { UserSid.Length: > 0, Right: "Modify" } plan && string.Equals(Path.GetFullPath(plan.ConfigurationDirectory), config, StringComparison.OrdinalIgnoreCase) && plan.AffectedPaths.All(path => IsPathInsideDirectory(path, config) || string.Equals(Path.GetFullPath(path), config, StringComparison.OrdinalIgnoreCase))
             : !string.IsNullOrWhiteSpace(request.ServiceName) && request.PermissionRepairPlan is null;
     }
 }
@@ -109,7 +117,8 @@ public static class WindowsNutAdministrativeRequestValidator
 [SupportedOSPlatform("windows")]
 internal static class WindowsNutServiceController
 {
-    private static readonly string[] KnownNames = ["nut", "networkupstools", "network ups tools"];
+    private static readonly string[] KnownServiceNames = ["NetworkUpsTools", "NUT"];
+    private static readonly string[] KnownDisplayNames = ["Network UPS Tools"];
 
     public static Task<IReadOnlyList<NutServiceInfo>> DiscoverAsync(string installationDirectory, CancellationToken cancellationToken) => Task.Run<IReadOnlyList<NutServiceInfo>>(() =>
     {
@@ -117,7 +126,7 @@ internal static class WindowsNutServiceController
         try
         {
             return System.ServiceProcess.ServiceController.GetServices()
-                .Select(service => new NutServiceInfo(service.ServiceName, service.DisplayName, ToState(service.Status), NutServiceStartMode.Unknown, null, IsKnown(service) ? NutAssociationConfidence.NameFallback : NutAssociationConfidence.None))
+                .Select(service => CreateInfo(service, installationDirectory))
                 .Where(service => service.IsAssociated)
                 .ToArray();
         }
@@ -130,7 +139,8 @@ internal static class WindowsNutServiceController
         {
             using var service = new System.ServiceProcess.ServiceController(request.ServiceName!);
             service.Refresh();
-            if (!IsKnown(service)) return new(NutAdministrativeActionStatus.ServiceNotAssociated, request.Action, "O serviço não está associado à instalação NUT atual.", request.ServiceName);
+            var info = CreateInfo(service, request.InstallationDirectory);
+            if (info.AssociationConfidence != NutAssociationConfidence.BinaryPath) return new(NutAdministrativeActionStatus.ServiceNotAssociated, request.Action, "O serviço não está associado à instalação NUT atual.", request.ServiceName);
             var current = ToState(service.Status);
             if (request.Action == NutAdministrativeAction.StartService && current == NutServiceState.Running) return new(NutAdministrativeActionStatus.AlreadyInRequestedState, request.Action, "O serviço já está em execução.", request.ServiceName);
             if (request.Action == NutAdministrativeAction.StopService && current == NutServiceState.Stopped) return new(NutAdministrativeActionStatus.AlreadyInRequestedState, request.Action, "O serviço já está parado.", request.ServiceName);
@@ -157,7 +167,30 @@ internal static class WindowsNutServiceController
     {
         await Task.Run(() => service.WaitForStatus(status, TimeSpan.FromSeconds(30)), cancellationToken);
     }
-    private static bool IsKnown(System.ServiceProcess.ServiceController service) => KnownNames.Any(name => service.ServiceName.Contains(name, StringComparison.OrdinalIgnoreCase) || service.DisplayName.Contains(name, StringComparison.OrdinalIgnoreCase));
+    private static NutServiceInfo CreateInfo(System.ServiceProcess.ServiceController service, string installationDirectory)
+    {
+        TryGetMetadata(service.ServiceName, out var imagePath, out var startMode);
+        var executable = TryExtractExecutablePath(imagePath);
+        var binaryPath = executable is not null ? Path.GetFullPath(executable) : null;
+        var isKnownComponent = binaryPath is not null && new[] { "upsd.exe", "upsmon.exe", "upsdrvctl.exe" }.Contains(Path.GetFileName(binaryPath), StringComparer.OrdinalIgnoreCase);
+        var confidence = binaryPath is not null && isKnownComponent && WindowsNutAdministrativeRequestValidator.IsPathInsideDirectory(binaryPath, installationDirectory)
+            ? NutAssociationConfidence.BinaryPath
+            : binaryPath is null && IsExactKnownName(service) ? NutAssociationConfidence.NameFallback : NutAssociationConfidence.None;
+        return new(service.ServiceName, service.DisplayName, ToState(service.Status), startMode, binaryPath, confidence);
+    }
+    private static bool IsExactKnownName(System.ServiceProcess.ServiceController service) => KnownServiceNames.Contains(service.ServiceName, StringComparer.OrdinalIgnoreCase) || KnownDisplayNames.Contains(service.DisplayName, StringComparer.OrdinalIgnoreCase);
+    private static void TryGetMetadata(string serviceName, out string? imagePath, out NutServiceStartMode startMode)
+    {
+        imagePath = null; startMode = NutServiceStartMode.Unknown;
+        try { using var key = Registry.LocalMachine.OpenSubKey($@"SYSTEM\CurrentControlSet\Services\{serviceName}"); imagePath = key?.GetValue("ImagePath") as string; startMode = Convert.ToInt32(key?.GetValue("Start") ?? -1) switch { 2 => NutServiceStartMode.Automatic, 3 => NutServiceStartMode.Manual, 4 => NutServiceStartMode.Disabled, _ => NutServiceStartMode.Unknown }; } catch { }
+    }
+    internal static string? TryExtractExecutablePath(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath)) return null;
+        var expanded = Environment.ExpandEnvironmentVariables(imagePath.Trim());
+        if (expanded[0] == '"') { var end = expanded.IndexOf('"', 1); return end > 1 ? expanded[1..end] : null; }
+        var exe = expanded.IndexOf(".exe", StringComparison.OrdinalIgnoreCase); return exe >= 0 ? expanded[..(exe + 4)] : null;
+    }
     private static NutServiceState ToState(System.ServiceProcess.ServiceControllerStatus status) => status switch { System.ServiceProcess.ServiceControllerStatus.Running => NutServiceState.Running, System.ServiceProcess.ServiceControllerStatus.Stopped => NutServiceState.Stopped, System.ServiceProcess.ServiceControllerStatus.StartPending => NutServiceState.StartPending, System.ServiceProcess.ServiceControllerStatus.StopPending => NutServiceState.StopPending, System.ServiceProcess.ServiceControllerStatus.Paused => NutServiceState.Paused, _ => NutServiceState.Unknown };
 }
 
@@ -210,7 +243,7 @@ internal static class WindowsNutProcessInspector
 {
     public static IReadOnlyList<NutProcessInfo> Inspect(string installationDirectory) => Process.GetProcesses().Select(process =>
     {
-        try { using (process) { var path = process.MainModule?.FileName; return new NutProcessInfo(process.ProcessName, process.Id, path, path is not null && path.StartsWith(installationDirectory, StringComparison.OrdinalIgnoreCase) ? NutAssociationConfidence.BinaryPath : NutAssociationConfidence.None); } }
+        try { using (process) { var path = process.MainModule?.FileName; return new NutProcessInfo(process.ProcessName, process.Id, path, path is not null && WindowsNutAdministrativeRequestValidator.IsPathInsideDirectory(path, installationDirectory) ? NutAssociationConfidence.BinaryPath : NutAssociationConfidence.None); } }
         catch { return new NutProcessInfo(process.ProcessName, process.Id, null, NutAssociationConfidence.None); }
     }).Where(process => process.AssociationConfidence != NutAssociationConfidence.None).ToArray();
 }
