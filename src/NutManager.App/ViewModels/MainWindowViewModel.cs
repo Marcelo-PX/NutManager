@@ -21,7 +21,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         ThemePreference themePreference,
         OverviewPageViewModel overviewPage,
-        DevicesPageViewModel devicesPage, SettingsPageViewModel? settingsPage = null)
+        DevicesPageViewModel devicesPage,
+        SettingsPageViewModel? settingsPage = null,
+        DiagnosticsPageViewModel? diagnosticsPage = null)
     {
         ArgumentNullException.ThrowIfNull(overviewPage);
         ArgumentNullException.ThrowIfNull(devicesPage);
@@ -30,7 +32,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             [AppPage.Overview] = overviewPage,
             [AppPage.Devices] = devicesPage,
-            [AppPage.Diagnostics] = new DiagnosticsPageViewModel(),
+            [AppPage.Diagnostics] = diagnosticsPage ?? new DiagnosticsPageViewModel(),
             [AppPage.Settings] = settingsPage ?? new SettingsPageViewModel()
         };
 

@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
+using NutManager.App.Services;
 using NutManager.App.ViewModels;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
@@ -49,12 +50,18 @@ public partial class App : Application
         }
 
         var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
-        window.Closed += (_, _) => polling.Dispose();
         var overview = new OverviewPageViewModel(polling);
         var devices = new DevicesPageViewModel(client, endpoint, polling, settings.PreferredUpsName);
+        var diagnostics = new DiagnosticsPageViewModel(settings, ApplicationRuntimeInfo.CreateCurrent(), polling, devices);
         var settingsPage = new SettingsPageViewModel(settings, store);
+        window.Closed += (_, _) =>
+        {
+            diagnostics.Dispose();
+            devices.Dispose();
+            polling.Dispose();
+        };
         if (loadError is not null) settingsPage.SetLoadError(loadError);
-        var viewModel = new MainWindowViewModel(settings.Theme, overview, devices, settingsPage);
+        var viewModel = new MainWindowViewModel(settings.Theme, overview, devices, settingsPage, diagnostics);
         viewModel.ThemeChanged += async preference =>
         {
             ApplyTheme(preference);
