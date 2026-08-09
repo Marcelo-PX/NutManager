@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NutManager.Core.Administration;
 using NutManager.Core.Configuration;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
@@ -13,6 +14,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private const string UnavailableText = "Indisponível";
     private readonly ILocalNutInstallationDetector? _installationDetector;
     private readonly INutConfigurationFilePipeline? _configurationPipeline;
+    private readonly ILocalNutWindowsAdministration? _windowsAdministration;
+    private NutInstallationInfo? _currentInstallation;
     private NutConfigurationFileSnapshot? _loadedSnapshot;
     private NutConfigurationPreparedChange? _preparedChange;
     private IReadOnlyList<NutConfigurationEntryViewModel> _entries = Array.Empty<NutConfigurationEntryViewModel>();
@@ -21,17 +24,19 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private int _installationContextVersion;
 
     public AdministrationPageViewModel()
-        : this(null, null)
+        : this(null, null, null)
     {
     }
 
     public AdministrationPageViewModel(
         ILocalNutInstallationDetector? installationDetector,
-        INutConfigurationFilePipeline? configurationPipeline)
+        INutConfigurationFilePipeline? configurationPipeline,
+        ILocalNutWindowsAdministration? windowsAdministration = null)
         : base("Administração", "Edite entradas existentes da configuração local do NUT com revisão e confirmação explícita.")
     {
         _installationDetector = installationDetector;
         _configurationPipeline = configurationPipeline;
+        _windowsAdministration = windowsAdministration;
         ConfigurationFiles = new ObservableCollection<NutConfigurationFileItemViewModel>(CreateFileItems());
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         PreviewLines = Array.Empty<NutConfigurationPreviewLineViewModel>();
@@ -81,6 +86,39 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     [ObservableProperty]
     private string? _recoveryPath;
 
+    [ObservableProperty]
+    private IReadOnlyList<NutServiceInfo> _windowsServices = Array.Empty<NutServiceInfo>();
+
+    [ObservableProperty]
+    private NutServiceInfo? _selectedWindowsService;
+
+    [ObservableProperty]
+    private NutPermissionAssessment _windowsPermissionAssessment = NutPermissionAssessment.Unsupported();
+
+    [ObservableProperty]
+    private IReadOnlyList<NutProcessInfo> _windowsProcesses = Array.Empty<NutProcessInfo>();
+
+    [ObservableProperty]
+    private IReadOnlyList<NutEventLogEntry> _windowsEvents = Array.Empty<NutEventLogEntry>();
+
+    [ObservableProperty]
+    private NutEventLogStatus _windowsEventLogStatus = NutEventLogStatus.Success;
+
+    [ObservableProperty]
+    private string? _windowsEventLogDiagnosticMessage;
+
+    [ObservableProperty]
+    private NutAdministrativeActionRequest? _pendingAdministrativeAction;
+
+    [ObservableProperty]
+    private bool _isAdministrativeActionConfirmed;
+
+    [ObservableProperty]
+    private string? _administrativeStatusMessage;
+
+    [ObservableProperty]
+    private bool _isAdministrativeCritical;
+
     public string EditingScopeText => "Esta versão edita entradas existentes. Criação e remoção de entradas serão tratadas separadamente.";
 
     public string SelectedFileName => SelectedFile?.FileName ?? UnavailableText;
@@ -119,10 +157,48 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanSelectConfigurationFile => !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
 
+    public bool IsWindowsAdministrationAvailable => _windowsAdministration is not null && WindowsPermissionAssessment.State != NutPermissionState.Unknown;
+
+    public bool HasPendingAdministrativeAction => PendingAdministrativeAction is not null;
+
+    public string PendingAdministrativeActionText => PendingAdministrativeAction?.Action switch
+    {
+        NutAdministrativeAction.StartService => "Iniciar serviço",
+        NutAdministrativeAction.StopService => "Parar serviço",
+        NutAdministrativeAction.RestartService => "Reiniciar serviço",
+        NutAdministrativeAction.RepairConfigurationPermissions => "Corrigir permissões de configuração",
+        _ => "Nenhuma ação administrativa pendente"
+    };
+
+    public bool CanPrepareAdministrativeAction => !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && _currentInstallation is { IsDetected: true } && _windowsAdministration is not null;
+
+    public bool CanExecuteAdministrativeAction => HasPendingAdministrativeAction && IsAdministrativeActionConfirmed && !HasDraftChanges && !HasPreview && !IsBusy && !IsDetectingInstallation && IsPendingAdministrativeActionCurrent();
+
+    public bool CanStartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { State: NutServiceState.Stopped, StartMode: not NutServiceStartMode.Disabled };
+
+    public bool CanStopWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService?.State == NutServiceState.Running;
+
+    public bool CanRestartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { StartMode: not NutServiceStartMode.Disabled } service && service.State is (NutServiceState.Running or NutServiceState.Stopped);
+
+    public string AdministrativeCriticalText => "CRÍTICO — a operação administrativa requer atenção manual.";
+
+    public bool IsPermissionRepairPending => PendingAdministrativeAction?.Action == NutAdministrativeAction.RepairConfigurationPermissions;
+
+    public string PendingPermissionIdentity => PendingAdministrativeAction?.PermissionRepairPlan?.UserIdentity ?? UnavailableText;
+
+    public string PendingPermissionSid => PendingAdministrativeAction?.PermissionRepairPlan?.UserSid ?? UnavailableText;
+
+    public string PendingPermissionDirectory => PendingAdministrativeAction?.PermissionRepairPlan?.ConfigurationDirectory ?? UnavailableText;
+
+    public IReadOnlyList<string> PendingPermissionTargets => PendingAdministrativeAction?.PermissionRepairPlan?.AffectedPaths ?? Array.Empty<string>();
+
     public string CriticalResultText => "CRÍTICO — a configuração pode necessitar recuperação manual.";
 
-    public async Task InitializeAsync(CancellationToken cancellationToken = default) =>
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
         await RefreshInstallationAsync(cancellationToken);
+        await RefreshWindowsAdministrationAsync(cancellationToken);
+    }
 
     public async Task RefreshInstallationAsync(CancellationToken cancellationToken = default)
     {
@@ -383,6 +459,91 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         await LoadSelectedFileAsync(cancellationToken);
     }
 
+    public async Task RefreshWindowsAdministrationAsync(CancellationToken cancellationToken = default)
+    {
+        if (_windowsAdministration is null)
+        {
+            WindowsPermissionAssessment = NutPermissionAssessment.Unsupported();
+            AdministrativeStatusMessage = "A administração local do Windows não está disponível nesta plataforma.";
+            return;
+        }
+
+        if (IsBusy || IsDetectingInstallation) return;
+        IsBusy = true;
+        try
+        {
+            await LoadWindowsAdministrationAsync(cancellationToken);
+            InvalidateAdministrativeAction();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            AdministrativeStatusMessage = "A atualização da administração do Windows foi cancelada.";
+        }
+        catch
+        {
+            AdministrativeStatusMessage = "Não foi possível atualizar a administração local do Windows.";
+            IsAdministrativeCritical = true;
+        }
+        finally { IsBusy = false; }
+    }
+
+    public void PrepareServiceAction(NutAdministrativeAction action)
+    {
+        if (!CanPrepareAdministrativeAction || SelectedWindowsService is not { IsAssociated: true } service || action is not (NutAdministrativeAction.StartService or NutAdministrativeAction.StopService or NutAdministrativeAction.RestartService))
+        {
+            AdministrativeStatusMessage = HasDraftChanges || HasPreview ? "Aplique ou descarte as alterações de configuração antes de executar uma ação administrativa." : "A ação administrativa não está disponível no contexto atual.";
+            return;
+        }
+
+        PendingAdministrativeAction = new NutAdministrativeActionRequest(Guid.NewGuid(), action, _currentInstallation!.InstallationDirectory!, _currentInstallation.ConfigurationDirectory!, service.ServiceName);
+        IsAdministrativeActionConfirmed = false;
+        AdministrativeStatusMessage = null;
+        IsAdministrativeCritical = false;
+        NotifyAdministrativePropertiesChanged();
+    }
+
+    public void PreparePermissionRepair()
+    {
+        if (!CanPrepareAdministrativeAction || WindowsPermissionAssessment is not { UserSid: { Length: > 0 } sid, Identity: { Length: > 0 } identity, HasExplicitDeny: false } assessment)
+        {
+            AdministrativeStatusMessage = "As permissões não podem ser corrigidas automaticamente neste contexto.";
+            return;
+        }
+
+        var effectiveIdentities = assessment.EffectiveIdentitySids ?? [sid];
+        var plan = new NutPermissionRepairPlan(_currentInstallation!.ConfigurationDirectory!, identity, sid, assessment.AffectedPaths, EffectiveIdentitySids: effectiveIdentities);
+        PendingAdministrativeAction = new NutAdministrativeActionRequest(Guid.NewGuid(), NutAdministrativeAction.RepairConfigurationPermissions, _currentInstallation.InstallationDirectory!, _currentInstallation.ConfigurationDirectory!, PermissionRepairPlan: plan);
+        IsAdministrativeActionConfirmed = false;
+        AdministrativeStatusMessage = null;
+        IsAdministrativeCritical = false;
+        NotifyAdministrativePropertiesChanged();
+    }
+
+    public async Task ExecuteAdministrativeActionAsync(CancellationToken cancellationToken = default)
+    {
+        if (!CanExecuteAdministrativeAction || PendingAdministrativeAction is null || _windowsAdministration is null) return;
+        IsBusy = true;
+        try
+        {
+            var result = await _windowsAdministration.ExecuteAsync(PendingAdministrativeAction, cancellationToken);
+            AdministrativeStatusMessage = result.Message;
+            IsAdministrativeCritical = result.Status is NutAdministrativeActionStatus.Failed or NutAdministrativeActionStatus.ManualInterventionRequired;
+            InvalidateAdministrativeAction();
+            try { await LoadWindowsAdministrationAsync(CancellationToken.None); }
+            catch { AdministrativeStatusMessage = result.IsSuccess ? "A ação foi concluída, mas não foi possível atualizar o estado." : result.Message; }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            AdministrativeStatusMessage = "A ação administrativa foi cancelada.";
+        }
+        catch
+        {
+            AdministrativeStatusMessage = "Não foi possível executar a ação administrativa.";
+            IsAdministrativeCritical = true;
+        }
+        finally { IsBusy = false; }
+    }
+
     [RelayCommand]
     private Task DetectInstallationAsync() => RefreshInstallationAsync();
 
@@ -397,6 +558,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     [RelayCommand]
     private Task DiscardAsync() => DiscardChangesAsync();
+
+    [RelayCommand]
+    private Task RefreshWindowsAdministration() => RefreshWindowsAdministrationAsync();
+
+    [RelayCommand]
+    private Task ExecuteAdministrativeAction() => ExecuteAdministrativeActionAsync();
 
     private async Task LoadSelectedFileAsync(CancellationToken cancellationToken, bool preserveStatus = false)
     {
@@ -476,6 +643,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     private void ApplyInstallation(NutInstallationInfo installation)
     {
+        _currentInstallation = installation;
+        InvalidateAdministrativeAction();
         _installationContextVersion++;
         ClearLoadedDocument(clearSelectedFile: true);
         InstallationStatusText = installation.IsDetected
@@ -493,6 +662,36 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             filesByName.TryGetValue(file.FileName, out var info);
             file.ApplyInstallationInfo(info);
         }
+    }
+
+    private async Task LoadWindowsAdministrationAsync(CancellationToken cancellationToken)
+    {
+        if (_windowsAdministration is null) return;
+        var snapshot = await _windowsAdministration.InspectAsync(_currentInstallation ?? NutInstallationInfo.NotDetected(), cancellationToken);
+        WindowsServices = snapshot.Services;
+        SelectedWindowsService = snapshot.Services.FirstOrDefault();
+        WindowsPermissionAssessment = snapshot.Permissions;
+        WindowsProcesses = snapshot.Processes;
+        WindowsEvents = snapshot.Events;
+        WindowsEventLogStatus = snapshot.EventLogStatus;
+        WindowsEventLogDiagnosticMessage = snapshot.EventLogDiagnosticMessage;
+        AdministrativeStatusMessage = snapshot.DiagnosticMessage;
+        IsAdministrativeCritical = false;
+        NotifyAdministrativePropertiesChanged();
+    }
+
+    private void InvalidateAdministrativeAction()
+    {
+        PendingAdministrativeAction = null;
+        IsAdministrativeActionConfirmed = false;
+        NotifyAdministrativePropertiesChanged();
+    }
+
+    private bool IsPendingAdministrativeActionCurrent()
+    {
+        if (PendingAdministrativeAction is null || _currentInstallation?.InstallationDirectory is null || _currentInstallation.ConfigurationDirectory is null) return false;
+        if (!string.Equals(PendingAdministrativeAction.InstallationDirectory, _currentInstallation.InstallationDirectory, StringComparison.OrdinalIgnoreCase) || !string.Equals(PendingAdministrativeAction.ConfigurationDirectory, _currentInstallation.ConfigurationDirectory, StringComparison.OrdinalIgnoreCase)) return false;
+        return PendingAdministrativeAction.ServiceName is null || string.Equals(PendingAdministrativeAction.ServiceName, SelectedWindowsService?.ServiceName, StringComparison.OrdinalIgnoreCase);
     }
 
     private bool TryApplyDetectedInstallation(
@@ -621,6 +820,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
 
         _draftVersion++;
+        InvalidateAdministrativeAction();
         InvalidatePreview();
         NotifyWorkflowPropertiesChanged();
     }
@@ -729,6 +929,24 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanChangeInstallation));
         OnPropertyChanged(nameof(CanDetectInstallation));
         OnPropertyChanged(nameof(CanSelectConfigurationFile));
+        NotifyAdministrativePropertiesChanged();
+    }
+
+    private void NotifyAdministrativePropertiesChanged()
+    {
+        OnPropertyChanged(nameof(IsWindowsAdministrationAvailable));
+        OnPropertyChanged(nameof(HasPendingAdministrativeAction));
+        OnPropertyChanged(nameof(PendingAdministrativeActionText));
+        OnPropertyChanged(nameof(CanPrepareAdministrativeAction));
+        OnPropertyChanged(nameof(CanExecuteAdministrativeAction));
+        OnPropertyChanged(nameof(CanStartWindowsService));
+        OnPropertyChanged(nameof(CanStopWindowsService));
+        OnPropertyChanged(nameof(CanRestartWindowsService));
+        OnPropertyChanged(nameof(IsPermissionRepairPending));
+        OnPropertyChanged(nameof(PendingPermissionIdentity));
+        OnPropertyChanged(nameof(PendingPermissionSid));
+        OnPropertyChanged(nameof(PendingPermissionDirectory));
+        OnPropertyChanged(nameof(PendingPermissionTargets));
     }
 
     private static IReadOnlyList<NutConfigurationFileItemViewModel> CreateFileItems() =>
@@ -761,6 +979,10 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     partial void OnIsDetectingInstallationChanged(bool value) => NotifyWorkflowPropertiesChanged();
 
     partial void OnIsPreviewConfirmedChanged(bool value) => OnPropertyChanged(nameof(CanApply));
+
+    partial void OnIsAdministrativeActionConfirmedChanged(bool value) => OnPropertyChanged(nameof(CanExecuteAdministrativeAction));
+
+    partial void OnSelectedWindowsServiceChanged(NutServiceInfo? value) => InvalidateAdministrativeAction();
 
     partial void OnBackupPathChanged(string? value) => OnPropertyChanged(nameof(HasBackupPath));
 

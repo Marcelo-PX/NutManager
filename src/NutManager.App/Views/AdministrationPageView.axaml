@@ -174,6 +174,51 @@
               Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
               BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
               BorderThickness="1"
+              CornerRadius="8">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Administração do Windows" FontSize="20" FontWeight="SemiBold" />
+          <Button Content="Atualizar estado" Command="{Binding RefreshWindowsAdministrationCommand}" HorizontalAlignment="Left" />
+          <TextBlock Text="Serviço NUT" FontSize="16" FontWeight="SemiBold" />
+          <ListBox ItemsSource="{Binding WindowsServices}" SelectedItem="{Binding SelectedWindowsService, Mode=TwoWay}">
+            <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="0,3"><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" /><TextBlock Text="{Binding ServiceName}" /><TextBlock Text="{Binding State}" /><TextBlock Text="{Binding StartMode}" /><TextBlock Text="{Binding BinaryPath}" TextWrapping="Wrap" /><TextBlock Text="{Binding AssociationConfidence}" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Iniciar" Click="StartServiceButton_OnClick" IsEnabled="{Binding CanStartWindowsService}" />
+            <Button Content="Parar" Click="StopServiceButton_OnClick" IsEnabled="{Binding CanStopWindowsService}" />
+            <Button Content="Reiniciar" Click="RestartServiceButton_OnClick" IsEnabled="{Binding CanRestartWindowsService}" />
+          </StackPanel>
+          <TextBlock Text="Permissões" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding WindowsPermissionAssessment.Message}" TextWrapping="Wrap" />
+          <Button Content="Preparar correção de permissões" Click="RepairPermissionsButton_OnClick" IsEnabled="{Binding CanPrepareAdministrativeAction}" HorizontalAlignment="Left" />
+          <TextBlock Text="Processos NUT" FontSize="16" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding WindowsProcesses}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="Auto,12,Auto,12,*,12,Auto" Margin="0,2"><TextBlock Text="{Binding Name}" /><TextBlock Grid.Column="2" Text="{Binding ProcessId}" /><TextBlock Grid.Column="4" Text="{Binding ExecutablePath}" TextWrapping="Wrap" /><TextBlock Grid.Column="6" Text="{Binding AssociationConfidence}" /></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+          <TextBlock Text="Eventos" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding WindowsEventLogDiagnosticMessage}" TextWrapping="Wrap" />
+          <ItemsControl ItemsSource="{Binding WindowsEvents}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,3"><TextBlock><Run Text="{Binding Timestamp}" /><Run Text=" · " /><Run Text="{Binding LogName}" /><Run Text=" · " /><Run Text="{Binding Provider}" /><Run Text=" · " /><Run Text="{Binding EventId}" /><Run Text=" · " /><Run Text="{Binding Level}" /></TextBlock><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+          <StackPanel IsVisible="{Binding HasPendingAdministrativeAction}" Spacing="6">
+            <TextBlock Text="Revisão da ação administrativa" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding PendingAdministrativeActionText}" />
+            <StackPanel IsVisible="{Binding IsPermissionRepairPending}" Spacing="4">
+              <TextBlock Text="Usuário:" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionIdentity}" TextWrapping="Wrap" />
+              <TextBlock Text="SID:" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionSid}" TextWrapping="Wrap" />
+              <TextBlock Text="Diretório:" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionDirectory}" TextWrapping="Wrap" />
+              <TextBlock Text="Direito: Modify" FontWeight="SemiBold" />
+              <TextBlock Text="Alvos reconhecidos:" FontWeight="SemiBold" />
+              <ItemsControl ItemsSource="{Binding PendingPermissionTargets}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+              <TextBlock Text="As ACLs existentes serão preservadas. Será adicionada somente a permissão Modify ao SID indicado." TextWrapping="Wrap" />
+            </StackPanel>
+            <CheckBox Content="Confirmo que revisei esta ação administrativa." IsChecked="{Binding IsAdministrativeActionConfirmed, Mode=TwoWay}" />
+            <Button Content="Executar ação administrativa" Command="{Binding ExecuteAdministrativeActionCommand}" IsEnabled="{Binding CanExecuteAdministrativeAction}" HorizontalAlignment="Left" />
+          </StackPanel>
+          <TextBlock Text="{Binding AdministrativeCriticalText}" IsVisible="{Binding IsAdministrativeCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding AdministrativeStatusMessage}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1"
               CornerRadius="8"
               IsVisible="{Binding HasStatusMessage}">
         <StackPanel Spacing="7">
