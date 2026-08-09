@@ -2,12 +2,12 @@
 
 ## 1. Architectural goals
 
-- modern cross-platform desktop UI;
+- Windows-first desktop UI with secondary, best-effort Linux compatibility in shared code;
 - safe read-only MVP;
 - clear separation of domain, UI, protocol, and operating-system concerns;
 - testability without a real UPS or NUT server;
 - minimal dependencies and low context cost for coding agents;
-- a future path to administrative Windows and Linux features without redesigning the MVP.
+- a future path to Windows local and SSH/SFTP remote administration without redesigning the MVP.
 
 ## 2. Selected stack
 
@@ -77,7 +77,7 @@ Contains implementations for:
 - local settings persistence;
 - mock data;
 - clocks and timers when abstraction is needed;
-- later Windows and Linux integrations.
+- later Windows platform and remote-management integrations.
 
 ### App
 
@@ -85,7 +85,26 @@ Contains Avalonia startup, navigation, views, view models, styles, resources, an
 
 View models depend on Core abstractions. Views must not call NUT commands, sockets, services, or file-system operations directly.
 
-## 5. Initial domain model
+## 5. Product capability split
+
+```text
+NutManager
+├── Monitoring
+│   └── NUT Protocol
+└── Management
+    ├── Local
+    │   └── Windows platform adapter
+    └── Remote
+        └── SSH/SFTP transport
+```
+
+Monitoring uses the NUT protocol, normally over TCP port `3493`. Management is a separate concern with independent connection state: local management uses filesystem and platform APIs, while remote management uses a secure transport.
+
+Future management concepts include `ManagedNutServer` and `ManagementMode` (`Local` or `Remote`). They are architectural concepts only; types are not introduced until a task requires them. Management capabilities will include reading and writing configuration, managing services, inspecting installations, and reporting privileged-operation availability.
+
+Windows is the primary development, manual-test, distribution, and first-administration platform. Linux remains secondary, best-effort compatibility. Shared code must not take a Windows dependency unless the behavior genuinely belongs to the Windows platform adapter.
+
+## 6. Initial domain model
 
 The exact types may be refined during implementation, but the domain should represent:
 
@@ -110,7 +129,7 @@ ApplicationSettings
 
 Numeric values must use culture-invariant protocol parsing and culture-aware display formatting.
 
-## 6. Key abstractions
+## 7. Key abstractions
 
 The MVP should converge on small interfaces similar to:
 
@@ -136,7 +155,7 @@ public interface IApplicationSettingsStore
 
 Do not add interfaces merely to wrap trivial pure functions. Introduce abstractions at I/O or platform boundaries.
 
-## 7. Data flow
+## 8. Data flow
 
 ```text
 View
@@ -152,7 +171,7 @@ NUT server or local application-data storage
 
 External work runs asynchronously. Results are marshalled back to observable view-model state without blocking the UI thread.
 
-## 8. NUT integration
+## 9. NUT integration
 
 ### MVP protocol strategy
 
@@ -185,7 +204,7 @@ Launching NUT tools remains an option for later diagnostics and administrative f
 - failed polls preserve the last successful snapshot but mark it stale;
 - the polling service must be disposable.
 
-## 9. Status interpretation
+## 10. Status interpretation
 
 `ups.status` is a space-separated set of tokens. Parsing must:
 
@@ -198,7 +217,7 @@ Launching NUT tools remains an option for later diagnostics and administrative f
 
 Severity presentation must not rely on color alone.
 
-## 10. Settings persistence
+## 11. Settings persistence
 
 MVP settings are non-secret and stored per user.
 
@@ -211,7 +230,7 @@ Requirements:
 - tolerate missing files by returning defaults;
 - report malformed files clearly and avoid overwriting them automatically without confirmation.
 
-## 11. Mock provider
+## 12. Mock provider
 
 The mock implementation must be deterministic and support scenarios including:
 
@@ -227,7 +246,7 @@ The mock implementation must be deterministic and support scenarios including:
 
 It must be visibly labeled as simulated in the UI.
 
-## 12. Error handling
+## 13. Error handling
 
 Errors are represented in layers:
 
@@ -237,7 +256,7 @@ Errors are represented in layers:
 
 Expected connection failures must not terminate the process. Cancellation must not be reported as a fault when initiated by navigation, shutdown, or a new connection attempt.
 
-## 13. Logging
+## 14. Logging
 
 Use structured logging only where it provides diagnostic value.
 
@@ -250,26 +269,15 @@ Never log:
 
 Logs should include endpoint, operation, duration, result category, and exception type where safe.
 
-## 14. Cross-platform boundary
+## 15. Windows-first platform boundary
 
-MVP behavior is platform-neutral. Later administrative implementations belong under explicit namespaces such as:
+The monitoring MVP and Core remain platform-neutral. Windows-specific management implementations belong under an explicit namespace such as `Infrastructure.Platform.Windows`; Core must never depend on Windows APIs or packages.
 
-```text
-Infrastructure.Platform.Windows
-Infrastructure.Platform.Linux
-```
+Linux has secondary, best-effort compatibility in shared code. It has no official package or immediate administrative-feature commitment. Any future Linux management adapter must remain isolated behind the same platform boundaries rather than influencing Core prematurely.
 
-Likely future differences include:
+Likely Windows-specific concerns include services, UAC, Event Log, `COMx` ports, drivers, and ACLs. Do not leak those differences into Core models unless the domain genuinely requires them.
 
-- Windows services versus systemd/OpenRC;
-- UAC versus polkit/sudo workflows;
-- Event Log versus journald/syslog;
-- `COMx` versus `/dev/tty*` devices;
-- Windows ACLs versus POSIX permissions.
-
-Do not leak those differences into Core models unless the domain genuinely requires them.
-
-## 15. Testing strategy
+## 16. Testing strategy
 
 ### Unit tests
 
@@ -301,20 +309,23 @@ Tests must not require:
 - system service changes;
 - serial ports.
 
-## 16. Future configuration architecture
+## 17. Future configuration architecture
 
-Configuration editing is post-MVP and requires a syntax-preserving document model rather than a generic INI serializer.
+Configuration editing is post-MVP and requires a syntax-preserving document model rather than a generic INI serializer. It applies to `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`; comments, order, unknown directives, unmanaged sections, quoting, and relevant formatting must remain preserved.
 
 The write pipeline shall be:
 
 ```text
-read → parse → validate requested change → create backup → write temporary file
-→ validate candidate → atomic replace → activate/test → rollback on failure
+read → parse while preserving syntax → requested change → preview/diff → backup
+→ temporary file → validation → safe replacement → activation when necessary
+→ test → rollback on failure
 ```
+
+Local management will discover the local NUT installation, executables, version, and configuration directory, while allowing manual path correction. Remote management will require manual directory selection and validation over SSH/SFTP; it must not attempt remote directory autodiscovery.
 
 Administrative activation shall be separated from ordinary UI execution and require explicit user confirmation.
 
-## 17. Upstream NUT workflow
+## 18. Upstream NUT workflow
 
 The official NUT repository is not a project dependency or submodule.
 
@@ -328,16 +339,18 @@ When an upstream task is approved:
 6. keep NutManager and NUT commits separate;
 7. submit a focused PR only after local validation.
 
-## 18. Fixed decisions for the initial implementation
+## 19. Fixed decisions for the initial implementation
 
 Coding agents must not rediscuss these without an explicit architecture task:
 
 - Avalonia is the desktop UI framework;
-- the application is cross-platform;
+- Windows x64 is the primary development, testing, distribution, and first-administration platform;
+- Linux is secondary, best-effort compatibility rather than an official distribution target;
 - MVVM is used;
 - the first milestone is read-only;
 - Core remains platform-independent;
 - the NUT repository is not embedded in the workspace;
 - real hardware and administrative actions are excluded from automated tests;
 - direct read-only NUT protocol access is preferred for the MVP;
-- configuration editing and service control are post-MVP.
+- configuration editing and service control are post-MVP;
+- monitoring and management have independent connection state.
