@@ -14,6 +14,9 @@
     <DataTemplate DataType="viewModels:DevicesPageViewModel">
       <views:DevicesPageView />
     </DataTemplate>
+    <DataTemplate DataType="viewModels:AdministrationPageViewModel">
+      <views:AdministrationPageView />
+    </DataTemplate>
     <DataTemplate DataType="viewModels:DiagnosticsPageViewModel">
       <views:DiagnosticsPageView />
     </DataTemplate>

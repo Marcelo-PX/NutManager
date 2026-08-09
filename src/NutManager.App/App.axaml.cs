@@ -8,6 +8,7 @@ using NutManager.App.ViewModels;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 using NutManager.Infrastructure.Mock;
+using NutManager.Infrastructure.Configuration;
 using NutManager.Infrastructure.NutProtocol;
 using NutManager.Infrastructure.Persistence;
 using NutManager.Infrastructure.Polling;
@@ -53,12 +54,14 @@ public partial class App : Application
         var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
         var overview = new OverviewPageViewModel(polling);
         var devices = new DevicesPageViewModel(client, endpoint, polling, settings.PreferredUpsName);
+        var installationDetector = new WindowsNutInstallationDetector();
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
             ApplicationRuntimeInfo.CreateCurrent(),
             polling,
             devices,
-            new WindowsNutInstallationDetector());
+            installationDetector);
+        var administration = new AdministrationPageViewModel(installationDetector, new NutConfigurationFilePipeline());
         var settingsPage = new SettingsPageViewModel(settings, store);
         window.Closed += (_, _) =>
         {
@@ -67,7 +70,7 @@ public partial class App : Application
             polling.Dispose();
         };
         if (loadError is not null) settingsPage.SetLoadError(loadError);
-        var viewModel = new MainWindowViewModel(settings.Theme, overview, devices, settingsPage, diagnostics);
+        var viewModel = new MainWindowViewModel(settings.Theme, overview, devices, settingsPage, diagnostics, administration);
         viewModel.ThemeChanged += async preference =>
         {
             ApplyTheme(preference);
@@ -79,6 +82,7 @@ public partial class App : Application
         window.DataContext = viewModel;
         await devices.InitializeAsync();
         await diagnostics.RefreshLocalInstallationAsync();
+        await administration.InitializeAsync();
     }
 
     private void ApplyTheme(ThemePreference preference)

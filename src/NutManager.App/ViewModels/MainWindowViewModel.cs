@@ -23,7 +23,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OverviewPageViewModel overviewPage,
         DevicesPageViewModel devicesPage,
         SettingsPageViewModel? settingsPage = null,
-        DiagnosticsPageViewModel? diagnosticsPage = null)
+        DiagnosticsPageViewModel? diagnosticsPage = null,
+        AdministrationPageViewModel? administrationPage = null)
     {
         ArgumentNullException.ThrowIfNull(overviewPage);
         ArgumentNullException.ThrowIfNull(devicesPage);
@@ -32,6 +33,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             [AppPage.Overview] = overviewPage,
             [AppPage.Devices] = devicesPage,
+            [AppPage.Administration] = administrationPage ?? new AdministrationPageViewModel(),
             [AppPage.Diagnostics] = diagnosticsPage ?? new DiagnosticsPageViewModel(),
             [AppPage.Settings] = settingsPage ?? new SettingsPageViewModel()
         };
@@ -40,6 +42,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             CreateNavigationItem(AppPage.Overview, "Visão geral", "⌂"),
             CreateNavigationItem(AppPage.Devices, "Dispositivos", "▣"),
+            CreateNavigationItem(AppPage.Administration, "Administração", "⚙"),
             CreateNavigationItem(AppPage.Diagnostics, "Diagnóstico", "ⓘ"),
             CreateNavigationItem(AppPage.Settings, "Configurações", "⚙")
         };
