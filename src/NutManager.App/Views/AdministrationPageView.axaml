@@ -174,6 +174,40 @@
               Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
               BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
               BorderThickness="1"
+              CornerRadius="8">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Administração do Windows" FontSize="20" FontWeight="SemiBold" />
+          <Button Content="Atualizar estado" Command="{Binding RefreshWindowsAdministrationCommand}" HorizontalAlignment="Left" />
+          <TextBlock Text="Serviço NUT" FontSize="16" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding WindowsServices}">
+            <ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,3"><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" /><TextBlock Text="{Binding State}" /></StackPanel></DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Iniciar" Click="StartServiceButton_OnClick" IsEnabled="{Binding CanPrepareAdministrativeAction}" />
+            <Button Content="Parar" Click="StopServiceButton_OnClick" IsEnabled="{Binding CanPrepareAdministrativeAction}" />
+            <Button Content="Reiniciar" Click="RestartServiceButton_OnClick" IsEnabled="{Binding CanPrepareAdministrativeAction}" />
+          </StackPanel>
+          <TextBlock Text="Permissões" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding WindowsPermissionAssessment.Message}" TextWrapping="Wrap" />
+          <Button Content="Preparar correção de permissões" Click="RepairPermissionsButton_OnClick" IsEnabled="{Binding CanPrepareAdministrativeAction}" HorizontalAlignment="Left" />
+          <TextBlock Text="Processos NUT" FontSize="16" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding WindowsProcesses}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+          <TextBlock Text="Eventos" FontSize="16" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding WindowsEvents}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+          <StackPanel IsVisible="{Binding HasPendingAdministrativeAction}" Spacing="6">
+            <TextBlock Text="Revisão da ação administrativa" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding PendingAdministrativeActionText}" />
+            <CheckBox Content="Confirmo que revisei esta ação administrativa." IsChecked="{Binding IsAdministrativeActionConfirmed, Mode=TwoWay}" />
+            <Button Content="Executar ação administrativa" Command="{Binding ExecuteAdministrativeActionCommand}" IsEnabled="{Binding CanExecuteAdministrativeAction}" HorizontalAlignment="Left" />
+          </StackPanel>
+          <TextBlock Text="{Binding AdministrativeStatusMessage}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1"
               CornerRadius="8"
               IsVisible="{Binding HasStatusMessage}">
         <StackPanel Spacing="7">
