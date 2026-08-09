@@ -48,7 +48,7 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
         string rawText,
         string lineEnding,
         string name,
-        string value,
+        string rawValue,
         string beforeValue,
         string trailingWhitespace,
         char? quoteCharacter,
@@ -57,7 +57,8 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
         : base(rawText, lineEnding)
     {
         Name = name;
-        Value = value;
+        RawValue = rawValue;
+        Value = DecodeValue(rawValue, quoteCharacter);
         _beforeValue = beforeValue;
         _trailingWhitespace = trailingWhitespace;
         _quoteCharacter = quoteCharacter;
@@ -67,6 +68,16 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
 
     public string Name { get; }
 
+    /// <summary>
+    /// Gets the lexical value token currently represented by this assignment, including
+    /// any outer quote delimiters and escape sequences.
+    /// </summary>
+    public string RawValue { get; private set; }
+
+    /// <summary>
+    /// Gets the editable value without outer quote delimiters. For quoted values,
+    /// backslash escapes for a backslash or the matching quote delimiter are decoded.
+    /// </summary>
     public string Value { get; private set; }
 
     public string? SectionName { get; }
@@ -80,11 +91,41 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
     public void SetValue(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        Value = RenderValue(value);
+        if (string.Equals(Value, value, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Value = value;
+        RawValue = RenderValue(value);
         IsModified = true;
     }
 
-    protected override string RenderModifiedText() => _beforeValue + Value + _trailingWhitespace;
+    protected override string RenderModifiedText() => _beforeValue + RawValue + _trailingWhitespace;
+
+    private static string DecodeValue(string rawValue, char? quoteCharacter)
+    {
+        if (quoteCharacter is not { } quote)
+        {
+            return rawValue;
+        }
+
+        var value = rawValue[1..^1];
+        var decoded = new System.Text.StringBuilder(value.Length);
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] == '\\' && index + 1 < value.Length &&
+                (value[index + 1] == '\\' || value[index + 1] == quote))
+            {
+                decoded.Append(value[++index]);
+                continue;
+            }
+
+            decoded.Append(value[index]);
+        }
+
+        return decoded.ToString();
+    }
 
     private string RenderValue(string value)
     {

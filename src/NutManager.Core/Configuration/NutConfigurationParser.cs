@@ -130,7 +130,7 @@ public sealed class NutConfigurationParser
         var remaining = afterEquals[leadingWhitespaceLength..];
         var value = remaining.TrimEnd();
         var trailingWhitespace = remaining[value.Length..];
-        char? quote = value.Length >= 2 && value[0] == value[^1] && value[0] is '\'' or '"'
+        char? quote = value.Length >= 2 && value[0] == value[^1] && value[0] is '\'' or '"' && !IsEscaped(value, value.Length - 1)
             ? value[0]
             : null;
 
@@ -191,7 +191,19 @@ public sealed class NutConfigurationParser
             rawText[nameEnd..argumentsStart],
             trailingWhitespace,
             currentSection,
-            fileKind == NutConfigurationFileKind.UpsmonConf && string.Equals(name, "MONITOR", StringComparison.OrdinalIgnoreCase));
+            (fileKind == NutConfigurationFileKind.UpsmonConf && string.Equals(name, "MONITOR", StringComparison.OrdinalIgnoreCase)) ||
+            (fileKind == NutConfigurationFileKind.UpsdConf && string.Equals(name, "CERTIDENT", StringComparison.OrdinalIgnoreCase)));
         return true;
+    }
+
+    private static bool IsEscaped(string value, int index)
+    {
+        var backslashCount = 0;
+        for (var cursor = index - 1; cursor >= 0 && value[cursor] == '\\'; cursor--)
+        {
+            backslashCount++;
+        }
+
+        return backslashCount % 2 != 0;
     }
 }

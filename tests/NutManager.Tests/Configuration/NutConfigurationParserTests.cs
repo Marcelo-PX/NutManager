@@ -69,9 +69,58 @@ public sealed class NutConfigurationParserTests
         const string original = "\nMODE=standalone\n\nCUSTOM=\"a # = []\"";
 
         var document = _parser.Parse(NutConfigurationFileKind.NutConf, original);
+        var custom = Assert.Single(document.FindAssignments("CUSTOM"));
 
-        Assert.Equal("\"a # = []\"", Assert.Single(document.FindAssignments("CUSTOM")).Value);
+        Assert.Equal("a # = []", custom.Value);
+        Assert.Equal("\"a # = []\"", custom.RawValue);
         Assert.Equal(original, document.Serialize());
+    }
+
+    [Fact]
+    public void ReapplyingAQuotedLogicalValuePreservesTheOriginalQuotedToken()
+    {
+        const string original = "[demo]\n    desc = \"abc\"\n";
+        var document = _parser.Parse(NutConfigurationFileKind.UpsConf, original);
+        var description = Assert.Single(document.FindAssignments("desc", "demo"));
+
+        Assert.Equal("abc", description.Value);
+        Assert.Equal("\"abc\"", description.RawValue);
+
+        description.SetValue(description.Value);
+
+        Assert.Equal("\"abc\"", description.RawValue);
+        Assert.Equal(original, document.Serialize());
+    }
+
+    [Fact]
+    public void ReapplyingAQuotedWindowsPathDoesNotDuplicateEscaping()
+    {
+        const string original = "[NOBREAK]\n    port = \"\\\\\\\\.\\\\COM4\"\n";
+        var document = _parser.Parse(NutConfigurationFileKind.UpsConf, original);
+        var port = Assert.Single(document.FindAssignments("port", "nobreak"));
+
+        Assert.DoesNotContain('"', port.Value);
+        Assert.Contains('\\', port.Value);
+
+        port.SetValue(port.Value);
+
+        Assert.Equal("\"\\\\\\\\.\\\\COM4\"", port.RawValue);
+        Assert.Equal(original, document.Serialize());
+    }
+
+    [Fact]
+    public void SettingAQuotedValueEscapesOnlyItsQuoteDelimiterAndBackslashes()
+    {
+        const string original = "[demo]\n    desc = \"abc\"\n";
+        const string value = "say \"hi\" \\ path";
+        var document = _parser.Parse(NutConfigurationFileKind.UpsConf, original);
+        var description = Assert.Single(document.FindAssignments("desc", "demo"));
+
+        description.SetValue(value);
+
+        Assert.Equal(value, description.Value);
+        Assert.Equal("\"say \\\"hi\\\" \\\\ path\"", description.RawValue);
+        Assert.Equal("[demo]\n    desc = \"say \\\"hi\\\" \\\\ path\"\n", document.Serialize());
     }
 
     [Fact]
@@ -116,6 +165,21 @@ public sealed class NutConfigurationParserTests
         Assert.Equal("# server\r\nLISTEN 127.0.0.1\r\nLISTEN ::1 3493\r\nMAXCONN 16\r\nFUTURE \"quoted value\"", document.Serialize());
         Assert.Single(document.FindDirectives("MAXCONN"));
         Assert.Single(document.FindDirectives("future"));
+    }
+
+    [Fact]
+    public void UpsdConfCertidentIsSensitiveAndDoesNotExposeItsPassword()
+    {
+        const string secret = "fictional-private-key-password";
+        var original = $"CERTIDENT \"server cert\" {secret}\nLISTEN 127.0.0.1\n";
+        var document = _parser.Parse(NutConfigurationFileKind.UpsdConf, original);
+        var certident = Assert.Single(document.FindDirectives("certident"));
+
+        Assert.True(certident.IsSensitive);
+        Assert.DoesNotContain(secret, document.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, certident.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, string.Join(" ", document.Diagnostics.Select(diagnostic => diagnostic.Message)), StringComparison.Ordinal);
+        Assert.Equal(original, document.Serialize());
     }
 
     [Fact]
