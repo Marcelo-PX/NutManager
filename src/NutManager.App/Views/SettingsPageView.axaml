@@ -1,27 +1,93 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:NutManager.Core.Models;assembly=NutManager.Core"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.SettingsPageView"
              x:DataType="viewModels:SettingsPageViewModel">
-  <StackPanel Spacing="12" MaxWidth="640">
-    <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
-    <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
-    <TextBlock Text="Servidor NUT" FontWeight="SemiBold" />
-    <TextBox PlaceholderText="Host" Text="{Binding Host}" />
-    <TextBox PlaceholderText="Porta" Text="{Binding Port}" />
-    <TextBlock Text="UPS preferido (opcional)" FontWeight="SemiBold" />
-    <TextBox Text="{Binding PreferredUpsName}" />
-    <TextBlock Text="Comunicação" FontWeight="SemiBold" />
-    <TextBox PlaceholderText="Timeout em segundos" Text="{Binding ConnectionTimeoutSeconds}" />
-    <TextBox PlaceholderText="Intervalo de polling em segundos" Text="{Binding PollingIntervalSeconds}" />
-    <CheckBox Content="Usar dados simulados (modo mock)" IsChecked="{Binding MockMode}" />
-    <TextBlock Text="Tema" FontWeight="SemiBold" />
-    <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}"><ComboBox.ItemTemplate><DataTemplate x:DataType="viewModels:ThemeOption"><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox>
-    <TextBlock Text="Alterações de conexão serão aplicadas ao reiniciar o aplicativo." TextWrapping="Wrap" />
-    <Button Content="Salvar" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
-    <TextBlock Text="Salvando..." IsVisible="{Binding IsSaving}" />
-    <TextBlock Text="Configurações salvas." IsVisible="{Binding IsSaved}" />
-    <TextBlock Text="{Binding SaveError}" IsVisible="{Binding SaveError}" TextWrapping="Wrap" />
-    <TextBlock Text="{Binding LoadError}" IsVisible="{Binding LoadError}" TextWrapping="Wrap" />
-  </StackPanel>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16" MaxWidth="900">
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Servidores NUT gerenciados" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap"><Run Text="Perfil ativo: " /><Run Text="{Binding ActiveProfileName}" /></TextBlock>
+          <TextBlock Text="O perfil ativo será aplicado ao reiniciar o aplicativo." TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="260,16,*" RowDefinitions="Auto">
+            <StackPanel Grid.Column="0" Spacing="8">
+              <ListBox ItemsSource="{Binding ManagedProfiles}" SelectedItem="{Binding SelectedManagedProfile, Mode=TwoWay}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:ManagedNutServerProfile">
+                    <StackPanel Margin="4" Spacing="2">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Monitoring.Host}" FontSize="12" />
+                      <TextBlock Text="{Binding Management.Mode}" FontSize="12" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Criar Local" Command="{Binding CreateLocalProfileCommand}" />
+                <Button Content="Criar Remote" Command="{Binding CreateRemoteProfileCommand}" />
+              </StackPanel>
+              <Button Content="Tornar ativo" Command="{Binding ActivateSelectedProfileCommand}" IsEnabled="{Binding CanActivateSelectedProfile}" HorizontalAlignment="Left" />
+              <Button Content="Excluir perfil" Command="{Binding DeleteSelectedProfileCommand}" IsEnabled="{Binding CanDeleteSelectedProfile}" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Spacing="8">
+              <TextBlock Text="Editor do perfil" FontSize="16" FontWeight="SemiBold" />
+              <TextBlock Text="Nome" FontWeight="SemiBold" />
+              <TextBox Text="{Binding ProfileDraft.Name, Mode=TwoWay}" />
+              <TextBlock Text="Monitoring" FontWeight="SemiBold" />
+              <TextBox PlaceholderText="Host" Text="{Binding ProfileDraft.MonitoringHost, Mode=TwoWay}" />
+              <TextBox PlaceholderText="Porta" Text="{Binding ProfileDraft.MonitoringPort, Mode=TwoWay}" />
+              <TextBox PlaceholderText="UPS preferido (opcional)" Text="{Binding ProfileDraft.PreferredUpsName, Mode=TwoWay}" />
+              <TextBlock Text="Modo de gerenciamento" FontWeight="SemiBold" />
+              <ComboBox ItemsSource="{Binding ManagementModes}" SelectedItem="{Binding ProfileDraft.ManagementMode, Mode=TwoWay}" />
+              <ComboBox ItemsSource="{Binding AccessModes}" SelectedItem="{Binding ProfileDraft.AccessMode, Mode=TwoWay}" />
+              <StackPanel IsVisible="{Binding ProfileDraft.IsRemote}" Spacing="6">
+                <TextBlock Text="Host de gerenciamento" FontWeight="SemiBold" />
+                <TextBox Text="{Binding ProfileDraft.ManagementHost, Mode=TwoWay}" />
+                <TextBlock Text="Diretório remoto de configuração (opcional)" FontWeight="SemiBold" />
+                <TextBox Text="{Binding ProfileDraft.RemoteConfigurationDirectory, Mode=TwoWay}" />
+                <TextBlock Text="O gerenciamento remoto será disponibilizado pelo transporte SSH/SFTP." TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Text="A instalação local será detectada automaticamente pelo NutManager. Diretórios remotos são somente metadata nesta versão." TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Salvar perfil" Command="{Binding SaveProfileCommand}" IsEnabled="{Binding CanPersistProfiles}" />
+                <Button Content="Descartar alterações" Command="{Binding DiscardProfileDraftCommand}" IsEnabled="{Binding IsProfileDraftDirty}" />
+              </StackPanel>
+              <TextBlock Text="Salvando perfil..." IsVisible="{Binding IsSavingProfile}" />
+              <TextBlock Text="Perfil salvo." IsVisible="{Binding IsProfileSaved}" />
+              <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding ProfileStatusMessage}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding ProfileSaveError}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Configurações gerais" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Comunicação" FontWeight="SemiBold" />
+          <TextBox PlaceholderText="Timeout em segundos" Text="{Binding ConnectionTimeoutSeconds}" />
+          <TextBox PlaceholderText="Intervalo de polling em segundos" Text="{Binding PollingIntervalSeconds}" />
+          <CheckBox Content="Usar dados simulados (modo mock)" IsChecked="{Binding MockMode}" />
+          <TextBlock Text="Tema" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}">
+            <ComboBox.ItemTemplate><DataTemplate x:DataType="viewModels:ThemeOption"><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+          </ComboBox>
+          <Button Content="Salvar configurações" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
+          <TextBlock Text="Salvando..." IsVisible="{Binding IsSaving}" />
+          <TextBlock Text="Configurações salvas." IsVisible="{Binding IsSaved}" />
+          <TextBlock Text="{Binding SaveError}" IsVisible="{Binding SaveError}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding LoadError}" IsVisible="{Binding LoadError}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

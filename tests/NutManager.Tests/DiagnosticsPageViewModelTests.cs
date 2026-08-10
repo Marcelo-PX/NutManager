@@ -231,12 +231,40 @@ public sealed class DiagnosticsPageViewModelTests
         Assert.Equal(2, detector.DetectCalls);
     }
 
+    [Fact]
+    public async Task RemoteRuntimeProfileShowsIndependentMetadataAndNeverCallsTheLocalDetector()
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "Servidor remoto",
+            new NutMonitoringProfile("monitor.example", 3494, "remote-ups"),
+            new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut"),
+            ManagedNutServerAccessMode.ReadOnly);
+        var context = ManagedNutServerRuntimeContext.FromProfiles(
+            new ManagedNutServerProfiles(1, profile.Id, [profile]),
+            new ApplicationSettings());
+        var detector = new TestInstallationDetector();
+        using var viewModel = CreateViewModel(new ApplicationSettings(host: "legacy", port: 3493), installationDetector: detector, profileContext: context);
+
+        await viewModel.RefreshLocalInstallationAsync();
+
+        Assert.Equal("Servidor remoto", viewModel.ManagedProfileName);
+        Assert.Equal("monitor.example", viewModel.Host);
+        Assert.Equal("3494", viewModel.Port);
+        Assert.Equal("remote-ups", viewModel.PreferredUpsName);
+        Assert.Equal("Remoto", viewModel.ManagementModeText);
+        Assert.Equal("Somente leitura", viewModel.ManagementAccessText);
+        Assert.Equal(0, detector.DetectCalls);
+        Assert.Contains("não será detectada", viewModel.LocalInstallationError);
+    }
+
     private static DiagnosticsPageViewModel CreateViewModel(
         ApplicationSettings settings,
         TestPollingCoordinator? coordinator = null,
         DevicesPageViewModel? devices = null,
-        ILocalNutInstallationDetector? installationDetector = null) =>
-        new(settings, RuntimeInfo, coordinator, devices, installationDetector);
+        ILocalNutInstallationDetector? installationDetector = null,
+        ManagedNutServerRuntimeContext? profileContext = null) =>
+        new(settings, RuntimeInfo, coordinator, devices, installationDetector, profileContext);
 
     private static UpsSnapshot CreateSnapshot(string name, DataSource source) => new(
         new UpsIdentity(name, "UPS de teste", "Fabricante", "Modelo", "Serial"),

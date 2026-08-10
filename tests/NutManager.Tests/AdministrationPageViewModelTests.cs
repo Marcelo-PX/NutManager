@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using NutManager.App.Services;
 using NutManager.App.ViewModels;
 using NutManager.Core.Administration;
 using NutManager.Core.Configuration;
@@ -798,6 +799,69 @@ public sealed class AdministrationPageViewModelTests
 
         Assert.True(viewModel.IsDriverDiagnosticCritical);
         Assert.Contains("CRÍTICO", viewModel.DriverDiagnosticCriticalText);
+    }
+
+    [Fact]
+    public async Task RemoteProfileNeverDetectsOrEnablesLocalManagement()
+    {
+        var detector = new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "nut.conf"));
+        var viewModel = new AdministrationPageViewModel(
+            detector,
+            new TestPipeline(),
+            new TestWindowsAdministration(),
+            new TestDriverDiagnostics(),
+            CreateProfileContext(NutManagementMode.Remote, ManagedNutServerAccessMode.Manage));
+
+        await viewModel.InitializeAsync();
+
+        Assert.True(viewModel.IsRemoteManagementProfile);
+        Assert.False(viewModel.IsLocalManagementProfile);
+        Assert.Equal(0, detector.DetectCalls);
+        Assert.False(viewModel.CanChangeInstallation);
+        Assert.False(viewModel.CanSelectConfigurationFile);
+        Assert.False(viewModel.CanPrepareAdministrativeAction);
+        Assert.False(viewModel.CanPrepareDriverDiagnostic);
+        Assert.Contains("Gerenciamento remoto", viewModel.ManagementAvailabilityText);
+    }
+
+    [Fact]
+    public async Task LocalReadOnlyProfileAllowsInspectionButBlocksWriteAndExternalActions()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        var detector = new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "nut.conf"));
+        var viewModel = new AdministrationPageViewModel(
+            detector,
+            pipeline,
+            new TestWindowsAdministration(),
+            new TestDriverDiagnostics(),
+            CreateProfileContext(NutManagementMode.Local, ManagedNutServerAccessMode.ReadOnly));
+
+        await viewModel.InitializeAsync();
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
+
+        Assert.Equal(1, detector.DetectCalls);
+        Assert.True(viewModel.HasLoadedFile);
+        Assert.False(viewModel.CanEditEntries);
+        Assert.False(viewModel.CanReview);
+        Assert.False(viewModel.CanApply);
+        Assert.False(viewModel.CanPrepareAdministrativeAction);
+        Assert.False(viewModel.CanStartWindowsService);
+        Assert.False(viewModel.CanPrepareDriverDiagnostic);
+    }
+
+    private static ManagedNutServerRuntimeContext CreateProfileContext(NutManagementMode managementMode, ManagedNutServerAccessMode accessMode)
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "Test profile",
+            new NutMonitoringProfile("monitor.example", 3493, "ups-a"),
+            managementMode == NutManagementMode.Local
+                ? new NutManagementProfile(NutManagementMode.Local)
+                : new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut"),
+            accessMode);
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]);
+        return ManagedNutServerRuntimeContext.FromProfiles(profiles, new ApplicationSettings());
     }
 
     private static async Task<AdministrationPageViewModel> CreateInitializedViewModelAsync(TestPipeline pipeline, params string[] availableFiles)

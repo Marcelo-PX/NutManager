@@ -31,8 +31,8 @@ Only one task should normally be in progress at a time.
 | T15 | DONE | Build graphical NUT configuration editor | Windows-first configuration experience |
 | T16 | DONE | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
 | T17 | DONE | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
-| T18 | READY | Add managed server profiles | Separate local and remote monitoring and management profiles |
-| T19 | TODO | Add remote SSH/SFTP management | Manual remote directory selection and secure management transport |
+| T18 | DONE | Add managed server profiles | Separate local and remote monitoring and management profiles |
+| T19 | READY | Add remote SSH/SFTP management | Manual remote directory selection and secure management transport |
 | T20 | TODO | Add secure credential storage | Protected remote-management credentials |
 | T21 | TODO | Validate full Windows local and remote administration | End-to-end Windows-first validation |
 | T22 | TODO | Evaluate Linux administrative compatibility | Secondary, best-effort compatibility assessment |
@@ -196,13 +196,13 @@ Implement explicitly confirmed local COM-port, driver, and NUT-tool diagnostics 
 
 ## T18 — Add managed server profiles
 
-**Status:** TODO
+**Status:** DONE
 
 Add separate local and remote monitoring and management profiles. Local profiles use installation autodetection; remote profiles use manual directory selection.
 
 ## T19 — Add remote SSH/SFTP management
 
-**Status:** TODO
+**Status:** READY
 
 Add secure remote management transport. The user selects and NutManager validates the remote configuration directory; remote autodiscovery is not permitted.
 

@@ -19,6 +19,41 @@
               BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
               BorderThickness="1"
               CornerRadius="8">
+        <StackPanel Spacing="7">
+          <TextBlock Text="Servidor gerenciado" FontSize="20" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+            <TextBlock Text="Perfil" Grid.Row="0" />
+            <TextBlock Text="{Binding ManagedProfileName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Monitoring" Grid.Row="1" />
+            <TextBlock Text="{Binding ManagedProfileMonitoringEndpoint}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Gerenciamento" Grid.Row="2" />
+            <TextBlock Text="{Binding ManagedProfileManagementMode}" Grid.Row="2" Grid.Column="1" />
+            <TextBlock Text="Acesso" Grid.Row="3" />
+            <TextBlock Text="{Binding ManagedProfileAccessMode}" Grid.Row="3" Grid.Column="1" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              IsVisible="{Binding IsRemoteManagementProfile}">
+        <StackPanel Spacing="7">
+          <TextBlock Text="Gerenciamento remoto" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding ManagementAvailabilityText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock><Run Text="Host de gerenciamento: " /><Run Text="{Binding RemoteManagementHost}" /></TextBlock>
+          <TextBlock><Run Text="Diretório remoto: " /><Run Text="{Binding RemoteConfigurationDirectory}" /></TextBlock>
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20"
+              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              IsVisible="{Binding IsLocalManagementProfile}">
         <StackPanel Spacing="10">
           <TextBlock Text="Instalação local do NUT" FontSize="20" FontWeight="SemiBold" />
           <TextBlock Text="{Binding InstallationStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -37,7 +72,7 @@
         </StackPanel>
       </Border>
 
-      <Grid ColumnDefinitions="260,16,*" RowDefinitions="Auto">
+      <Grid ColumnDefinitions="260,16,*" RowDefinitions="Auto" IsVisible="{Binding IsLocalManagementProfile}">
         <Border Grid.Column="0"
                 Padding="14"
                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
@@ -174,7 +209,8 @@
               Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
               BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
               BorderThickness="1"
-              CornerRadius="8">
+              CornerRadius="8"
+              IsVisible="{Binding IsLocalManagementProfile}">
         <StackPanel Spacing="10">
           <TextBlock Text="Dispositivos e drivers" FontSize="20" FontWeight="SemiBold" />
           <TextBlock Text="A enumeração de portas é passiva: nenhuma porta COM é aberta para teste." TextWrapping="Wrap" />
@@ -263,7 +299,8 @@
               Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
               BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
               BorderThickness="1"
-              CornerRadius="8">
+              CornerRadius="8"
+              IsVisible="{Binding IsLocalManagementProfile}">
         <StackPanel Spacing="10">
           <TextBlock Text="Administração do Windows" FontSize="20" FontWeight="SemiBold" />
           <Button Content="Atualizar estado" Command="{Binding RefreshWindowsAdministrationCommand}" HorizontalAlignment="Left" />

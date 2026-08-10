@@ -33,17 +33,23 @@
           <StackPanel Spacing="10">
             <TextBlock Text="Servidor NUT" FontSize="20" FontWeight="SemiBold" />
             <TextBlock Text="{Binding ModeText}" FontWeight="SemiBold" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-              <TextBlock Text="Host" Grid.Row="0" />
-              <TextBlock Text="{Binding Host}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Porta" Grid.Row="1" />
-              <TextBlock Text="{Binding Port}" Grid.Row="1" Grid.Column="1" />
-              <TextBlock Text="Timeout" Grid.Row="2" />
-              <TextBlock Text="{Binding ConnectionTimeoutText}" Grid.Row="2" Grid.Column="1" />
-              <TextBlock Text="Intervalo de polling" Grid.Row="3" />
-              <TextBlock Text="{Binding PollingIntervalText}" Grid.Row="3" Grid.Column="1" />
-              <TextBlock Text="UPS preferido" Grid.Row="4" />
-              <TextBlock Text="{Binding PreferredUpsName}" Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+              <TextBlock Text="Perfil gerenciado" Grid.Row="0" />
+              <TextBlock Text="{Binding ManagedProfileName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Management" Grid.Row="1" />
+              <TextBlock Text="{Binding ManagementModeText}" Grid.Row="1" Grid.Column="1" />
+              <TextBlock Text="Acesso" Grid.Row="2" />
+              <TextBlock Text="{Binding ManagementAccessText}" Grid.Row="2" Grid.Column="1" />
+              <TextBlock Text="Host" Grid.Row="3" />
+              <TextBlock Text="{Binding Host}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Porta" Grid.Row="4" />
+              <TextBlock Text="{Binding Port}" Grid.Row="4" Grid.Column="1" />
+              <TextBlock Text="Timeout" Grid.Row="5" />
+              <TextBlock Text="{Binding ConnectionTimeoutText}" Grid.Row="5" Grid.Column="1" />
+              <TextBlock Text="Intervalo de polling" Grid.Row="6" />
+              <TextBlock Text="{Binding PollingIntervalText}" Grid.Row="6" Grid.Column="1" />
+              <TextBlock Text="UPS preferido" Grid.Row="7" />
+              <TextBlock Text="{Binding PreferredUpsName}" Grid.Row="7" Grid.Column="1" TextWrapping="Wrap" />
             </Grid>
           </StackPanel>
         </Border>

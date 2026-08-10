@@ -238,6 +238,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     private readonly IUpsPollingCoordinator? _polling;
     private readonly DevicesPageViewModel? _devices;
     private readonly ILocalNutInstallationDetector? _installationDetector;
+    private readonly ManagedNutServerRuntimeContext? _profileContext;
     private PollingState _pollingState;
     private NutInstallationInfo _localInstallation = NutInstallationInfo.NotDetected();
 
@@ -251,7 +252,8 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         ApplicationRuntimeInfo runtimeInfo,
         IUpsPollingCoordinator? polling = null,
         DevicesPageViewModel? devices = null,
-        ILocalNutInstallationDetector? installationDetector = null)
+        ILocalNutInstallationDetector? installationDetector = null,
+        ManagedNutServerRuntimeContext? profileContext = null)
         : base("Diagnóstico", "Informações somente leitura para verificar o estado atual do NutManager.")
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -262,6 +264,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         _polling = polling;
         _devices = devices;
         _installationDetector = installationDetector;
+        _profileContext = profileContext;
         _pollingState = polling?.State ?? PollingState.Unavailable;
 
         if (_polling is not null)
@@ -282,11 +285,14 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     public string Architecture => _runtimeInfo.Architecture;
 
     public string ModeText => _settings.MockMode ? "Dados simulados" : "Servidor NUT real";
-    public string Host => _settings.Host;
-    public string Port => _settings.Port.ToString(CultureInfo.InvariantCulture);
+    public string Host => _profileContext?.Endpoint.Host ?? _settings.Host;
+    public string Port => (_profileContext?.Endpoint.Port ?? _settings.Port).ToString(CultureInfo.InvariantCulture);
     public string ConnectionTimeoutText => FormatDuration(_settings.ConnectionTimeout);
     public string PollingIntervalText => FormatDuration(_settings.PollingInterval);
-    public string PreferredUpsName => _settings.PreferredUpsName ?? "Não configurado";
+    public string PreferredUpsName => _profileContext?.Profile.Monitoring.PreferredUpsName ?? _settings.PreferredUpsName ?? "Não configurado";
+    public string ManagedProfileName => _profileContext?.Profile.Name ?? "Perfil local atual";
+    public string ManagementModeText => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote ? "Remoto" : "Local";
+    public string ManagementAccessText => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? "Somente leitura" : "Permitir gerenciamento";
 
     public int DiscoveredUpsCount => _devices?.Devices.Count ?? 0;
     public string SelectedUpsName => _devices?.SelectedDevice?.Name ?? _pollingState.UpsName ?? NoSelectionText;
@@ -332,6 +338,14 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
 
     public async Task RefreshLocalInstallationAsync(CancellationToken cancellationToken = default)
     {
+        if (_profileContext?.Profile.Management.Mode == NutManagementMode.Remote)
+        {
+            ApplyLocalInstallation(NutInstallationInfo.NotDetected());
+            LocalInstallationError = "O perfil ativo usa gerenciamento remoto; a instalação local não será detectada.";
+            NotifyLocalInstallationPropertiesChanged();
+            return;
+        }
+
         if (_installationDetector is null)
         {
             ApplyLocalInstallation(NutInstallationInfo.NotDetected());
@@ -348,6 +362,14 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     public Task InspectLocalInstallationDirectoryAsync(string directory, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        if (_profileContext?.Profile.Management.Mode == NutManagementMode.Remote)
+        {
+            ApplyLocalInstallation(NutInstallationInfo.NotDetected());
+            LocalInstallationError = "O perfil ativo usa gerenciamento remoto; a instalação local não será inspecionada.";
+            NotifyLocalInstallationPropertiesChanged();
+            return Task.CompletedTask;
+        }
+
         if (_installationDetector is null)
         {
             ApplyLocalInstallation(NutInstallationInfo.NotDetected());
