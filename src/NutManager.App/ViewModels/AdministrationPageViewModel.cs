@@ -14,10 +14,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 {
     private const string UnavailableText = "Indisponível";
     private readonly ILocalNutInstallationDetector? _installationDetector;
-    private readonly INutConfigurationFilePipeline? _configurationPipeline;
+    private INutConfigurationFilePipeline? _configurationPipeline;
     private readonly ILocalNutWindowsAdministration? _windowsAdministration;
     private readonly ILocalNutDriverDiagnostics? _driverDiagnostics;
     private readonly ManagedNutServerRuntimeContext? _profileContext;
+    private readonly RemoteManagementSessionViewModel? _remoteManagement;
     private NutInstallationInfo? _currentInstallation;
     private NutConfigurationFileSnapshot? _loadedSnapshot;
     private NutConfigurationPreparedChange? _preparedChange;
@@ -27,7 +28,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private int _installationContextVersion;
 
     public AdministrationPageViewModel()
-        : this(null, null, null, null, null)
+        : this(null, null, null, null, null, null)
     {
     }
 
@@ -36,14 +37,25 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         INutConfigurationFilePipeline? configurationPipeline,
         ILocalNutWindowsAdministration? windowsAdministration = null,
         ILocalNutDriverDiagnostics? driverDiagnostics = null,
-        ManagedNutServerRuntimeContext? profileContext = null)
-        : base("Administração", "Edite entradas existentes da configuração local do NUT com revisão e confirmação explícita.")
+        ManagedNutServerRuntimeContext? profileContext = null,
+        RemoteManagementSessionViewModel? remoteManagement = null)
+        : base(
+            "Administração",
+            profileContext?.Profile.Management.Mode == NutManagementMode.Remote
+                ? "Gerencie a configuração remota do NUT com revisão, confirmação explícita e transporte SSH/SFTP seguro."
+                : "Edite entradas existentes da configuração local do NUT com revisão e confirmação explícita.")
     {
         _installationDetector = installationDetector;
         _configurationPipeline = configurationPipeline;
         _windowsAdministration = windowsAdministration;
         _driverDiagnostics = driverDiagnostics;
         _profileContext = profileContext;
+        _remoteManagement = remoteManagement;
+        if (_remoteManagement is not null)
+        {
+            _remoteManagement.ConfigurationContextChanged += OnRemoteConfigurationContextChanged;
+            _remoteManagement.PropertyChanged += OnRemoteManagementPropertyChanged;
+        }
         ConfigurationFiles = new ObservableCollection<NutConfigurationFileItemViewModel>(CreateFileItems());
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         PreviewLines = Array.Empty<NutConfigurationPreviewLineViewModel>();
@@ -92,6 +104,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     [ObservableProperty]
     private string? _recoveryPath;
+
+    [ObservableProperty]
+    private string? _temporaryPath;
 
     [ObservableProperty]
     private IReadOnlyList<NutServiceInfo> _windowsServices = Array.Empty<NutServiceInfo>();
@@ -191,28 +206,62 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public string RemoteConfigurationDirectory => _profileContext?.Profile.Management.RemoteConfigurationDirectory ?? "Não configurado";
 
     public string ManagementAvailabilityText => IsRemoteManagementProfile
-        ? "Gerenciamento remoto não conectado. O transporte remoto será disponibilizado pelo SSH/SFTP."
+        ? _remoteManagement?.StatusMessage ?? "Conecte a sessão SSH/SFTP para gerenciar a configuração remota."
         : "Gerenciamento local disponível conforme as permissões do perfil.";
+
+    public RemoteManagementSessionViewModel? RemoteManagement => _remoteManagement;
+
+    public bool IsRemoteConfigurationReady => _remoteManagement?.CanReadConfiguration == true;
+
+    public bool IsConfigurationEditorVisible => IsLocalManagementProfile || IsRemoteConfigurationReady;
+
+    public bool CanChangeRemoteSessionContext => IsRemoteManagementProfile && !HasDraftChanges && !HasPreview && !IsBusy;
+
+    public bool CanConnectRemote => CanChangeRemoteSessionContext && _remoteManagement?.CanConnect == true;
+
+    public bool CanDisconnectRemote => CanChangeRemoteSessionContext && _remoteManagement?.CanDisconnect == true;
+
+    public bool CanTrustRemoteHostKey => CanChangeRemoteSessionContext && _remoteManagement?.CanTrustHostKey == true;
+
+    public bool CanBrowseRemoteDirectory => CanChangeRemoteSessionContext && _remoteManagement?.CanBrowse == true;
+
+    public bool CanValidateRemoteDirectory => CanChangeRemoteSessionContext && _remoteManagement?.CanValidateDirectory == true;
+
+    public bool CanUseRemoteDirectory => CanChangeRemoteSessionContext && _remoteManagement?.CanUseCurrentDirectory == true;
+
+    public bool CanProbeRemoteWriteCapability => CanChangeRemoteSessionContext && _remoteManagement?.CanProbeWriteCapability == true;
 
     public bool HasBackupPath => !string.IsNullOrWhiteSpace(BackupPath);
 
     public bool HasRecoveryPath => !string.IsNullOrWhiteSpace(RecoveryPath);
 
-    public bool CanEditEntries => Capabilities.CanEditConfiguration && HasLoadedFile && !IsBusy && !IsDetectingInstallation;
+    public bool HasTemporaryPath => !string.IsNullOrWhiteSpace(TemporaryPath);
 
-    public bool CanReview => Capabilities.CanEditConfiguration && HasLoadedFile && HasDraftChanges && !IsBusy && !IsDetectingInstallation;
+    private bool CanInspectConfiguration => IsRemoteManagementProfile
+        ? _remoteManagement?.CanReadConfiguration == true
+        : Capabilities.CanInspectLocalManagement;
 
-    public bool CanApply => Capabilities.CanEditConfiguration && HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy && !IsDetectingInstallation;
+    private bool CanEditConfiguration => IsRemoteManagementProfile
+        ? _remoteManagement?.CanEditConfiguration == true
+        : Capabilities.CanEditConfiguration;
 
-    public bool CanDiscard => (HasDraftChanges || HasPreview) && !IsBusy && !IsDetectingInstallation;
+    private bool IsRemoteSessionBusy => _remoteManagement?.IsBusy == true;
 
-    public bool CanReload => Capabilities.CanInspectLocalManagement && SelectedFile is not null && !HasDraftChanges && !IsBusy && !IsDetectingInstallation;
+    public bool CanEditEntries => CanEditConfiguration && HasLoadedFile && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
+
+    public bool CanReview => CanEditConfiguration && HasLoadedFile && HasDraftChanges && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
+
+    public bool CanApply => CanEditConfiguration && HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
+
+    public bool CanDiscard => (HasDraftChanges || HasPreview) && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
+
+    public bool CanReload => CanInspectConfiguration && SelectedFile is not null && !HasDraftChanges && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
 
     public bool CanChangeInstallation => Capabilities.CanInspectLocalManagement && !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
 
     public bool CanDetectInstallation => CanChangeInstallation;
 
-    public bool CanSelectConfigurationFile => Capabilities.CanInspectLocalManagement && !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
+    public bool CanSelectConfigurationFile => CanInspectConfiguration && !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview && !IsRemoteSessionBusy;
 
     public bool IsWindowsAdministrationAvailable => _windowsAdministration is not null && WindowsPermissionAssessment.State != NutPermissionState.Unknown;
 
@@ -394,7 +443,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public async Task SelectFileAsync(NutConfigurationFileItemViewModel? file, CancellationToken cancellationToken = default)
     {
-        if (!Capabilities.CanInspectLocalManagement)
+        if (!CanInspectConfiguration)
         {
             SetStatus(ManagementAvailabilityText);
             return;
@@ -507,12 +556,18 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         SetStatus(null);
         BackupPath = null;
         RecoveryPath = null;
+        TemporaryPath = null;
         try
         {
             var result = await _configurationPipeline.ApplyAsync(_preparedChange, cancellationToken);
             BackupPath = result.BackupPath;
             RecoveryPath = result.RecoveryPath;
+            TemporaryPath = result.TemporaryPath;
             ApplyResultStatus(result);
+            if (result.Status == NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown)
+            {
+                _remoteManagement?.InvalidateWriteCapabilityAfterUncertainOutcome();
+            }
 
             if (result.Status == NutConfigurationApplyStatus.Success)
             {
@@ -834,6 +889,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             SetStatus(null);
             BackupPath = null;
             RecoveryPath = null;
+            TemporaryPath = null;
         }
 
         try
@@ -1197,6 +1253,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             case NutConfigurationApplyStatus.VerificationFailedRollbackFailed:
                 SetStatus("A verificação falhou e a configuração pode necessitar recuperação manual.", critical: true);
                 break;
+            case NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown:
+                SetStatus("CRÍTICO — a operação remota pode ter sido executada. Atualize e verifique o arquivo antes de tentar novamente.", critical: true);
+                break;
+            case NutConfigurationApplyStatus.RemoteTemporaryCleanupFailed:
+                SetStatus("CRÍTICO — um arquivo temporário remoto contendo configuração pode necessitar remoção manual.", critical: true);
+                break;
             case NutConfigurationApplyStatus.Cancelled:
                 SetStatus("A aplicação das alterações foi cancelada.");
                 break;
@@ -1234,6 +1296,16 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanChangeInstallation));
         OnPropertyChanged(nameof(CanDetectInstallation));
         OnPropertyChanged(nameof(CanSelectConfigurationFile));
+        OnPropertyChanged(nameof(IsRemoteConfigurationReady));
+        OnPropertyChanged(nameof(IsConfigurationEditorVisible));
+        OnPropertyChanged(nameof(CanChangeRemoteSessionContext));
+        OnPropertyChanged(nameof(CanConnectRemote));
+        OnPropertyChanged(nameof(CanDisconnectRemote));
+        OnPropertyChanged(nameof(CanTrustRemoteHostKey));
+        OnPropertyChanged(nameof(CanBrowseRemoteDirectory));
+        OnPropertyChanged(nameof(CanValidateRemoteDirectory));
+        OnPropertyChanged(nameof(CanUseRemoteDirectory));
+        OnPropertyChanged(nameof(CanProbeRemoteWriteCapability));
         NotifyAdministrativePropertiesChanged();
         NotifyDriverDiagnosticPropertiesChanged();
     }
@@ -1332,7 +1404,61 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     partial void OnRecoveryPathChanged(string? value) => OnPropertyChanged(nameof(HasRecoveryPath));
 
+    partial void OnTemporaryPathChanged(string? value) => OnPropertyChanged(nameof(HasTemporaryPath));
+
     partial void OnStatusMessageChanged(string? value) => OnPropertyChanged(nameof(HasStatusMessage));
+
+    private void OnRemoteConfigurationContextChanged(
+        INutConfigurationFilePipeline? pipeline,
+        RemoteNutDirectoryValidationResult? validation,
+        bool canWrite)
+    {
+        if (!IsRemoteManagementProfile)
+        {
+            return;
+        }
+
+        if (HasDraftChanges || HasPreview || IsBusy)
+        {
+            SetStatus("A sessão remota foi alterada, mas o editor atual foi preservado. Aplique ou descarte as alterações antes de atualizar o diretório remoto.");
+            return;
+        }
+
+        _configurationPipeline = pipeline;
+        _installationContextVersion++;
+        ClearLoadedDocument(clearSelectedFile: true);
+        foreach (var file in ConfigurationFiles)
+        {
+            var present = validation?.PresentFileNames.Contains(file.FileName, StringComparer.OrdinalIgnoreCase) == true;
+            file.ApplyRemoteInfo(
+                validation?.IsValid == true ? NutManager.Infrastructure.Remote.Ssh.RemotePathMapper.Combine(validation.Directory, file.FileName) : null,
+                present);
+        }
+
+        NotifyWorkflowPropertiesChanged();
+    }
+
+    private void OnRemoteManagementPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName == nameof(RemoteManagementSessionViewModel.StatusMessage))
+        {
+            OnPropertyChanged(nameof(ManagementAvailabilityText));
+        }
+
+        if (eventArgs.PropertyName is nameof(RemoteManagementSessionViewModel.IsBusy) or
+            nameof(RemoteManagementSessionViewModel.CanReadConfiguration) or
+            nameof(RemoteManagementSessionViewModel.CanEditConfiguration) or
+            nameof(RemoteManagementSessionViewModel.CanConnect) or
+            nameof(RemoteManagementSessionViewModel.CanDisconnect) or
+            nameof(RemoteManagementSessionViewModel.CanTrustHostKey) or
+            nameof(RemoteManagementSessionViewModel.CanBrowse) or
+            nameof(RemoteManagementSessionViewModel.CanValidateDirectory) or
+            nameof(RemoteManagementSessionViewModel.CanUseCurrentDirectory) or
+            nameof(RemoteManagementSessionViewModel.CanProbeWriteCapability))
+        {
+            NotifyWorkflowPropertiesChanged();
+        }
+    }
 }
 
 public enum NutConfigurationFileState
@@ -1394,6 +1520,12 @@ public sealed partial class NutConfigurationFileItemViewModel : ObservableObject
     }
 
     internal void SetLoaded() => State = NutConfigurationFileState.Loaded;
+
+    internal void ApplyRemoteInfo(string? fullPath, bool exists)
+    {
+        FullPath = fullPath;
+        State = exists ? NutConfigurationFileState.Available : NutConfigurationFileState.Missing;
+    }
 
     partial void OnStateChanged(NutConfigurationFileState value)
     {

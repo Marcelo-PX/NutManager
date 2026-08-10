@@ -560,6 +560,8 @@ public sealed class AdministrationPageViewModelTests
     [InlineData(NutConfigurationApplyStatus.PostApplyValidationFailedRollbackFailed, true, "A validação falhou e a configuração pode necessitar recuperação manual.")]
     [InlineData(NutConfigurationApplyStatus.ChangedExternallyRollbackFailed, true, "O arquivo foi alterado externamente e a recuperação exige atenção manual.")]
     [InlineData(NutConfigurationApplyStatus.VerificationFailedRollbackFailed, true, "A verificação falhou e a configuração pode necessitar recuperação manual.")]
+    [InlineData(NutConfigurationApplyStatus.RemoteTemporaryCleanupFailed, true, "CRÍTICO — um arquivo temporário remoto contendo configuração pode necessitar remoção manual.")]
+    [InlineData(NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown, true, "CRÍTICO — a operação remota pode ter sido executada. Atualize e verifique o arquivo antes de tentar novamente.")]
     [InlineData(NutConfigurationApplyStatus.Failed, true, "Não foi possível aplicar a configuração.")]
     [InlineData(NutConfigurationApplyStatus.Cancelled, false, "A aplicação das alterações foi cancelada.")]
     public async Task ApplyStatusesAreMappedWithoutRetry(
@@ -587,6 +589,30 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal("/session/recovery.bak", viewModel.RecoveryPath);
         Assert.False(viewModel.HasPreview);
         Assert.False(viewModel.IsPreviewConfirmed);
+    }
+
+    [Fact]
+    public async Task RemoteTemporaryCleanupFailureIsCriticalAndShowsInterventionPath()
+    {
+        var pipeline = new TestPipeline
+        {
+            NextApplyResult = new NutConfigurationApplyResult(
+                NutConfigurationApplyStatus.RemoteTemporaryCleanupFailed,
+                message: "cleanup failed",
+                temporaryPath: "/etc/nut/.nutmanager-nut.conf-fictional.tmp")
+        };
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        var viewModel = await CreateLoadedNutConfAsync(pipeline);
+        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        await viewModel.ReviewChangesAsync();
+        viewModel.IsPreviewConfirmed = true;
+
+        await viewModel.ApplyChangesAsync();
+
+        Assert.True(viewModel.IsCriticalResult);
+        Assert.True(viewModel.HasTemporaryPath);
+        Assert.Equal("/etc/nut/.nutmanager-nut.conf-fictional.tmp", viewModel.TemporaryPath);
+        Assert.Contains("arquivo temporário remoto", viewModel.StatusMessage);
     }
 
     [Theory]
@@ -808,8 +834,8 @@ public sealed class AdministrationPageViewModelTests
         var viewModel = new AdministrationPageViewModel(
             detector,
             new TestPipeline(),
-            new TestWindowsAdministration(),
-            new TestDriverDiagnostics(),
+            null,
+            null,
             CreateProfileContext(NutManagementMode.Remote, ManagedNutServerAccessMode.Manage));
 
         await viewModel.InitializeAsync();
@@ -821,7 +847,9 @@ public sealed class AdministrationPageViewModelTests
         Assert.False(viewModel.CanSelectConfigurationFile);
         Assert.False(viewModel.CanPrepareAdministrativeAction);
         Assert.False(viewModel.CanPrepareDriverDiagnostic);
-        Assert.Contains("Gerenciamento remoto", viewModel.ManagementAvailabilityText);
+        Assert.False(viewModel.IsWindowsAdministrationAvailable);
+        Assert.False(viewModel.IsDriverDiagnosticsAvailable);
+        Assert.Contains("Conecte a sessão SSH/SFTP", viewModel.ManagementAvailabilityText);
     }
 
     [Fact]

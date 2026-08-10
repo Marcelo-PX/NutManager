@@ -36,6 +36,18 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
     [ObservableProperty]
     private string? _remoteConfigurationDirectory;
 
+    [ObservableProperty]
+    private string _sshPort = NutManagementProfile.DefaultSshPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    [ObservableProperty]
+    private string? _sshUsername;
+
+    [ObservableProperty]
+    private string? _trustedHostKeyFingerprint;
+
+    [ObservableProperty]
+    private string? _trustedHostKeyAlgorithm;
+
     public bool IsRemote => ManagementMode == NutManagementMode.Remote;
 
     public static ManagedNutServerProfileDraftViewModel CreateLocal() => new(new ManagedNutServerProfile(
@@ -55,6 +67,9 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
             ManagedNutServerAccessMode.ReadOnly));
         draft.MonitoringHost = string.Empty;
         draft.ManagementHost = string.Empty;
+        draft.SshUsername = null;
+        draft.TrustedHostKeyFingerprint = null;
+        draft.TrustedHostKeyAlgorithm = null;
         return draft;
     }
 
@@ -70,6 +85,10 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         AccessMode = profile.AccessMode;
         ManagementHost = profile.Management.ManagementHost;
         RemoteConfigurationDirectory = profile.Management.RemoteConfigurationDirectory;
+        SshPort = profile.Management.SshPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        SshUsername = profile.Management.SshUsername;
+        TrustedHostKeyFingerprint = profile.Management.TrustedHostKeyFingerprint;
+        TrustedHostKeyAlgorithm = profile.Management.TrustedHostKeyAlgorithm;
     }
 
     public void CopyFrom(ManagedNutServerProfileDraftViewModel source)
@@ -84,6 +103,10 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         AccessMode = source.AccessMode;
         ManagementHost = source.ManagementHost;
         RemoteConfigurationDirectory = source.RemoteConfigurationDirectory;
+        SshPort = source.SshPort;
+        SshUsername = source.SshUsername;
+        TrustedHostKeyFingerprint = source.TrustedHostKeyFingerprint;
+        TrustedHostKeyAlgorithm = source.TrustedHostKeyAlgorithm;
     }
 
     public ManagedNutServerProfile CreateProfile() => new(
@@ -93,7 +116,14 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
             MonitoringHost,
             int.Parse(MonitoringPort, System.Globalization.CultureInfo.InvariantCulture),
             PreferredUpsName),
-        new NutManagementProfile(ManagementMode, ManagementHost, RemoteConfigurationDirectory),
+        new NutManagementProfile(
+            ManagementMode,
+            ManagementHost,
+            RemoteConfigurationDirectory,
+            int.Parse(SshPort, System.Globalization.CultureInfo.InvariantCulture),
+            SshUsername,
+            TrustedHostKeyFingerprint,
+            TrustedHostKeyAlgorithm),
         AccessMode);
 
     public bool Matches(ManagedNutServerProfile profile)
@@ -107,7 +137,11 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
                ManagementMode == profile.Management.Mode &&
                AccessMode == profile.AccessMode &&
                string.Equals(ManagementHost, profile.Management.ManagementHost, StringComparison.Ordinal) &&
-               string.Equals(RemoteConfigurationDirectory, profile.Management.RemoteConfigurationDirectory, StringComparison.Ordinal);
+               string.Equals(RemoteConfigurationDirectory, profile.Management.RemoteConfigurationDirectory, StringComparison.Ordinal) &&
+               string.Equals(SshPort, profile.Management.SshPort.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal) &&
+               string.Equals(SshUsername, profile.Management.SshUsername, StringComparison.Ordinal) &&
+               string.Equals(TrustedHostKeyFingerprint, profile.Management.TrustedHostKeyFingerprint, StringComparison.Ordinal) &&
+               string.Equals(TrustedHostKeyAlgorithm, profile.Management.TrustedHostKeyAlgorithm, StringComparison.Ordinal);
     }
 
     partial void OnManagementModeChanged(NutManagementMode value) => OnPropertyChanged(nameof(IsRemote));

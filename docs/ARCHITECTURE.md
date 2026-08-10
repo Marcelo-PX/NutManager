@@ -46,7 +46,7 @@ NutManager
 │   └── NUT TCP protocol
 └── Management
     ├── Local Windows adapter
-    └── Remote transport (T19)
+    └── Remote SSH/SFTP transport
 ```
 
 The managed-profile model is implemented through `ManagedNutServerProfile`, `NutMonitoringProfile`, `NutManagementProfile`, `ManagedNutServerProfiles`, `ManagedServerCapabilities`, and `ManagedNutServerRuntimeContext`.
@@ -65,7 +65,7 @@ The active profile is resolved during bootstrap into an immutable runtime contex
 
 `settings.json` is per-user UTF-8 JSON for polling, timeout, theme, mock-mode, and legacy monitoring compatibility fields. It uses temporary-file, atomic persistence and has no secrets in its current model.
 
-`managed-servers.json` is schema-versioned, per-user metadata for managed profiles and the active profile. It uses temporary-file, atomic persistence and never contains credentials. T20 owns protected credential storage.
+`managed-servers.json` is schema-versioned, per-user metadata for managed profiles and the active profile. Schema v2 adds remote SSH port, user name, and a pinned host-key fingerprint/algorithm. It uses temporary-file, atomic persistence and never contains credentials; passwords, passphrases, and private-key material are session-only. T20 owns protected credential storage.
 
 These stores do not use backup or rollback semantics. Backup, recoverable replacement, and rollback belong to the T14 configuration-file pipeline.
 
@@ -103,7 +103,7 @@ The adapter implements local installation detection, service metadata and contro
 
 ## 9. Local and remote management boundary
 
-Local Windows management is implemented through T17. A Remote profile exposes monitoring metadata only until a remote transport is implemented; it does not inspect, browse, or fall back to the local installation. T19 will add explicit SSH/SFTP transport, manual remote directory selection, and remote validation without remote autodiscovery.
+Local Windows management is implemented through T17. A Remote profile uses an explicit SSH/SFTP session with strict pinned-host-key verification; an unknown key requires an explicit trust action, and a mismatch is rejected. Remote configuration directories are manually browsed and validated without autodiscovery or local-management fallback. Remote profiles may read and prepare configuration changes after validation. Writes remain read-only by default and require both the profile's Manage policy and an explicit capability probe on a Windows/OpenSSH server. That probe uses same-directory temporary files and `File.Replace`; the remote pipeline preserves T14-style fingerprints, candidate verification, backup, post-write verification, and recovery rollback through fixed structured remote operations.
 
 ## 10. Windows-first CI and packaging
 

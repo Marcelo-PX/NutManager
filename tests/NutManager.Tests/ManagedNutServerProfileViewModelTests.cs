@@ -33,7 +33,9 @@ public sealed class ManagedNutServerProfileViewModelTests
         var local = Profile("Local", NutManagementMode.Local);
         var remote = Profile("Remote", NutManagementMode.Remote, "management.example", "/etc/nut");
         var store = new RecordingProfileStore();
-        var viewModel = CreateViewModel(new ManagedNutServerProfiles(1, local.Id, [local, remote]), store);
+        var profiles = new ManagedNutServerProfiles(1, local.Id, [local, remote]);
+        store.Current = profiles;
+        var viewModel = CreateViewModel(profiles, store);
 
         viewModel.ProfileDraft.Name = "Local renamed";
         await viewModel.SaveProfileCommand.ExecuteAsync(null);
@@ -126,6 +128,29 @@ public sealed class ManagedNutServerProfileViewModelTests
         Assert.NotNull(viewModel.ProfileSaveError);
     }
 
+    [Fact]
+    public async Task StaleSettingsSaveDoesNotOverwriteTrustedKeyOrRemoteDirectory()
+    {
+        var profile = Profile("Remote", NutManagementMode.Remote, "management.example", "/old/nut");
+        var document = new ManagedNutServerProfiles(1, profile.Id, [profile]);
+        var store = new RecordingProfileStore { Current = document };
+        var viewModel = CreateViewModel(document, store);
+        var mutator = new NutManager.App.Services.ManagedNutServerProfileUpdateService(store);
+
+        var trusted = await mutator.TrustHostKeyAsync(profile, "ssh-ed25519", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        Assert.NotNull(trusted);
+        var directory = await mutator.SaveRemoteDirectoryAsync(trusted!, "/current/nut");
+        Assert.NotNull(directory);
+
+        viewModel.ProfileDraft.Name = "Stale rename";
+        await viewModel.SaveProfileCommand.ExecuteAsync(null);
+
+        Assert.Contains("atualizado por outro fluxo", viewModel.ProfileSaveError);
+        var current = Assert.Single(store.Current!.Profiles);
+        Assert.Equal("/current/nut", current.Management.RemoteConfigurationDirectory);
+        Assert.Equal("SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", current.Management.TrustedHostKeyFingerprint);
+    }
+
     private static SettingsPageViewModel CreateViewModel(ManagedNutServerProfiles? profiles = null, IManagedNutServerProfileStore? profileStore = null)
     {
         if (profiles is null)
@@ -134,7 +159,7 @@ public sealed class ManagedNutServerProfileViewModelTests
             profiles = new ManagedNutServerProfiles(1, profile.Id, [profile]);
         }
 
-        return new SettingsPageViewModel(new ApplicationSettings(), new RecordingSettingsStore(), profiles, profileStore ?? new RecordingProfileStore());
+        return new SettingsPageViewModel(new ApplicationSettings(), new RecordingSettingsStore(), profiles, profileStore ?? new RecordingProfileStore { Current = profiles });
     }
 
     private static ManagedNutServerProfile Profile(string name, NutManagementMode mode, string? managementHost = null, string? remoteDirectory = null) => new(
@@ -147,12 +172,14 @@ public sealed class ManagedNutServerProfileViewModelTests
     private sealed class RecordingProfileStore : IManagedNutServerProfileStore
     {
         public ManagedNutServerProfiles? Saved { get; private set; }
+        public ManagedNutServerProfiles? Current { get; set; }
 
-        public Task<ManagedNutServerProfiles?> LoadAsync(CancellationToken cancellationToken) => Task.FromResult<ManagedNutServerProfiles?>(null);
+        public Task<ManagedNutServerProfiles?> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(Current);
 
         public Task SaveAsync(ManagedNutServerProfiles profiles, CancellationToken cancellationToken)
         {
             Saved = profiles;
+            Current = profiles;
             return Task.CompletedTask;
         }
     }

@@ -95,7 +95,7 @@ public sealed class ManagedNutServerProfileTests
         Assert.Equal(canEdit, capabilities.CanEditConfiguration);
         Assert.Equal(canAdminister, capabilities.CanExecuteAdministrativeActions);
         Assert.Equal(canRunDiagnostics, capabilities.CanRunDriverDiagnostics);
-        Assert.False(capabilities.IsRemoteManagementAvailable);
+        Assert.Equal(managementMode == NutManagementMode.Remote, capabilities.IsRemoteManagementAvailable);
     }
 
     [Fact]
@@ -113,10 +113,31 @@ public sealed class ManagedNutServerProfileTests
         Assert.Equal(document.SchemaVersion, loaded!.SchemaVersion);
         Assert.Equal(document.ActiveProfileId, loaded.ActiveProfileId);
         Assert.Equal(document.ActiveProfile, loaded.ActiveProfile);
-        Assert.Contains("\"schemaVersion\": 1", json);
+        Assert.Contains("\"schemaVersion\": 2", json);
         Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("passphrase", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("privateKeyPath", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("credential", json, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(Directory.GetFiles(directory.Path, "*.tmp"));
+    }
+
+    [Fact]
+    public async Task SchemaVersionOneRemoteProfileMigratesToSessionOnlySshMetadata()
+    {
+        using var directory = new TemporaryDirectory();
+        var id = Guid.NewGuid();
+        var store = new JsonManagedNutServerProfileStore(directory.Path);
+        var legacy = $$"""{"schemaVersion":1,"activeProfileId":"{{id}}","profiles":[{"id":"{{id}}","name":"Remote","monitoringHost":"monitor.example","monitoringPort":3493,"managementMode":"Remote","managementHost":"management.example","remoteConfigurationDirectory":"/etc/nut","accessMode":"Manage"}]}""";
+        Directory.CreateDirectory(directory.Path);
+        await File.WriteAllTextAsync(store.ProfilesPath, legacy);
+
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(ManagedNutServerProfiles.CurrentSchemaVersion, loaded!.SchemaVersion);
+        Assert.Equal(22, loaded.ActiveProfile.Management.SshPort);
+        Assert.Null(loaded.ActiveProfile.Management.SshUsername);
+        Assert.Null(loaded.ActiveProfile.Management.TrustedHostKeyFingerprint);
     }
 
     [Fact]
