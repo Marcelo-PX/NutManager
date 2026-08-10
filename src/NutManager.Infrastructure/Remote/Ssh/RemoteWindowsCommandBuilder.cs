@@ -11,7 +11,7 @@ public static class RemoteWindowsCommandBuilder
 {
     private static readonly string[] RecognizedFiles = RemoteNutConfigurationFiles.AllNames.ToArray();
 
-    public static string BuildWindowsPlatformProbe() => "powershell.exe -NoProfile -NonInteractive -EncodedCommand " + Encode("Write-Output 'NUTMANAGER_WINDOWS'");
+    public static string BuildWindowsPlatformProbe() => "powershell.exe -NoProfile -NonInteractive -EncodedCommand " + Encode("if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) { Write-Output 'NUTMANAGER_WINDOWS' }");
 
     public static string BuildWindowsCommit(RemoteNutWindowsCommitRequest request) =>
         BuildStructuredCommand("commit", new
@@ -38,6 +38,9 @@ public static class RemoteWindowsCommandBuilder
     public static string BuildWindowsCapabilityProbe(string configurationDirectory, string sourceName, string candidateName, string backupName) =>
         BuildStructuredCommand("probe", new { ConfigurationDirectory = configurationDirectory, SourceName = sourceName, CandidateName = candidateName, BackupName = backupName });
 
+    public static bool IsExactSuccessMarker(int? exitStatus, string? output, string marker) =>
+        exitStatus == 0 && string.Equals(output?.Trim(), marker, StringComparison.Ordinal);
+
     private static string BuildStructuredCommand(string operation, object payload)
     {
         var payloadBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload)));
@@ -52,6 +55,9 @@ public static class RemoteWindowsCommandBuilder
               if ([IO.Path]::GetDirectoryName($child) -ne $directory) { throw 'Path is not a direct child.' }
               return $child
             }
+            function Assert-GeneratedName([string] $name, [string] $suffix) {
+              if (-not $name.StartsWith('.nutmanager-') -or -not $name.EndsWith($suffix) -or $name.Length -le ('.nutmanager-'.Length + $suffix.Length) -or $name.IndexOfAny([char[]]'\\/') -ge 0 -or $name.Contains('..')) { throw 'Generated file name is invalid.' }
+            }
             $directory = [IO.Path]::GetFullPath($payload.ConfigurationDirectory)
             if (-not (Test-Path -LiteralPath $directory -PathType Container)) { throw 'Configuration directory is unavailable.' }
             if (((Get-Item -LiteralPath $directory -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Configuration directory is a reparse point.' }
@@ -61,6 +67,8 @@ public static class RemoteWindowsCommandBuilder
         {
             "commit" => """
                 if ($allowed -notcontains $payload.TargetFileName) { throw 'Target is not recognized.' }
+                Assert-GeneratedName $payload.TemporaryFileName '.tmp'
+                Assert-GeneratedName $payload.BackupFileName '.bak'
                 $target = Resolve-DirectChild $directory $payload.TargetFileName
                 $temp = Resolve-DirectChild $directory $payload.TemporaryFileName
                 $backup = Resolve-DirectChild $directory $payload.BackupFileName
@@ -76,6 +84,9 @@ public static class RemoteWindowsCommandBuilder
                 """,
             "rollback" => """
                 if ($allowed -notcontains $payload.TargetFileName) { throw 'Target is not recognized.' }
+                Assert-GeneratedName $payload.BackupFileName '.bak'
+                Assert-GeneratedName $payload.RollbackFileName '.tmp'
+                Assert-GeneratedName $payload.RecoveryFileName '.bak'
                 $target = Resolve-DirectChild $directory $payload.TargetFileName
                 $backup = Resolve-DirectChild $directory $payload.BackupFileName
                 $rollback = Resolve-DirectChild $directory $payload.RollbackFileName
@@ -100,6 +111,9 @@ public static class RemoteWindowsCommandBuilder
                 }
                 if (Test-Path -LiteralPath $backup) { throw 'Probe backup already exists.' }
                 [IO.File]::Replace($candidate, $source, $backup, $false)
+                $replaced = [IO.File]::ReadAllBytes($source)
+                $original = [IO.File]::ReadAllBytes($backup)
+                if ($replaced.Length -ne 1 -or $replaced[0] -ne 0x32 -or $original.Length -ne 1 -or $original[0] -ne 0x31) { throw 'Probe replacement verification failed.' }
                 [IO.File]::Delete($source)
                 [IO.File]::Delete($backup)
                 Write-Output 'NUTMANAGER_PROBE_OK'

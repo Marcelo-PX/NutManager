@@ -25,6 +25,8 @@ public sealed class RemoteManagementSessionViewModelTests
 
         Assert.Equal(RemoteNutConnectionState.HostKeyTrustRequired, viewModel.ConnectionState);
         Assert.True(viewModel.CanTrustHostKey);
+        Assert.Equal("ssh-ed25519", viewModel.PresentedHostKey!.Algorithm);
+        Assert.Equal(CanonicalFingerprint, viewModel.PresentedHostKey.Fingerprint);
         await viewModel.TrustPresentedHostKeyAsync();
 
         Assert.Equal(CanonicalFingerprint, viewModel.TrustedHostKeyFingerprint);
@@ -106,6 +108,24 @@ public sealed class RemoteManagementSessionViewModelTests
     }
 
     [Fact]
+    public async Task IndeterminateRemoteWriteDisablesEditingUntilReconnectAndProbe()
+    {
+        var profile = RemoteProfile(ManagedNutServerAccessMode.Manage);
+        var session = new FakeSession(RemoteNutPlatform.Windows);
+        var viewModel = new RemoteManagementSessionViewModel(profile, new FakeTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, session)));
+
+        await viewModel.ConnectWithPasswordAsync("fictional-password".AsMemory());
+        await viewModel.ValidateCurrentDirectoryAsync();
+        await viewModel.ProbeWriteCapabilityAsync();
+        Assert.True(viewModel.CanEditConfiguration);
+
+        viewModel.InvalidateWriteCapabilityAfterUncertainOutcome();
+
+        Assert.False(viewModel.CanEditConfiguration);
+        Assert.Contains("conecte novamente", viewModel.WriteCapabilityText);
+    }
+
+    [Fact]
     public async Task EditingRemoteDirectoryTextInvalidatesThePreviouslyValidatedContext()
     {
         var profile = RemoteProfile(ManagedNutServerAccessMode.ReadOnly);
@@ -154,6 +174,7 @@ public sealed class RemoteManagementSessionViewModelTests
     {
         public FakeSession(RemoteNutPlatform platform) => Platform = platform;
         public RemoteNutPlatform Platform { get; }
+        public bool IsSafeWriteCapabilityValid => true;
         public string HomeDirectory => "/etc/nut";
         public int ProbeCalls { get; private set; }
         public RemoteNutWriteCapabilityResult? ProbeResult { get; init; }
@@ -165,6 +186,7 @@ public sealed class RemoteManagementSessionViewModelTests
             ProbeCalls++;
             return Task.FromResult(ProbeResult ?? new RemoteNutWriteCapabilityResult(true, Platform));
         }
+        public void InvalidateSafeWriteCapability() { }
         public Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutFileReadResult(RemoteNutTransportStatus.Unsupported));
         public Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.NotFound));
         public Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported));

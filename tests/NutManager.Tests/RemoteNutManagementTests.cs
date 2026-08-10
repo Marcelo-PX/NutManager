@@ -38,6 +38,40 @@ public sealed class RemoteNutManagementTests
     }
 
     [Fact]
+    public void WindowsPlatformProbeChecksTheRemoteOperatingSystem()
+    {
+        var command = DecodePowerShell(RemoteWindowsCommandBuilder.BuildWindowsPlatformProbe());
+
+        Assert.Contains("OSVersion.Platform", command, StringComparison.Ordinal);
+        Assert.Contains("Win32NT", command, StringComparison.Ordinal);
+        Assert.Contains("NUTMANAGER_WINDOWS", command, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RemoteRollbackScriptRevalidatesGeneratedBackupNames()
+    {
+        var request = new RemoteNutWindowsRollbackRequest(
+            "C:/NUT/etc",
+            "ups.conf",
+            ".nutmanager-ups.conf-original.bak",
+            ".nutmanager-ups.conf-rollback.tmp",
+            ".nutmanager-ups.conf-recovery.bak",
+            "ABC");
+        var script = DecodePowerShell(RemoteWindowsCommandBuilder.BuildWindowsRollback(request));
+
+        Assert.Contains("Assert-GeneratedName $payload.BackupFileName '.bak'", script, StringComparison.Ordinal);
+        Assert.Contains("Assert-GeneratedName $payload.RollbackFileName '.tmp'", script, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, "NUTMANAGER_COMMIT_OK", true)]
+    [InlineData(0, " NUTMANAGER_COMMIT_OK\r\n", true)]
+    [InlineData(0, "prefix NUTMANAGER_COMMIT_OK", false)]
+    [InlineData(1, "NUTMANAGER_COMMIT_OK", false)]
+    public void RemoteWindowsMarkersRequireExactSuccessfulOutput(int exitStatus, string output, bool expected) =>
+        Assert.Equal(expected, RemoteWindowsCommandBuilder.IsExactSuccessMarker(exitStatus, output, "NUTMANAGER_COMMIT_OK"));
+
+    [Fact]
     public void HostKeyFingerprintRequiresExactPinnedSha256Value()
     {
         var hostKey = Encoding.UTF8.GetBytes("fictional-host-key");
@@ -162,6 +196,67 @@ public sealed class RemoteNutManagementTests
         Assert.Equal(0, unknown.CleanupCalls);
         Assert.NotNull(unknownResult.TemporaryPath);
         Assert.Contains(unknown.FilePaths, path => string.Equals(path, unknownResult.TemporaryPath, StringComparison.Ordinal));
+        Assert.Equal(1, unknown.CapabilityInvalidationCalls);
+    }
+
+    [Fact]
+    public async Task OutcomeUnknownBlocksFurtherWritesUntilANewSessionCapabilityHandshake()
+    {
+        var session = NewWritableSession();
+        session.CommitStatus = RemoteNutTransportStatus.OutcomeUnknown;
+        var pipeline = new RemoteNutConfigurationFilePipeline(session, "/etc/nut", true);
+        var load = await pipeline.LoadAsync("/etc/nut/nut.conf", NutConfigurationFileKind.NutConf);
+        var snapshot = Assert.IsType<NutConfigurationFileSnapshot>(load.Snapshot);
+        Assert.IsType<NutConfigurationAssignmentNode>(snapshot.Document.Nodes.Single()).SetValue("netserver");
+        var prepared = pipeline.Prepare(snapshot);
+
+        var unknown = await pipeline.ApplyAsync(prepared);
+        var blocked = await pipeline.ApplyAsync(prepared);
+
+        Assert.Equal(NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown, unknown.Status);
+        Assert.Equal(NutConfigurationApplyStatus.Failed, blocked.Status);
+        Assert.Equal(1, session.UploadCalls);
+    }
+
+    [Theory]
+    [InlineData(RemoteNutTransportStatus.Timeout)]
+    [InlineData(RemoteNutTransportStatus.Failed)]
+    [InlineData(RemoteNutTransportStatus.AccessDenied)]
+    public async Task UploadFailureAfterCandidateMayExistStillCleansTemporaryFile(RemoteNutTransportStatus uploadStatus)
+    {
+        var session = NewWritableSession();
+        session.UploadStatus = uploadStatus;
+
+        var applied = await ApplyChangedNutConfAsync(session);
+
+        Assert.Equal(NutConfigurationApplyStatus.TempWriteFailed, applied.Status);
+        Assert.Equal(1, session.CleanupCalls);
+        Assert.DoesNotContain(session.FilePaths, path => path.EndsWith(".tmp", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task UploadCancellationCleansCandidateBeforeReturningCancelled()
+    {
+        var session = NewWritableSession();
+        session.UploadStatus = RemoteNutTransportStatus.Cancelled;
+
+        var applied = await ApplyChangedNutConfAsync(session);
+
+        Assert.Equal(NutConfigurationApplyStatus.Cancelled, applied.Status);
+        Assert.Equal(1, session.CleanupCalls);
+    }
+
+    [Fact]
+    public async Task UploadCancellationCleanupFailureIsCritical()
+    {
+        var session = NewWritableSession();
+        session.UploadStatus = RemoteNutTransportStatus.Cancelled;
+        session.CleanupStatus = RemoteNutTransportStatus.AccessDenied;
+
+        var applied = await ApplyChangedNutConfAsync(session);
+
+        Assert.Equal(NutConfigurationApplyStatus.RemoteTemporaryCleanupFailed, applied.Status);
+        Assert.NotNull(applied.TemporaryPath);
     }
 
     [Fact]
@@ -196,6 +291,18 @@ public sealed class RemoteNutManagementTests
     [Fact]
     public void RestrictedTemporaryCleanupAcceptsOnlyGeneratedDirectChild() =>
         Assert.True(RemoteNutGeneratedTemporaryFile.IsValidName(".nutmanager-nut.conf-abc.tmp"));
+
+    [Theory]
+    [InlineData("ups.conf")]
+    [InlineData(".nutmanager-backup.tmp")]
+    [InlineData(".nutmanager-backup.bak/child")]
+    [InlineData(".nutmanager-../backup.bak")]
+    public void GeneratedRollbackBackupRejectsArbitraryNames(string name) =>
+        Assert.False(RemoteNutGeneratedBackupFile.IsValidName(name));
+
+    [Fact]
+    public void GeneratedRollbackBackupAcceptsOnlyGeneratedDirectChild() =>
+        Assert.True(RemoteNutGeneratedBackupFile.IsValidName(".nutmanager-ups.conf-abc.bak"));
 
     [Fact]
     public void SessionOnlyAuthenticationDoesNotExposeCredentialsInPersistedProfileModel()
@@ -243,6 +350,9 @@ public sealed class RemoteNutManagementTests
         return session;
     }
 
+    private static string DecodePowerShell(string command) =>
+        Encoding.Unicode.GetString(Convert.FromBase64String(command.Split(' ', StringSplitOptions.RemoveEmptyEntries)[^1]));
+
     private static async Task<NutConfigurationApplyResult> ApplyChangedNutConfAsync(FakeRemoteSession session)
     {
         var pipeline = new RemoteNutConfigurationFilePipeline(session, "/etc/nut", true);
@@ -259,12 +369,14 @@ public sealed class RemoteNutManagementTests
         public FakeRemoteSession(RemoteNutPlatform platform) => Platform = platform;
 
         public RemoteNutPlatform Platform { get; }
+        public bool IsSafeWriteCapabilityValid => CapabilityInvalidationCalls == 0;
         public string HomeDirectory => "/home/nut";
         public int CommitCalls { get; private set; }
         public int UploadCalls { get; private set; }
         public int CleanupCalls { get; private set; }
         public RemoteNutTransportStatus CleanupStatus { get; set; } = RemoteNutTransportStatus.Success;
         public RemoteNutTransportStatus? CommitStatus { get; set; }
+        public RemoteNutTransportStatus? UploadStatus { get; set; }
         public RemoteNutTransportStatus RollbackStatus { get; set; } = RemoteNutTransportStatus.Failed;
         public byte[]? UploadBytesOverride { get; set; }
         public Action? AfterUpload { get; set; }
@@ -272,6 +384,7 @@ public sealed class RemoteNutManagementTests
         public bool SkipBackup { get; set; }
         public IReadOnlyCollection<string> FilePaths => _files.Keys;
         public int RollbackCalls { get; private set; }
+        public int CapabilityInvalidationCalls { get; private set; }
 
         public void SetFile(string path, string text) => _files[path] = Encoding.UTF8.GetBytes(text);
         public string GetText(string path) => Encoding.UTF8.GetString(_files[path]);
@@ -290,12 +403,19 @@ public sealed class RemoteNutManagementTests
         public Task<RemoteNutWriteCapabilityResult> ProbeSafeWriteCapabilityAsync(string directory, CancellationToken cancellationToken = default) =>
             Task.FromResult(new RemoteNutWriteCapabilityResult(true, Platform));
 
+        public void InvalidateSafeWriteCapability() => CapabilityInvalidationCalls++;
+
         public Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default)
         {
             UploadCalls++;
             var path = RemotePathMapper.Combine(request.ConfigurationDirectory, request.TemporaryFileName);
             _files[path] = request.CandidateBytes.ToArray();
             AfterUpload?.Invoke();
+            if (UploadStatus is { } status)
+            {
+                return Task.FromResult(new RemoteNutFileReadResult(status));
+            }
+
             return Task.FromResult(new RemoteNutFileReadResult(RemoteNutTransportStatus.Success, UploadBytesOverride ?? _files[path]));
         }
 

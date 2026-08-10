@@ -70,6 +70,18 @@ public static class RemoteNutGeneratedTemporaryFile
         !name.Contains("..", StringComparison.Ordinal);
 }
 
+public static class RemoteNutGeneratedBackupFile
+{
+    public static bool IsValidName(string? name) =>
+        !string.IsNullOrWhiteSpace(name) &&
+        name.StartsWith(".nutmanager-", StringComparison.Ordinal) &&
+        name.EndsWith(".bak", StringComparison.Ordinal) &&
+        name.Length > ".nutmanager-".Length + ".bak".Length &&
+        name.IndexOfAny(['/', '\\']) < 0 &&
+        !name.Contains("..", StringComparison.Ordinal) &&
+        !name.Any(char.IsControl);
+}
+
 public sealed class RemoteNutHostKeyInfo
 {
     public RemoteNutHostKeyInfo(string host, int port, string algorithm, string fingerprint)
@@ -393,6 +405,8 @@ public interface IRemoteNutManagementSession : IAsyncDisposable
 {
     RemoteNutPlatform Platform { get; }
 
+    bool IsSafeWriteCapabilityValid { get; }
+
     string HomeDirectory { get; }
 
     Task<RemoteNutDirectoryListing> BrowseDirectoryAsync(string directory, CancellationToken cancellationToken = default);
@@ -402,6 +416,12 @@ public interface IRemoteNutManagementSession : IAsyncDisposable
     Task<RemoteNutFileReadResult> ReadFileAsync(string path, CancellationToken cancellationToken = default);
 
     Task<RemoteNutWriteCapabilityResult> ProbeSafeWriteCapabilityAsync(string directory, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Prevents further remote writes after an indeterminate commit or rollback outcome.
+    /// A new SSH session, directory validation, and capability probe are required before writing again.
+    /// </summary>
+    void InvalidateSafeWriteCapability();
 
     Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default);
 

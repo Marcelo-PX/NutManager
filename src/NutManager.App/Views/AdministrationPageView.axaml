@@ -64,7 +64,12 @@
           </StackPanel>
           <StackPanel IsVisible="{Binding RemoteManagement.CanTrustHostKey}" Spacing="5">
             <TextBlock Text="A chave apresentada será salva somente após sua confirmação explícita." TextWrapping="Wrap" />
-            <TextBlock Text="{Binding RemoteManagement.PresentedHostKey.Fingerprint}" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="4">
+              <TextBlock Text="Algoritmo:" Grid.Row="0" />
+              <TextBlock Text="{Binding RemoteManagement.PresentedHostKey.Algorithm}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+              <TextBlock Text="Fingerprint:" Grid.Row="1" />
+              <TextBlock Text="{Binding RemoteManagement.PresentedHostKey.Fingerprint}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
+            </Grid>
             <Button Content="Confiar nesta chave do host" Click="RemoteTrustHostKeyButton_OnClick" IsEnabled="{Binding CanTrustRemoteHostKey}" HorizontalAlignment="Left" />
           </StackPanel>
           <StackPanel IsVisible="{Binding RemoteManagement.IsConnected}" Spacing="7">

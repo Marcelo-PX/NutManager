@@ -97,6 +97,69 @@ public sealed class ManagedNutServerProfileUpdateServiceTests
         Assert.Equal("/etc/nut", store.Current.ActiveProfile.Management.RemoteConfigurationDirectory);
     }
 
+    [Fact]
+    public async Task CreateUsesCurrentProfilesAndPreservesActiveProfile()
+    {
+        var active = Profile(name: "Active");
+        var existing = Profile(name: "Existing");
+        var created = Profile(name: "Created");
+        var store = new RecordingStore(Document(active, existing, active.Id));
+
+        var document = await new ManagedNutServerProfileUpdateService(store).CreateProfileAsync(created);
+
+        Assert.NotNull(document);
+        Assert.Equal(active.Id, document!.ActiveProfileId);
+        Assert.Equal(existing, document.Profiles.Single(profile => profile.Id == existing.Id));
+        Assert.Equal(created, document.Profiles.Single(profile => profile.Id == created.Id));
+    }
+
+    [Fact]
+    public async Task DeleteRevalidatesCurrentActiveAndLastProfileRules()
+    {
+        var active = Profile(name: "Active");
+        var removable = Profile(name: "Removable");
+        var store = new RecordingStore(Document(active, removable, active.Id));
+        var service = new ManagedNutServerProfileUpdateService(store);
+
+        store.Current = Document(active);
+        var rejectedLast = await service.DeleteProfileAsync(removable.Id);
+        store.Current = Document(active, removable, removable.Id);
+        var rejectedActive = await service.DeleteProfileAsync(removable.Id);
+
+        Assert.Null(rejectedLast);
+        Assert.Null(rejectedActive);
+        Assert.Equal(0, store.SaveCalls);
+    }
+
+    [Fact]
+    public async Task ActivateUsesTheCurrentProfileList()
+    {
+        var first = Profile(name: "First");
+        var second = Profile(name: "Second");
+        var store = new RecordingStore(Document(first, second, first.Id));
+
+        var document = await new ManagedNutServerProfileUpdateService(store).ActivateProfileAsync(second.Id);
+
+        Assert.NotNull(document);
+        Assert.Equal(second.Id, document!.ActiveProfileId);
+        Assert.Equal(first, document.Profiles.Single(profile => profile.Id == first.Id));
+    }
+
+    [Fact]
+    public async Task SettingsProfileSavePreservesCurrentTrustMetadata()
+    {
+        var trusted = Profile(fingerprint: Fingerprint("trusted"));
+        var staleDraft = Copy(trusted, fingerprint: Fingerprint("other"), name: "Renamed");
+        var store = new RecordingStore(Document(trusted));
+
+        var document = await new ManagedNutServerProfileUpdateService(store).SaveExistingProfileAsync(trusted, staleDraft);
+
+        var saved = Assert.Single(Assert.IsType<ManagedNutServerProfiles>(document).Profiles);
+        Assert.Equal("Renamed", saved.Name);
+        Assert.Equal(trusted.Management.TrustedHostKeyFingerprint, saved.Management.TrustedHostKeyFingerprint);
+        Assert.Equal(trusted.Management.TrustedHostKeyAlgorithm, saved.Management.TrustedHostKeyAlgorithm);
+    }
+
     private static ManagedNutServerProfile Profile(
         string name = "Remote",
         string directory = "/etc/nut",

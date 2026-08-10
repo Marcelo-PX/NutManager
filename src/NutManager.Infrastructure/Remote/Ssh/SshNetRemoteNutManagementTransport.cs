@@ -101,16 +101,27 @@ public sealed class SshNetRemoteNutManagementTransport : IRemoteNutManagementTra
     private static async Task ConnectBoundedAsync(BaseClient client, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var connect = Task.Run(client.Connect);
+        using var operationCancellation = CreateOperationToken(cancellationToken, ConnectTimeout);
         try
         {
-            await connect.WaitAsync(ConnectTimeout, CancellationToken.None);
+            await client.ConnectAsync(operationCancellation.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException("Remote connection timed out.");
         }
         catch
         {
             client.Dispose();
             throw;
         }
+    }
+
+    private static CancellationTokenSource CreateOperationToken(CancellationToken cancellationToken, TimeSpan timeout)
+    {
+        var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        source.CancelAfter(timeout);
+        return source;
     }
 }
 
@@ -122,32 +133,40 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     private readonly SshClient _sshClient;
     private readonly SftpClient _sftpClient;
     private readonly HashSet<string> _validatedConfigurationDirectories = new(StringComparer.Ordinal);
+    private bool _safeWriteCapabilityInvalidated;
     private bool _disposed;
 
     public SshNetRemoteNutManagementSession(SshClient sshClient, SftpClient sftpClient)
     {
         _sshClient = sshClient ?? throw new ArgumentNullException(nameof(sshClient));
         _sftpClient = sftpClient ?? throw new ArgumentNullException(nameof(sftpClient));
+        _sftpClient.OperationTimeout = SftpTimeout;
         HomeDirectory = _sftpClient.WorkingDirectory;
     }
 
     public RemoteNutPlatform Platform { get; private set; } = RemoteNutPlatform.Unknown;
+
+    public bool IsSafeWriteCapabilityValid => !_safeWriteCapabilityInvalidated;
 
     public string HomeDirectory { get; }
 
     public async Task<RemoteNutDirectoryListing> BrowseDirectoryAsync(string directory, CancellationToken cancellationToken = default)
     {
         var sftpPath = RemotePathMapper.ToSftpPath(directory);
-        return await ExecuteSftpAsync(() =>
+        var entries = await ExecuteSftpAsync(async token =>
         {
-            var entries = _sftpClient.ListDirectory(sftpPath)
-                .Where(entry => entry.Name is not "." and not "..")
-                .Where(entry => entry.IsDirectory)
-                .Select(entry => new RemoteNutDirectoryEntry(entry.Name, entry.FullName, true, entry.IsSymbolicLink))
-                .OrderBy(entry => entry.Name, StringComparer.Ordinal)
-                .ToArray();
-            return new RemoteNutDirectoryListing(sftpPath, GetParentPath(sftpPath), entries);
+            var listed = new List<RemoteNutDirectoryEntry>();
+            await foreach (var entry in _sftpClient.ListDirectoryAsync(sftpPath, token))
+            {
+                if (entry.Name is not "." and not ".." && entry.IsDirectory)
+                {
+                    listed.Add(new RemoteNutDirectoryEntry(entry.Name, entry.FullName, true, entry.IsSymbolicLink));
+                }
+            }
+
+            return listed.OrderBy(entry => entry.Name, StringComparer.Ordinal).ToArray();
         }, cancellationToken);
+        return new RemoteNutDirectoryListing(sftpPath, GetParentPath(sftpPath), entries);
     }
 
     public async Task<RemoteNutDirectoryValidationResult> ValidateConfigurationDirectoryAsync(string directory, CancellationToken cancellationToken = default)
@@ -155,11 +174,19 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         var sftpPath = RemotePathMapper.ToSftpPath(directory);
         try
         {
-            var present = await ExecuteSftpAsync(() => _sftpClient.ListDirectory(sftpPath)
-                .Where(entry => !entry.IsDirectory && RemoteNutConfigurationFiles.IsRecognized(entry.Name))
-                .Select(entry => entry.Name)
-                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-                .ToArray(), cancellationToken);
+            var present = await ExecuteSftpAsync(async token =>
+            {
+                var names = new List<string>();
+                await foreach (var entry in _sftpClient.ListDirectoryAsync(sftpPath, token))
+                {
+                    if (!entry.IsDirectory && RemoteNutConfigurationFiles.IsRecognized(entry.Name))
+                    {
+                        names.Add(entry.Name);
+                    }
+                }
+
+                return names.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray();
+            }, cancellationToken);
             var result = new RemoteNutDirectoryValidationResult(
                 RemoteNutTransportStatus.Success,
                 sftpPath,
@@ -167,6 +194,10 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
                 present.Length == 0 ? "No recognized NUT configuration file was found in the selected directory." : null);
             _validatedConfigurationDirectories.Add(sftpPath);
             return result;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new RemoteNutDirectoryValidationResult(RemoteNutTransportStatus.Cancelled, sftpPath, message: "Remote directory validation was cancelled.");
         }
         catch (SftpPermissionDeniedException)
         {
@@ -191,13 +222,17 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         var sftpPath = RemotePathMapper.ToSftpPath(path);
         try
         {
-            var bytes = await ExecuteSftpAsync(() =>
+            var bytes = await ExecuteSftpAsync(async token =>
             {
                 using var stream = new MemoryStream();
-                _sftpClient.DownloadFile(sftpPath, stream);
+                await _sftpClient.DownloadFileAsync(sftpPath, stream, token);
                 return stream.ToArray();
             }, cancellationToken);
             return new RemoteNutFileReadResult(RemoteNutTransportStatus.Success, bytes);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new RemoteNutFileReadResult(RemoteNutTransportStatus.Cancelled, message: "The remote file operation was cancelled.");
         }
         catch (SftpPathNotFoundException)
         {
@@ -220,8 +255,12 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     public async Task<RemoteNutWriteCapabilityResult> ProbeSafeWriteCapabilityAsync(string directory, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var sftpDirectory = RemotePathMapper.ToSftpPath(directory);
-        if (!await ProbeWindowsPlatformAsync())
+        if (_safeWriteCapabilityInvalidated || !TryGetValidatedConfigurationDirectory(directory, out var sftpDirectory))
+        {
+            return new RemoteNutWriteCapabilityResult(false, Platform, message: "The remote configuration directory was not validated for this session.");
+        }
+
+        if (!await ProbeWindowsPlatformAsync(cancellationToken))
         {
             return new RemoteNutWriteCapabilityResult(false, Platform, message: "Remote configuration writing is available only for Windows servers managed through OpenSSH.");
         }
@@ -237,8 +276,8 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
             await WriteNewAsync(RemotePathMapper.Combine(sftpDirectory, sourceName), new byte[] { 0x31 }, cancellationToken);
             await WriteNewAsync(RemotePathMapper.Combine(sftpDirectory, candidateName), new byte[] { 0x32 }, cancellationToken);
             var command = RemoteWindowsCommandBuilder.BuildWindowsCapabilityProbe(sftpDirectory, sourceName, candidateName, backupName);
-            var output = await ExecuteCommitCommandAsync(command);
-            if (!output.Contains("NUTMANAGER_PROBE_OK", StringComparison.Ordinal))
+            var output = await ExecuteWindowsCommandAsync(command, cancellationToken);
+            if (!RemoteWindowsCommandBuilder.IsExactSuccessMarker(output.ExitStatus, output.Output, "NUTMANAGER_PROBE_OK"))
             {
                 result = new RemoteNutWriteCapabilityResult(false, Platform, message: "The Windows replace capability probe failed.");
             }
@@ -246,6 +285,10 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
             {
                 result = new RemoteNutWriteCapabilityResult(true, Platform);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception)
         {
@@ -290,6 +333,10 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
             await WriteNewAsync(path, request.CandidateBytes, cancellationToken);
             return await ReadFileAsync(path, cancellationToken);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new RemoteNutFileReadResult(RemoteNutTransportStatus.Cancelled, message: "The remote candidate upload was cancelled.");
+        }
         catch (SftpPermissionDeniedException)
         {
             return new RemoteNutFileReadResult(RemoteNutTransportStatus.AccessDenied, message: "The remote candidate file cannot be created.");
@@ -303,6 +350,8 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
             return new RemoteNutFileReadResult(RemoteNutTransportStatus.Failed, message: "The remote candidate file could not be created.");
         }
     }
+
+    public void InvalidateSafeWriteCapability() => _safeWriteCapabilityInvalidated = true;
 
     public async Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default)
     {
@@ -328,17 +377,21 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
 
         try
         {
-            var existed = await ExecuteSftpAsync(() =>
+            var existed = await ExecuteSftpAsync(async token =>
             {
-                if (!_sftpClient.Exists(path))
+                if (!await _sftpClient.ExistsAsync(path, token))
                 {
                     return false;
                 }
 
-                _sftpClient.DeleteFile(path);
+                await _sftpClient.DeleteFileAsync(path, token);
                 return true;
             }, cancellationToken);
             return new RemoteNutTemporaryCleanupResult(existed ? RemoteNutTransportStatus.Success : RemoteNutTransportStatus.NotFound);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.Cancelled, "The remote temporary candidate cleanup was cancelled.");
         }
         catch (SftpPermissionDeniedException)
         {
@@ -358,24 +411,26 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
-        if (Platform != RemoteNutPlatform.Windows || !IsCommitRequestSafe(request) || !TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out _))
+        if (_safeWriteCapabilityInvalidated || Platform != RemoteNutPlatform.Windows || !IsCommitRequestSafe(request) || !TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out _))
         {
             return new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported, message: "Remote Windows safe write is not available.");
         }
 
         try
         {
-            var output = await ExecuteCommitCommandAsync(RemoteWindowsCommandBuilder.BuildWindowsCommit(request));
-            return output.Contains("NUTMANAGER_COMMIT_OK", StringComparison.Ordinal)
+            var output = await ExecuteWindowsCommandAsync(RemoteWindowsCommandBuilder.BuildWindowsCommit(request), CancellationToken.None);
+            return RemoteWindowsCommandBuilder.IsExactSuccessMarker(output.ExitStatus, output.Output, "NUTMANAGER_COMMIT_OK")
                 ? new RemoteNutCommitResult(RemoteNutTransportStatus.Success, RemotePathMapper.Combine(request.ConfigurationDirectory, request.BackupFileName))
                 : new RemoteNutCommitResult(RemoteNutTransportStatus.Failed, message: "The remote configuration commit was rejected.");
         }
         catch (TimeoutException)
         {
+            InvalidateSafeWriteCapability();
             return new RemoteNutCommitResult(RemoteNutTransportStatus.OutcomeUnknown, message: "The remote configuration commit outcome could not be confirmed.");
         }
         catch
         {
+            InvalidateSafeWriteCapability();
             return new RemoteNutCommitResult(RemoteNutTransportStatus.OutcomeUnknown, message: "The remote configuration commit outcome could not be confirmed.");
         }
     }
@@ -383,22 +438,23 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     public async Task<RemoteNutCommitResult> RollbackWindowsConfigurationAsync(RemoteNutWindowsRollbackRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (Platform != RemoteNutPlatform.Windows || !RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) ||
+        if (_safeWriteCapabilityInvalidated || Platform != RemoteNutPlatform.Windows || !RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) ||
             !TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out _) ||
-            !RemoteNutGeneratedTemporaryFile.IsValidName(request.RollbackFileName) || !IsGeneratedBackupName(request.RecoveryFileName))
+            !IsGeneratedBackupName(request.BackupFileName) || !RemoteNutGeneratedTemporaryFile.IsValidName(request.RollbackFileName) || !IsGeneratedBackupName(request.RecoveryFileName))
         {
             return new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported, message: "Remote Windows rollback is not available.");
         }
 
         try
         {
-            var output = await ExecuteCommitCommandAsync(RemoteWindowsCommandBuilder.BuildWindowsRollback(request));
-            return output.Contains("NUTMANAGER_ROLLBACK_OK", StringComparison.Ordinal)
+            var output = await ExecuteWindowsCommandAsync(RemoteWindowsCommandBuilder.BuildWindowsRollback(request), CancellationToken.None);
+            return RemoteWindowsCommandBuilder.IsExactSuccessMarker(output.ExitStatus, output.Output, "NUTMANAGER_ROLLBACK_OK")
                 ? new RemoteNutCommitResult(RemoteNutTransportStatus.Success, recoveryPath: RemotePathMapper.Combine(request.ConfigurationDirectory, request.RecoveryFileName))
                 : new RemoteNutCommitResult(RemoteNutTransportStatus.Failed, message: "The remote rollback was rejected.");
         }
         catch
         {
+            InvalidateSafeWriteCapability();
             return new RemoteNutCommitResult(RemoteNutTransportStatus.OutcomeUnknown, message: "The remote rollback outcome could not be confirmed.");
         }
     }
@@ -429,7 +485,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         }
     }
 
-    private async Task<bool> ProbeWindowsPlatformAsync()
+    private async Task<bool> ProbeWindowsPlatformAsync(CancellationToken cancellationToken)
     {
         if (Platform != RemoteNutPlatform.Unknown)
         {
@@ -438,8 +494,12 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
 
         try
         {
-            var output = await ExecuteCommitCommandAsync(RemoteWindowsCommandBuilder.BuildWindowsPlatformProbe());
-            Platform = output.Contains("NUTMANAGER_WINDOWS", StringComparison.Ordinal) ? RemoteNutPlatform.Windows : RemoteNutPlatform.NonWindows;
+            var output = await ExecuteWindowsCommandAsync(RemoteWindowsCommandBuilder.BuildWindowsPlatformProbe(), cancellationToken);
+            Platform = RemoteWindowsCommandBuilder.IsExactSuccessMarker(output.ExitStatus, output.Output, "NUTMANAGER_WINDOWS") ? RemoteNutPlatform.Windows : RemoteNutPlatform.NonWindows;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {
@@ -449,31 +509,49 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         return Platform == RemoteNutPlatform.Windows;
     }
 
-    private async Task<T> ExecuteSftpAsync<T>(Func<T> operation, CancellationToken cancellationToken)
+    private async Task<T> ExecuteSftpAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken, TimeSpan? timeout = null)
     {
         ThrowIfDisposed();
         cancellationToken.ThrowIfCancellationRequested();
-        var task = Task.Run(operation);
-        return await task.WaitAsync(SftpTimeout, CancellationToken.None);
+        using var operationCancellation = CreateOperationToken(cancellationToken, timeout ?? SftpTimeout);
+        try
+        {
+            return await operation(operationCancellation.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException("Remote SFTP operation timed out.");
+        }
     }
 
     private async Task WriteNewAsync(string path, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
     {
-        await ExecuteSftpAsync(() =>
+        await ExecuteSftpAsync(async token =>
         {
-            using var stream = _sftpClient.Open(path, FileMode.CreateNew, FileAccess.Write);
-            stream.Write(bytes.Span);
-            stream.Flush();
-            return true;
+            using var stream = await _sftpClient.OpenAsync(path, FileMode.CreateNew, FileAccess.Write, token);
+            await stream.WriteAsync(bytes, token);
+            await stream.FlushAsync(token);
+            return 0;
         }, cancellationToken);
     }
 
-    private async Task<string> ExecuteCommitCommandAsync(string command)
+    private async Task<RemoteWindowsCommandResult> ExecuteWindowsCommandAsync(string command, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
-        var task = Task.Run(() => _sshClient.RunCommand(command));
-        var result = await task.WaitAsync(CommitTimeout, CancellationToken.None);
-        return result.Result.Length > 4096 ? result.Result[..4096] : result.Result;
+        using var commandInstance = _sshClient.CreateCommand(command);
+        commandInstance.CommandTimeout = CommitTimeout;
+        using var operationCancellation = CreateOperationToken(cancellationToken, CommitTimeout);
+        try
+        {
+            await commandInstance.ExecuteAsync(operationCancellation.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException("Remote Windows command timed out.");
+        }
+
+        var output = commandInstance.Result ?? string.Empty;
+        return new RemoteWindowsCommandResult(commandInstance.ExitStatus, output.Length > 4096 ? output[..4096] : output);
     }
 
     private async Task<bool> DeleteCapabilityProbeTemporaryFileAsync(string configurationDirectory, string temporaryFileName)
@@ -487,15 +565,15 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         try
         {
             ThrowIfDisposed();
-            var task = Task.Run(() =>
+            var cleanup = await ExecuteSftpAsync(async token =>
             {
-                if (_sftpClient.Exists(path))
+                if (await _sftpClient.ExistsAsync(path, token))
                 {
-                    _sftpClient.DeleteFile(path);
+                    await _sftpClient.DeleteFileAsync(path, token);
                 }
-            });
-            await task.WaitAsync(CleanupTimeout, CancellationToken.None);
-            return true;
+                return true;
+            }, CancellationToken.None, CleanupTimeout);
+            return cleanup;
         }
         catch
         {
@@ -503,10 +581,14 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         }
     }
 
-    private static bool IsGeneratedBackupName(string name) =>
-        name.StartsWith(".nutmanager-", StringComparison.Ordinal) &&
-        name.EndsWith(".bak", StringComparison.Ordinal) &&
-        name.IndexOfAny(['/', '\\']) < 0;
+    private static CancellationTokenSource CreateOperationToken(CancellationToken cancellationToken, TimeSpan timeout)
+    {
+        var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        source.CancelAfter(timeout);
+        return source;
+    }
+
+    private static bool IsGeneratedBackupName(string name) => RemoteNutGeneratedBackupFile.IsValidName(name);
 
     private static bool IsCommitRequestSafe(RemoteNutWindowsCommitRequest request) =>
         RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) &&
@@ -526,4 +608,6 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
             throw new ObjectDisposedException(nameof(SshNetRemoteNutManagementSession));
         }
     }
+
+    private sealed record RemoteWindowsCommandResult(int? ExitStatus, string Output);
 }

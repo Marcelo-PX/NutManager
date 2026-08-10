@@ -44,6 +44,7 @@ public partial class App : Application
 
         var profileBootstrap = await new ManagedNutServerBootstrapper(profileStore).LoadAsync(settings, CancellationToken.None);
         var runtimeProfile = profileBootstrap.RuntimeContext;
+        var profileMutator = new ManagedNutServerProfileUpdateService(profileStore);
 
         INutClient client;
         var endpoint = runtimeProfile.Endpoint;
@@ -65,7 +66,7 @@ public partial class App : Application
             : new RemoteManagementSessionViewModel(
                 runtimeProfile.Profile,
                 new SshNetRemoteNutManagementTransport(),
-                new ManagedNutServerProfileUpdateService(profileStore));
+                profileMutator);
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
@@ -81,7 +82,7 @@ public partial class App : Application
             isLocalManagement ? new WindowsNutDriverDiagnostics() : null,
             runtimeProfile,
             remoteManagement);
-        var settingsPage = new SettingsPageViewModel(settings, store, profileBootstrap.Profiles, profileStore);
+        var settingsPage = new SettingsPageViewModel(settings, store, profileBootstrap.Profiles, profileStore, profileMutator);
         window.Closed += async (_, _) =>
         {
             if (remoteManagement is not null)

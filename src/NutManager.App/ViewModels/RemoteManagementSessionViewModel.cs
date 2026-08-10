@@ -371,6 +371,16 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public async ValueTask DisposeAsync() => await DisconnectAsync();
 
+    public void InvalidateWriteCapabilityAfterUncertainOutcome()
+    {
+        WriteCapability = new RemoteNutWriteCapabilityResult(
+            false,
+            Platform,
+            message: "A operação remota teve resultado indeterminado. Desconecte, conecte novamente e refaça a validação de capacidade antes de gravar.");
+        OnPropertyChanged(nameof(CanEditConfiguration));
+        OnPropertyChanged(nameof(WriteCapabilityText));
+    }
+
     private async Task ConnectAsync(RemoteNutAuthentication authentication, CancellationToken cancellationToken)
     {
         if (!CanConnect)

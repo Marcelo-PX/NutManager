@@ -564,6 +564,10 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             RecoveryPath = result.RecoveryPath;
             TemporaryPath = result.TemporaryPath;
             ApplyResultStatus(result);
+            if (result.Status == NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown)
+            {
+                _remoteManagement?.InvalidateWriteCapabilityAfterUncertainOutcome();
+            }
 
             if (result.Status == NutConfigurationApplyStatus.Success)
             {

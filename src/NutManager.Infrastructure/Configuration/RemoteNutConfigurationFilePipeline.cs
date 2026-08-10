@@ -98,7 +98,7 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             return new NutConfigurationApplyResult(NutConfigurationApplyStatus.NoChanges, message: "Configuration has no changes to apply.");
         }
 
-        if (!_canWrite || _session.Platform != RemoteNutPlatform.Windows)
+        if (!_canWrite || !_session.IsSafeWriteCapabilityValid || _session.Platform != RemoteNutPlatform.Windows)
         {
             return new NutConfigurationApplyResult(NutConfigurationApplyStatus.Failed, message: "Remote configuration writing is available only after a verified Windows safe-write capability probe.");
         }
@@ -132,14 +132,23 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             cancellationToken);
         if (uploaded.Status != RemoteNutTransportStatus.Success || !uploaded.Bytes.Span.SequenceEqual(change.CandidateBytes.Span) || !ValidateCandidate(uploaded.Bytes.Span, change))
         {
-            var failure = new NutConfigurationApplyResult(NutConfigurationApplyStatus.TempWriteFailed, message: "Remote candidate upload could not be verified.");
-            return uploaded.Status == RemoteNutTransportStatus.Success
-                ? await CleanupCandidateAfterAbortAsync(failure, temporaryName)
-                : failure;
+            var failure = new NutConfigurationApplyResult(
+                uploaded.Status == RemoteNutTransportStatus.Cancelled ? NutConfigurationApplyStatus.Cancelled : NutConfigurationApplyStatus.TempWriteFailed,
+                message: uploaded.Status == RemoteNutTransportStatus.Cancelled
+                    ? "Remote candidate upload was cancelled."
+                    : "Remote candidate upload could not be verified.");
+            return await CleanupCandidateAfterAbortAsync(failure, temporaryName);
         }
 
         current = await _session.ReadFileAsync(change.Snapshot.TargetPath, cancellationToken);
-        if (current.Status != RemoteNutTransportStatus.Success || !MatchesOriginal(change.Snapshot, current.Bytes.Span))
+        if (current.Status != RemoteNutTransportStatus.Success)
+        {
+            return await CleanupCandidateAfterAbortAsync(
+                new NutConfigurationApplyResult(ToApplyStatus(current.Status), message: current.Message ?? "Remote configuration could not be revalidated before commit."),
+                temporaryName);
+        }
+
+        if (!MatchesOriginal(change.Snapshot, current.Bytes.Span))
         {
             return await CleanupCandidateAfterAbortAsync(
                 new NutConfigurationApplyResult(NutConfigurationApplyStatus.ChangedExternally, message: "Remote configuration changed externally."),
@@ -157,6 +166,7 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             CancellationToken.None);
         if (commit.Status == RemoteNutTransportStatus.OutcomeUnknown)
         {
+            _session.InvalidateSafeWriteCapability();
             return new NutConfigurationApplyResult(
                 NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown,
                 commit.BackupPath,
@@ -191,6 +201,18 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             new RemoteNutWindowsRollbackRequest(_configurationDirectory, fileName, backupName, rollbackName, recoveryName, change.Snapshot.OriginalFingerprint),
             CancellationToken.None);
         var recoveryPath = rollback.RecoveryPath ?? RemotePathMapper.Combine(_configurationDirectory, recoveryName);
+        if (rollback.Status == RemoteNutTransportStatus.OutcomeUnknown)
+        {
+            _session.InvalidateSafeWriteCapability();
+            return new NutConfigurationApplyResult(
+                NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown,
+                backupPath,
+                "The remote rollback outcome could not be confirmed.",
+                false,
+                recoveryPath,
+                RemotePathMapper.Combine(_configurationDirectory, rollbackName));
+        }
+
         if (rollback.Status == RemoteNutTransportStatus.Success)
         {
             var restored = await _session.ReadFileAsync(change.Snapshot.TargetPath, CancellationToken.None);
