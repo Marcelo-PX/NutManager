@@ -83,13 +83,20 @@ public sealed class ManagedNutServerProfileUpdateService
 
             var safeguarded = PreserveCurrentTrustMetadata(current, updatedProfile);
             var invalidation = await InvalidateChangedCredentialsAsync(current, safeguarded, cancellationToken);
-            if (!invalidation.IsSuccess)
+            if (!invalidation.Result.IsSuccess)
             {
-                throw new InvalidOperationException("A credencial protegida não pôde ser removida antes de salvar a nova identidade do perfil.");
+                throw new ManagedProfileCredentialRemovalException();
             }
 
             var saved = ReplaceProfile(document, safeguarded);
-            await _store.SaveAsync(saved, cancellationToken);
+            try
+            {
+                await _store.SaveAsync(saved, cancellationToken);
+            }
+            catch (Exception exception) when (invalidation.WasExecuted && exception is not OperationCanceledException)
+            {
+                throw new ManagedProfilePersistenceAfterCredentialRemovalException(exception);
+            }
             return saved;
         }
         finally
@@ -134,12 +141,19 @@ public sealed class ManagedNutServerProfileUpdateService
                 var cleanup = await _credentialStore.DeleteAllForProfileAsync(profileId, cancellationToken);
                 if (!cleanup.IsSuccess)
                 {
-                    throw new InvalidOperationException("As credenciais protegidas não puderam ser removidas antes de excluir o perfil.");
+                    throw new ManagedProfileCredentialRemovalException();
                 }
             }
 
             var saved = new ManagedNutServerProfiles(document.SchemaVersion, document.ActiveProfileId, document.Profiles.Where(current => current.Id != profileId).ToArray());
-            await _store.SaveAsync(saved, cancellationToken);
+            try
+            {
+                await _store.SaveAsync(saved, cancellationToken);
+            }
+            catch (Exception exception) when (_credentialStore is not null && exception is not OperationCanceledException)
+            {
+                throw new ManagedProfilePersistenceAfterCredentialRemovalException(exception);
+            }
             return saved;
         }
         finally
@@ -261,28 +275,31 @@ public sealed class ManagedNutServerProfileUpdateService
         }
     }
 
-    private async Task<RemoteCredentialStoreResult> InvalidateChangedCredentialsAsync(ManagedNutServerProfile current, ManagedNutServerProfile updated, CancellationToken cancellationToken)
+    private async Task<CredentialInvalidationResult> InvalidateChangedCredentialsAsync(ManagedNutServerProfile current, ManagedNutServerProfile updated, CancellationToken cancellationToken)
     {
         if (_credentialStore is null)
         {
-            return new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Success);
+            return new CredentialInvalidationResult(false, new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Success));
         }
 
-        if (HasSshIdentityChanged(current, updated))
+        var sshIdentityChanged = HasSshIdentityChanged(current, updated);
+        if (sshIdentityChanged)
         {
             foreach (var kind in new[] { RemoteCredentialKind.SshPassword, RemoteCredentialKind.SshPrivateKeyPassphrase })
             {
                 var result = await _credentialStore.DeleteAsync(current.Id, kind, cancellationToken);
                 if (!result.IsSuccess)
                 {
-                    return result;
+                    return new CredentialInvalidationResult(true, result);
                 }
             }
         }
 
-        return HasSmbIdentityChanged(current, updated)
+        var smbIdentityChanged = HasSmbIdentityChanged(current, updated);
+        var smbResult = smbIdentityChanged
             ? await _credentialStore.DeleteAsync(current.Id, RemoteCredentialKind.SmbPassword, cancellationToken)
             : new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Success);
+        return new CredentialInvalidationResult(sshIdentityChanged || smbIdentityChanged, smbResult);
     }
 
     private static ManagedNutServerProfiles ReplaceProfile(ManagedNutServerProfiles document, ManagedNutServerProfile updated) =>
@@ -322,6 +339,8 @@ public sealed class ManagedNutServerProfileUpdateService
             sshPrivateKeyPath: source.SshPrivateKeyPath);
 
     private sealed record ProfileMutationResult(ManagedNutServerProfiles Document, ManagedNutServerProfile Profile);
+
+    private sealed record CredentialInvalidationResult(bool WasExecuted, RemoteCredentialStoreResult Result);
 
     private static bool MatchesSessionIdentity(ManagedNutServerProfile current, ManagedNutServerProfile expected) =>
         current.Management.Mode == NutManagementMode.Remote &&

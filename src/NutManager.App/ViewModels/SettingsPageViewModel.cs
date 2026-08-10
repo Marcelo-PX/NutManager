@@ -219,6 +219,14 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         {
             throw;
         }
+        catch (ManagedProfilePersistenceAfterCredentialRemovalException)
+        {
+            ProfileSaveError = "O perfil não pôde ser salvo. As credenciais protegidas associadas à identidade anterior foram removidas por segurança; informe-as novamente quando necessário.";
+        }
+        catch (ManagedProfileCredentialRemovalException)
+        {
+            ProfileSaveError = "O perfil não foi alterado porque a credencial protegida associada à identidade anterior não pôde ser removida.";
+        }
         catch (Exception)
         {
             ProfileSaveError = "Não foi possível validar ou salvar o perfil.";
@@ -272,6 +280,14 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (ManagedProfilePersistenceAfterCredentialRemovalException)
+        {
+            ProfileSaveError = "O perfil não pôde ser excluído. As credenciais protegidas associadas foram removidas por segurança; informe-as novamente quando necessário.";
+        }
+        catch (ManagedProfileCredentialRemovalException)
+        {
+            ProfileSaveError = "A exclusão foi abortada porque as credenciais protegidas não puderam ser removidas.";
         }
         catch (Exception)
         {

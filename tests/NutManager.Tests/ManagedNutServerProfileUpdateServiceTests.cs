@@ -185,24 +185,50 @@ public sealed class ManagedNutServerProfileUpdateServiceTests
         var store = new RecordingStore(Document(current));
         var credentials = new RecordingCredentialStore { DeleteResult = new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.AccessDenied) };
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, updated));
+        await Assert.ThrowsAsync<ManagedProfileCredentialRemovalException>(() => new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, updated));
 
         Assert.Equal(0, store.SaveCalls);
         Assert.Equal(current, store.Current.ActiveProfile);
     }
 
     [Fact]
-    public async Task SavingAfterCredentialCleanupFailureLeavesOldMetadataAndRemovedCredentialStateAccurate()
+    public async Task SshIdentityChangeReportsPartialOutcomeWhenMetadataSaveFailsAfterCredentialRemoval()
     {
         var current = Profile();
         var updated = CreateSshProfile(current.Id, host: "new-management.example");
         var store = new RecordingStore(Document(current)) { ThrowOnSave = true };
         var credentials = new RecordingCredentialStore();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, updated));
+        await Assert.ThrowsAsync<ManagedProfilePersistenceAfterCredentialRemovalException>(() => new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, updated));
 
         Assert.Equal(current, store.Current.ActiveProfile);
         Assert.Equal(2, credentials.DeletedKinds.Count);
+    }
+
+    [Fact]
+    public async Task SmbIdentityChangeReportsPartialOutcomeWhenMetadataSaveFailsAfterCredentialRemoval()
+    {
+        var current = CreateSmbProfile(Guid.NewGuid(), @"\\server\share", "DOMAIN\\nut");
+        var updated = CreateSmbProfile(current.Id, @"\\server\other-share", "DOMAIN\\nut");
+        var store = new RecordingStore(Document(current)) { ThrowOnSave = true };
+        var credentials = new RecordingCredentialStore();
+
+        await Assert.ThrowsAsync<ManagedProfilePersistenceAfterCredentialRemovalException>(() => new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, updated));
+
+        Assert.Equal(current, store.Current.ActiveProfile);
+        Assert.Equal([RemoteCredentialKind.SmbPassword], credentials.DeletedKinds);
+    }
+
+    [Fact]
+    public async Task MetadataSaveFailureWithoutCredentialInvalidationRemainsGeneric()
+    {
+        var current = Profile();
+        var renamed = new ManagedNutServerProfile(current.Id, "Renamed", current.Monitoring, current.Management, current.AccessMode);
+        var store = new RecordingStore(Document(current)) { ThrowOnSave = true };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => new ManagedNutServerProfileUpdateService(store, new RecordingCredentialStore()).SaveExistingProfileAsync(current, renamed));
+
+        Assert.IsNotType<ManagedProfilePersistenceAfterCredentialRemovalException>(exception);
     }
 
     [Fact]
@@ -242,10 +268,24 @@ public sealed class ManagedNutServerProfileUpdateServiceTests
         var store = new RecordingStore(Document(active, removable, active.Id));
         var credentials = new RecordingCredentialStore { DeleteAllResult = new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.AccessDenied) };
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => new ManagedNutServerProfileUpdateService(store, credentials).DeleteProfileAsync(removable.Id));
+        await Assert.ThrowsAsync<ManagedProfileCredentialRemovalException>(() => new ManagedNutServerProfileUpdateService(store, credentials).DeleteProfileAsync(removable.Id));
 
         Assert.Equal(0, store.SaveCalls);
         Assert.Contains(store.Current.Profiles, profile => profile.Id == removable.Id);
+    }
+
+    [Fact]
+    public async Task ProfileDeletionReportsPartialOutcomeWhenMetadataSaveFailsAfterCredentialCleanup()
+    {
+        var active = Profile(name: "Active");
+        var removable = Profile(name: "Removable");
+        var store = new RecordingStore(Document(active, removable, active.Id)) { ThrowOnSave = true };
+        var credentials = new RecordingCredentialStore();
+
+        await Assert.ThrowsAsync<ManagedProfilePersistenceAfterCredentialRemovalException>(() => new ManagedNutServerProfileUpdateService(store, credentials).DeleteProfileAsync(removable.Id));
+
+        Assert.Contains(store.Current.Profiles, profile => profile.Id == removable.Id);
+        Assert.Equal([removable.Id], credentials.DeleteAllProfileIds);
     }
 
     [Fact]
