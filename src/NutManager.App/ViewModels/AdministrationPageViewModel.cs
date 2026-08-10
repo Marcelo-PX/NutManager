@@ -137,6 +137,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     [ObservableProperty]
     private NutDriverDiagnosticRequest? _pendingDriverDiagnostic;
 
+    private string? _upsConfFingerprint;
+
     [ObservableProperty]
     private bool _isDriverDiagnosticConfirmed;
 
@@ -239,7 +241,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanExecuteDriverDiagnostic => HasPendingDriverDiagnostic && IsDriverDiagnosticConfirmed && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && IsPendingDriverDiagnosticCurrent();
 
-    public bool IsDriverDiagnosticCritical => DriverDiagnosticResult?.Status is NutDriverDiagnosticStatus.Conflict or NutDriverDiagnosticStatus.Failed or NutDriverDiagnosticStatus.Timeout;
+    public bool IsDriverDiagnosticCritical => DriverDiagnosticResult?.Status is NutDriverDiagnosticStatus.Conflict or NutDriverDiagnosticStatus.Failed or NutDriverDiagnosticStatus.Timeout or NutDriverDiagnosticStatus.CleanupFailed;
 
     public string DriverDiagnosticCriticalText => "CRÍTICO — o resultado do diagnóstico requer atenção manual.";
 
@@ -572,6 +574,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             ConfiguredDrivers = snapshot.ConfiguredDrivers;
             SelectedConfiguredDriver = snapshot.ConfiguredDrivers.Count == 1 ? snapshot.ConfiguredDrivers[0] : null;
             UpsdrvctlPath = snapshot.UpsdrvctlPath;
+            _upsConfFingerprint = snapshot.UpsConfFingerprint;
             DriverDiagnosticStatusMessage = snapshot.DiagnosticMessage;
             DriverDiagnosticResult = null;
             InvalidateDriverDiagnostic();
@@ -612,7 +615,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
-        PendingDriverDiagnostic = new NutDriverDiagnosticRequest(kind, _currentInstallation!.InstallationDirectory!, _currentInstallation.ConfigurationDirectory!, SelectedConfiguredDriver);
+        PendingDriverDiagnostic = new NutDriverDiagnosticRequest(
+            kind,
+            _currentInstallation!.InstallationDirectory!,
+            _currentInstallation.ConfigurationDirectory!,
+            SelectedConfiguredDriver,
+            kind == NutDriverDiagnosticKind.UpsdrvctlHelp ? null : _upsConfFingerprint);
         IsDriverDiagnosticConfirmed = false;
         DriverDiagnosticStatusMessage = null;
         DriverDiagnosticResult = null;
@@ -918,6 +926,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ConfiguredDrivers = Array.Empty<NutConfiguredDriver>();
         SelectedConfiguredDriver = null;
         UpsdrvctlPath = null;
+        _upsConfFingerprint = null;
         DriverDiagnosticResult = null;
         DriverDiagnosticStatusMessage = null;
         InvalidateDriverDiagnostic();

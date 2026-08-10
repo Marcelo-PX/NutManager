@@ -30,9 +30,47 @@ public interface IWindowsDriverProcessInspector
     bool IsProcessRunning(string executablePath);
 }
 
+/// <summary>
+/// Isolates the read-only service-state lookup required before a hardware-contacting driver diagnostic.
+/// </summary>
+public interface IWindowsNutServiceStateSource
+{
+    Task<IReadOnlyList<NutServiceInfo>> GetServicesAsync(string installationDirectory, CancellationToken cancellationToken);
+}
+
+public interface IWindowsDriverDiagnosticsPlatform
+{
+    bool IsWindows { get; }
+}
+
 public interface INutDiagnosticProcessRunner
 {
     Task<NutDiagnosticProcessResult> RunAsync(NutDiagnosticProcessSpec specification, CancellationToken cancellationToken);
+}
+
+public interface INutDiagnosticProcessFactory
+{
+    INutDiagnosticProcess Create(NutDiagnosticProcessSpec specification);
+}
+
+/// <summary>
+/// Represents only a process started by the diagnostics runner. It has no API for arbitrary process lookup or kill.
+/// </summary>
+public interface INutDiagnosticProcess : IDisposable
+{
+    bool Start();
+
+    bool HasExited { get; }
+
+    int ExitCode { get; }
+
+    TextReader StandardOutput { get; }
+
+    TextReader StandardError { get; }
+
+    Task WaitForExitAsync(CancellationToken cancellationToken);
+
+    void KillCreatedProcessTree();
 }
 
 public sealed record NutDiagnosticProcessSpec(
@@ -50,6 +88,24 @@ public sealed record NutDiagnosticProcessResult(
     bool OutputTruncated,
     TimeSpan Duration,
     string Message);
+
+public sealed class RuntimeWindowsDriverDiagnosticsPlatform : IWindowsDriverDiagnosticsPlatform
+{
+    public bool IsWindows => OperatingSystem.IsWindows();
+}
+
+public sealed class WindowsNutServiceStateSource : IWindowsNutServiceStateSource
+{
+    public Task<IReadOnlyList<NutServiceInfo>> GetServicesAsync(string installationDirectory, CancellationToken cancellationToken)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return Task.FromResult<IReadOnlyList<NutServiceInfo>>(Array.Empty<NutServiceInfo>());
+        }
+
+        return WindowsNutServiceController.DiscoverAsync(installationDirectory, cancellationToken);
+    }
+}
 
 public sealed class WindowsWmiComPortSource : IWindowsComPortSource
 {
@@ -102,7 +158,9 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
     private readonly IWindowsComPortSource _comPortSource;
     private readonly IWindowsDriverFileSystem _fileSystem;
     private readonly IWindowsDriverProcessInspector _processInspector;
+    private readonly IWindowsNutServiceStateSource _serviceStateSource;
     private readonly INutDiagnosticProcessRunner _processRunner;
+    private readonly IWindowsDriverDiagnosticsPlatform _platform;
 
     public WindowsNutDriverDiagnostics()
         : this(
@@ -110,7 +168,9 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
             new WindowsWmiComPortSource(),
             new WindowsDriverFileSystem(),
             new WindowsDriverProcessInspector(),
-            new WindowsNutDiagnosticProcessRunner())
+            new WindowsNutServiceStateSource(),
+            new WindowsNutDiagnosticProcessRunner(),
+            new RuntimeWindowsDriverDiagnosticsPlatform())
     {
     }
 
@@ -120,17 +180,38 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
         IWindowsDriverFileSystem fileSystem,
         IWindowsDriverProcessInspector processInspector,
         INutDiagnosticProcessRunner processRunner)
+        : this(
+            configurationPipeline,
+            comPortSource,
+            fileSystem,
+            processInspector,
+            new WindowsNutServiceStateSource(),
+            processRunner,
+            new RuntimeWindowsDriverDiagnosticsPlatform())
+    {
+    }
+
+    public WindowsNutDriverDiagnostics(
+        INutConfigurationFilePipeline configurationPipeline,
+        IWindowsComPortSource comPortSource,
+        IWindowsDriverFileSystem fileSystem,
+        IWindowsDriverProcessInspector processInspector,
+        IWindowsNutServiceStateSource serviceStateSource,
+        INutDiagnosticProcessRunner processRunner,
+        IWindowsDriverDiagnosticsPlatform platform)
     {
         _configurationPipeline = configurationPipeline;
         _comPortSource = comPortSource;
         _fileSystem = fileSystem;
         _processInspector = processInspector;
+        _serviceStateSource = serviceStateSource;
         _processRunner = processRunner;
+        _platform = platform;
     }
 
     public async Task<NutDriverDiagnosticsSnapshot> InspectAsync(NutInstallationInfo installation, CancellationToken cancellationToken)
     {
-        if (!OperatingSystem.IsWindows())
+        if (!_platform.IsWindows)
         {
             return NutDriverDiagnosticsSnapshot.Unsupported();
         }
@@ -144,7 +225,7 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
         var load = await _configurationPipeline.LoadAsync(configurationDirectory + "\\ups.conf", NutConfigurationFileKind.UpsConf, cancellationToken);
         if (load.Status != NutConfigurationLoadStatus.Success || load.Snapshot is null)
         {
-            return new NutDriverDiagnosticsSnapshot(true, ports, Array.Empty<NutConfiguredDriver>(), ResolveUpsdrvctlPath(installationDirectory), LoadMessage(load.Status));
+            return new NutDriverDiagnosticsSnapshot(true, ports, Array.Empty<NutConfiguredDriver>(), ResolveUpsdrvctlPath(installation), LoadMessage(load.Status));
         }
 
         var drivers = WindowsUpsConfigurationInterpreter.Interpret(
@@ -153,12 +234,12 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
             ports,
             ResolveDriver,
             _processInspector.IsProcessRunning);
-        return new NutDriverDiagnosticsSnapshot(true, ports, drivers, ResolveUpsdrvctlPath(installationDirectory));
+        return new NutDriverDiagnosticsSnapshot(true, ports, drivers, ResolveUpsdrvctlPath(installation), UpsConfFingerprint: load.Snapshot.OriginalFingerprint);
     }
 
     public async Task<NutDriverDiagnosticResult> ExecuteAsync(NutDriverDiagnosticRequest request, CancellationToken cancellationToken)
     {
-        if (!OperatingSystem.IsWindows())
+        if (!_platform.IsWindows)
         {
             return NutDriverDiagnosticResult.Unsupported(request.Kind, "Diagnósticos locais de portas e drivers do Windows não estão disponíveis nesta plataforma.");
         }
@@ -173,30 +254,41 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
             return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.InvalidConfiguration, "O contexto da instalação NUT não é válido.");
         }
 
-        (NutDriverDiagnosticRequest? Request, NutDriverDiagnosticResult? Result) prepared;
-        try
+        NutDriverDiagnosticRequest preparedRequest;
+        if (request.Kind == NutDriverDiagnosticKind.UpsdrvctlHelp)
         {
-            prepared = await LoadCurrentRequestAsync(request, cancellationToken);
+            preparedRequest = request;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        else
         {
-            return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.CancelledBeforeLaunch, "O diagnóstico foi cancelado antes de iniciar.");
-        }
-        if (prepared.Result is not null)
-        {
-            return prepared.Result;
+            (NutDriverDiagnosticRequest? Request, NutDriverDiagnosticResult? Result) prepared;
+            try
+            {
+                prepared = await LoadCurrentRequestAsync(request, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.CancelledBeforeLaunch, "O diagnóstico foi cancelado antes de iniciar.");
+            }
+
+            if (prepared.Result is not null)
+            {
+                return prepared.Result;
+            }
+
+            preparedRequest = prepared.Request!;
         }
 
-        if (prepared.Request!.Kind == NutDriverDiagnosticKind.DriverDataDump)
+        if (preparedRequest.Kind == NutDriverDiagnosticKind.DriverDataDump)
         {
-            var interlock = await ValidateHardwareInterlocksAsync(prepared.Request, cancellationToken);
+            var interlock = await ValidateHardwareInterlocksAsync(preparedRequest, cancellationToken);
             if (interlock is not null)
             {
                 return interlock;
             }
         }
 
-        var specification = WindowsNutDiagnosticCommandBuilder.Create(prepared.Request!, ResolveUpsdrvctlPath(prepared.Request!.InstallationDirectory));
+        var specification = WindowsNutDiagnosticCommandBuilder.Create(preparedRequest, ResolveUpsdrvctlPath(preparedRequest.InstallationDirectory));
         if (specification is null)
         {
             return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.InvalidExecutable, "A ferramenta NUT não está disponível ou não é confiável para este diagnóstico.");
@@ -227,7 +319,13 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
             return (null, CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.InvalidConfiguration, LoadMessage(load.Status)));
         }
 
-        if (request.Kind is NutDriverDiagnosticKind.UpsdrvctlHelp or NutDriverDiagnosticKind.UpsdrvctlList or NutDriverDiagnosticKind.UpsdrvctlStatus)
+        if (string.IsNullOrWhiteSpace(request.UpsConfFingerprint) ||
+            !string.Equals(load.Snapshot.OriginalFingerprint, request.UpsConfFingerprint, StringComparison.Ordinal))
+        {
+            return (null, CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.InvalidConfiguration, "O arquivo ups.conf foi alterado desde a revisão. Atualize os dispositivos e prepare o diagnóstico novamente."));
+        }
+
+        if (request.Kind is NutDriverDiagnosticKind.UpsdrvctlList or NutDriverDiagnosticKind.UpsdrvctlStatus)
         {
             if (request.Driver is null)
             {
@@ -247,10 +345,9 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
                 ResolveDriver,
                 _processInspector.IsProcessRunning)
             .FirstOrDefault(driver => string.Equals(driver.UpsName, request.Driver.UpsName, StringComparison.Ordinal));
-        if (current is null || !string.Equals(current.DriverName, request.Driver.DriverName, StringComparison.Ordinal) ||
-            !string.Equals(current.Executable.Path, request.Driver.Executable.Path, StringComparison.OrdinalIgnoreCase))
+        if (current is null || !MatchesReviewedDriver(current, request.Driver))
         {
-            return (null, CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.InvalidConfiguration, "A configuração do driver foi alterada desde a revisão do diagnóstico."));
+            return (null, CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.InvalidConfiguration, "O arquivo ups.conf foi alterado desde a revisão. Atualize os dispositivos e prepare o diagnóstico novamente."));
         }
 
         if ((request.Kind is NutDriverDiagnosticKind.DriverHelp or NutDriverDiagnosticKind.DriverVersion or NutDriverDiagnosticKind.DriverVariableList or NutDriverDiagnosticKind.DriverDataDump) &&
@@ -259,7 +356,7 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
             return (null, CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.InvalidExecutable, "O executável do driver não está disponível ou não é confiável."));
         }
 
-        return (request with { Driver = current }, null);
+        return (request, null);
     }
 
     private NutDriverExecutableInfo ResolveDriver(string installationDirectory, string? driverPath, string? driverName)
@@ -269,7 +366,7 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
 
     private async Task<NutDriverDiagnosticResult?> ValidateHardwareInterlocksAsync(NutDriverDiagnosticRequest request, CancellationToken cancellationToken)
     {
-        if (!OperatingSystem.IsWindows())
+        if (!_platform.IsWindows)
         {
             return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.Unsupported, "Diagnósticos locais de portas e drivers do Windows não estão disponíveis nesta plataforma.");
         }
@@ -280,7 +377,7 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
             return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.Conflict, "O executável do driver não está disponível ou não é confiável.");
         }
 
-        var services = await WindowsNutServiceController.DiscoverAsync(request.InstallationDirectory, cancellationToken);
+        var services = await _serviceStateSource.GetServicesAsync(request.InstallationDirectory, cancellationToken);
         if (services.Count == 0 || services.Any(service => service.State != NutServiceState.Stopped))
         {
             return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.Conflict, "O serviço NUT não está confirmado como parado e pode estar usando o dispositivo.");
@@ -300,18 +397,48 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
         return null;
     }
 
+    private string? ResolveUpsdrvctlPath(NutInstallationInfo installation)
+    {
+        if (WindowsPath.TryCanonicalize(installation.InstallationDirectory, out var installationDirectory) &&
+            installation.Executables.TryGetValue("upsdrvctl.exe", out var detectedPath) &&
+            WindowsPath.TryCanonicalize(detectedPath, out var canonicalDetectedPath) &&
+            IsTrustedUpsdrvctlPath(canonicalDetectedPath, installationDirectory))
+        {
+            return canonicalDetectedPath;
+        }
+
+        return WindowsPath.TryCanonicalize(installation.InstallationDirectory, out installationDirectory)
+            ? ResolveUpsdrvctlPath(installationDirectory)
+            : null;
+    }
+
     private string? ResolveUpsdrvctlPath(string installationDirectory)
     {
         foreach (var candidate in new[] { installationDirectory + "\\bin\\upsdrvctl.exe", installationDirectory + "\\upsdrvctl.exe" })
         {
-            if (WindowsPath.IsInside(candidate, installationDirectory) && _fileSystem.FileExists(candidate))
+            if (WindowsPath.TryCanonicalize(candidate, out var canonicalCandidate) &&
+                IsTrustedUpsdrvctlPath(canonicalCandidate, installationDirectory))
             {
-                return candidate;
+                return canonicalCandidate;
             }
         }
 
         return null;
     }
+
+    private bool IsTrustedUpsdrvctlPath(string candidate, string installationDirectory) =>
+        WindowsPath.TryCanonicalize(candidate, out var canonicalCandidate) &&
+        string.Equals(canonicalCandidate[(canonicalCandidate.LastIndexOf('\\') + 1)..], "upsdrvctl.exe", StringComparison.OrdinalIgnoreCase) &&
+        WindowsPath.IsInside(canonicalCandidate, installationDirectory) &&
+        _fileSystem.FileExists(canonicalCandidate);
+
+    private static bool MatchesReviewedDriver(NutConfiguredDriver current, NutConfiguredDriver reviewed) =>
+        string.Equals(current.UpsName, reviewed.UpsName, StringComparison.Ordinal) &&
+        string.Equals(current.DriverName, reviewed.DriverName, StringComparison.Ordinal) &&
+        string.Equals(current.ConfiguredPort, reviewed.ConfiguredPort, StringComparison.Ordinal) &&
+        string.Equals(current.NormalizedComPort, reviewed.NormalizedComPort, StringComparison.Ordinal) &&
+        string.Equals(current.Protocol, reviewed.Protocol, StringComparison.Ordinal) &&
+        string.Equals(current.Executable.Path, reviewed.Executable.Path, StringComparison.OrdinalIgnoreCase);
 
     private static bool TryGetConfigurationContext(NutInstallationInfo installation, out string installationDirectory, out string configurationDirectory)
     {
@@ -412,7 +539,12 @@ public static class WindowsUpsConfigurationInterpreter
         Func<string, string?, string?, NutDriverExecutableInfo> resolveDriver,
         Func<string, bool> isProcessRunning)
     {
-        var driverPath = document.FindAssignments("driverpath", sectionName: null, StringComparison.OrdinalIgnoreCase).FirstOrDefault()?.Value;
+        // Passing null to FindAssignments means "any section". Only an assignment before the first UPS section is global.
+        // For duplicate global entries, preserve source order and use the first declaration deterministically.
+        var driverPath = document.Nodes
+            .OfType<NutConfigurationAssignmentNode>()
+            .FirstOrDefault(node => node.SectionName is null && string.Equals(node.Name, "driverpath", StringComparison.OrdinalIgnoreCase))
+            ?.Value;
         var configuredPorts = ports.Select(port => port.PortName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         return document.Sections.Select(section =>
         {
@@ -460,7 +592,7 @@ public static class WindowsNutDiagnosticCommandBuilder
             NutDriverDiagnosticKind.DriverHelp when driverCommand is not null => new(driverCommand, ["-h"], request.ConfigurationDirectory, TimeSpan.FromSeconds(10), false),
             NutDriverDiagnosticKind.DriverVersion when driverCommand is not null => new(driverCommand, ["-V"], request.ConfigurationDirectory, TimeSpan.FromSeconds(10), false),
             NutDriverDiagnosticKind.DriverVariableList when driverCommand is not null => new(driverCommand, ["-L"], request.ConfigurationDirectory, TimeSpan.FromSeconds(10), false),
-            NutDriverDiagnosticKind.DriverDataDump when driverCommand is not null => new(driverCommand, ["-a", driver!.UpsName, "-d"], request.ConfigurationDirectory, TimeSpan.FromSeconds(30), false),
+            NutDriverDiagnosticKind.DriverDataDump when driverCommand is not null => new(driverCommand, ["-a", driver!.UpsName, "-d", "1"], request.ConfigurationDirectory, TimeSpan.FromSeconds(30), false),
             _ => null
         };
     }
@@ -505,7 +637,20 @@ public sealed class WindowsDriverProcessInspector : IWindowsDriverProcessInspect
 
 public sealed class WindowsNutDiagnosticProcessRunner : INutDiagnosticProcessRunner
 {
-    private const int OutputLimit = 1024 * 1024;
+    // Character budget shared by stdout and stderr. Streams keep draining after it is exhausted to avoid pipe deadlocks.
+    private const int CombinedOutputCaptureLimit = 1024 * 1024;
+    private static readonly TimeSpan ProcessCleanupTimeout = TimeSpan.FromSeconds(5);
+    private readonly INutDiagnosticProcessFactory _processFactory;
+
+    public WindowsNutDiagnosticProcessRunner()
+        : this(new WindowsNutDiagnosticProcessFactory())
+    {
+    }
+
+    public WindowsNutDiagnosticProcessRunner(INutDiagnosticProcessFactory processFactory)
+    {
+        _processFactory = processFactory;
+    }
 
     public async Task<NutDiagnosticProcessResult> RunAsync(NutDiagnosticProcessSpec specification, CancellationToken cancellationToken)
     {
@@ -517,14 +662,16 @@ public sealed class WindowsNutDiagnosticProcessRunner : INutDiagnosticProcessRun
         var start = Stopwatch.StartNew();
         try
         {
-            using var process = new Process { StartInfo = CreateStartInfo(specification), EnableRaisingEvents = true };
+            using var process = _processFactory.Create(specification);
             if (!process.Start())
             {
                 return new(NutDriverDiagnosticStatus.Failed, null, string.Empty, string.Empty, false, start.Elapsed, "Não foi possível iniciar o diagnóstico do NUT.");
             }
 
-            var standardOutput = ReadBoundedAsync(process.StandardOutput);
-            var standardError = ReadBoundedAsync(process.StandardError);
+            using var outputReadCancellation = new CancellationTokenSource();
+            var captureBudget = new CombinedOutputCaptureBudget(CombinedOutputCaptureLimit);
+            var standardOutput = ReadBoundedAsync(process.StandardOutput, captureBudget, outputReadCancellation.Token);
+            var standardError = ReadBoundedAsync(process.StandardError, captureBudget, outputReadCancellation.Token);
             using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             waitCts.CancelAfter(specification.Timeout);
             try
@@ -533,20 +680,26 @@ public sealed class WindowsNutDiagnosticProcessRunner : INutDiagnosticProcessRun
             }
             catch (OperationCanceledException)
             {
-                TryKillCreatedProcess(process);
-                await process.WaitForExitAsync(CancellationToken.None);
-                var output = await standardOutput;
-                var error = await standardError;
-                return new(cancellationToken.IsCancellationRequested ? NutDriverDiagnosticStatus.Failed : NutDriverDiagnosticStatus.Timeout, null, output.Text, error.Text, output.Truncated || error.Truncated, start.Elapsed, cancellationToken.IsCancellationRequested ? "O diagnóstico foi cancelado após iniciar e o processo criado foi encerrado." : "O diagnóstico excedeu o tempo limite e o processo criado foi encerrado.");
+                return await CleanupAfterInterruptedWaitAsync(
+                    process,
+                    standardOutput,
+                    standardError,
+                    captureBudget,
+                    outputReadCancellation,
+                    cancellationToken.IsCancellationRequested,
+                    start.Elapsed);
             }
 
-            var stdout = await standardOutput;
-            var stderr = await standardError;
-            var outputTruncated = stdout.Truncated || stderr.Truncated;
+            var output = await CompleteReadersAsync(standardOutput, standardError, captureBudget, outputReadCancellation, start.Elapsed);
+            if (output.Result is not null)
+            {
+                return output.Result;
+            }
+
             var status = process.ExitCode == 0
-                ? outputTruncated ? NutDriverDiagnosticStatus.OutputTruncated : NutDriverDiagnosticStatus.Success
+                ? captureBudget.IsTruncated ? NutDriverDiagnosticStatus.OutputTruncated : NutDriverDiagnosticStatus.Success
                 : unchecked((int)0xC0000135) == process.ExitCode ? NutDriverDiagnosticStatus.MissingDependency : NutDriverDiagnosticStatus.NonZeroExit;
-            return new(status, process.ExitCode, stdout.Text, stderr.Text, outputTruncated, start.Elapsed, status switch
+            return new(status, process.ExitCode, output.StandardOutput, output.StandardError, captureBudget.IsTruncated, start.Elapsed, status switch
             {
                 NutDriverDiagnosticStatus.Success => "O diagnóstico foi concluído.",
                 NutDriverDiagnosticStatus.OutputTruncated => "O diagnóstico foi concluído, mas a saída foi truncada por segurança.",
@@ -591,43 +744,196 @@ public sealed class WindowsNutDiagnosticProcessRunner : INutDiagnosticProcessRun
         return startInfo;
     }
 
-    private static async Task<(string Text, bool Truncated)> ReadBoundedAsync(StreamReader reader)
+    private static async Task<NutDiagnosticProcessResult> CleanupAfterInterruptedWaitAsync(
+        INutDiagnosticProcess process,
+        Task<string> standardOutput,
+        Task<string> standardError,
+        CombinedOutputCaptureBudget captureBudget,
+        CancellationTokenSource outputReadCancellation,
+        bool cancelledByCaller,
+        TimeSpan elapsed)
     {
-        var buffer = new char[4096];
-        var captured = new StringBuilder();
-        var truncated = false;
-        int read;
-        while ((read = await reader.ReadAsync(buffer)) > 0)
-        {
-            var remaining = OutputLimit - captured.Length;
-            if (remaining > 0)
-            {
-                captured.Append(buffer, 0, Math.Min(remaining, read));
-            }
-
-            if (read > remaining)
-            {
-                truncated = true;
-            }
-        }
-
-        return (captured.ToString(), truncated);
-    }
-
-    private static void TryKillCreatedProcess(Process process)
-    {
+        var killFailed = false;
         try
         {
             if (!process.HasExited)
             {
-                process.Kill(entireProcessTree: true);
+                process.KillCreatedProcessTree();
             }
         }
         catch
         {
-            // Only the child started above is ever targeted, and a failed cleanup is reported through the timeout result.
+            killFailed = true;
+        }
+
+        var exited = false;
+        using (var cleanupWait = new CancellationTokenSource(ProcessCleanupTimeout))
+        {
+            try
+            {
+                await process.WaitForExitAsync(cleanupWait.Token);
+                exited = true;
+            }
+            catch (OperationCanceledException)
+            {
+                // The caller token is deliberately not used after launch. This bounded internal timeout is authoritative.
+            }
+            catch
+            {
+                killFailed = true;
+            }
+        }
+
+        var output = await CompleteReadersAsync(standardOutput, standardError, captureBudget, outputReadCancellation, elapsed);
+        if (killFailed || !exited || output.Result is not null)
+        {
+            return output.Result ?? new(
+                NutDriverDiagnosticStatus.CleanupFailed,
+                null,
+                output.StandardOutput,
+                output.StandardError,
+                captureBudget.IsTruncated,
+                elapsed,
+                "O processo de diagnóstico não pôde ser confirmado como encerrado. Verifique os processos do NUT antes de tentar novamente.");
+        }
+
+        return new(
+            cancelledByCaller ? NutDriverDiagnosticStatus.CancelledAfterLaunch : NutDriverDiagnosticStatus.Timeout,
+            null,
+            output.StandardOutput,
+            output.StandardError,
+            captureBudget.IsTruncated,
+            elapsed,
+            cancelledByCaller
+                ? "O diagnóstico foi cancelado após iniciar e o processo criado foi encerrado."
+                : "O diagnóstico excedeu o tempo limite e o processo criado foi encerrado.");
+    }
+
+    private static async Task<(string StandardOutput, string StandardError, NutDiagnosticProcessResult? Result)> CompleteReadersAsync(
+        Task<string> standardOutput,
+        Task<string> standardError,
+        CombinedOutputCaptureBudget captureBudget,
+        CancellationTokenSource outputReadCancellation,
+        TimeSpan elapsed)
+    {
+        var readers = Task.WhenAll(standardOutput, standardError);
+        try
+        {
+            await readers.WaitAsync(ProcessCleanupTimeout);
+            return (standardOutput.Result, standardError.Result, null);
+        }
+        catch
+        {
+            outputReadCancellation.Cancel();
+            try
+            {
+                await readers.WaitAsync(ProcessCleanupTimeout);
+                return (standardOutput.Status == TaskStatus.RanToCompletion ? standardOutput.Result : string.Empty,
+                    standardError.Status == TaskStatus.RanToCompletion ? standardError.Result : string.Empty,
+                    new NutDiagnosticProcessResult(
+                        NutDriverDiagnosticStatus.CleanupFailed,
+                        null,
+                        string.Empty,
+                        string.Empty,
+                        captureBudget.IsTruncated,
+                        elapsed,
+                        "A leitura da saída do diagnóstico não pôde ser encerrada com segurança."));
+            }
+            catch
+            {
+                return (string.Empty, string.Empty, new NutDiagnosticProcessResult(
+                    NutDriverDiagnosticStatus.CleanupFailed,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    captureBudget.IsTruncated,
+                    elapsed,
+                    "A leitura da saída do diagnóstico não pôde ser encerrada com segurança."));
+            }
         }
     }
+
+    private static async Task<string> ReadBoundedAsync(TextReader reader, CombinedOutputCaptureBudget captureBudget, CancellationToken cancellationToken)
+    {
+        var buffer = new char[4096];
+        var captured = new StringBuilder();
+        try
+        {
+            int read;
+            while ((read = await reader.ReadAsync(buffer.AsMemory(), cancellationToken)) > 0)
+            {
+                captureBudget.Capture(buffer, read, captured);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A bounded cleanup deliberately stops readers after the child has been handled or confirmation failed.
+        }
+
+        return captured.ToString();
+    }
+
+    private sealed class CombinedOutputCaptureBudget
+    {
+        private readonly object _sync = new();
+        private int _remaining;
+
+        public CombinedOutputCaptureBudget(int limit)
+        {
+            _remaining = limit;
+        }
+
+        public bool IsTruncated { get; private set; }
+
+        public void Capture(char[] buffer, int count, StringBuilder destination)
+        {
+            lock (_sync)
+            {
+                var accepted = Math.Min(_remaining, count);
+                if (accepted > 0)
+                {
+                    destination.Append(buffer, 0, accepted);
+                    _remaining -= accepted;
+                }
+
+                if (accepted < count)
+                {
+                    IsTruncated = true;
+                }
+            }
+        }
+    }
+}
+
+public sealed class WindowsNutDiagnosticProcessFactory : INutDiagnosticProcessFactory
+{
+    public INutDiagnosticProcess Create(NutDiagnosticProcessSpec specification) => new WindowsNutDiagnosticProcess(WindowsNutDiagnosticProcessRunner.CreateStartInfo(specification));
+}
+
+internal sealed class WindowsNutDiagnosticProcess : INutDiagnosticProcess
+{
+    private readonly Process _process;
+
+    public WindowsNutDiagnosticProcess(ProcessStartInfo startInfo)
+    {
+        _process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
+    }
+
+    public bool Start() => _process.Start();
+
+    public bool HasExited => _process.HasExited;
+
+    public int ExitCode => _process.ExitCode;
+
+    public TextReader StandardOutput => _process.StandardOutput;
+
+    public TextReader StandardError => _process.StandardError;
+
+    public Task WaitForExitAsync(CancellationToken cancellationToken) => _process.WaitForExitAsync(cancellationToken);
+
+    public void KillCreatedProcessTree() => _process.Kill(entireProcessTree: true);
+
+    public void Dispose() => _process.Dispose();
 }
 
 public static partial class WindowsNutDiagnosticOutput

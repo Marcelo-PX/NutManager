@@ -73,8 +73,10 @@ public enum NutDriverDiagnosticStatus
     InvalidExecutable,
     MissingDependency,
     Timeout,
+    CleanupFailed,
     OutputTruncated,
     CancelledBeforeLaunch,
+    CancelledAfterLaunch,
     Conflict,
     InvalidConfiguration,
     Unsupported,
@@ -88,7 +90,8 @@ public sealed record NutDriverDiagnosticRequest(
     NutDriverDiagnosticKind Kind,
     string InstallationDirectory,
     string ConfigurationDirectory,
-    NutConfiguredDriver? Driver = null);
+    NutConfiguredDriver? Driver = null,
+    string? UpsConfFingerprint = null);
 
 public sealed record NutDriverDiagnosticResult(
     NutDriverDiagnosticKind Kind,
@@ -112,7 +115,8 @@ public sealed record NutDriverDiagnosticsSnapshot(
     IReadOnlyList<NutComPortInfo> ComPorts,
     IReadOnlyList<NutConfiguredDriver> ConfiguredDrivers,
     string? UpsdrvctlPath,
-    string? DiagnosticMessage = null)
+    string? DiagnosticMessage = null,
+    string? UpsConfFingerprint = null)
 {
     public static NutDriverDiagnosticsSnapshot Unsupported() => new(
         false,

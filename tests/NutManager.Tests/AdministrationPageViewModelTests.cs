@@ -734,6 +734,7 @@ public sealed class AdministrationPageViewModelTests
 
         Assert.Equal(1, diagnostics.ExecuteCalls);
         Assert.Equal(NutDriverDiagnosticKind.UpsdrvctlDryRunStart, diagnostics.LastRequest!.Kind);
+        Assert.Equal("test-ups-conf-fingerprint", diagnostics.LastRequest.UpsConfFingerprint);
         Assert.NotNull(viewModel.DriverDiagnosticResult);
     }
 
@@ -778,6 +779,25 @@ public sealed class AdministrationPageViewModelTests
 
         Assert.False(viewModel.HasPendingDriverDiagnostic);
         Assert.False(viewModel.CanExecuteDriverDiagnostic);
+    }
+
+    [Fact]
+    public async Task CleanupFailureIsPresentedAsACriticalDriverDiagnosticResult()
+    {
+        var diagnostics = new TestDriverDiagnostics { ResultStatus = NutDriverDiagnosticStatus.CleanupFailed };
+        var viewModel = new AdministrationPageViewModel(
+            new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "ups.conf")),
+            new TestPipeline(),
+            new TestWindowsAdministration(),
+            diagnostics);
+        await viewModel.InitializeAsync();
+        viewModel.PrepareDriverDiagnostic(NutDriverDiagnosticKind.DriverHelp);
+        viewModel.IsDriverDiagnosticConfirmed = true;
+
+        await viewModel.ExecuteDriverDiagnosticAsync();
+
+        Assert.True(viewModel.IsDriverDiagnosticCritical);
+        Assert.Contains("CRÍTICO", viewModel.DriverDiagnosticCriticalText);
     }
 
     private static async Task<AdministrationPageViewModel> CreateInitializedViewModelAsync(TestPipeline pipeline, params string[] availableFiles)
@@ -1023,6 +1043,8 @@ public sealed class AdministrationPageViewModelTests
     {
         public int ExecuteCalls { get; private set; }
 
+        public NutDriverDiagnosticStatus ResultStatus { get; set; } = NutDriverDiagnosticStatus.Success;
+
         public NutDriverDiagnosticRequest? LastRequest { get; private set; }
 
         public Task<NutDriverDiagnosticsSnapshot> InspectAsync(NutInstallationInfo installation, CancellationToken cancellationToken) =>
@@ -1040,7 +1062,8 @@ public sealed class AdministrationPageViewModelTests
                     new NutDriverExecutableInfo("C:\\NUT\\patched-driver\\nutdrv_qx.exe", NutDriverExecutableState.Available, true),
                     true,
                     NutDriverRuntimeState.NotRunning)],
-                "C:\\NUT\\bin\\upsdrvctl.exe"));
+                "C:\\NUT\\bin\\upsdrvctl.exe",
+                UpsConfFingerprint: "test-ups-conf-fingerprint"));
 
         public Task<NutDriverDiagnosticResult> ExecuteAsync(NutDriverDiagnosticRequest request, CancellationToken cancellationToken)
         {
@@ -1048,7 +1071,7 @@ public sealed class AdministrationPageViewModelTests
             LastRequest = request;
             return Task.FromResult(new NutDriverDiagnosticResult(
                 request.Kind,
-                NutDriverDiagnosticStatus.Success,
+                ResultStatus,
                 "upsdrvctl.exe",
                 DateTimeOffset.UtcNow,
                 TimeSpan.Zero,
