@@ -31,8 +31,8 @@ Only one task should normally be in progress at a time.
 | T15 | DONE | Build graphical NUT configuration editor | Windows-first configuration experience |
 | T16 | DONE | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
 | T17 | DONE | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
-| T18 | DONE | Add managed server profiles | Separate local and remote monitoring and management profiles |
-| T19 | READY | Add remote SSH/SFTP management | Manual remote directory selection and secure management transport |
+| T18 | DONE | Add managed server profiles | Managed profile metadata and strict local/remote management-context separation |
+| T19 | READY | Add remote SSH/SFTP management | Manual remote directory browse, validation, and secure management transport |
 | T20 | TODO | Add secure credential storage | Protected remote-management credentials |
 | T21 | TODO | Validate full Windows local and remote administration | End-to-end Windows-first validation |
 | T22 | TODO | Evaluate Linux administrative compatibility | Secondary, best-effort compatibility assessment |
@@ -198,13 +198,13 @@ Implement explicitly confirmed local COM-port, driver, and NUT-tool diagnostics 
 
 **Status:** DONE
 
-Add separate local and remote monitoring and management profiles. Local profiles use installation autodetection; remote profiles use manual directory selection.
+Add managed local and remote monitoring and management profiles, manual remote configuration-directory metadata, and strict local/remote management-context separation. T18 does not implement remote browse, remote validation transport, or local-management fallback for a remote profile; those are T19 work.
 
 ## T19 — Add remote SSH/SFTP management
 
 **Status:** READY
 
-Add secure remote management transport. The user selects and NutManager validates the remote configuration directory; remote autodiscovery is not permitted.
+Add SSH/SFTP remote management transport, manual remote configuration-directory browse and selection, and remote validation. Remote autodiscovery is not permitted.
 
 ## T20 — Add secure credential storage
 
@@ -222,7 +222,7 @@ Validate Windows-first local and remote administration, including recovery paths
 
 **Status:** TODO
 
-Evaluate secondary, best-effort Linux administrative compatibility without creating an official package commitment.
+Evaluate Linux shared-code and administrative compatibility on demand. Linux remains secondary, best-effort compatibility without an official CI or package commitment.
 
 ## T23 — Evaluate upstream NUT improvements
 

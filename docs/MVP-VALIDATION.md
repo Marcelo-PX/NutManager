@@ -8,36 +8,40 @@ NutManager is Windows-first. The official MVP package is a portable, self-contai
 
 Extract the archive to a writable directory and run `NutManager.App.exe`. There is currently no installer, automatic update workflow, code signing, or GitHub Release.
 
-The unsigned executable may trigger a Windows reputation or SmartScreen warning.
-
 ## Platform policy
 
-Windows x64 is the primary development, manual-testing, and distribution platform. Linux has secondary, best-effort compatibility in shared code, but no official package and no current commitment for administrative capabilities. Alpine Linux desktop is not validated or supported for the MVP.
+Windows x64 is the official development, CI, manual-testing, and distribution platform. Linux remains secondary, best-effort shared-code compatibility, with no official CI, package, or current administration-support commitment.
 
-## Runtime behavior
+## T11 acceptance scope
 
-The application stores its local, non-secret settings in the operating-system-appropriate per-user application-data directory. It does not package or migrate settings, logs, NUT configuration, or credentials.
+This document covers the read-only monitoring acceptance of T11. The current product also contains explicitly confirmed administration capabilities, but they are outside this checklist. During T11 validation do not edit configuration, control services, run driver diagnostics, access COM or hardware, request elevation, or change ACLs.
 
-NUT monitoring uses TCP port `3493` by default. To use a real NUT server, the user must have TCP connectivity to the configured endpoint. The MVP runs without administrator privileges and never modifies NUT files, services, drivers, or hardware.
+## Runtime setup
 
-## Tested package path
+The application stores non-secret settings and managed profile metadata in an operating-system-appropriate per-user application-data directory. It does not package or migrate NUT configuration or credentials.
 
-The Windows x64 package is published self-contained, archived, extracted, and started from the extracted executable.
+To connect to a real NUT server:
+
+1. Select or create a managed profile.
+2. Set its Monitoring host and port and, if desired, its preferred UPS.
+3. Make the profile active.
+4. Restart the application if the active profile changed.
+5. Disable mock mode.
+6. Run discovery and polling.
 
 ## Manual real-NUT checklist
 
-Automated packaging validation uses mock mode and does not require a real NUT server or UPS. Before declaring the MVP fully validated against a live Windows environment, perform this read-only checklist manually:
+Automated package validation uses mock mode and does not require a real NUT server or UPS. T11 remains **IN PROGRESS** until this checklist is completed against a real Windows NUT environment using the distributed package:
 
 1. Start the Windows package.
-2. Disable mock mode.
-3. Configure the NUT endpoint.
-4. Discover available UPS devices.
-5. Select a UPS.
-6. Confirm that a snapshot and variables are displayed.
-7. Confirm the polling interval is respected.
-8. Safely simulate a connection loss without changing the UPS.
-9. Confirm `Stale` and `Reconnecting` state.
-10. Restore connectivity.
-11. Confirm `Connected` and `Fresh` state.
+2. Configure and activate the managed monitoring profile.
+3. Discover available UPS devices.
+4. Select a UPS.
+5. Confirm that a snapshot and variables are displayed.
+6. Confirm the polling interval is respected.
+7. Safely simulate a connection loss without changing the UPS.
+8. Confirm `Stale` and `Reconnecting` state.
+9. Restore connectivity.
+10. Confirm `Connected` and `Fresh` state.
 
-Do not send UPS commands, edit NUT configuration, access serial ports, or stop services during this validation.
+Do not send UPS commands, edit NUT configuration, control services, run driver diagnostics, open serial ports, or perform administrative actions during this validation.

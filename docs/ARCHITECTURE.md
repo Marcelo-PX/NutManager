@@ -2,54 +2,27 @@
 
 ## 1. Architectural goals
 
-- Windows-first desktop UI with secondary, best-effort Linux compatibility in shared code;
-- safe read-only MVP;
-- clear separation of domain, UI, protocol, and operating-system concerns;
-- testability without a real UPS or NUT server;
-- minimal dependencies and low context cost for coding agents;
-- a future path to Windows local and SSH/SFTP remote administration without redesigning the MVP.
+- Windows-first desktop product with best-effort shared-code compatibility on Linux;
+- safe monitoring, configuration, and local administration boundaries;
+- clear separation of domain, UI, protocol, persistence, and operating-system concerns;
+- deterministic tests without a real UPS, NUT server, service, serial port, or elevation;
+- minimal dependencies and focused platform adapters.
 
-## 2. Selected stack
+## 2. Selected stack and solution structure
 
-- C#;
-- current supported .NET LTS selected when the solution is created;
-- Avalonia Desktop and AXAML;
-- MVVM with CommunityToolkit.Mvvm;
-- built-in .NET dependency injection and logging only when required;
-- xUnit for automated tests;
-- `System.Text.Json` for NutManager's own settings.
-
-Package versions shall be centrally managed through `Directory.Packages.props` after the solution is created.
-
-## 3. Solution structure
+NutManager uses C#, .NET 10, Avalonia with AXAML, CommunityToolkit.Mvvm, xUnit, and `System.Text.Json` for its own persistence. Package versions are centrally managed through `Directory.Packages.props`.
 
 ```text
 NutManager/
 ├── src/
 │   ├── NutManager.App/
-│   │   ├── Assets/
-│   │   ├── Controls/
-│   │   ├── Styles/
-│   │   ├── ViewModels/
-│   │   └── Views/
 │   ├── NutManager.Core/
-│   │   ├── Models/
-│   │   ├── Services/
-│   │   ├── Status/
-│   │   └── Validation/
 │   └── NutManager.Infrastructure/
-│       ├── NutProtocol/
-│       ├── Persistence/
-│       ├── Mock/
-│       └── Platform/
-├── tests/
-│   └── NutManager.Tests/
+├── tests/NutManager.Tests/
 └── docs/
 ```
 
-Directories should be created only when the task introducing them requires them.
-
-## 4. Dependency direction
+## 3. Dependency direction
 
 ```text
 NutManager.App
@@ -63,294 +36,79 @@ NutManager.Core
     └──> no UI or platform project
 ```
 
-### Core
+Core contains deterministic models, contracts, validation, status, and operation results. It must not reference Avalonia, Windows APIs, file-system APIs, sockets, serial ports, or service-control APIs. Infrastructure implements I/O and platform boundaries. App contains Avalonia startup, composition, views, and view models; views and view models do not directly execute NUT commands or operating-system actions.
 
-Contains models, interfaces, status interpretation, validation rules, stale-state rules, and other deterministic domain behavior.
-
-Core must not reference Avalonia, file-system locations, sockets, serial ports, service-control APIs, or operating-system-specific packages.
-
-### Infrastructure
-
-Contains implementations for:
-
-- NUT network protocol access;
-- local settings persistence;
-- mock data;
-- clocks and timers when abstraction is needed;
-- later Windows platform and remote-management integrations.
-
-### App
-
-Contains Avalonia startup, navigation, views, view models, styles, resources, and dependency composition.
-
-View models depend on Core abstractions. Views must not call NUT commands, sockets, services, or file-system operations directly.
-
-## 5. Product capability split
+## 4. Product capability split and managed profiles
 
 ```text
 NutManager
 ├── Monitoring
-│   └── NUT Protocol
+│   └── NUT TCP protocol
 └── Management
-    ├── Local
-    │   └── Windows platform adapter
-    └── Remote
-        └── SSH/SFTP transport
+    ├── Local Windows adapter
+    └── Remote transport (T19)
 ```
 
-Monitoring uses the NUT protocol, normally over TCP port `3493`. Management is a separate concern with independent connection state: local management uses filesystem and platform APIs, while remote management uses a secure transport.
+The managed-profile model is implemented through `ManagedNutServerProfile`, `NutMonitoringProfile`, `NutManagementProfile`, `ManagedNutServerProfiles`, `ManagedServerCapabilities`, and `ManagedNutServerRuntimeContext`.
 
-Future management concepts include `ManagedNutServer` and `ManagementMode` (`Local` or `Remote`). They are architectural concepts only; types are not introduced until a task requires them. Management capabilities will include reading and writing configuration, managing services, inspecting installations, and reporting privileged-operation availability.
-
-Windows is the primary development, manual-test, distribution, and first-administration platform. Linux remains secondary, best-effort compatibility. Shared code must not take a Windows dependency unless the behavior genuinely belongs to the Windows platform adapter.
-
-## 6. Initial domain model
-
-The exact types may be refined during implementation, but the domain should represent:
+Each profile separates:
 
 ```text
-NutEndpoint
-UpsIdentity
-UpsSnapshot
-UpsVariable
-UpsStatusToken
-ConnectionState
-DataFreshness
-DiagnosticResult
-ApplicationSettings
+Profile
+├── Monitoring: host, port, preferred UPS
+└── Management: Local or Remote, ReadOnly or Manage
 ```
 
-`UpsSnapshot` should retain:
+The active profile is resolved during bootstrap into an immutable runtime context. Changing the active profile persists the selection and requires restart; polling is not silently redirected during a live session.
 
-- normalized values used by the UI;
-- the original variable dictionary;
-- timestamp of successful retrieval;
-- source indication such as live or simulated.
+## 5. Persistence
 
-Numeric values must use culture-invariant protocol parsing and culture-aware display formatting.
+`settings.json` stores polling, timeout, theme, mock-mode, and legacy monitoring compatibility fields. `managed-servers.json` stores managed-profile metadata and the active profile, but never credentials. Both use per-user persistence and recoverable write behavior. T20 owns protected credential storage.
 
-## 7. Key abstractions
+## 6. Monitoring
 
-The MVP should converge on small interfaces similar to:
+Monitoring uses the read-only NUT TCP protocol, normally on port `3493`, rather than launching `upsc` for polling. The protocol layer supports UPS discovery, variable snapshots, bounded timeout and cancellation behavior, and controlled protocol errors. Polling permits one active operation per selected UPS, preserves the last successful snapshot on failures, and marks it stale rather than fabricating values.
 
-```csharp
-public interface INutClient
-{
-    Task<IReadOnlyList<UpsIdentity>> ListUpsAsync(
-        NutEndpoint endpoint,
-        CancellationToken cancellationToken);
+Mock data is deterministic and visibly simulated. Protocol and polling tests use fakes or an in-process server rather than a real NUT server or UPS.
 
-    Task<UpsSnapshot> GetSnapshotAsync(
-        NutEndpoint endpoint,
-        string upsName,
-        CancellationToken cancellationToken);
-}
+## 7. Configuration architecture
 
-public interface IApplicationSettingsStore
-{
-    Task<ApplicationSettings> LoadAsync(CancellationToken cancellationToken);
-    Task SaveAsync(ApplicationSettings settings, CancellationToken cancellationToken);
-}
-```
+Configuration management is implemented for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`. The syntax-preserving document model retains comments, order, unknown directives, unmanaged sections, quoting, and relevant formatting.
 
-Do not add interfaces merely to wrap trivial pure functions. Introduce abstractions at I/O or platform boundaries.
-
-## 8. Data flow
+The write pipeline is:
 
 ```text
-View
-  ↕ binding
-ViewModel
-  ↕ Core models and interfaces
-Application service
-  ↕
-INutClient / settings store / mock provider
-  ↕
-NUT server or local application-data storage
+read → parse → requested in-memory change → preview/diff → backup
+→ temporary write → validation → safe replacement → verification → rollback on failure
 ```
 
-External work runs asynchronously. Results are marshalled back to observable view-model state without blocking the UI thread.
+The graphical editor changes existing entries one file at a time and sends writes exclusively through the pipeline. It does not automatically activate, reload, or restart services after an apply.
 
-## 9. NUT integration
+## 8. Windows local administration
 
-### MVP protocol strategy
-
-Prefer direct implementation of the small read-only portion of the NUT network protocol required by the MVP rather than launching `upsc` for every poll.
-
-Reasons:
-
-- works consistently on Windows and Linux;
-- avoids process startup overhead;
-- avoids locating external executables;
-- enables precise cancellation and timeout handling;
-- is testable with an in-process fake server.
-
-The implementation must be scoped to documented, observed commands needed for:
-
-- listing UPS devices;
-- listing variables for one UPS;
-- returning protocol errors without losing their text.
-
-Protocol parsing shall preserve unknown variable names and values.
-
-Launching NUT tools remains an option for later diagnostics and administrative features, behind a dedicated process-execution service.
-
-### Polling
-
-- only one poll per selected UPS may be active;
-- cancellation must stop an in-flight poll;
-- retries must be bounded;
-- reconnect delay must not create a busy loop;
-- failed polls preserve the last successful snapshot but mark it stale;
-- the polling service must be disposable.
-
-## 10. Status interpretation
-
-`ups.status` is a space-separated set of tokens. Parsing must:
-
-- preserve all original tokens;
-- recognize common tokens;
-- allow multiple simultaneous states;
-- avoid reducing the value to a single boolean;
-- map recognized tokens to user-facing descriptions and severity;
-- display unknown tokens verbatim.
-
-Severity presentation must not rely on color alone.
-
-## 11. Settings persistence
-
-MVP settings are non-secret and stored per user.
-
-Requirements:
-
-- operating-system-appropriate application-data directory;
-- UTF-8 JSON;
-- schema/version field for future migration;
-- write to a temporary file then atomically replace;
-- tolerate missing files by returning defaults;
-- report malformed files clearly and avoid overwriting them automatically without confirmation.
-
-## 12. Mock provider
-
-The mock implementation must be deterministic and support scenarios including:
-
-- online normal operation;
-- on battery;
-- low battery;
-- overloaded;
-- replace battery;
-- missing optional values;
-- disconnected;
-- stale data;
-- unknown status token.
-
-It must be visibly labeled as simulated in the UI.
-
-## 13. Error handling
-
-Errors are represented in layers:
-
-- technical exception or protocol error in Infrastructure;
-- actionable application error in Core/application service;
-- concise message plus optional details in the UI.
-
-Expected connection failures must not terminate the process. Cancellation must not be reported as a fault when initiated by navigation, shutdown, or a new connection attempt.
-
-## 14. Logging
-
-Use structured logging only where it provides diagnostic value.
-
-Never log:
-
-- passwords;
-- complete future credential-bearing configuration files;
-- secret command arguments;
-- unnecessary raw data at high frequency.
-
-Logs should include endpoint, operation, duration, result category, and exception type where safe.
-
-## 15. Windows-first platform boundary
-
-The monitoring MVP and Core remain platform-neutral. Windows-specific management implementations belong under an explicit namespace such as `Infrastructure.Platform.Windows`; Core must never depend on Windows APIs or packages.
-
-Linux has secondary, best-effort compatibility in shared code. It has no official package or immediate administrative-feature commitment. Any future Linux management adapter must remain isolated behind the same platform boundaries rather than influencing Core prematurely.
-
-Likely Windows-specific concerns include services, UAC, Event Log, `COMx` ports, drivers, and ACLs. Do not leak those differences into Core models unless the domain genuinely requires them.
-
-## 16. Testing strategy
-
-### Unit tests
-
-Cover:
-
-- status token parsing and severity;
-- culture-invariant numeric parsing;
-- variable mapping;
-- stale-state transitions;
-- settings validation and migration;
-- deterministic mock scenarios.
-
-### Protocol tests
-
-Use recorded protocol lines or an in-process fake TCP server. Cover partial reads, multiple lines, malformed replies, protocol errors, cancellation, and timeout.
-
-### UI tests
-
-Keep most view-model behavior testable without rendering. Add UI automation only after stable flows justify its maintenance cost.
-
-### Prohibited test dependencies
-
-Tests must not require:
-
-- a real NUT server;
-- a real UPS;
-- internet access;
-- elevated privileges;
-- system service changes;
-- serial ports.
-
-## 17. Future configuration architecture
-
-Configuration editing is post-MVP and requires a syntax-preserving document model rather than a generic INI serializer. It applies to `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`; comments, order, unknown directives, unmanaged sections, quoting, and relevant formatting must remain preserved.
-
-The write pipeline shall be:
+Windows-specific behavior remains in `Infrastructure.Platform.Windows` behind Core contracts:
 
 ```text
-read → parse while preserving syntax → requested change → preview/diff → backup
-→ temporary file → validation → safe replacement → activation when necessary
-→ test → rollback on failure
+Normal desktop process
+    → explicit review and confirmation
+    → limited privileged boundary when needed
+    → Windows adapter result
 ```
 
-Local management will discover the local NUT installation, executables, version, and configuration directory, while allowing manual path correction. Remote management will require manual directory selection and validation over SSH/SFTP; it must not attempt remote directory autodiscovery.
+The adapter implements local installation detection, service metadata and control, UAC helper handling, conservative ACL assessment and repair, process and Event Log inspection, passive COM metadata, and controlled NUT driver diagnostics. Core remains platform-neutral.
 
-Administrative activation shall be separated from ordinary UI execution and require explicit user confirmation.
+## 9. Local and remote management boundary
 
-## 18. Upstream NUT workflow
+Local Windows management is implemented through T17. A Remote profile exposes monitoring metadata only until a remote transport is implemented; it does not inspect, browse, or fall back to the local installation. T19 will add explicit SSH/SFTP transport, manual remote directory selection, and remote validation without remote autodiscovery.
 
-The official NUT repository is not a project dependency or submodule.
+## 10. Windows-first CI and packaging
 
-When an upstream task is approved:
+Official CI and package validation run on `windows-latest` only. Windows x64 is the official package and distribution target. Linux is not a CI gate and has no official package; shared code remains best-effort compatible until T22 evaluates it separately.
 
-1. reproduce and document the limitation independently;
-2. open the separate local NUT checkout;
-3. update from `networkupstools/nut:master`;
-4. create a focused branch in `Marcelo-PX/nut`;
-5. follow NUT style, tests, DCO, and disclosure requirements;
-6. keep NutManager and NUT commits separate;
-7. submit a focused PR only after local validation.
+## 11. Error handling and logging
 
-## 19. Fixed decisions for the initial implementation
+Infrastructure preserves technical errors; higher layers map them to actionable result categories and concise UI messages. Expected cancellation is not shown as a fault. Logs and diagnostic output must exclude passwords, complete secret-bearing configuration, and unsafe command details.
 
-Coding agents must not rediscuss these without an explicit architecture task:
+## 12. Upstream NUT workflow
 
-- Avalonia is the desktop UI framework;
-- Windows x64 is the primary development, testing, distribution, and first-administration platform;
-- Linux is secondary, best-effort compatibility rather than an official distribution target;
-- MVVM is used;
-- the first milestone is read-only;
-- Core remains platform-independent;
-- the NUT repository is not embedded in the workspace;
-- real hardware and administrative actions are excluded from automated tests;
-- direct read-only NUT protocol access is preferred for the MVP;
-- configuration editing and service control are post-MVP;
-- monitoring and management have independent connection state.
+The upstream NUT repository is not a project dependency or submodule. Approved upstream work reproduces and documents a limitation first, then uses a focused branch in `Marcelo-PX/nut` and follows NUT contribution, test, licensing, and DCO requirements.

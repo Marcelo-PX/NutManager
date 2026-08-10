@@ -16,15 +16,8 @@ permissions:
 
 jobs:
   build:
-    name: Build and test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - windows-latest
-          - ubuntu-latest
+    name: Build and test on Windows
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
