@@ -1442,9 +1442,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         NotifyWorkflowPropertiesChanged();
     }
 
-    private string GetRemoteFilePath(string directory, string fileName) => _remoteManagement?.IsSmb == true
-        ? SmbUncPath.CombineDirectChild(directory, fileName)
-        : NutManager.Infrastructure.Remote.Ssh.RemotePathMapper.Combine(directory, fileName);
+    private string GetRemoteFilePath(string directory, string fileName) =>
+        _remoteManagement?.CombineConfigurationFilePath(directory, fileName)
+        ?? throw new InvalidOperationException("A remote configuration session is required to compose a configuration path.");
 
     private void OnRemoteManagementPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {

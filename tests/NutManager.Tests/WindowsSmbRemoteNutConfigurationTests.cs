@@ -37,52 +37,98 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
     }
 
     [Fact]
-    public async Task CurrentWindowsIdentityDoesNotCreateOrCancelWnetConnection()
+    public async Task CurrentWindowsIdentityDoesNotCreateAnIsolatedToken()
     {
-        var network = new FakeNetworkConnection();
-        var transport = new WindowsSmbRemoteNutConfigurationTransport(new FakeSmbFileSystem(), network, () => true);
+        var identities = new FakeIdentityFactory();
+        var transport = new WindowsSmbRemoteNutConfigurationTransport(new FakeSmbFileSystem(), identities, () => true);
         var request = new SmbRemoteNutConnectionRequest(Guid.NewGuid(), Share, SmbAuthenticationMode.CurrentWindowsIdentity, null, default, true);
 
         var result = await transport.ConnectAsync(request);
 
         Assert.Equal(RemoteNutConnectionState.Connected, result.State);
-        Assert.Equal(0, network.ConnectCalls);
+        Assert.Equal(0, identities.ExplicitIdentityCalls);
         await result.Session!.DisposeAsync();
-        Assert.Equal(0, network.DisconnectCalls);
+        Assert.False(identities.CurrentIdentity.IsExplicitCredentialIdentity);
     }
 
     [Fact]
-    public async Task ExplicitSmbCredentialsCreateAndDisposeOnlyTheOwnedWnetConnection()
+    public async Task ExplicitSmbCredentialsCreateAndDisposeAnIsolatedToken()
     {
-        var network = new FakeNetworkConnection();
-        var transport = new WindowsSmbRemoteNutConfigurationTransport(new FakeSmbFileSystem(), network, () => true);
+        var identities = new FakeIdentityFactory();
+        var transport = new WindowsSmbRemoteNutConfigurationTransport(new FakeSmbFileSystem(), identities, () => true);
         var request = new SmbRemoteNutConnectionRequest(Guid.NewGuid(), Share, SmbAuthenticationMode.ExplicitCredentials, "DOMAIN\\nut", "fictional-password".AsMemory(), true);
 
         var result = await transport.ConnectAsync(request);
 
         Assert.Equal(RemoteNutConnectionState.Connected, result.State);
-        Assert.Equal(1, network.ConnectCalls);
-        Assert.Equal(Share, network.LastShare);
-        Assert.Equal("DOMAIN\\nut", network.LastUsername);
+        Assert.Equal(1, identities.ExplicitIdentityCalls);
+        Assert.Equal(Share, identities.LastShare);
+        Assert.Equal("DOMAIN\\nut", identities.LastUsername);
+        Assert.True(identities.ExplicitIdentity.RunCalls > 0);
         Assert.DoesNotContain("fictional-password", result.Message ?? string.Empty, StringComparison.Ordinal);
         await result.Session!.DisposeAsync();
-        Assert.Equal(1, network.DisconnectCalls);
-        Assert.False(network.LastDisconnectForce);
+        Assert.Equal(1, identities.ExplicitIdentity.DisposeCalls);
     }
 
     [Fact]
-    public async Task CredentialConflictFailsClosedWithoutDisconnectingAnotherWindowsSession()
+    public async Task FailedShareVerificationDoesNotReturnAUsableSession()
     {
-        var network = new FakeNetworkConnection { ConnectResult = new WindowsNetworkConnectionResult(WindowsNetworkConnectionResult.CredentialConflict) };
-        var transport = new WindowsSmbRemoteNutConfigurationTransport(new FakeSmbFileSystem(), network, () => true);
+        var identities = new FakeIdentityFactory();
+        var transport = new WindowsSmbRemoteNutConfigurationTransport(new FakeSmbFileSystem { ListThrowsUnauthorized = true }, identities, () => true);
+        var request = new SmbRemoteNutConnectionRequest(Guid.NewGuid(), Share, SmbAuthenticationMode.ExplicitCredentials, "DOMAIN\\nut", "fictional-password".AsMemory(), true);
+
+        var result = await transport.ConnectAsync(request);
+
+        Assert.Equal(RemoteNutConnectionState.AccessDenied, result.State);
+        Assert.Null(result.Session);
+        Assert.Equal(1, identities.ExplicitIdentity.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task RedirectorCredentialConflictFailsClosedWithoutDisconnectingAnything()
+    {
+        var identities = new FakeIdentityFactory();
+        var transport = new WindowsSmbRemoteNutConfigurationTransport(
+            new FakeSmbFileSystem { ListException = new CredentialConflictIOException() },
+            identities,
+            () => true);
         var request = new SmbRemoteNutConnectionRequest(Guid.NewGuid(), Share, SmbAuthenticationMode.ExplicitCredentials, "DOMAIN\\nut", "fictional-password".AsMemory(), true);
 
         var result = await transport.ConnectAsync(request);
 
         Assert.Equal(RemoteNutConnectionState.AuthenticationFailed, result.State);
-        Assert.Contains("outras credenciais", result.Message, StringComparison.Ordinal);
+        Assert.Contains("conflito de credenciais", result.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Null(result.Session);
-        Assert.Equal(0, network.DisconnectCalls);
+        Assert.Equal(1, identities.ExplicitIdentity.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task NativeLogonPasswordBufferIsZeroedAfterTheAttempt()
+    {
+        var nativeLogon = new RecordingNativeLogon();
+        var factory = new WindowsSmbSessionIdentityFactory(nativeLogon);
+
+        var result = await factory.CreateExplicitIdentityAsync(Share, "DOMAIN\\nut", "fictional-password".AsMemory(), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(nativeLogon.PasswordBuffer);
+        Assert.All(nativeLogon.PasswordBuffer!, character => Assert.Equal('\0', character));
+    }
+
+    [Theory]
+    [InlineData("DOMAIN\\nut", "nut", "DOMAIN")]
+    [InlineData("SERVER\\nut", "nut", "SERVER")]
+    [InlineData("nut@domain.example", "nut@domain.example", null)]
+    [InlineData("nut", "nut", "server")]
+    public async Task ExplicitSmbUsernamesUseDeterministicOutboundAuthorities(string username, string expectedAccount, string? expectedAuthority)
+    {
+        var nativeLogon = new RecordingNativeLogon();
+        var factory = new WindowsSmbSessionIdentityFactory(nativeLogon);
+
+        await factory.CreateExplicitIdentityAsync(Share, username, "fictional-password".AsMemory(), CancellationToken.None);
+
+        Assert.Equal(expectedAccount, nativeLogon.AccountName);
+        Assert.Equal(expectedAuthority, nativeLogon.Authority);
     }
 
     [Fact]
@@ -99,6 +145,17 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         Assert.False(session.IsSafeWriteCapabilityValidFor(@"\\server\share\other"));
         Assert.Equal(1, fileSystem.ReplaceCalls);
         Assert.DoesNotContain(fileSystem.FilePaths, path => path.Contains("capability", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task SmbSafeWriteDirectoryComparisonUsesUncCaseInsensitivity()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+
+        Assert.True(session.IsSafeWriteCapabilityValidFor(@"\\SERVER\SHARE\nut\ETC"));
     }
 
     [Fact]
@@ -189,7 +246,7 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
         fileSystem.SetFile(targetPath, "MODE=external\n");
 
-        var result = await session.CommitWindowsConfigurationAsync(new RemoteNutWindowsCommitRequest(
+        var result = await session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
             ConfigurationDirectory,
             "nut.conf",
             ".nutmanager-nut.conf-candidate.tmp",
@@ -214,7 +271,7 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
         Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
 
-        var result = await session.RollbackWindowsConfigurationAsync(new RemoteNutWindowsRollbackRequest(
+        var result = await session.RollbackConfigurationAsync(new RemoteNutConfigurationRollbackRequest(
             ConfigurationDirectory,
             "nut.conf",
             backupName,
@@ -240,35 +297,218 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         Assert.False(session.IsSafeWriteCapabilityValidFor(ConfigurationDirectory));
     }
 
+    [Fact]
+    public async Task CommitDoesNotOverwriteAPreexistingGeneratedBackup()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var backupPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-existing.bak");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var candidate = Encoding.UTF8.GetBytes("MODE=netserver\n");
+        fileSystem.SetFile(targetPath, Encoding.UTF8.GetString(original));
+        fileSystem.SetFile(backupPath, "EXTERNAL BACKUP");
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
+
+        var result = await session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", ".nutmanager-nut.conf-existing.bak", Fingerprint(original), Fingerprint(candidate)));
+
+        Assert.Equal(RemoteNutTransportStatus.Failed, result.Status);
+        Assert.Equal("EXTERNAL BACKUP", fileSystem.GetText(backupPath));
+        Assert.Equal("MODE=standalone\n", fileSystem.GetText(targetPath));
+    }
+
+    [Fact]
+    public async Task RollbackDoesNotOverwriteAPreexistingGeneratedRecovery()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var backupName = ".nutmanager-nut.conf-original.bak";
+        var recoveryPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-existing-recovery.bak");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        fileSystem.SetFile(targetPath, "MODE=netserver\n");
+        fileSystem.SetFile(SmbUncPath.CombineDirectChild(ConfigurationDirectory, backupName), Encoding.UTF8.GetString(original));
+        fileSystem.SetFile(recoveryPath, "EXTERNAL RECOVERY");
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+
+        var result = await session.RollbackConfigurationAsync(new RemoteNutConfigurationRollbackRequest(
+            ConfigurationDirectory, "nut.conf", backupName, ".nutmanager-nut.conf-rollback.tmp", ".nutmanager-nut.conf-existing-recovery.bak", Fingerprint(original)));
+
+        Assert.Equal(RemoteNutTransportStatus.Failed, result.Status);
+        Assert.Equal("EXTERNAL RECOVERY", fileSystem.GetText(recoveryPath));
+        Assert.Equal("MODE=netserver\n", fileSystem.GetText(targetPath));
+    }
+
+    [Fact]
+    public async Task KnownPreReplaceFailureCleansOnlyItsOwnedBackupReservation()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var candidate = Encoding.UTF8.GetBytes("MODE=netserver\n");
+        fileSystem.SetFile(targetPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
+        fileSystem.ReplaceThrows = true;
+
+        var result = await session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", ".nutmanager-nut.conf-original.bak", Fingerprint(original), Fingerprint(candidate)));
+
+        Assert.Equal(RemoteNutTransportStatus.Failed, result.Status);
+        Assert.DoesNotContain(SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-original.bak"), fileSystem.FilePaths);
+        Assert.Equal("MODE=standalone\n", fileSystem.GetText(targetPath));
+    }
+
+    [Fact]
+    public async Task ReservationCleanupFailureIsCriticalAndPreservesTheOwnedPathForReview()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var candidate = Encoding.UTF8.GetBytes("MODE=netserver\n");
+        fileSystem.SetFile(targetPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
+        fileSystem.ReplaceThrows = true;
+        fileSystem.FailDeletePathsContaining = "original.bak";
+
+        var result = await session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", ".nutmanager-nut.conf-original.bak", Fingerprint(original), Fingerprint(candidate)));
+
+        Assert.Equal(RemoteNutTransportStatus.OutcomeUnknown, result.Status);
+        Assert.EndsWith("original.bak", result.BackupPath, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(result.BackupPath!, fileSystem.FilePaths);
+    }
+
+    [Fact]
+    public async Task MutationCancellationAfterReplaceStartsWaitsForTheActualReplace()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var candidate = Encoding.UTF8.GetBytes("MODE=netserver\n");
+        fileSystem.SetFile(targetPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        fileSystem.EnableReplaceBlock();
+        await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
+        using var cancellation = new CancellationTokenSource();
+
+        var commit = session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", ".nutmanager-nut.conf-original.bak", Fingerprint(original), Fingerprint(candidate)), cancellation.Token);
+        await fileSystem.ReplaceStarted.Task;
+        cancellation.Cancel();
+        Assert.False(commit.IsCompleted);
+        fileSystem.AllowReplace.TrySetResult();
+
+        Assert.Equal(RemoteNutTransportStatus.Success, (await commit).Status);
+    }
+
+    [Fact]
+    public async Task DisposeWaitsForTheSessionMutationBeforeDisposingItsIdentity()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var identity = new FakeIdentity(true);
+        var session = new WindowsSmbRemoteNutConfigurationSession(Share, true, fileSystem, identity);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        fileSystem.EnableReplaceBlock();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var candidate = Encoding.UTF8.GetBytes("MODE=netserver\n");
+        fileSystem.SetFile(targetPath, Encoding.UTF8.GetString(original));
+        await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
+        var commit = session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", ".nutmanager-nut.conf-original.bak", Fingerprint(original), Fingerprint(candidate)));
+        await fileSystem.ReplaceStarted.Task;
+        var dispose = session.DisposeAsync().AsTask();
+        Assert.False(dispose.IsCompleted);
+        Assert.Equal(0, identity.DisposeCalls);
+        fileSystem.AllowReplace.TrySetResult();
+        await commit;
+        await dispose;
+        Assert.Equal(1, identity.DisposeCalls);
+    }
+
     private static WindowsSmbRemoteNutConfigurationSession CreateSession(FakeSmbFileSystem fileSystem) =>
-        new(Share, true, fileSystem, new FakeNetworkConnection(), false);
+        new(Share, true, fileSystem, new FakeIdentity(false));
 
     private static string Fingerprint(ReadOnlySpan<byte> bytes) => Convert.ToHexString(SHA256.HashData(bytes));
 
-    private sealed class FakeNetworkConnection : IWindowsNetworkConnection
+    private sealed class FakeIdentityFactory : IWindowsSmbSessionIdentityFactory
     {
-        public int ConnectCalls { get; private set; }
-        public int DisconnectCalls { get; private set; }
+        public int ExplicitIdentityCalls { get; private set; }
         public string? LastShare { get; private set; }
         public string? LastUsername { get; private set; }
-        public bool LastDisconnectForce { get; private set; }
-        public WindowsNetworkConnectionResult ConnectResult { get; set; } = new(WindowsNetworkConnectionResult.Success);
+        public FakeIdentity CurrentIdentity { get; } = new(false);
+        public FakeIdentity ExplicitIdentity { get; } = new(true);
 
-        public Task<WindowsNetworkConnectionResult> ConnectAsync(string sharePath, string username, ReadOnlyMemory<char> password, CancellationToken cancellationToken)
+        public IWindowsSmbSessionIdentity CreateCurrentIdentity() => CurrentIdentity;
+
+        public Task<WindowsSmbIdentityCreationResult> CreateExplicitIdentityAsync(string sharePath, string username, ReadOnlyMemory<char> password, CancellationToken cancellationToken)
         {
-            ConnectCalls++;
+            ExplicitIdentityCalls++;
             LastShare = sharePath;
             LastUsername = username;
-            return Task.FromResult(ConnectResult);
+            return Task.FromResult(new WindowsSmbIdentityCreationResult(ExplicitIdentity));
+        }
+    }
+
+    private sealed class FakeIdentity : IWindowsSmbSessionIdentity
+    {
+        public FakeIdentity(bool isExplicitCredentialIdentity) => IsExplicitCredentialIdentity = isExplicitCredentialIdentity;
+
+        public bool IsExplicitCredentialIdentity { get; }
+        public int RunCalls { get; private set; }
+        public int DisposeCalls { get; private set; }
+
+        public async Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+        {
+            RunCalls++;
+            return await operation(cancellationToken);
         }
 
-        public Task<WindowsNetworkConnectionResult> DisconnectAsync(string sharePath, CancellationToken cancellationToken)
+        public async Task RunAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
         {
-            DisconnectCalls++;
-            LastShare = sharePath;
-            LastDisconnectForce = false;
-            return Task.FromResult(new WindowsNetworkConnectionResult(WindowsNetworkConnectionResult.Success));
+            RunCalls++;
+            await operation(cancellationToken);
         }
+
+        public ValueTask DisposeAsync()
+        {
+            DisposeCalls++;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingNativeLogon : IWindowsSmbNativeLogon
+    {
+        public char[]? PasswordBuffer { get; private set; }
+        public string? AccountName { get; private set; }
+        public string? Authority { get; private set; }
+
+        public bool TryLogon(string accountName, string? authority, char[] passwordBuffer, out Microsoft.Win32.SafeHandles.SafeAccessTokenHandle token)
+        {
+            AccountName = accountName;
+            Authority = authority;
+            PasswordBuffer = passwordBuffer;
+            token = null!;
+            return false;
+        }
+    }
+
+    private sealed class CredentialConflictIOException : IOException
+    {
+        public CredentialConflictIOException() : base("credential conflict") => HResult = unchecked((int)0x800704C3);
     }
 
     private sealed class FakeSmbFileSystem : ISmbFileSystem
@@ -277,14 +517,37 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
 
         public bool ReplaceThrows { get; set; }
         public bool FailCapabilityCleanup { get; set; }
+        public bool ListThrowsUnauthorized { get; set; }
+        public Exception? ListException { get; set; }
+        public string? FailDeletePathsContaining { get; set; }
+        public bool BlockReplace { get; private set; }
         public int ReplaceCalls { get; private set; }
         public IReadOnlyCollection<string> FilePaths => _files.Keys;
+        public TaskCompletionSource ReplaceStarted { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource AllowReplace { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public void SetFile(string path, string value) => _files[path] = Encoding.UTF8.GetBytes(value);
         public string GetText(string path) => Encoding.UTF8.GetString(_files[path]);
 
+        public void EnableReplaceBlock()
+        {
+            BlockReplace = true;
+            ReplaceStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            AllowReplace = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+
         public Task<IReadOnlyList<SmbFileSystemEntry>> ListDirectoryAsync(string directory, CancellationToken cancellationToken)
         {
+            if (ListThrowsUnauthorized)
+            {
+                throw new UnauthorizedAccessException();
+            }
+
+            if (ListException is not null)
+            {
+                throw ListException;
+            }
+
             var prefix = directory.TrimEnd('\\') + "\\";
             var entries = _files.Keys.Where(path => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && path[prefix.Length..].IndexOf('\\') < 0)
                 .Select(path => new SmbFileSystemEntry(path[prefix.Length..], path, false, false))
@@ -317,7 +580,8 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
 
         public Task DeleteFileAsync(string path, CancellationToken cancellationToken)
         {
-            if (FailCapabilityCleanup && path.Contains("capability", StringComparison.OrdinalIgnoreCase))
+            if ((FailCapabilityCleanup && path.Contains("capability", StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(FailDeletePathsContaining) && path.Contains(FailDeletePathsContaining, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new IOException("cleanup failure");
             }
@@ -326,7 +590,7 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
             return Task.CompletedTask;
         }
 
-        public Task ReplaceFileAsync(string candidatePath, string targetPath, string backupPath, CancellationToken cancellationToken)
+        public async Task ReplaceFileAsync(string candidatePath, string targetPath, string backupPath, CancellationToken cancellationToken)
         {
             ReplaceCalls++;
             if (ReplaceThrows)
@@ -334,10 +598,16 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
                 throw new IOException("unsupported");
             }
 
+            if (BlockReplace)
+            {
+                ReplaceStarted.TrySetResult();
+                await AllowReplace.Task;
+                BlockReplace = false;
+            }
+
             _files[backupPath] = _files[targetPath].ToArray();
             _files[targetPath] = _files[candidatePath].ToArray();
             _files.Remove(candidatePath);
-            return Task.CompletedTask;
         }
 
         public Task<bool> IsReparsePointAsync(string path, CancellationToken cancellationToken) => Task.FromResult(false);

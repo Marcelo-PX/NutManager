@@ -1,19 +1,19 @@
 namespace NutManager.Infrastructure.Remote.Smb;
 
 /// <summary>
-/// UNC file access used by the SMB transport. Directory metadata APIs do not expose a
-/// cancellable asynchronous equivalent; cancellation is checked before and after them.
-/// All mutable operations remain direct and are never abandoned on a background task.
+/// UNC file access used by the SMB transport. Synchronous System.IO metadata and replace
+/// APIs are dispatched off the UI thread. They have no safe cancellation once dispatched:
+/// callers may cancel before dispatch, but mutable work is always awaited to completion.
 /// </summary>
 public sealed class WindowsSmbFileSystem : ISmbFileSystem
 {
     private const int BufferSize = 81920;
     private const long MaximumFileSize = 8 * 1024 * 1024;
 
-    public Task<IReadOnlyList<SmbFileSystemEntry>> ListDirectoryAsync(string directory, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var entries = Directory.EnumerateFileSystemEntries(directory)
+    public Task<IReadOnlyList<SmbFileSystemEntry>> ListDirectoryAsync(string directory, CancellationToken cancellationToken) =>
+        ExecuteSynchronousAsync(() =>
+        {
+            var entries = Directory.EnumerateFileSystemEntries(directory)
             .Select(path =>
             {
                 var attributes = File.GetAttributes(path);
@@ -25,9 +25,8 @@ public sealed class WindowsSmbFileSystem : ISmbFileSystem
             })
             .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult<IReadOnlyList<SmbFileSystemEntry>>(entries);
-    }
+            return (IReadOnlyList<SmbFileSystemEntry>)entries;
+        }, cancellationToken);
 
     public async Task<ReadOnlyMemory<byte>> ReadFileAsync(string path, CancellationToken cancellationToken)
     {
@@ -49,30 +48,29 @@ public sealed class WindowsSmbFileSystem : ISmbFileSystem
         await stream.FlushAsync(cancellationToken);
     }
 
-    public Task<bool> FileExistsAsync(string path, CancellationToken cancellationToken)
+    public Task<bool> FileExistsAsync(string path, CancellationToken cancellationToken) =>
+        ExecuteSynchronousAsync(() => File.Exists(path), cancellationToken);
+
+    public Task DeleteFileAsync(string path, CancellationToken cancellationToken) =>
+        ExecuteSynchronousAsync(() => File.Delete(path), cancellationToken);
+
+    public Task ReplaceFileAsync(string candidatePath, string targetPath, string backupPath, CancellationToken cancellationToken) =>
+        ExecuteSynchronousAsync(() => File.Replace(candidatePath, targetPath, backupPath, ignoreMetadataErrors: false), cancellationToken);
+
+    public Task<bool> IsReparsePointAsync(string path, CancellationToken cancellationToken) =>
+        ExecuteSynchronousAsync(() => (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0, cancellationToken);
+
+    private static async Task<T> ExecuteSynchronousAsync<T>(Func<T> operation, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(File.Exists(path));
+        // Task.Run is the dispatch boundary, not a timeout/cancellation wrapper. Once the
+        // worker owns a synchronous SMB call it is awaited completely by the session gate.
+        return await Task.Run(operation, CancellationToken.None).ConfigureAwait(false);
     }
 
-    public Task DeleteFileAsync(string path, CancellationToken cancellationToken)
+    private static async Task ExecuteSynchronousAsync(Action operation, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        File.Delete(path);
-        return Task.CompletedTask;
-    }
-
-    public Task ReplaceFileAsync(string candidatePath, string targetPath, string backupPath, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        File.Replace(candidatePath, targetPath, backupPath, ignoreMetadataErrors: false);
-        return Task.CompletedTask;
-    }
-
-    public Task<bool> IsReparsePointAsync(string path, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var attributes = File.GetAttributes(path);
-        return Task.FromResult((attributes & FileAttributes.ReparsePoint) != 0);
+        await Task.Run(operation, CancellationToken.None).ConfigureAwait(false);
     }
 }

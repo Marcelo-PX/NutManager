@@ -273,26 +273,26 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public async Task BrowseParentAsync(CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(CurrentDirectory))
+        if (_session is null || string.IsNullOrWhiteSpace(CurrentDirectory))
         {
             return;
         }
 
-        if (IsSmb)
+        var parent = _session.PathPolicy.GetParentDirectory(CurrentDirectory);
+        if (parent is not null)
         {
-            var parent = SmbUncPath.GetParentWithinShare(_profile.Management.SmbSharePath!, CurrentDirectory);
-            if (parent is not null)
-            {
-                await BrowseDirectoryAsync(parent, cancellationToken);
-            }
-            return;
+            await BrowseDirectoryAsync(parent, cancellationToken);
+        }
+    }
+
+    public string CombineConfigurationFilePath(string directory, string fileName)
+    {
+        if (_session is null)
+        {
+            throw new InvalidOperationException("A remote configuration session is required to compose a configuration path.");
         }
 
-        var slash = CurrentDirectory.TrimEnd('/').LastIndexOf('/');
-        if (slash >= 0)
-        {
-            await BrowseDirectoryAsync(slash == 0 ? "/" : CurrentDirectory[..slash], cancellationToken);
-        }
+        return _session.PathPolicy.CombineDirectChild(directory, fileName);
     }
 
     public Task BrowseChildAsync(RemoteNutDirectoryEntry? entry, CancellationToken cancellationToken = default) =>

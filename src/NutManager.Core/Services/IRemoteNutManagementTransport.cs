@@ -382,9 +382,9 @@ public sealed class RemoteNutCandidateUploadRequest
     public ReadOnlyMemory<byte> CandidateBytes { get; }
 }
 
-public sealed class RemoteNutWindowsCommitRequest
+public sealed class RemoteNutConfigurationCommitRequest
 {
-    public RemoteNutWindowsCommitRequest(string configurationDirectory, string targetFileName, string temporaryFileName, string backupFileName, string expectedOriginalFingerprint, string expectedCandidateFingerprint)
+    public RemoteNutConfigurationCommitRequest(string configurationDirectory, string targetFileName, string temporaryFileName, string backupFileName, string expectedOriginalFingerprint, string expectedCandidateFingerprint)
     {
         ConfigurationDirectory = NutMonitoringProfile.ValidateRequiredText(configurationDirectory, nameof(configurationDirectory), 4096);
         TargetFileName = NutMonitoringProfile.ValidateRequiredText(targetFileName, nameof(targetFileName), 128);
@@ -407,9 +407,9 @@ public sealed class RemoteNutWindowsCommitRequest
     public string ExpectedCandidateFingerprint { get; }
 }
 
-public sealed class RemoteNutWindowsRollbackRequest
+public sealed class RemoteNutConfigurationRollbackRequest
 {
-    public RemoteNutWindowsRollbackRequest(string configurationDirectory, string targetFileName, string backupFileName, string rollbackFileName, string recoveryFileName, string expectedOriginalFingerprint)
+    public RemoteNutConfigurationRollbackRequest(string configurationDirectory, string targetFileName, string backupFileName, string rollbackFileName, string recoveryFileName, string expectedOriginalFingerprint)
     {
         ConfigurationDirectory = NutMonitoringProfile.ValidateRequiredText(configurationDirectory, nameof(configurationDirectory), 4096);
         TargetFileName = NutMonitoringProfile.ValidateRequiredText(targetFileName, nameof(targetFileName), 128);
@@ -457,6 +457,23 @@ public interface IRemoteNutConfigurationTransport
 }
 
 /// <summary>
+/// Applies transport-specific remote path text semantics without applying local host
+/// filesystem semantics. Implementations belong to their file transport.
+/// </summary>
+public interface IRemoteNutConfigurationPathPolicy
+{
+    string NormalizeDirectory(string directory);
+
+    string NormalizePath(string path);
+
+    string CombineDirectChild(string directory, string childName);
+
+    bool PathsEqual(string left, string right);
+
+    string? GetParentDirectory(string directory);
+}
+
+/// <summary>
 /// Legacy SSH/SFTP name retained for source compatibility. SMB implements the generic
 /// configuration transport contract directly and never instantiates an SSH client.
 /// </summary>
@@ -482,6 +499,8 @@ public interface IRemoteNutConfigurationSession : IAsyncDisposable
 
     string HomeDirectory { get; }
 
+    IRemoteNutConfigurationPathPolicy PathPolicy { get; }
+
     Task<RemoteNutDirectoryListing> BrowseDirectoryAsync(string directory, CancellationToken cancellationToken = default);
 
     Task<RemoteNutDirectoryValidationResult> ValidateConfigurationDirectoryAsync(string directory, CancellationToken cancellationToken = default);
@@ -492,7 +511,7 @@ public interface IRemoteNutConfigurationSession : IAsyncDisposable
 
     /// <summary>
     /// Prevents further remote writes after an indeterminate commit or rollback outcome.
-    /// A new SSH session, directory validation, and capability probe are required before writing again.
+    /// A new transport session, directory validation, and capability probe are required before writing again.
     /// </summary>
     void InvalidateSafeWriteCapability();
 
@@ -500,9 +519,9 @@ public interface IRemoteNutConfigurationSession : IAsyncDisposable
 
     Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default);
 
-    Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default);
+    Task<RemoteNutCommitResult> CommitConfigurationAsync(RemoteNutConfigurationCommitRequest request, CancellationToken cancellationToken = default);
 
-    Task<RemoteNutCommitResult> RollbackWindowsConfigurationAsync(RemoteNutWindowsRollbackRequest request, CancellationToken cancellationToken = default);
+    Task<RemoteNutCommitResult> RollbackConfigurationAsync(RemoteNutConfigurationRollbackRequest request, CancellationToken cancellationToken = default);
 }
 
 public interface IRemoteNutManagementSession : IRemoteNutConfigurationSession

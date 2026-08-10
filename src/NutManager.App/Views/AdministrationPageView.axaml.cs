@@ -46,7 +46,7 @@ public partial class AdministrationPageView : UserControl
 
     private async void RemoteConnectPasswordButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
-        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanConnectRemote: true })
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { IsSshSftp: true } remoteManagement, CanConnectRemote: true })
         {
             var password = RemotePasswordBox.Text ?? string.Empty;
             try
@@ -86,7 +86,7 @@ public partial class AdministrationPageView : UserControl
 
     private async void RemoteConnectPrivateKeyButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
-        if (DataContext is not AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanConnectRemote: true } || TopLevel.GetTopLevel(this) is not { } topLevel)
+        if (DataContext is not AdministrationPageViewModel { RemoteManagement: { IsSshSftp: true } remoteManagement, CanConnectRemote: true } || TopLevel.GetTopLevel(this) is not { } topLevel)
         {
             return;
         }
