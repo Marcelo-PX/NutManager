@@ -31,13 +31,13 @@ NutManager makes NUT monitoring, configuration, diagnostics, and explicitly conf
 
 Remote profiles can monitor through the standard NUT TCP connection and access configuration through SSH/SFTP or SMB. The user manually browses and validates the selected remote directory; no server/share autodiscovery or local-management fallback is used. SSH/SFTP host keys require explicit SHA-256 fingerprint trust/pinning. SMB accesses only a user-supplied UNC share and can use the current Windows identity or session-only explicit credentials.
 
-Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can write only after an explicit same-directory safe-write capability probe: Windows/OpenSSH for SSH/SFTP, or verified `File.Replace` behavior for SMB. Passwords, passphrases, and private-key paths remain session-only until T20, which will cover protected SSH and SMB credentials. Remote service, ACL, COM-port, and driver administration are not implemented.
+Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can write only after an explicit same-directory safe-write capability probe: Windows/OpenSSH for SSH/SFTP, or verified `File.Replace` behavior for SMB. SSH/SMB secrets are session-only by default and may be explicitly remembered after a successful connection in Windows Credential Manager; profile JSON contains only non-secret metadata, including an optional private-key path. Remote service, ACL, COM-port, and driver administration are not implemented.
 
 ## Platform support
 
-**Windows x64** is the official and primary platform for development, CI, testing, packaging, distribution, and local administration.
+**Windows x64** is the only active and officially supported platform for development, CI, testing, packaging, distribution, and local administration.
 
-**Linux** remains secondary, best-effort compatibility for shared code. It has no official CI gate, package, or current administration-support guarantee; T22 will evaluate it explicitly.
+**Linux** compatibility is deferred and may be reconsidered by a future task. It has no active CI, package, distribution, or administration-support commitment.
 
 ## Build
 

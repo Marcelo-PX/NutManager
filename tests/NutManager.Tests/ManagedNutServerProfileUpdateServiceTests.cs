@@ -160,6 +160,151 @@ public sealed class ManagedNutServerProfileUpdateServiceTests
         Assert.Equal(trusted.Management.TrustedHostKeyAlgorithm, saved.Management.TrustedHostKeyAlgorithm);
     }
 
+    [Fact]
+    public async Task ChangingSshIdentityDeletesOnlyTheTwoKnownSshCredentialsBeforeSavingMetadata()
+    {
+        var current = Profile();
+        var updated = CreateSshProfile(current.Id, host: "new-management.example");
+        var store = new RecordingStore(Document(current));
+        var credentials = new RecordingCredentialStore();
+
+        var saved = await new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, updated);
+
+        Assert.NotNull(saved);
+        Assert.Equal(
+            [RemoteCredentialKind.SshPassword, RemoteCredentialKind.SshPrivateKeyPassphrase],
+            credentials.DeletedKinds);
+        Assert.Equal("new-management.example", store.Current.ActiveProfile.Management.ManagementHost);
+    }
+
+    [Fact]
+    public async Task CredentialCleanupFailureAbortsAnSshIdentityChangeBeforeMetadataSave()
+    {
+        var current = Profile();
+        var updated = CreateSshProfile(current.Id, host: "new-management.example");
+        var store = new RecordingStore(Document(current));
+        var credentials = new RecordingCredentialStore { DeleteResult = new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.AccessDenied) };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, updated));
+
+        Assert.Equal(0, store.SaveCalls);
+        Assert.Equal(current, store.Current.ActiveProfile);
+    }
+
+    [Fact]
+    public async Task SavingAfterCredentialCleanupFailureLeavesOldMetadataAndRemovedCredentialStateAccurate()
+    {
+        var current = Profile();
+        var updated = CreateSshProfile(current.Id, host: "new-management.example");
+        var store = new RecordingStore(Document(current)) { ThrowOnSave = true };
+        var credentials = new RecordingCredentialStore();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, updated));
+
+        Assert.Equal(current, store.Current.ActiveProfile);
+        Assert.Equal(2, credentials.DeletedKinds.Count);
+    }
+
+    [Fact]
+    public async Task ProfileRenameDoesNotInvalidateCredentials()
+    {
+        var current = Profile();
+        var renamed = new ManagedNutServerProfile(current.Id, "Renamed", current.Monitoring, current.Management, current.AccessMode);
+        var store = new RecordingStore(Document(current));
+        var credentials = new RecordingCredentialStore();
+
+        var saved = await new ManagedNutServerProfileUpdateService(store, credentials).SaveExistingProfileAsync(current, renamed);
+
+        Assert.NotNull(saved);
+        Assert.Empty(credentials.DeletedKinds);
+    }
+
+    [Fact]
+    public async Task DeletingAnInactiveProfileRemovesOnlyItsKnownCredentialTargetsFirst()
+    {
+        var active = Profile(name: "Active");
+        var removable = Profile(name: "Removable");
+        var store = new RecordingStore(Document(active, removable, active.Id));
+        var credentials = new RecordingCredentialStore();
+
+        var saved = await new ManagedNutServerProfileUpdateService(store, credentials).DeleteProfileAsync(removable.Id);
+
+        Assert.NotNull(saved);
+        Assert.Equal([removable.Id], credentials.DeleteAllProfileIds);
+        Assert.DoesNotContain(store.Current.Profiles, profile => profile.Id == removable.Id);
+    }
+
+    [Fact]
+    public async Task CredentialCleanupFailureAbortsProfileDeletion()
+    {
+        var active = Profile(name: "Active");
+        var removable = Profile(name: "Removable");
+        var store = new RecordingStore(Document(active, removable, active.Id));
+        var credentials = new RecordingCredentialStore { DeleteAllResult = new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.AccessDenied) };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new ManagedNutServerProfileUpdateService(store, credentials).DeleteProfileAsync(removable.Id));
+
+        Assert.Equal(0, store.SaveCalls);
+        Assert.Contains(store.Current.Profiles, profile => profile.Id == removable.Id);
+    }
+
+    [Fact]
+    public async Task StaleRemoteSessionCannotPersistCredentialAfterSshIdentityChanges()
+    {
+        var expected = Profile();
+        var current = CreateSshProfile(expected.Id, host: "new-management.example");
+        var store = new RecordingStore(Document(current));
+        var credentials = new RecordingCredentialStore();
+        var service = new ManagedNutServerProfileUpdateService(store, credentials);
+
+        var result = await service.SaveCredentialForCurrentSessionAsync(expected, RemoteCredentialKind.SshPassword, "fictional-password".AsMemory());
+
+        Assert.Equal(RemoteCredentialStoreStatus.Failed, result.Status);
+        Assert.Equal(0, credentials.WriteCalls);
+    }
+
+    [Fact]
+    public async Task StaleRemoteSessionCannotPersistCredentialAfterSmbIdentityChanges()
+    {
+        var expected = CreateSmbProfile(Guid.NewGuid(), @"\\server\share", "DOMAIN\\nut");
+        var current = CreateSmbProfile(expected.Id, @"\\server\other-share", "DOMAIN\\nut");
+        var credentials = new RecordingCredentialStore();
+        var service = new ManagedNutServerProfileUpdateService(new RecordingStore(Document(current)), credentials);
+
+        var result = await service.SaveCredentialForCurrentSessionAsync(expected, RemoteCredentialKind.SmbPassword, "fictional-password".AsMemory());
+
+        Assert.Equal(RemoteCredentialStoreStatus.Failed, result.Status);
+        Assert.Equal(0, credentials.WriteCalls);
+    }
+
+    [Fact]
+    public async Task MatchingRemoteSessionCanPersistItsAllowedCredential()
+    {
+        var profile = Profile();
+        var credentials = new RecordingCredentialStore();
+        var service = new ManagedNutServerProfileUpdateService(new RecordingStore(Document(profile)), credentials);
+
+        var result = await service.SaveCredentialForCurrentSessionAsync(profile, RemoteCredentialKind.SshPassword, "fictional-password".AsMemory());
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, credentials.WriteCalls);
+        Assert.Equal(RemoteCredentialKind.SshPassword, credentials.LastWrittenKind);
+    }
+
+    [Fact]
+    public async Task PrivateKeyMetadataSurvivesTrustAndDirectoryMutations()
+    {
+        var profile = CreateSshProfile(Guid.NewGuid(), authenticationMode: SshAuthenticationMode.PrivateKey, keyPath: @"C:\keys\fictional.key");
+        var store = new RecordingStore(Document(profile));
+        var service = new ManagedNutServerProfileUpdateService(store);
+
+        var trusted = await service.TrustHostKeyAsync(profile, "ssh-ed25519", Fingerprint("trusted"));
+        var directory = await service.SaveRemoteDirectoryAsync(trusted!, "/new/nut");
+
+        Assert.Equal(SshAuthenticationMode.PrivateKey, directory!.Management.SshAuthenticationMode);
+        Assert.Equal(@"C:\keys\fictional.key", directory.Management.SshPrivateKeyPath);
+    }
+
     private static ManagedNutServerProfile Profile(
         string name = "Remote",
         string directory = "/etc/nut",
@@ -193,6 +338,36 @@ public sealed class ManagedNutServerProfileUpdateServiceTests
                 : profile.Management.TrustedHostKeyAlgorithm),
         accessMode ?? profile.AccessMode);
 
+    private static ManagedNutServerProfile CreateSshProfile(
+        Guid id,
+        string host = "management.example",
+        SshAuthenticationMode authenticationMode = SshAuthenticationMode.Password,
+        string? keyPath = null) => new(
+        id,
+        "Remote",
+        new NutMonitoringProfile("monitor.example", 3493, "ups-a"),
+        new NutManagementProfile(
+            NutManagementMode.Remote,
+            host,
+            "/etc/nut",
+            22,
+            "nutadmin",
+            sshAuthenticationMode: authenticationMode,
+            sshPrivateKeyPath: keyPath),
+        ManagedNutServerAccessMode.Manage);
+
+    private static ManagedNutServerProfile CreateSmbProfile(Guid id, string sharePath, string username) => new(
+        id,
+        "SMB",
+        new NutMonitoringProfile("monitor.example", 3493, "ups-a"),
+        new NutManagementProfile(
+            NutManagementMode.Remote,
+            configurationTransport: RemoteConfigurationTransportKind.Smb,
+            smbSharePath: sharePath,
+            smbAuthenticationMode: SmbAuthenticationMode.ExplicitCredentials,
+            smbUsername: username),
+        ManagedNutServerAccessMode.Manage);
+
     private static ManagedNutServerProfiles Document(ManagedNutServerProfile first, ManagedNutServerProfile? second = null, Guid? activeProfileId = null) =>
         new(ManagedNutServerProfiles.CurrentSchemaVersion, activeProfileId ?? first.Id, second is null ? [first] : [first, second]);
 
@@ -203,12 +378,53 @@ public sealed class ManagedNutServerProfileUpdateServiceTests
         public RecordingStore(ManagedNutServerProfiles current) => Current = current;
         public ManagedNutServerProfiles Current { get; set; }
         public int SaveCalls { get; private set; }
+        public bool ThrowOnSave { get; set; }
         public Task<ManagedNutServerProfiles?> LoadAsync(CancellationToken cancellationToken) => Task.FromResult<ManagedNutServerProfiles?>(Current);
         public Task SaveAsync(ManagedNutServerProfiles profiles, CancellationToken cancellationToken)
         {
             SaveCalls++;
+            if (ThrowOnSave)
+            {
+                throw new InvalidOperationException("Simulated persistence failure.");
+            }
+
             Current = profiles;
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingCredentialStore : IRemoteCredentialStore
+    {
+        public List<RemoteCredentialKind> DeletedKinds { get; } = [];
+        public List<Guid> DeleteAllProfileIds { get; } = [];
+        public RemoteCredentialStoreResult DeleteResult { get; set; } = new(RemoteCredentialStoreStatus.Success);
+        public RemoteCredentialStoreResult DeleteAllResult { get; set; } = new(RemoteCredentialStoreStatus.Success);
+        public int WriteCalls { get; private set; }
+        public RemoteCredentialKind? LastWrittenKind { get; private set; }
+
+        public Task<RemoteCredentialStoreResult> ContainsAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.NotFound));
+
+        public Task<RemoteCredentialReadResult> ReadAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RemoteCredentialReadResult(RemoteCredentialStoreStatus.NotFound));
+
+        public Task<RemoteCredentialStoreResult> WriteAsync(Guid profileId, RemoteCredentialKind kind, ReadOnlyMemory<char> secret, CancellationToken cancellationToken = default)
+        {
+            WriteCalls++;
+            LastWrittenKind = kind;
+            return Task.FromResult(new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Success));
+        }
+
+        public Task<RemoteCredentialStoreResult> DeleteAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default)
+        {
+            DeletedKinds.Add(kind);
+            return Task.FromResult(DeleteResult);
+        }
+
+        public Task<RemoteCredentialStoreResult> DeleteAllForProfileAsync(Guid profileId, CancellationToken cancellationToken = default)
+        {
+            DeleteAllProfileIds.Add(profileId);
+            return Task.FromResult(DeleteAllResult);
         }
     }
 }

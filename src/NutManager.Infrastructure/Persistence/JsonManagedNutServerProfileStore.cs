@@ -174,6 +174,11 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
 
         public string? SshUsername { get; set; }
 
+        public SshAuthenticationMode? SshAuthenticationMode { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? SshPrivateKeyPath { get; set; }
+
         public string? TrustedHostKeyFingerprint { get; set; }
 
         public string? TrustedHostKeyAlgorithm { get; set; }
@@ -206,7 +211,9 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
                 schemaVersion < 3 ? null : SmbSharePath,
                 schemaVersion < 3 ? null : SmbConfigurationDirectory,
                 schemaVersion < 3 ? global::NutManager.Core.Models.SmbAuthenticationMode.CurrentWindowsIdentity : SmbAuthenticationMode ?? global::NutManager.Core.Models.SmbAuthenticationMode.CurrentWindowsIdentity,
-                schemaVersion < 3 ? null : SmbUsername),
+                schemaVersion < 3 ? null : SmbUsername,
+                schemaVersion < 4 ? global::NutManager.Core.Models.SshAuthenticationMode.Password : SshAuthenticationMode ?? global::NutManager.Core.Models.SshAuthenticationMode.Password,
+                schemaVersion < 4 ? null : SshPrivateKeyPath),
             AccessMode);
 
         public static ProfileEntry FromProfile(ManagedNutServerProfile profile) => new()
@@ -221,6 +228,10 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
             RemoteConfigurationDirectory = profile.Management.RemoteConfigurationDirectory,
             SshPort = profile.Management.SshPort,
             SshUsername = profile.Management.SshUsername,
+            SshAuthenticationMode = profile.Management.Mode == NutManagementMode.Remote && profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp
+                ? profile.Management.SshAuthenticationMode
+                : null,
+            SshPrivateKeyPath = profile.Management.SshPrivateKeyPath,
             TrustedHostKeyFingerprint = profile.Management.TrustedHostKeyFingerprint,
             TrustedHostKeyAlgorithm = profile.Management.TrustedHostKeyAlgorithm,
             ConfigurationTransport = profile.Management.Mode == NutManagementMode.Remote ? profile.Management.ConfigurationTransport : null,

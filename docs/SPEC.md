@@ -21,7 +21,7 @@ Missing NUT variables remain unavailable rather than estimated. Unknown NUT stat
 
 ## 3. Current implementation status
 
-The monitoring base from T01–T10 is implemented. T11 remains **IN PROGRESS** until the distributed Windows package completes its manual live-NUT acceptance checklist.
+The monitoring base from T01–T10 is implemented. T11 is **DONE**; the distributed Windows package completed its manual live-NUT acceptance checklist.
 
 The current product also implements:
 
@@ -34,12 +34,13 @@ The current product also implements:
 - T18 managed local and remote server profiles.
 - T19 SSH/SFTP remote configuration management.
 - T19B SMB remote configuration transport.
+- T20 opt-in protected SSH and SMB credential storage in Windows Credential Manager.
 
 ## 4. Platform and quality requirements
 
 ### NFR-001 — Windows-first platform strategy
 
-Windows x64 is the official platform for development, CI, current validation, packaging, distribution, and local administration. Linux is secondary, best-effort compatibility for shared code only. It has no official CI gate, package, or current administration-support guarantee; T22 will evaluate it explicitly.
+Windows x64 is the only active and officially supported platform for development, CI, current validation, packaging, distribution, and local administration. Linux compatibility is deferred for possible future evaluation; it has no active CI gate, package, or administration-support commitment.
 
 The shared architecture must avoid unnecessary Windows dependencies, and platform APIs must remain behind the Windows adapter boundary.
 
@@ -64,7 +65,7 @@ Managed profiles separate monitoring from management metadata:
 - monitoring stores the NUT TCP host, port, and optional preferred UPS;
 - management is Local or Remote and has an explicit access mode.
 
-A remote profile can monitor through NUT TCP and manage configuration only through an explicit SSH/SFTP or SMB file session; it never falls back to local management. The user manually browses and validates the remote directory, with no server/share autodiscovery. SSH host keys use explicit SHA-256 fingerprint pinning; an unknown key requires review and a mismatch is rejected. SMB uses an explicit UNC share and current-identity or session-only explicit authentication. Credentials are session-only until T20.
+A remote profile can monitor through NUT TCP and manage configuration only through an explicit SSH/SFTP or SMB file session; it never falls back to local management. The user manually browses and validates the remote directory, with no server/share autodiscovery. SSH host keys use explicit SHA-256 fingerprint pinning; an unknown key requires review and a mismatch is rejected. SMB uses an explicit UNC share and current-identity or session-only explicit authentication. A successful explicit connection may opt in to save only its secret in Windows Credential Manager; the profile JSON stores no secret.
 
 Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can write only after an explicit safe-write capability probe: Windows/OpenSSH for SSH/SFTP or verified `File.Replace` behavior for SMB. Remote service control, ACL, COM-port, and driver administration remain unavailable.
 
@@ -80,18 +81,17 @@ Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can w
 
 ### Next
 
-- T20 protected SSH and SMB credential storage;
 - T21 full local and remote Windows validation.
 
 ### Later
 
-- T22 Linux compatibility evaluation;
+- T22 deferred Linux compatibility evaluation;
 - T23 upstream NUT improvement evaluation;
 - multi-server simultaneous runtime, history, notifications, and other future product capabilities as separately scoped.
 
 ## 8. MVP package acceptance
 
-The MVP package is accepted only after the Windows x64 archive is manually validated against a real NUT server using the read-only checklist in [MVP-VALIDATION.md](MVP-VALIDATION.md). T11 stays in progress until that work is complete.
+The MVP package was accepted after the Windows x64 archive was manually validated against a real NUT server using the read-only checklist in [MVP-VALIDATION.md](MVP-VALIDATION.md). T11 is done; the checklist remains as a regression record.
 
 ## 9. Upstream strategy
 

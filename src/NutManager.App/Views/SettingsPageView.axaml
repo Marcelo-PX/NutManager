@@ -58,13 +58,23 @@
                 <TextBox Text="{Binding ProfileDraft.SshPort, Mode=TwoWay}" />
                 <TextBlock Text="Usuário SSH" FontWeight="SemiBold" />
                 <TextBox Text="{Binding ProfileDraft.SshUsername, Mode=TwoWay}" />
+                <TextBlock Text="Autenticação SSH" FontWeight="SemiBold" />
+                <ComboBox ItemsSource="{Binding SshAuthenticationModes}" SelectedItem="{Binding ProfileDraft.SshAuthenticationMode, Mode=TwoWay}" />
+                <StackPanel IsVisible="{Binding ProfileDraft.IsSshPrivateKey}" Spacing="6">
+                  <TextBlock Text="Chave privada" FontWeight="SemiBold" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Width="420" Text="{Binding ProfileDraft.SshPrivateKeyPath, Mode=TwoWay}" PlaceholderText="Caminho da chave privada (somente para Chave privada)" />
+                    <Button Content="Selecionar..." Click="SelectSshPrivateKeyButton_OnClick" />
+                  </StackPanel>
+                  <TextBlock Text="O caminho é apenas metadata. O conteúdo da chave não é lido nem salvo ao editar o perfil." TextWrapping="Wrap" />
+                </StackPanel>
                 <TextBlock Text="Diretório remoto de configuração (opcional)" FontWeight="SemiBold" />
                 <TextBox Text="{Binding ProfileDraft.RemoteConfigurationDirectory, Mode=TwoWay}" />
                 <TextBlock Text="Chave SSH confiável" FontWeight="SemiBold" />
                 <TextBlock Text="{Binding ProfileDraft.TrustedHostKeyFingerprint}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding ProfileDraft.TrustedHostKeyAlgorithm}" TextWrapping="Wrap" />
                 <Button Content="Esquecer chave confiável do host" Command="{Binding ForgetTrustedHostKeyCommand}" IsEnabled="{Binding CanForgetTrustedHostKey}" HorizontalAlignment="Left" />
-                <TextBlock Text="Credenciais são usadas apenas durante a sessão remota e não são salvas no perfil." TextWrapping="Wrap" />
+                <TextBlock Text="As senhas e passphrases podem ser lembradas somente após uma conexão bem-sucedida; nunca são salvas no perfil." TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel IsVisible="{Binding ProfileDraft.IsSmb}" Spacing="6">
                   <TextBlock Text="Compartilhamento SMB" FontWeight="SemiBold" />
@@ -75,8 +85,10 @@
                   <TextBox Text="{Binding ProfileDraft.SmbUsername, Mode=TwoWay}" />
                   <TextBlock Text="Diretório SMB de configuração (opcional)" FontWeight="SemiBold" />
                   <TextBox Text="{Binding ProfileDraft.SmbConfigurationDirectory, Mode=TwoWay}" PlaceholderText="\\server\share\NUT\etc" />
-                  <TextBlock Text="A senha SMB é usada somente durante a sessão e não é salva no perfil." TextWrapping="Wrap" />
+                  <TextBlock Text="A senha SMB pode ser lembrada somente após a verificação bem-sucedida do compartilhamento; nunca é salva no perfil." TextWrapping="Wrap" />
                 </StackPanel>
+                <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
+                <Button Content="Esquecer credencial protegida" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
               </StackPanel>
               <TextBlock Text="A instalação local será detectada automaticamente pelo NutManager. Diretórios remotos podem ser acessados por SSH/SFTP ou SMB; o transporte não altera o monitoring." TextWrapping="Wrap" />
               <StackPanel Orientation="Horizontal" Spacing="8">

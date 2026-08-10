@@ -4,16 +4,19 @@ using NutManager.Core.Services;
 namespace NutManager.App.Services;
 
 /// <summary>
-/// Serializes every managed-profile read-modify-write operation without mutating the active runtime context.
+/// Serializes profile metadata and app-owned credential mutations. A secret is only
+/// written after the persisted profile still matches the session identity that connected.
 /// </summary>
 public sealed class ManagedNutServerProfileUpdateService
 {
     private static readonly SemaphoreSlim MutationLock = new(1, 1);
     private readonly IManagedNutServerProfileStore _store;
+    private readonly IRemoteCredentialStore? _credentialStore;
 
-    public ManagedNutServerProfileUpdateService(IManagedNutServerProfileStore store)
+    public ManagedNutServerProfileUpdateService(IManagedNutServerProfileStore store, IRemoteCredentialStore? credentialStore = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _credentialStore = credentialStore;
     }
 
     public async Task<ManagedNutServerProfiles?> LoadCurrentAsync(CancellationToken cancellationToken = default)
@@ -29,27 +32,17 @@ public sealed class ManagedNutServerProfileUpdateService
         }
     }
 
-    public Task<ManagedNutServerProfile?> TrustHostKeyAsync(
-        ManagedNutServerProfile expectedProfile,
-        string algorithm,
-        string fingerprint,
-        CancellationToken cancellationToken = default) =>
+    public Task<ManagedNutServerProfile?> TrustHostKeyAsync(ManagedNutServerProfile expectedProfile, string algorithm, string fingerprint, CancellationToken cancellationToken = default) =>
         UpdateRemoteProfileAsync(
             expectedProfile,
-            current => new NutManagementProfile(
-                NutManagementMode.Remote,
-                current.Management.ManagementHost,
-                current.Management.RemoteConfigurationDirectory,
-                current.Management.SshPort,
-                current.Management.SshUsername,
-                fingerprint,
-                algorithm),
+            current => CreateSshManagement(
+                current.Management,
+                trustedHostKeyFingerprint: fingerprint,
+                trustedHostKeyAlgorithm: algorithm,
+                preserveTrust: false),
             cancellationToken);
 
-    public Task<ManagedNutServerProfile?> SaveRemoteDirectoryAsync(
-        ManagedNutServerProfile expectedProfile,
-        string directory,
-        CancellationToken cancellationToken = default) =>
+    public Task<ManagedNutServerProfile?> SaveRemoteDirectoryAsync(ManagedNutServerProfile expectedProfile, string directory, CancellationToken cancellationToken = default) =>
         UpdateRemoteProfileAsync(
             expectedProfile,
             current => current.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
@@ -60,33 +53,16 @@ public sealed class ManagedNutServerProfileUpdateService
                     smbConfigurationDirectory: directory,
                     smbAuthenticationMode: current.Management.SmbAuthenticationMode,
                     smbUsername: current.Management.SmbUsername)
-                : new NutManagementProfile(
-                    NutManagementMode.Remote,
-                    current.Management.ManagementHost,
-                    directory,
-                    current.Management.SshPort,
-                    current.Management.SshUsername,
-                    current.Management.TrustedHostKeyFingerprint,
-                    current.Management.TrustedHostKeyAlgorithm),
+                : CreateSshManagement(current.Management, remoteConfigurationDirectory: directory),
             cancellationToken);
 
-    public Task<ManagedNutServerProfile?> ForgetTrustedHostKeyAsync(
-        ManagedNutServerProfile expectedProfile,
-        CancellationToken cancellationToken = default) =>
+    public Task<ManagedNutServerProfile?> ForgetTrustedHostKeyAsync(ManagedNutServerProfile expectedProfile, CancellationToken cancellationToken = default) =>
         UpdateRemoteProfileAsync(
             expectedProfile,
-            current => new NutManagementProfile(
-                NutManagementMode.Remote,
-                current.Management.ManagementHost,
-                current.Management.RemoteConfigurationDirectory,
-                current.Management.SshPort,
-                current.Management.SshUsername),
+            current => CreateSshManagement(current.Management, trustedHostKeyFingerprint: null, trustedHostKeyAlgorithm: null, preserveTrust: false),
             cancellationToken);
 
-    public async Task<ManagedNutServerProfiles?> SaveExistingProfileAsync(
-        ManagedNutServerProfile baseProfile,
-        ManagedNutServerProfile updatedProfile,
-        CancellationToken cancellationToken = default)
+    public async Task<ManagedNutServerProfiles?> SaveExistingProfileAsync(ManagedNutServerProfile baseProfile, ManagedNutServerProfile updatedProfile, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(baseProfile);
         ArgumentNullException.ThrowIfNull(updatedProfile);
@@ -95,17 +71,31 @@ public sealed class ManagedNutServerProfileUpdateService
             throw new ArgumentException("The updated profile must retain the original identifier.", nameof(updatedProfile));
         }
 
-        return await MutateAsync(document =>
+        await MutationLock.WaitAsync(cancellationToken);
+        try
         {
-            var current = document.Profiles.SingleOrDefault(profile => profile.Id == baseProfile.Id);
-            if (current is null || !Equals(current, baseProfile))
+            var document = await _store.LoadAsync(cancellationToken);
+            var current = document?.Profiles.SingleOrDefault(profile => profile.Id == baseProfile.Id);
+            if (document is null || current is null || !Equals(current, baseProfile))
             {
                 return null;
             }
 
             var safeguarded = PreserveCurrentTrustMetadata(current, updatedProfile);
-            return ReplaceProfile(document, safeguarded);
-        }, cancellationToken);
+            var invalidation = await InvalidateChangedCredentialsAsync(current, safeguarded, cancellationToken);
+            if (!invalidation.IsSuccess)
+            {
+                throw new InvalidOperationException("A credencial protegida não pôde ser removida antes de salvar a nova identidade do perfil.");
+            }
+
+            var saved = ReplaceProfile(document, safeguarded);
+            await _store.SaveAsync(saved, cancellationToken);
+            return saved;
+        }
+        finally
+        {
+            MutationLock.Release();
+        }
     }
 
     public async Task<ManagedNutServerProfiles?> CreateProfileAsync(ManagedNutServerProfile profile, CancellationToken cancellationToken = default)
@@ -118,10 +108,7 @@ public sealed class ManagedNutServerProfileUpdateService
                 return null;
             }
 
-            return new ManagedNutServerProfiles(
-                document.SchemaVersion,
-                document.ActiveProfileId,
-                document.Profiles.Append(profile).OrderBy(current => current.Name, StringComparer.OrdinalIgnoreCase).ToArray());
+            return new ManagedNutServerProfiles(document.SchemaVersion, document.ActiveProfileId, document.Profiles.Append(profile).OrderBy(current => current.Name, StringComparer.OrdinalIgnoreCase).ToArray());
         }, cancellationToken);
     }
 
@@ -132,36 +119,98 @@ public sealed class ManagedNutServerProfileUpdateService
             throw new ArgumentException("A profile identifier is required.", nameof(profileId));
         }
 
-        return await MutateAsync(document =>
+        await MutationLock.WaitAsync(cancellationToken);
+        try
         {
-            if (document.Profiles.Count <= 1 || document.ActiveProfileId == profileId || document.Profiles.All(profile => profile.Id != profileId))
+            var document = await _store.LoadAsync(cancellationToken);
+            var profile = document?.Profiles.SingleOrDefault(current => current.Id == profileId);
+            if (document is null || profile is null || document.Profiles.Count <= 1 || document.ActiveProfileId == profileId)
             {
                 return null;
             }
 
-            return new ManagedNutServerProfiles(
-                document.SchemaVersion,
-                document.ActiveProfileId,
-                document.Profiles.Where(profile => profile.Id != profileId).ToArray());
-        }, cancellationToken);
+            if (_credentialStore is not null)
+            {
+                var cleanup = await _credentialStore.DeleteAllForProfileAsync(profileId, cancellationToken);
+                if (!cleanup.IsSuccess)
+                {
+                    throw new InvalidOperationException("As credenciais protegidas não puderam ser removidas antes de excluir o perfil.");
+                }
+            }
+
+            var saved = new ManagedNutServerProfiles(document.SchemaVersion, document.ActiveProfileId, document.Profiles.Where(current => current.Id != profileId).ToArray());
+            await _store.SaveAsync(saved, cancellationToken);
+            return saved;
+        }
+        finally
+        {
+            MutationLock.Release();
+        }
     }
 
-    public async Task<ManagedNutServerProfiles?> ActivateProfileAsync(Guid profileId, CancellationToken cancellationToken = default)
+    public Task<ManagedNutServerProfiles?> ActivateProfileAsync(Guid profileId, CancellationToken cancellationToken = default)
     {
         if (profileId == Guid.Empty)
         {
             throw new ArgumentException("A profile identifier is required.", nameof(profileId));
         }
 
-        return await MutateAsync(document => document.Profiles.Any(profile => profile.Id == profileId)
+        return MutateAsync(document => document.Profiles.Any(profile => profile.Id == profileId)
             ? new ManagedNutServerProfiles(document.SchemaVersion, profileId, document.Profiles)
             : null, cancellationToken);
     }
 
-    private async Task<ManagedNutServerProfile?> UpdateRemoteProfileAsync(
-        ManagedNutServerProfile expectedProfile,
-        Func<ManagedNutServerProfile, NutManagementProfile> updateManagement,
-        CancellationToken cancellationToken)
+    public async Task<RemoteCredentialStoreResult> SaveCredentialForCurrentSessionAsync(ManagedNutServerProfile expectedProfile, RemoteCredentialKind kind, ReadOnlyMemory<char> secret, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(expectedProfile);
+        if (_credentialStore is null)
+        {
+            return StoreUnavailable();
+        }
+
+        await MutationLock.WaitAsync(cancellationToken);
+        try
+        {
+            var document = await _store.LoadAsync(cancellationToken);
+            var current = document?.Profiles.SingleOrDefault(profile => profile.Id == expectedProfile.Id);
+            if (current is null || !MatchesSessionIdentity(current, expectedProfile) || !IsCredentialKindAllowed(current, kind))
+            {
+                return new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Failed, "O perfil foi alterado; a credencial não foi salva.");
+            }
+
+            return await _credentialStore.WriteAsync(current.Id, kind, secret, cancellationToken);
+        }
+        finally
+        {
+            MutationLock.Release();
+        }
+    }
+
+    public async Task<RemoteCredentialStoreResult> ForgetCredentialAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default)
+    {
+        if (_credentialStore is null)
+        {
+            return StoreUnavailable();
+        }
+
+        await MutationLock.WaitAsync(cancellationToken);
+        try
+        {
+            var document = await _store.LoadAsync(cancellationToken);
+            if (document?.Profiles.Any(profile => profile.Id == profileId) != true)
+            {
+                return new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.NotFound);
+            }
+
+            return await _credentialStore.DeleteAsync(profileId, kind, cancellationToken);
+        }
+        finally
+        {
+            MutationLock.Release();
+        }
+    }
+
+    private async Task<ManagedNutServerProfile?> UpdateRemoteProfileAsync(ManagedNutServerProfile expectedProfile, Func<ManagedNutServerProfile, NutManagementProfile> updateManagement, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(expectedProfile);
         ArgumentNullException.ThrowIfNull(updateManagement);
@@ -173,12 +222,7 @@ public sealed class ManagedNutServerProfileUpdateService
                 return null;
             }
 
-            var updated = new ManagedNutServerProfile(
-                current.Id,
-                current.Name,
-                current.Monitoring,
-                updateManagement(current),
-                current.AccessMode);
+            var updated = new ManagedNutServerProfile(current.Id, current.Name, current.Monitoring, updateManagement(current), current.AccessMode);
             return new ProfileMutationResult(ReplaceProfile(document, updated), updated);
         }, cancellationToken);
         return mutation?.Profile;
@@ -187,7 +231,6 @@ public sealed class ManagedNutServerProfileUpdateService
     private async Task<T?> MutateAsync<T>(Func<ManagedNutServerProfiles, T?> mutation, CancellationToken cancellationToken)
         where T : class
     {
-        ArgumentNullException.ThrowIfNull(mutation);
         await MutationLock.WaitAsync(cancellationToken);
         try
         {
@@ -203,9 +246,7 @@ public sealed class ManagedNutServerProfileUpdateService
                 return null;
             }
 
-            var saved = result is ProfileMutationResult profileMutation
-                ? profileMutation.Document
-                : result as ManagedNutServerProfiles;
+            var saved = result is ProfileMutationResult profileMutation ? profileMutation.Document : result as ManagedNutServerProfiles;
             if (saved is null)
             {
                 throw new InvalidOperationException("The profile mutation returned an unsupported result.");
@@ -220,6 +261,30 @@ public sealed class ManagedNutServerProfileUpdateService
         }
     }
 
+    private async Task<RemoteCredentialStoreResult> InvalidateChangedCredentialsAsync(ManagedNutServerProfile current, ManagedNutServerProfile updated, CancellationToken cancellationToken)
+    {
+        if (_credentialStore is null)
+        {
+            return new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Success);
+        }
+
+        if (HasSshIdentityChanged(current, updated))
+        {
+            foreach (var kind in new[] { RemoteCredentialKind.SshPassword, RemoteCredentialKind.SshPrivateKeyPassphrase })
+            {
+                var result = await _credentialStore.DeleteAsync(current.Id, kind, cancellationToken);
+                if (!result.IsSuccess)
+                {
+                    return result;
+                }
+            }
+        }
+
+        return HasSmbIdentityChanged(current, updated)
+            ? await _credentialStore.DeleteAsync(current.Id, RemoteCredentialKind.SmbPassword, cancellationToken)
+            : new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Success);
+    }
+
     private static ManagedNutServerProfiles ReplaceProfile(ManagedNutServerProfiles document, ManagedNutServerProfile updated) =>
         new(document.SchemaVersion, document.ActiveProfileId, document.Profiles.Select(profile => profile.Id == updated.Id ? updated : profile).ToArray());
 
@@ -230,16 +295,31 @@ public sealed class ManagedNutServerProfileUpdateService
             return updated;
         }
 
-        var management = new NutManagementProfile(
-            NutManagementMode.Remote,
-            updated.Management.ManagementHost,
-            updated.Management.RemoteConfigurationDirectory,
-            updated.Management.SshPort,
-            updated.Management.SshUsername,
-            current.Management.TrustedHostKeyFingerprint,
-            current.Management.TrustedHostKeyAlgorithm);
+        var management = CreateSshManagement(
+            updated.Management,
+            trustedHostKeyFingerprint: current.Management.TrustedHostKeyFingerprint,
+            trustedHostKeyAlgorithm: current.Management.TrustedHostKeyAlgorithm,
+            preserveTrust: false);
         return new ManagedNutServerProfile(updated.Id, updated.Name, updated.Monitoring, management, updated.AccessMode);
     }
+
+    private static NutManagementProfile CreateSshManagement(
+        NutManagementProfile source,
+        string? remoteConfigurationDirectory = null,
+        string? trustedHostKeyFingerprint = null,
+        string? trustedHostKeyAlgorithm = null,
+        bool preserveTrust = true) =>
+        new(
+            NutManagementMode.Remote,
+            source.ManagementHost,
+            remoteConfigurationDirectory ?? source.RemoteConfigurationDirectory,
+            source.SshPort,
+            source.SshUsername,
+            preserveTrust ? source.TrustedHostKeyFingerprint : trustedHostKeyFingerprint,
+            preserveTrust ? source.TrustedHostKeyAlgorithm : trustedHostKeyAlgorithm,
+            RemoteConfigurationTransportKind.SshSftp,
+            sshAuthenticationMode: source.SshAuthenticationMode,
+            sshPrivateKeyPath: source.SshPrivateKeyPath);
 
     private sealed record ProfileMutationResult(ManagedNutServerProfiles Document, ManagedNutServerProfile Profile);
 
@@ -251,10 +331,43 @@ public sealed class ManagedNutServerProfileUpdateService
             ? string.Equals(current.Management.SmbSharePath, expected.Management.SmbSharePath, StringComparison.OrdinalIgnoreCase) &&
               current.Management.SmbAuthenticationMode == expected.Management.SmbAuthenticationMode &&
               string.Equals(current.Management.SmbUsername, expected.Management.SmbUsername, StringComparison.Ordinal)
-            :
-        string.Equals(current.Management.ManagementHost, expected.Management.ManagementHost, StringComparison.Ordinal) &&
-        current.Management.SshPort == expected.Management.SshPort &&
-        string.Equals(current.Management.SshUsername, expected.Management.SshUsername, StringComparison.Ordinal) &&
-        string.Equals(current.Management.TrustedHostKeyFingerprint, expected.Management.TrustedHostKeyFingerprint, StringComparison.Ordinal) &&
-        string.Equals(current.Management.TrustedHostKeyAlgorithm, expected.Management.TrustedHostKeyAlgorithm, StringComparison.Ordinal));
+            : string.Equals(current.Management.ManagementHost, expected.Management.ManagementHost, StringComparison.Ordinal) &&
+              current.Management.SshPort == expected.Management.SshPort &&
+              string.Equals(current.Management.SshUsername, expected.Management.SshUsername, StringComparison.Ordinal) &&
+              current.Management.SshAuthenticationMode == expected.Management.SshAuthenticationMode &&
+              string.Equals(current.Management.SshPrivateKeyPath, expected.Management.SshPrivateKeyPath, StringComparison.Ordinal) &&
+              string.Equals(current.Management.TrustedHostKeyFingerprint, expected.Management.TrustedHostKeyFingerprint, StringComparison.Ordinal) &&
+              string.Equals(current.Management.TrustedHostKeyAlgorithm, expected.Management.TrustedHostKeyAlgorithm, StringComparison.Ordinal));
+
+    private static bool HasSshIdentityChanged(ManagedNutServerProfile current, ManagedNutServerProfile updated)
+    {
+        var wasSsh = current.Management.Mode == NutManagementMode.Remote && current.Management.ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp;
+        var remainsSsh = updated.Management.Mode == NutManagementMode.Remote && updated.Management.ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp;
+        return wasSsh && (!remainsSsh ||
+            !string.Equals(current.Management.ManagementHost, updated.Management.ManagementHost, StringComparison.Ordinal) ||
+            current.Management.SshPort != updated.Management.SshPort ||
+            !string.Equals(current.Management.SshUsername, updated.Management.SshUsername, StringComparison.Ordinal) ||
+            current.Management.SshAuthenticationMode != updated.Management.SshAuthenticationMode ||
+            !string.Equals(current.Management.SshPrivateKeyPath, updated.Management.SshPrivateKeyPath, StringComparison.Ordinal));
+    }
+
+    private static bool HasSmbIdentityChanged(ManagedNutServerProfile current, ManagedNutServerProfile updated)
+    {
+        var wasSmb = current.Management.Mode == NutManagementMode.Remote && current.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb;
+        var remainsSmb = updated.Management.Mode == NutManagementMode.Remote && updated.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb;
+        return wasSmb && (!remainsSmb ||
+            !string.Equals(current.Management.SmbSharePath, updated.Management.SmbSharePath, StringComparison.OrdinalIgnoreCase) ||
+            current.Management.SmbAuthenticationMode != updated.Management.SmbAuthenticationMode ||
+            !string.Equals(current.Management.SmbUsername, updated.Management.SmbUsername, StringComparison.Ordinal));
+    }
+
+    private static bool IsCredentialKindAllowed(ManagedNutServerProfile profile, RemoteCredentialKind kind) => kind switch
+    {
+        RemoteCredentialKind.SshPassword => profile.Management.Mode == NutManagementMode.Remote && profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp && profile.Management.SshAuthenticationMode == SshAuthenticationMode.Password,
+        RemoteCredentialKind.SshPrivateKeyPassphrase => profile.Management.Mode == NutManagementMode.Remote && profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp && profile.Management.SshAuthenticationMode == SshAuthenticationMode.PrivateKey && !string.IsNullOrWhiteSpace(profile.Management.SshPrivateKeyPath),
+        RemoteCredentialKind.SmbPassword => profile.Management.Mode == NutManagementMode.Remote && profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb && profile.Management.SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials,
+        _ => false
+    };
+
+    private static RemoteCredentialStoreResult StoreUnavailable() => new(RemoteCredentialStoreStatus.Unsupported, "O armazenamento protegido de credenciais não está disponível.");
 }

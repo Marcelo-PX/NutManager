@@ -43,6 +43,12 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
     private string? _sshUsername;
 
     [ObservableProperty]
+    private SshAuthenticationMode _sshAuthenticationMode = SshAuthenticationMode.Password;
+
+    [ObservableProperty]
+    private string? _sshPrivateKeyPath;
+
+    [ObservableProperty]
     private string? _trustedHostKeyFingerprint;
 
     [ObservableProperty]
@@ -68,6 +74,8 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
     public bool IsSshSftp => IsRemote && ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp;
 
     public bool IsSmb => IsRemote && ConfigurationTransport == RemoteConfigurationTransportKind.Smb;
+
+    public bool IsSshPrivateKey => IsSshSftp && SshAuthenticationMode == SshAuthenticationMode.PrivateKey;
 
     public static ManagedNutServerProfileDraftViewModel CreateLocal() => new(new ManagedNutServerProfile(
         Guid.NewGuid(),
@@ -106,6 +114,8 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         RemoteConfigurationDirectory = profile.Management.RemoteConfigurationDirectory;
         SshPort = profile.Management.SshPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
         SshUsername = profile.Management.SshUsername;
+        SshAuthenticationMode = profile.Management.SshAuthenticationMode;
+        SshPrivateKeyPath = profile.Management.SshPrivateKeyPath;
         TrustedHostKeyFingerprint = profile.Management.TrustedHostKeyFingerprint;
         TrustedHostKeyAlgorithm = profile.Management.TrustedHostKeyAlgorithm;
         ConfigurationTransport = profile.Management.ConfigurationTransport;
@@ -129,6 +139,8 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         RemoteConfigurationDirectory = source.RemoteConfigurationDirectory;
         SshPort = source.SshPort;
         SshUsername = source.SshUsername;
+        SshAuthenticationMode = source.SshAuthenticationMode;
+        SshPrivateKeyPath = source.SshPrivateKeyPath;
         TrustedHostKeyFingerprint = source.TrustedHostKeyFingerprint;
         TrustedHostKeyAlgorithm = source.TrustedHostKeyAlgorithm;
         ConfigurationTransport = source.ConfigurationTransport;
@@ -157,7 +169,9 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
             SmbSharePath,
             SmbConfigurationDirectory,
             SmbAuthenticationMode,
-            SmbUsername),
+            SmbUsername,
+            SshAuthenticationMode,
+            SshPrivateKeyPath),
         AccessMode);
 
     public bool Matches(ManagedNutServerProfile profile)
@@ -174,6 +188,8 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
                string.Equals(RemoteConfigurationDirectory, profile.Management.RemoteConfigurationDirectory, StringComparison.Ordinal) &&
                string.Equals(SshPort, profile.Management.SshPort.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal) &&
                string.Equals(SshUsername, profile.Management.SshUsername, StringComparison.Ordinal) &&
+               SshAuthenticationMode == profile.Management.SshAuthenticationMode &&
+               string.Equals(SshPrivateKeyPath, profile.Management.SshPrivateKeyPath, StringComparison.Ordinal) &&
                string.Equals(TrustedHostKeyFingerprint, profile.Management.TrustedHostKeyFingerprint, StringComparison.Ordinal) &&
                string.Equals(TrustedHostKeyAlgorithm, profile.Management.TrustedHostKeyAlgorithm, StringComparison.Ordinal) &&
                ConfigurationTransport == profile.Management.ConfigurationTransport &&
@@ -188,11 +204,18 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         OnPropertyChanged(nameof(IsRemote));
         OnPropertyChanged(nameof(IsSshSftp));
         OnPropertyChanged(nameof(IsSmb));
+        OnPropertyChanged(nameof(IsSshPrivateKey));
     }
 
     partial void OnConfigurationTransportChanged(RemoteConfigurationTransportKind value)
     {
         OnPropertyChanged(nameof(IsSshSftp));
         OnPropertyChanged(nameof(IsSmb));
+        OnPropertyChanged(nameof(IsSshPrivateKey));
+    }
+
+    partial void OnSshAuthenticationModeChanged(SshAuthenticationMode value)
+    {
+        OnPropertyChanged(nameof(IsSshPrivateKey));
     }
 }

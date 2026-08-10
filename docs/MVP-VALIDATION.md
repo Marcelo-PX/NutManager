@@ -10,7 +10,7 @@ Extract the archive to a writable directory and run `NutManager.App.exe`. There 
 
 ## Platform policy
 
-Windows x64 is the official development, CI, manual-testing, and distribution platform. Linux remains secondary, best-effort shared-code compatibility, with no official CI, package, or current administration-support commitment.
+Windows x64 is the only active and officially supported development, CI, manual-testing, and distribution platform. Linux compatibility is deferred for possible future evaluation and has no active CI, package, or administration-support commitment.
 
 ## T11 acceptance scope
 
@@ -31,7 +31,7 @@ To connect to a real NUT server:
 
 ## Manual real-NUT checklist
 
-Automated package validation uses mock mode and does not require a real NUT server or UPS. T11 remains **IN PROGRESS** until this checklist is completed against a real Windows NUT environment using the distributed package:
+Automated package validation uses mock mode and does not require a real NUT server or UPS. T11 is **DONE**; this checklist is preserved as the completed real-Windows-NUT acceptance procedure and for future regression validation:
 
 1. Start the Windows package.
 2. Configure and activate the managed monitoring profile.
