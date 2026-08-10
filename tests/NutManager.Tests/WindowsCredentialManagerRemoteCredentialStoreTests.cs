@@ -81,6 +81,8 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal("fictional-password", new string(result.Secret!.Memory.Span));
+        Assert.Equal(1, native.LastReadHandle!.CopyCalls);
+        Assert.All(native.LastReadHandle.LastCopiedBlob!, value => Assert.Equal((byte)0, value));
         Assert.Equal(1, native.LastReadHandle!.DisposeCalls);
         Assert.DoesNotContain("fictional-password", result.Secret.ToString(), StringComparison.Ordinal);
     }
@@ -106,7 +108,37 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
         using var result = await store.ReadAsync(Guid.NewGuid(), RemoteCredentialKind.SshPassword);
 
         Assert.Equal(RemoteCredentialStoreStatus.Failed, result.Status);
+        Assert.Equal(1, native.LastReadHandle!.CopyCalls);
+        Assert.All(native.LastReadHandle.LastCopiedBlob!, value => Assert.Equal((byte)0, value));
         Assert.Equal(1, native.LastReadHandle!.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task ContainsDisposesTheNativeCredentialWithoutCopyingOrDecodingItsBlob()
+    {
+        var native = new FakeNative();
+        var profileId = Guid.NewGuid();
+        native.Stored[WindowsCredentialTargetNames.GetTargetName(profileId, RemoteCredentialKind.SshPassword)] = Encoding.Unicode.GetBytes("fictional-password");
+        var store = new WindowsCredentialManagerRemoteCredentialStore(native, () => true);
+
+        var result = await store.ContainsAsync(profileId, RemoteCredentialKind.SshPassword);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, native.ReadCalls);
+        Assert.Equal(0, native.LastReadHandle!.CopyCalls);
+        Assert.Equal(1, native.LastReadHandle.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task ContainsNotFoundDoesNotCreateOrCopyABlob()
+    {
+        var native = new FakeNative();
+        var store = new WindowsCredentialManagerRemoteCredentialStore(native, () => true);
+
+        var result = await store.ContainsAsync(Guid.NewGuid(), RemoteCredentialKind.SshPassword);
+
+        Assert.Equal(RemoteCredentialStoreStatus.NotFound, result.Status);
+        Assert.Null(native.LastReadHandle);
     }
 
     [Fact]
@@ -163,6 +195,30 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
     }
 
     [Fact]
+    public async Task NoSuchLogonSessionMapsToCredentialStoreUnavailableForEveryCredentialOperation()
+    {
+        var native = new FakeNative
+        {
+            ReadErrorCode = 1312,
+            WriteErrorCode = 1312,
+            DeleteErrorCode = 1312
+        };
+        var store = new WindowsCredentialManagerRemoteCredentialStore(native, () => true);
+        var profileId = Guid.NewGuid();
+
+        using var read = await store.ReadAsync(profileId, RemoteCredentialKind.SshPassword);
+        var contains = await store.ContainsAsync(profileId, RemoteCredentialKind.SshPassword);
+        var write = await store.WriteAsync(profileId, RemoteCredentialKind.SshPassword, "fictional-password".AsMemory());
+        var delete = await store.DeleteAsync(profileId, RemoteCredentialKind.SshPassword);
+
+        Assert.Equal(RemoteCredentialStoreStatus.CredentialStoreUnavailable, read.Status);
+        Assert.Equal(RemoteCredentialStoreStatus.CredentialStoreUnavailable, contains.Status);
+        Assert.Equal(RemoteCredentialStoreStatus.CredentialStoreUnavailable, write.Status);
+        Assert.Equal(RemoteCredentialStoreStatus.CredentialStoreUnavailable, delete.Status);
+        Assert.DoesNotContain("fictional-password", string.Join(' ', [read.Message, contains.Message, write.Message, delete.Message]), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void DisposableSecretZerosItsBufferAndDoesNotExposeItsValueInToString()
     {
         using var secret = new RemoteCredentialSecret("fictional-password".AsSpan());
@@ -182,9 +238,12 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
         public List<string> DeleteTargets { get; } = [];
         public FakeReadHandle? LastReadHandle { get; private set; }
         public int WriteCalls { get; private set; }
+        public int ReadCalls { get; private set; }
         public bool ThrowWhenReadingBlob { get; set; }
         public byte[]? ForcedReadBlob { get; set; }
         public int? WriteErrorCode { get; set; }
+        public int? ReadErrorCode { get; set; }
+        public int? DeleteErrorCode { get; set; }
 
         public bool TryWrite(WindowsCredentialNativeWriteRequest request, out int errorCode)
         {
@@ -203,6 +262,14 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
 
         public bool TryRead(string targetName, uint type, uint flags, out IWindowsCredentialNativeReadHandle? credential, out int errorCode)
         {
+            ReadCalls++;
+            if (ReadErrorCode is { } readErrorCode)
+            {
+                credential = null;
+                errorCode = readErrorCode;
+                return false;
+            }
+
             if (ForcedReadBlob is { } forcedReadBlob)
             {
                 LastReadHandle = new FakeReadHandle(forcedReadBlob, false);
@@ -235,6 +302,12 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
         public bool TryDelete(string targetName, uint type, uint flags, out int errorCode)
         {
             DeleteTargets.Add(targetName);
+            if (DeleteErrorCode is { } deleteErrorCode)
+            {
+                errorCode = deleteErrorCode;
+                return false;
+            }
+
             if (!Stored.Remove(targetName))
             {
                 errorCode = 1168;
@@ -258,10 +331,20 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
         }
 
         public int DisposeCalls { get; private set; }
+        public int CopyCalls { get; private set; }
+        public byte[]? LastCopiedBlob { get; private set; }
 
-        public ReadOnlyMemory<byte> GetCredentialBlob() => _throws
-            ? throw new InvalidOperationException()
-            : _blob;
+        public byte[] CopyCredentialBlob()
+        {
+            CopyCalls++;
+            if (_throws)
+            {
+                throw new InvalidOperationException();
+            }
+
+            LastCopiedBlob = _blob.ToArray();
+            return LastCopiedBlob;
+        }
 
         public void Dispose() => DisposeCalls++;
     }

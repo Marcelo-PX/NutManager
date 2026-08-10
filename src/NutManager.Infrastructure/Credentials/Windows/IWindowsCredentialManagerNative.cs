@@ -9,7 +9,12 @@ public sealed record WindowsCredentialNativeWriteRequest(
 
 public interface IWindowsCredentialNativeReadHandle : IDisposable
 {
-    ReadOnlyMemory<byte> GetCredentialBlob();
+    /// <summary>
+    /// Copies the native credential blob into one caller-owned buffer. The caller
+    /// must clear that buffer after decoding it; disposing this handle releases
+    /// only the native Credential Manager allocation.
+    /// </summary>
+    byte[] CopyCredentialBlob();
 }
 
 /// <summary>Small seam around the four Credential Manager Win32 calls.</summary>

@@ -301,6 +301,49 @@ public sealed class RemoteManagementSessionViewModelTests
     }
 
     [Fact]
+    public async Task PrivateKeySshProfileRejectsPasswordAuthenticationBeforeTransportOrCredentialWrite()
+    {
+        var profile = PrivateKeyRemoteProfile();
+        var credentials = new FakeCredentialStore();
+        var transport = new FakeTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, new FakeSession(RemoteNutPlatform.Windows)));
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport, credentialStore: credentials);
+
+        await viewModel.ConnectWithPasswordAsync("fictional-password".AsMemory(), rememberCredential: true);
+
+        Assert.Equal(0, transport.ConnectCalls);
+        Assert.Equal(0, credentials.WriteCalls);
+        Assert.Contains("chave privada", viewModel.StatusMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PasswordSshProfileRejectsPrivateKeyAuthenticationBeforeTransportOrCredentialWrite()
+    {
+        var profile = RemoteProfile(ManagedNutServerAccessMode.Manage);
+        var credentials = new FakeCredentialStore();
+        var transport = new FakeTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, new FakeSession(RemoteNutPlatform.Windows)));
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport, credentialStore: credentials);
+
+        await viewModel.ConnectWithPrivateKeyAsync(@"C:\keys\session-only.key", "fictional-password".AsMemory(), rememberPassphrase: true);
+
+        Assert.Equal(0, transport.ConnectCalls);
+        Assert.Equal(0, credentials.WriteCalls);
+        Assert.Contains("senha", viewModel.StatusMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PrivateKeyProfileConnectsWithItsConfiguredKey()
+    {
+        var profile = PrivateKeyRemoteProfile();
+        var transport = new FakeTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, new FakeSession(RemoteNutPlatform.Windows)));
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport);
+
+        await viewModel.ConnectWithPrivateKeyAsync(profile.Management.SshPrivateKeyPath!);
+
+        Assert.Equal(1, transport.ConnectCalls);
+        Assert.Equal(RemoteNutConnectionState.Connected, viewModel.ConnectionState);
+    }
+
+    [Fact]
     public async Task CurrentIdentitySmbNeverQueriesTheCredentialStore()
     {
         var profile = new ManagedNutServerProfile(
@@ -342,6 +385,19 @@ public sealed class RemoteManagementSessionViewModelTests
         new NutMonitoringProfile("monitor.example"),
         new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut", sshUsername: "nutadmin"),
         accessMode);
+
+    private static ManagedNutServerProfile PrivateKeyRemoteProfile() => new(
+        Guid.NewGuid(),
+        "Private key remote",
+        new NutMonitoringProfile("monitor.example"),
+        new NutManagementProfile(
+            NutManagementMode.Remote,
+            "management.example",
+            "/etc/nut",
+            sshUsername: "nutadmin",
+            sshAuthenticationMode: SshAuthenticationMode.PrivateKey,
+            sshPrivateKeyPath: @"C:\keys\fictional.key"),
+        ManagedNutServerAccessMode.Manage);
 
     private sealed class RecordingStore : IManagedNutServerProfileStore
     {

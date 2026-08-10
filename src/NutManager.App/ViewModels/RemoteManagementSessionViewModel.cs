@@ -206,6 +206,12 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
             return;
         }
 
+        if (!UsesSshPassword)
+        {
+            StatusMessage = "Este perfil exige autenticação SSH por chave privada.";
+            return;
+        }
+
         if (password.IsEmpty)
         {
             StatusMessage = "Informe uma credencial de sessão para conectar.";
@@ -221,6 +227,12 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public async Task ConnectWithPrivateKeyAsync(string keyPath, ReadOnlyMemory<char> passphrase = default, bool rememberPassphrase = false, CancellationToken cancellationToken = default)
     {
+        if (!IsSshSftp || !UsesSshPrivateKey)
+        {
+            StatusMessage = "Este perfil exige autenticação SSH por senha.";
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(keyPath))
         {
             StatusMessage = "Selecione uma chave privada para conectar.";

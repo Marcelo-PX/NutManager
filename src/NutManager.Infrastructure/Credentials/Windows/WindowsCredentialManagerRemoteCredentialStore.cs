@@ -11,6 +11,7 @@ public sealed class WindowsCredentialManagerRemoteCredentialStore : IRemoteCrede
     internal const uint CredentialPersistLocalMachine = 2;
     internal const int ErrorNotFound = 1168;
     internal const int ErrorAccessDenied = 5;
+    internal const int ErrorNoSuchLogonSession = 1312;
     private const int MaximumSecretCharacters = 1024;
 
     private readonly IWindowsCredentialManagerNative _native;
@@ -27,10 +28,30 @@ public sealed class WindowsCredentialManagerRemoteCredentialStore : IRemoteCrede
         _isWindows = isWindows ?? throw new ArgumentNullException(nameof(isWindows));
     }
 
-    public async Task<RemoteCredentialStoreResult> ContainsAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default)
+    public Task<RemoteCredentialStoreResult> ContainsAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default)
     {
-        using var result = await ReadAsync(profileId, kind, cancellationToken).ConfigureAwait(false);
-        return new RemoteCredentialStoreResult(result.Status, result.Message);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!_isWindows())
+        {
+            return Task.FromResult(Unsupported());
+        }
+
+        try
+        {
+            if (!_native.TryRead(WindowsCredentialTargetNames.GetTargetName(profileId, kind), CredentialTypeGeneric, 0, out var handle, out var errorCode))
+            {
+                return Task.FromResult(new RemoteCredentialStoreResult(MapError(errorCode), GetSafeMessage(errorCode)));
+            }
+
+            using (handle)
+            {
+                return Task.FromResult(new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Success));
+            }
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return Task.FromResult(StoreUnavailable());
+        }
     }
 
     public Task<RemoteCredentialReadResult> ReadAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default)
@@ -42,6 +63,8 @@ public sealed class WindowsCredentialManagerRemoteCredentialStore : IRemoteCrede
         }
 
         var targetName = WindowsCredentialTargetNames.GetTargetName(profileId, kind);
+        byte[]? blob = null;
+        char[]? chars = null;
         try
         {
             if (!_native.TryRead(targetName, CredentialTypeGeneric, 0, out var handle, out var errorCode))
@@ -51,35 +74,31 @@ public sealed class WindowsCredentialManagerRemoteCredentialStore : IRemoteCrede
 
             using (handle)
             {
-                var blob = handle!.GetCredentialBlob();
-                if (blob.IsEmpty || blob.Length > MaximumSecretCharacters * sizeof(char) || blob.Length % sizeof(char) != 0)
+                blob = handle!.CopyCredentialBlob();
+                if (blob.Length == 0 || blob.Length > MaximumSecretCharacters * sizeof(char) || blob.Length % sizeof(char) != 0)
                 {
                     return Task.FromResult(new RemoteCredentialReadResult(RemoteCredentialStoreStatus.Failed, message: "A credencial protegida possui um formato inválido."));
                 }
 
-                var blobCopy = blob.ToArray();
-                char[] chars;
-                try
-                {
-                    chars = Encoding.Unicode.GetChars(blobCopy);
-                }
-                finally
-                {
-                    CryptographicOperations.ZeroMemory(blobCopy);
-                }
-                try
-                {
-                    return Task.FromResult(new RemoteCredentialReadResult(RemoteCredentialStoreStatus.Success, new RemoteCredentialSecret(chars)));
-                }
-                finally
-                {
-                    CryptographicOperations.ZeroMemory(System.Runtime.InteropServices.MemoryMarshal.AsBytes(chars.AsSpan()));
-                }
+                chars = Encoding.Unicode.GetChars(blob);
+                return Task.FromResult(new RemoteCredentialReadResult(RemoteCredentialStoreStatus.Success, new RemoteCredentialSecret(chars)));
             }
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return Task.FromResult(new RemoteCredentialReadResult(RemoteCredentialStoreStatus.CredentialStoreUnavailable, message: "O Gerenciador de Credenciais do Windows não está disponível."));
+            return Task.FromResult(new RemoteCredentialReadResult(RemoteCredentialStoreStatus.CredentialStoreUnavailable, message: StoreUnavailable().Message));
+        }
+        finally
+        {
+            if (blob is not null)
+            {
+                CryptographicOperations.ZeroMemory(blob);
+            }
+
+            if (chars is not null)
+            {
+                CryptographicOperations.ZeroMemory(System.Runtime.InteropServices.MemoryMarshal.AsBytes(chars.AsSpan()));
+            }
         }
     }
 
@@ -121,7 +140,7 @@ public sealed class WindowsCredentialManagerRemoteCredentialStore : IRemoteCrede
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return Task.FromResult(new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.CredentialStoreUnavailable, "O Gerenciador de Credenciais do Windows não está disponível."));
+            return Task.FromResult(StoreUnavailable());
         }
         finally
         {
@@ -146,7 +165,7 @@ public sealed class WindowsCredentialManagerRemoteCredentialStore : IRemoteCrede
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return Task.FromResult(new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.CredentialStoreUnavailable, "O Gerenciador de Credenciais do Windows não está disponível."));
+            return Task.FromResult(StoreUnavailable());
         }
     }
 
@@ -166,10 +185,13 @@ public sealed class WindowsCredentialManagerRemoteCredentialStore : IRemoteCrede
 
     private static RemoteCredentialStoreResult Unsupported() => new(RemoteCredentialStoreStatus.Unsupported, "O armazenamento protegido de credenciais está disponível somente no Windows.");
 
+    private static RemoteCredentialStoreResult StoreUnavailable() => new(RemoteCredentialStoreStatus.CredentialStoreUnavailable, "O Gerenciador de Credenciais do Windows não está disponível nesta sessão.");
+
     private static RemoteCredentialStoreStatus MapError(int errorCode) => errorCode switch
     {
         ErrorNotFound => RemoteCredentialStoreStatus.NotFound,
         ErrorAccessDenied => RemoteCredentialStoreStatus.AccessDenied,
+        ErrorNoSuchLogonSession => RemoteCredentialStoreStatus.CredentialStoreUnavailable,
         _ => RemoteCredentialStoreStatus.Failed
     };
 
@@ -177,6 +199,7 @@ public sealed class WindowsCredentialManagerRemoteCredentialStore : IRemoteCrede
     {
         ErrorNotFound => "A credencial protegida não foi encontrada.",
         ErrorAccessDenied => "O acesso ao Gerenciador de Credenciais foi negado.",
+        ErrorNoSuchLogonSession => "O Gerenciador de Credenciais do Windows não está disponível nesta sessão.",
         _ => "Não foi possível acessar o Gerenciador de Credenciais do Windows."
     };
 }

@@ -69,7 +69,7 @@ public sealed class WindowsCredentialManagerNative : IWindowsCredentialManagerNa
 
         public NativeReadHandle(IntPtr pointer) => _pointer = pointer;
 
-        public ReadOnlyMemory<byte> GetCredentialBlob()
+        public byte[] CopyCredentialBlob()
         {
             if (_pointer == IntPtr.Zero)
             {
