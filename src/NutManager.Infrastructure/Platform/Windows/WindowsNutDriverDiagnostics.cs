@@ -294,6 +294,22 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
             return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.InvalidExecutable, "A ferramenta NUT não está disponível ou não é confiável para este diagnóstico.");
         }
 
+        if (preparedRequest.Kind != NutDriverDiagnosticKind.UpsdrvctlHelp)
+        {
+            try
+            {
+                var finalValidation = await ValidateUpsConfFingerprintImmediatelyBeforeLaunchAsync(preparedRequest, cancellationToken);
+                if (finalValidation is not null)
+                {
+                    return finalValidation;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return CreateImmediateResult(request.Kind, NutDriverDiagnosticStatus.CancelledBeforeLaunch, "O diagnóstico foi cancelado antes de iniciar.");
+            }
+        }
+
         var raw = await _processRunner.RunAsync(specification, cancellationToken);
         return new NutDriverDiagnosticResult(
             request.Kind,
@@ -307,6 +323,25 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
             raw.OutputTruncated,
             request.Kind == NutDriverDiagnosticKind.DriverDataDump,
             raw.Message);
+    }
+
+    private async Task<NutDriverDiagnosticResult?> ValidateUpsConfFingerprintImmediatelyBeforeLaunchAsync(
+        NutDriverDiagnosticRequest request,
+        CancellationToken cancellationToken)
+    {
+        var load = await _configurationPipeline.LoadAsync(request.ConfigurationDirectory + "\\ups.conf", NutConfigurationFileKind.UpsConf, cancellationToken);
+        if (load.Status != NutConfigurationLoadStatus.Success ||
+            load.Snapshot is null ||
+            string.IsNullOrWhiteSpace(request.UpsConfFingerprint) ||
+            !string.Equals(load.Snapshot.OriginalFingerprint, request.UpsConfFingerprint, StringComparison.Ordinal))
+        {
+            return CreateImmediateResult(
+                request.Kind,
+                NutDriverDiagnosticStatus.InvalidConfiguration,
+                "O arquivo ups.conf foi alterado após a revisão. Atualize os dispositivos e prepare o diagnóstico novamente.");
+        }
+
+        return null;
     }
 
     private async Task<(NutDriverDiagnosticRequest? Request, NutDriverDiagnosticResult? Result)> LoadCurrentRequestAsync(

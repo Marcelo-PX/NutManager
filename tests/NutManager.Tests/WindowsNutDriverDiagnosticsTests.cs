@@ -308,6 +308,69 @@ public sealed class WindowsNutDriverDiagnosticsTests
     }
 
     [Fact]
+    public async Task DriverDataDumpRejectsUpsConfChangedDuringHardwareInterlocks()
+    {
+        var pipeline = new DriverPipeline("[NOBREAK]\ndriver = nutdrv_qx\nport = COM4\nprotocol = q1\n");
+        var runner = new RecordingRunner();
+        var services = new ServiceStateSource([StoppedService()]);
+        var diagnostics = CreateDiagnostics(pipeline, runner, serviceStateSource: services);
+        var snapshot = await diagnostics.InspectAsync(Installation(), CancellationToken.None);
+        services.BeforeReturn = () => pipeline.Text = "[NOBREAK]\ndriver = nutdrv_qx\nport = COM5\nprotocol = q1\n";
+
+        var result = await diagnostics.ExecuteAsync(Request(snapshot, NutDriverDiagnosticKind.DriverDataDump), CancellationToken.None);
+
+        Assert.Equal(NutDriverDiagnosticStatus.InvalidConfiguration, result.Status);
+        Assert.Contains("após a revisão", result.Message);
+        Assert.Equal(1, services.Calls);
+        Assert.Equal(3, pipeline.LoadCalls);
+        Assert.Equal(0, runner.Calls);
+    }
+
+    [Fact]
+    public async Task MatchingFingerprintAfterInterlocksStillLaunchesExactlyOnce()
+    {
+        var pipeline = new DriverPipeline("[NOBREAK]\ndriver = nutdrv_qx\nport = COM4\nprotocol = q1\n");
+        var runner = new RecordingRunner();
+        var diagnostics = CreateDiagnostics(pipeline, runner, serviceStateSource: new ServiceStateSource([StoppedService()]));
+        var snapshot = await diagnostics.InspectAsync(Installation(), CancellationToken.None);
+
+        var result = await diagnostics.ExecuteAsync(Request(snapshot, NutDriverDiagnosticKind.DriverDataDump), CancellationToken.None);
+
+        Assert.Equal(NutDriverDiagnosticStatus.Success, result.Status);
+        Assert.Equal(1, runner.Calls);
+        Assert.NotNull(runner.LastSpecification);
+        Assert.Equal(["-a", "NOBREAK", "-d", "1"], runner.LastSpecification!.Arguments);
+    }
+
+    [Theory]
+    [InlineData(NutDriverDiagnosticKind.UpsdrvctlList)]
+    [InlineData(NutDriverDiagnosticKind.UpsdrvctlStatus)]
+    [InlineData(NutDriverDiagnosticKind.UpsdrvctlDryRunStart)]
+    [InlineData(NutDriverDiagnosticKind.DriverHelp)]
+    [InlineData(NutDriverDiagnosticKind.DriverVersion)]
+    [InlineData(NutDriverDiagnosticKind.DriverVariableList)]
+    public async Task ConfigDependentDiagnosticsRevalidateBeforeLaunch(NutDriverDiagnosticKind kind)
+    {
+        var pipeline = new DriverPipeline("[NOBREAK]\ndriver = nutdrv_qx\nport = COM4\nprotocol = q1\n");
+        var runner = new RecordingRunner();
+        var diagnostics = CreateDiagnostics(pipeline, runner);
+        var snapshot = await diagnostics.InspectAsync(Installation(), CancellationToken.None);
+        pipeline.AfterLoad = loadCount =>
+        {
+            if (loadCount == 2)
+            {
+                pipeline.Text = "[NOBREAK]\ndriver = nutdrv_qx\nport = COM5\nprotocol = q1\n";
+            }
+        };
+
+        var result = await diagnostics.ExecuteAsync(Request(snapshot, kind), CancellationToken.None);
+
+        Assert.Equal(NutDriverDiagnosticStatus.InvalidConfiguration, result.Status);
+        Assert.Equal(3, pipeline.LoadCalls);
+        Assert.Equal(0, runner.Calls);
+    }
+
+    [Fact]
     public async Task UpsdrvctlHelpDoesNotRequireUpsConf()
     {
         var pipeline = new DriverPipeline(null);
@@ -320,6 +383,7 @@ public sealed class WindowsNutDriverDiagnosticsTests
 
         Assert.Equal(NutDriverDiagnosticStatus.Success, result.Status);
         Assert.Equal(1, runner.Calls);
+        Assert.Equal(0, pipeline.LoadCalls);
     }
 
     [Fact]
@@ -543,9 +607,14 @@ public sealed class WindowsNutDriverDiagnosticsTests
 
         public string? FingerprintOverride { get; set; }
 
+        public Action<int>? AfterLoad { get; set; }
+
+        public int LoadCalls { get; private set; }
+
         public Task<NutConfigurationLoadResult> LoadAsync(string targetPath, NutConfigurationFileKind fileKind, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            LoadCalls++;
             if (Text is null)
             {
                 return Task.FromResult(new NutConfigurationLoadResult(NutConfigurationLoadStatus.TargetNotFound));
@@ -559,6 +628,7 @@ public sealed class WindowsNutDriverDiagnosticsTests
                 NutConfigurationTextEncoding.Utf8,
                 FingerprintOverride ?? Convert.ToHexString(SHA256.HashData(bytes)),
                 bytes.LongLength);
+            AfterLoad?.Invoke(LoadCalls);
             return Task.FromResult(new NutConfigurationLoadResult(NutConfigurationLoadStatus.Success, snapshot));
         }
 
@@ -602,7 +672,16 @@ public sealed class WindowsNutDriverDiagnosticsTests
             _services = services;
         }
 
-        public Task<IReadOnlyList<NutServiceInfo>> GetServicesAsync(string installationDirectory, CancellationToken cancellationToken) => Task.FromResult(_services);
+        public Action? BeforeReturn { get; set; }
+
+        public int Calls { get; private set; }
+
+        public Task<IReadOnlyList<NutServiceInfo>> GetServicesAsync(string installationDirectory, CancellationToken cancellationToken)
+        {
+            Calls++;
+            BeforeReturn?.Invoke();
+            return Task.FromResult(_services);
+        }
     }
 
     private sealed class TestPlatform : IWindowsDriverDiagnosticsPlatform
@@ -614,9 +693,12 @@ public sealed class WindowsNutDriverDiagnosticsTests
     {
         public int Calls { get; private set; }
 
+        public NutDiagnosticProcessSpec? LastSpecification { get; private set; }
+
         public Task<NutDiagnosticProcessResult> RunAsync(NutDiagnosticProcessSpec specification, CancellationToken cancellationToken)
         {
             Calls++;
+            LastSpecification = specification;
             return Task.FromResult(new NutDiagnosticProcessResult(NutDriverDiagnosticStatus.Success, 0, string.Empty, string.Empty, false, TimeSpan.Zero, "ok"));
         }
     }
