@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NutManager.App.Services;
 using NutManager.Core.Administration;
 using NutManager.Core.Configuration;
 using NutManager.Core.Models;
@@ -16,6 +17,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private readonly INutConfigurationFilePipeline? _configurationPipeline;
     private readonly ILocalNutWindowsAdministration? _windowsAdministration;
     private readonly ILocalNutDriverDiagnostics? _driverDiagnostics;
+    private readonly ManagedNutServerRuntimeContext? _profileContext;
     private NutInstallationInfo? _currentInstallation;
     private NutConfigurationFileSnapshot? _loadedSnapshot;
     private NutConfigurationPreparedChange? _preparedChange;
@@ -25,7 +27,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private int _installationContextVersion;
 
     public AdministrationPageViewModel()
-        : this(null, null, null, null)
+        : this(null, null, null, null, null)
     {
     }
 
@@ -33,13 +35,15 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ILocalNutInstallationDetector? installationDetector,
         INutConfigurationFilePipeline? configurationPipeline,
         ILocalNutWindowsAdministration? windowsAdministration = null,
-        ILocalNutDriverDiagnostics? driverDiagnostics = null)
+        ILocalNutDriverDiagnostics? driverDiagnostics = null,
+        ManagedNutServerRuntimeContext? profileContext = null)
         : base("Administração", "Edite entradas existentes da configuração local do NUT com revisão e confirmação explícita.")
     {
         _installationDetector = installationDetector;
         _configurationPipeline = configurationPipeline;
         _windowsAdministration = windowsAdministration;
         _driverDiagnostics = driverDiagnostics;
+        _profileContext = profileContext;
         ConfigurationFiles = new ObservableCollection<NutConfigurationFileItemViewModel>(CreateFileItems());
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         PreviewLines = Array.Empty<NutConfigurationPreviewLineViewModel>();
@@ -166,25 +170,49 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
+    private ManagedServerCapabilities Capabilities => _profileContext?.Capabilities ?? new ManagedServerCapabilities(true, true, true, true, true, false);
+
+    public string ManagedProfileName => _profileContext?.Profile.Name ?? "Perfil local atual";
+
+    public string ManagedProfileMonitoringEndpoint => _profileContext is null
+        ? "localhost:3493"
+        : $"{_profileContext.Endpoint.Host}:{_profileContext.Endpoint.Port}";
+
+    public string ManagedProfileManagementMode => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote ? "Remoto" : "Local";
+
+    public string ManagedProfileAccessMode => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? "Somente leitura" : "Permitir gerenciamento";
+
+    public bool IsRemoteManagementProfile => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote;
+
+    public bool IsLocalManagementProfile => !IsRemoteManagementProfile;
+
+    public string RemoteManagementHost => _profileContext?.Profile.Management.ManagementHost ?? UnavailableText;
+
+    public string RemoteConfigurationDirectory => _profileContext?.Profile.Management.RemoteConfigurationDirectory ?? "Não configurado";
+
+    public string ManagementAvailabilityText => IsRemoteManagementProfile
+        ? "Gerenciamento remoto não conectado. O transporte remoto será disponibilizado pelo SSH/SFTP."
+        : "Gerenciamento local disponível conforme as permissões do perfil.";
+
     public bool HasBackupPath => !string.IsNullOrWhiteSpace(BackupPath);
 
     public bool HasRecoveryPath => !string.IsNullOrWhiteSpace(RecoveryPath);
 
-    public bool CanEditEntries => HasLoadedFile && !IsBusy && !IsDetectingInstallation;
+    public bool CanEditEntries => Capabilities.CanEditConfiguration && HasLoadedFile && !IsBusy && !IsDetectingInstallation;
 
-    public bool CanReview => HasLoadedFile && HasDraftChanges && !IsBusy && !IsDetectingInstallation;
+    public bool CanReview => Capabilities.CanEditConfiguration && HasLoadedFile && HasDraftChanges && !IsBusy && !IsDetectingInstallation;
 
-    public bool CanApply => HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy && !IsDetectingInstallation;
+    public bool CanApply => Capabilities.CanEditConfiguration && HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy && !IsDetectingInstallation;
 
     public bool CanDiscard => (HasDraftChanges || HasPreview) && !IsBusy && !IsDetectingInstallation;
 
-    public bool CanReload => SelectedFile is not null && !HasDraftChanges && !IsBusy && !IsDetectingInstallation;
+    public bool CanReload => Capabilities.CanInspectLocalManagement && SelectedFile is not null && !HasDraftChanges && !IsBusy && !IsDetectingInstallation;
 
-    public bool CanChangeInstallation => !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
+    public bool CanChangeInstallation => Capabilities.CanInspectLocalManagement && !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
 
     public bool CanDetectInstallation => CanChangeInstallation;
 
-    public bool CanSelectConfigurationFile => !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
+    public bool CanSelectConfigurationFile => Capabilities.CanInspectLocalManagement && !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview;
 
     public bool IsWindowsAdministrationAvailable => _windowsAdministration is not null && WindowsPermissionAssessment.State != NutPermissionState.Unknown;
 
@@ -225,9 +253,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _ => "Nenhuma ação administrativa pendente"
     };
 
-    public bool CanPrepareAdministrativeAction => !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingDriverDiagnostic && _currentInstallation is { IsDetected: true } && _windowsAdministration is not null;
+    public bool CanPrepareAdministrativeAction => Capabilities.CanExecuteAdministrativeActions && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingDriverDiagnostic && _currentInstallation is { IsDetected: true } && _windowsAdministration is not null;
 
-    public bool CanExecuteAdministrativeAction => HasPendingAdministrativeAction && IsAdministrativeActionConfirmed && !HasDraftChanges && !HasPreview && !IsBusy && !IsDetectingInstallation && IsPendingAdministrativeActionCurrent();
+    public bool CanExecuteAdministrativeAction => Capabilities.CanExecuteAdministrativeActions && HasPendingAdministrativeAction && IsAdministrativeActionConfirmed && !HasDraftChanges && !HasPreview && !IsBusy && !IsDetectingInstallation && IsPendingAdministrativeActionCurrent();
 
     public bool CanStartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { State: NutServiceState.Stopped, StartMode: not NutServiceStartMode.Disabled };
 
@@ -235,11 +263,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanRestartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { StartMode: not NutServiceStartMode.Disabled } service && service.State is (NutServiceState.Running or NutServiceState.Stopped);
 
-    public bool CanRefreshDriverDiagnostics => _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction;
+    public bool CanRefreshDriverDiagnostics => Capabilities.CanInspectLocalManagement && _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction;
 
-    public bool CanPrepareDriverDiagnostic => _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && _currentInstallation is { IsDetected: true };
+    public bool CanPrepareDriverDiagnostic => Capabilities.CanRunDriverDiagnostics && _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && _currentInstallation is { IsDetected: true };
 
-    public bool CanExecuteDriverDiagnostic => HasPendingDriverDiagnostic && IsDriverDiagnosticConfirmed && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && IsPendingDriverDiagnosticCurrent();
+    public bool CanExecuteDriverDiagnostic => Capabilities.CanRunDriverDiagnostics && HasPendingDriverDiagnostic && IsDriverDiagnosticConfirmed && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && IsPendingDriverDiagnosticCurrent();
 
     public bool IsDriverDiagnosticCritical => DriverDiagnosticResult?.Status is NutDriverDiagnosticStatus.Conflict or NutDriverDiagnosticStatus.Failed or NutDriverDiagnosticStatus.Timeout or NutDriverDiagnosticStatus.CleanupFailed;
 
@@ -261,6 +289,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        if (IsRemoteManagementProfile)
+        {
+            InstallationStatusText = "Gerenciamento remoto não conectado";
+            SetStatus(ManagementAvailabilityText);
+            return;
+        }
+
         await RefreshInstallationAsync(cancellationToken);
         await RefreshWindowsAdministrationAsync(cancellationToken);
         await RefreshDriverDiagnosticsAsync(cancellationToken);
@@ -268,6 +303,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public async Task RefreshInstallationAsync(CancellationToken cancellationToken = default)
     {
+        if (IsRemoteManagementProfile)
+        {
+            SetStatus(ManagementAvailabilityText);
+            return;
+        }
+
         if (!CanChangeInstallation)
         {
             SetInstallationChangeBlockedStatus();
@@ -310,6 +351,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public async Task InspectInstallationDirectoryAsync(string directory, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        if (IsRemoteManagementProfile)
+        {
+            SetStatus(ManagementAvailabilityText);
+            return;
+        }
+
         if (!CanChangeInstallation)
         {
             SetInstallationChangeBlockedStatus();
@@ -347,6 +394,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public async Task SelectFileAsync(NutConfigurationFileItemViewModel? file, CancellationToken cancellationToken = default)
     {
+        if (!Capabilities.CanInspectLocalManagement)
+        {
+            SetStatus(ManagementAvailabilityText);
+            return;
+        }
+
         if (file is null || ReferenceEquals(file, SelectedFile))
         {
             return;
@@ -527,6 +580,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public async Task RefreshWindowsAdministrationAsync(CancellationToken cancellationToken = default)
     {
+        if (!Capabilities.CanInspectLocalManagement)
+        {
+            AdministrativeStatusMessage = ManagementAvailabilityText;
+            return;
+        }
+
         if (_windowsAdministration is null)
         {
             WindowsPermissionAssessment = NutPermissionAssessment.Unsupported();

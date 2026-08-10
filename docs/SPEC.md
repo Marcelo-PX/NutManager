@@ -2,267 +2,93 @@
 
 ## 1. Product vision
 
-NutManager is a Windows-first desktop interface for Network UPS Tools (NUT). Its final direction is to make NUT monitoring, configuration, and administration understandable for both local and remote NUT deployments without hiding the underlying NUT concepts.
+NutManager is a Windows-first desktop interface for Network UPS Tools (NUT). It makes NUT monitoring, configuration, diagnostics, and explicitly confirmed administration understandable without replacing NUT drivers, protocols, or configuration formats.
 
-The initial monitoring milestone is deliberately non-administrative and read-only. The final product direction adds safe configuration and administration rather than remaining a read-only product. NutManager uses standard NUT protocols, commands, and configuration formats wherever possible; it is a client and management layer, not a replacement UPS driver.
+Monitoring and management are distinct concerns. Monitoring uses standard NUT TCP access; management uses either local Windows capabilities or, in a later phase, an explicit remote transport.
 
-## 2. Intended users
+## 2. Initial monitoring milestone
 
-- system administrators running or managing NUT from Windows;
-- small organizations that need a practical UPS monitoring console;
-- advanced home-lab users;
-- NUT contributors diagnosing real device and platform behavior, including users relying on secondary Linux compatibility.
+The initial MVP milestone established a non-administrative, read-only monitoring application. Its requirements remain the baseline for the package acceptance checklist:
 
-## 3. Product principles
+- Avalonia desktop shell with Overview, Devices, Diagnostics, and Settings;
+- light, dark, and system themes;
+- NUT endpoint, timeout, polling, mock-mode, and preferred-UPS settings;
+- bounded NUT TCP connection, discovery, telemetry, reconnect, and stale-data handling;
+- deterministic mock data for development and automated tests;
+- read-only diagnostics and per-user, non-secret settings.
 
-1. Safety before automation.
-2. Read-only monitoring before configuration and administrative behavior.
-3. Missing information is shown as unavailable, never fabricated.
-4. Platform-specific operations are explicit and isolated.
-5. Standard NUT compatibility is preferred over project-specific modifications.
-6. Every configuration write must be recoverable.
-7. The interface must remain useful without access to the NUT source repository.
+Missing NUT variables remain unavailable rather than estimated. Unknown NUT status tokens and variable names are preserved. The T11 acceptance workflow remains read-only even though later work added separately confirmed administration.
 
-## 4. MVP scope
+## 3. Current implementation status
 
-The initial monitoring milestone is a non-administrative, read-only desktop application. It does not limit the final product direction to read-only behavior.
+The monitoring base from T01–T10 is implemented. T11 remains **IN PROGRESS** until the distributed Windows package completes its manual live-NUT acceptance checklist.
 
-### 4.1 Functional requirements
+The current product also implements:
 
-#### FR-001 — Application shell
+- T12 local Windows NUT installation detection;
+- T13 syntax-preserving NUT configuration documents;
+- T14 previewed, recoverable configuration writes with backup and rollback;
+- T15 graphical editing of existing configuration entries;
+- T16 Windows service, privilege, ACL, process, and Event Log administration;
+- T17 passive COM and controlled NUT-driver diagnostics;
+- T18 managed local and remote server profiles.
 
-The application shall provide a responsive Avalonia desktop window with navigation for:
-
-- Overview;
-- Devices;
-- Diagnostics;
-- Settings.
-
-#### FR-002 — Theme
-
-The application shall support light, dark, and follow-system themes. The selected preference shall persist locally.
-
-#### FR-003 — NUT server configuration
-
-The user shall be able to configure:
-
-- host name or IP address;
-- TCP port, defaulting to `3493`;
-- optional connection timeout;
-- optional preferred UPS name.
-
-The MVP shall not store NUT administrator credentials.
-
-#### FR-004 — Connection
-
-The application shall connect to a NUT server using a bounded timeout and cancellation support.
-
-The UI shall distinguish:
-
-- disconnected;
-- connecting;
-- connected;
-- reconnecting;
-- stale data;
-- connection failed.
-
-#### FR-005 — UPS discovery
-
-The application shall list UPS devices exposed by the configured NUT server and allow the user to select one.
-
-#### FR-006 — Telemetry
-
-For the selected UPS, the application shall display available values for:
-
-- UPS name;
-- description or model;
-- `ups.status`;
-- input voltage;
-- output voltage;
-- load percentage;
-- input or output frequency when supplied;
-- temperature when supplied;
-- battery voltage when supplied;
-- battery charge when supplied;
-- runtime estimate when supplied;
-- last successful update.
-
-The UI shall retain the original NUT variable names in a details view.
-
-#### FR-007 — Status interpretation
-
-The application shall parse common NUT status tokens, including at least:
-
-- `OL` — online;
-- `OB` — on battery;
-- `LB` — low battery;
-- `RB` — replace battery;
-- `CHRG` — charging;
-- `DISCHRG` — discharging;
-- `BYPASS` — bypass;
-- `OFF` — output off;
-- `OVER` — overloaded;
-- `CAL` — calibration.
-
-Unknown tokens shall be preserved and displayed, not discarded.
-
-#### FR-008 — Missing values
-
-A variable not supplied by NUT shall appear as unavailable. The application shall not derive or estimate it silently.
-
-#### FR-009 — Stale data
-
-If polling stops succeeding, the last values may remain visible but must be clearly marked as stale with the timestamp of the last successful update.
-
-#### FR-010 — Mock mode
-
-A deterministic mock provider shall supply realistic sample data for UI development and automated tests without a NUT server or UPS.
-
-Mock data must be explicitly labeled as simulated.
-
-#### FR-011 — Diagnostics summary
-
-The MVP diagnostics page shall report, without administrative actions:
-
-- configured endpoint;
-- DNS or connection outcome where applicable;
-- protocol connection result;
-- discovered UPS names;
-- last polling error;
-- client application version.
-
-It shall not open serial ports, stop services, or modify NUT.
-
-#### FR-012 — Local settings
-
-Application settings shall be stored per user in an operating-system-appropriate application-data directory.
-
-Settings writes shall be atomic and must not contain secrets in the MVP.
-
-### 4.2 MVP screens
-
-#### Overview
-
-Shows the selected UPS, interpreted status, key metric cards, connection state, and last update.
-
-#### Devices
-
-Lists UPS devices returned by the server and exposes raw variables for the selected device.
-
-#### Diagnostics
-
-Shows read-only connection diagnostics and recent application-level errors.
-
-#### Settings
-
-Configures endpoint, preferred UPS, polling interval, timeout, theme, and mock mode.
-
-## 5. Non-functional requirements
+## 4. Platform and quality requirements
 
 ### NFR-001 — Windows-first platform strategy
 
-Windows x64 is the primary platform for development, manual testing, official distribution, and the first administrative capabilities. Linux has secondary, best-effort compatibility: shared code should remain portable where practical, but Linux has no official package or immediate administrative-feature commitment.
+Windows x64 is the official platform for development, CI, current validation, packaging, distribution, and local administration. Linux is secondary, best-effort compatibility for shared code only. It has no official CI gate, package, or current administration-support guarantee; T22 will evaluate it explicitly.
 
-The shared architecture must avoid unnecessary Windows dependencies. Alpine Linux desktop is not validated or supported for the MVP.
+The shared architecture must avoid unnecessary Windows dependencies, and platform APIs must remain behind the Windows adapter boundary.
 
-### NFR-002 — Performance
+### Reliability, security, and testability
 
-The idle application should avoid unnecessary polling, busy loops, and unbounded background tasks. UI updates must not block the UI thread.
+- External I/O requires cancellation, bounded timeouts, and controlled errors.
+- Core behavior must be testable without Avalonia, real hardware, elevation, or network access.
+- Secrets must not appear in logs or UI state.
+- Platform-specific actions must be explicit and isolated.
+- Accessibility must not rely on color alone.
 
-### NFR-003 — Reliability
+## 5. Administration safety
 
-Network operations require cancellation, bounded timeouts, and deterministic disposal. A failed poll must not crash the application.
+The normal NutManager process does not require Administrator privileges. Privileged Windows actions are explicitly prepared, reviewed, confirmed, and routed through a limited UAC helper boundary when required.
 
-### NFR-004 — Security
+Configuration changes use a syntax-preserving model and a recoverable write pipeline: review and diff, backup, temporary-file validation, safe replacement, verification, and rollback. Administration is never automatic, and applying configuration does not automatically restart a NUT service. Monitoring remains independent of management actions.
 
-- no administrator or root requirement in the MVP;
-- no passwords in logs;
-- no shell command construction from untrusted values;
-- no direct modification of NUT configuration or services;
-- endpoint input validation.
+## 6. Managed profiles and remote boundary
 
-### NFR-005 — Testability
+Managed profiles separate monitoring from management metadata:
 
-Core behavior shall be testable without Avalonia, network access, real-time delays, hardware, or elevated privileges.
+- monitoring stores the NUT TCP host, port, and optional preferred UPS;
+- management is Local or Remote and has an explicit access mode.
 
-### NFR-006 — Accessibility
+A remote profile can monitor through NUT TCP, but remote management is currently unavailable and must not fall back to local management. Remote SSH/SFTP transport, manual remote directory browse/selection, and remote validation are T19. Protected remote credentials are T20.
 
-Controls must be keyboard accessible, readable at common DPI scales, and not communicate status using color alone.
+## 7. Post-MVP capability status
 
-### NFR-007 — Observability
+### Implemented
 
-Errors shall include an actionable summary and technical detail suitable for logs. Logs must remain bounded and exclude secrets.
+- managed server profiles;
+- syntax-preserving configuration parsing and graphical editing;
+- preview, backup, safe write, recovery, and rollback;
+- Windows local service, UAC, ACL, process, Event Log, COM, and driver diagnostics.
 
-## 6. Product direction after the initial monitoring milestone
+### Next
 
-The final product shall support monitoring, configuration, and administration of NUT servers. Monitoring and management are separate connections with independent state:
+- T19 SSH/SFTP remote management;
+- T20 protected credential storage;
+- T21 full local and remote Windows validation.
 
-- monitoring uses the NUT protocol over TCP, with port `3493` as the default;
-- management uses local filesystem and platform APIs for a local server, or a secure remote transport for a remote server.
+### Later
 
-### Local management
+- T22 Linux compatibility evaluation;
+- T23 upstream NUT improvement evaluation;
+- multi-server simultaneous runtime, history, notifications, and other future product capabilities as separately scoped.
 
-Windows local management is the priority. NutManager will automatically discover a local NUT installation, including its executables, version, and configuration directory. The user may correct the discovered path manually.
+## 8. MVP package acceptance
 
-### Remote management
-
-NutManager must not automatically discover a remote configuration directory. The user will enter or navigate to the remote directory, and NutManager will validate the selected directory. The first planned remote management transport is SSH/SFTP.
-
-## 7. Planned post-MVP capabilities
-
-These capabilities are intentionally deferred:
-
-1. managed local and remote NUT server profiles;
-2. syntax-preserving editing of `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`;
-3. timestamped backups, validation, activation testing, and rollback;
-4. Windows service, UAC, ACL, COM-port, and driver workflows;
-5. SSH/SFTP remote management and secure credential storage;
-6. multiple simultaneous NUT servers;
-7. historical charts, notifications, and shutdown-policy management;
-8. evaluation of Linux administrative compatibility;
-9. installation and update workflows.
-
-Every administrative capability must require explicit confirmation and a rollback path.
-
-## 8. Configuration editing requirements for later phases
-
-Configuration management must use a syntax-preserving document model rather than a generic INI serializer. It must preserve comments, ordering, unknown directives, unmanaged sections, quoting, and relevant formatting.
-
-The required write pipeline is:
-
-```text
-read → parse while preserving syntax → requested change → preview/diff → backup
-→ temporary file → validation → safe replacement → activation when necessary
-→ test → rollback on failure
-```
-
-The design must separate ordinary user operations from elevated operations and never reveal stored credentials after saving.
+The MVP package is accepted only after the Windows x64 archive is manually validated against a real NUT server using the read-only checklist in [MVP-VALIDATION.md](MVP-VALIDATION.md). T11 stays in progress until that work is complete.
 
 ## 9. Upstream strategy
 
-NutManager should first identify and document limitations through real usage. Improvements to NUT shall be proposed only when the limitation belongs in NUT rather than in the client application.
-
-Upstream work shall use:
-
-- official repository: `networkupstools/nut`;
-- contributor fork: `Marcelo-PX/nut`;
-- focused branches and independent pull requests;
-- NUT contribution, style, testing, licensing, and DCO requirements.
-
-The upstream repository shall not be embedded in the normal NutManager workspace.
-
-## 10. MVP acceptance criteria
-
-The MVP is complete when:
-
-1. the application builds and tests on the supported development platform;
-2. it starts with a polished Avalonia shell;
-3. mock mode renders all primary states deterministically;
-4. it connects to a configured NUT server without elevation;
-5. it discovers and selects an exposed UPS;
-6. it displays supplied variables and marks absent ones unavailable;
-7. it handles disconnects without crashing;
-8. it marks retained data as stale after failed polling;
-9. settings persist per user;
-10. automated tests cover status parsing, data mapping, stale-state logic, configuration persistence, and protocol parsing;
-11. no MVP workflow modifies NUT files, services, drivers, or hardware.
+NutManager documents and reproduces limitations before proposing upstream NUT work. Approved upstream work uses the official `networkupstools/nut` repository and focused branches in `Marcelo-PX/nut`; the upstream source tree is not embedded in the normal NutManager workspace.

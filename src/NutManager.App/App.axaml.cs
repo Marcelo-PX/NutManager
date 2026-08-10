@@ -35,13 +35,17 @@ public partial class App : Application
     private async Task BootstrapAsync(Window window)
     {
         var store = new JsonApplicationSettingsStore();
+        var profileStore = new JsonManagedNutServerProfileStore();
         ApplicationSettings settings;
         string? loadError = null;
         try { settings = await store.LoadAsync(CancellationToken.None); }
         catch (Exception) { settings = new ApplicationSettings(); loadError = "Não foi possível carregar as configurações locais."; }
 
+        var profileBootstrap = await new ManagedNutServerBootstrapper(profileStore).LoadAsync(settings, CancellationToken.None);
+        var runtimeProfile = profileBootstrap.RuntimeContext;
+
         INutClient client;
-        var endpoint = new NutEndpoint(settings.Host, settings.Port, settings.ConnectionTimeout);
+        var endpoint = runtimeProfile.Endpoint;
         if (settings.MockMode)
         {
             client = new MockNutClient(MockScenario.Online, DateTimeOffset.UtcNow);
@@ -53,21 +57,23 @@ public partial class App : Application
 
         var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
         var overview = new OverviewPageViewModel(polling);
-        var devices = new DevicesPageViewModel(client, endpoint, polling, settings.PreferredUpsName);
-        var installationDetector = new WindowsNutInstallationDetector();
+        var devices = new DevicesPageViewModel(client, endpoint, polling, runtimeProfile.Profile.Monitoring.PreferredUpsName);
+        var isLocalManagement = runtimeProfile.Profile.Management.Mode == NutManagementMode.Local;
+        var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
             ApplicationRuntimeInfo.CreateCurrent(),
             polling,
             devices,
-            installationDetector);
-        var configurationPipeline = new NutConfigurationFilePipeline();
+            installationDetector,
+            runtimeProfile);
         var administration = new AdministrationPageViewModel(
             installationDetector,
-            configurationPipeline,
-            new WindowsLocalNutAdministration(),
-            new WindowsNutDriverDiagnostics());
-        var settingsPage = new SettingsPageViewModel(settings, store);
+            isLocalManagement ? new NutConfigurationFilePipeline() : null,
+            isLocalManagement ? new WindowsLocalNutAdministration() : null,
+            isLocalManagement ? new WindowsNutDriverDiagnostics() : null,
+            runtimeProfile);
+        var settingsPage = new SettingsPageViewModel(settings, store, profileBootstrap.Profiles, profileStore);
         window.Closed += (_, _) =>
         {
             diagnostics.Dispose();
@@ -75,6 +81,7 @@ public partial class App : Application
             polling.Dispose();
         };
         if (loadError is not null) settingsPage.SetLoadError(loadError);
+        if (profileBootstrap.Warning is not null) settingsPage.SetProfileLoadError(profileBootstrap.Warning, profileBootstrap.IsProfileDocumentLoadFailure);
         var viewModel = new MainWindowViewModel(settings.Theme, overview, devices, settingsPage, diagnostics, administration);
         viewModel.ThemeChanged += async preference =>
         {
