@@ -5,6 +5,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Diagnostics.EventLog" />
+    <PackageReference Include="System.Management" />
     <PackageReference Include="System.ServiceProcess.ServiceController" />
   </ItemGroup>
 </Project>

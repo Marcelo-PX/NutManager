@@ -15,6 +15,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private readonly ILocalNutInstallationDetector? _installationDetector;
     private readonly INutConfigurationFilePipeline? _configurationPipeline;
     private readonly ILocalNutWindowsAdministration? _windowsAdministration;
+    private readonly ILocalNutDriverDiagnostics? _driverDiagnostics;
     private NutInstallationInfo? _currentInstallation;
     private NutConfigurationFileSnapshot? _loadedSnapshot;
     private NutConfigurationPreparedChange? _preparedChange;
@@ -24,19 +25,21 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private int _installationContextVersion;
 
     public AdministrationPageViewModel()
-        : this(null, null, null)
+        : this(null, null, null, null)
     {
     }
 
     public AdministrationPageViewModel(
         ILocalNutInstallationDetector? installationDetector,
         INutConfigurationFilePipeline? configurationPipeline,
-        ILocalNutWindowsAdministration? windowsAdministration = null)
+        ILocalNutWindowsAdministration? windowsAdministration = null,
+        ILocalNutDriverDiagnostics? driverDiagnostics = null)
         : base("Administração", "Edite entradas existentes da configuração local do NUT com revisão e confirmação explícita.")
     {
         _installationDetector = installationDetector;
         _configurationPipeline = configurationPipeline;
         _windowsAdministration = windowsAdministration;
+        _driverDiagnostics = driverDiagnostics;
         ConfigurationFiles = new ObservableCollection<NutConfigurationFileItemViewModel>(CreateFileItems());
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         PreviewLines = Array.Empty<NutConfigurationPreviewLineViewModel>();
@@ -119,6 +122,32 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     [ObservableProperty]
     private bool _isAdministrativeCritical;
 
+    [ObservableProperty]
+    private IReadOnlyList<NutComPortInfo> _comPorts = Array.Empty<NutComPortInfo>();
+
+    [ObservableProperty]
+    private IReadOnlyList<NutConfiguredDriver> _configuredDrivers = Array.Empty<NutConfiguredDriver>();
+
+    [ObservableProperty]
+    private NutConfiguredDriver? _selectedConfiguredDriver;
+
+    [ObservableProperty]
+    private string? _upsdrvctlPath;
+
+    [ObservableProperty]
+    private NutDriverDiagnosticRequest? _pendingDriverDiagnostic;
+
+    private string? _upsConfFingerprint;
+
+    [ObservableProperty]
+    private bool _isDriverDiagnosticConfirmed;
+
+    [ObservableProperty]
+    private NutDriverDiagnosticResult? _driverDiagnosticResult;
+
+    [ObservableProperty]
+    private string? _driverDiagnosticStatusMessage;
+
     public string EditingScopeText => "Esta versão edita entradas existentes. Criação e remoção de entradas serão tratadas separadamente.";
 
     public string SelectedFileName => SelectedFile?.FileName ?? UnavailableText;
@@ -159,6 +188,32 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool IsWindowsAdministrationAvailable => _windowsAdministration is not null && WindowsPermissionAssessment.State != NutPermissionState.Unknown;
 
+    public bool IsDriverDiagnosticsAvailable => _driverDiagnostics is not null;
+
+    public bool HasPendingDriverDiagnostic => PendingDriverDiagnostic is not null;
+
+    public bool HasDriverDiagnosticResult => DriverDiagnosticResult is not null;
+
+    public string PendingDriverDiagnosticText => PendingDriverDiagnostic is null
+        ? "Nenhum diagnóstico pendente"
+        : ToDriverDiagnosticText(PendingDriverDiagnostic.Kind);
+
+    public bool PendingDriverDiagnosticContactsHardware => PendingDriverDiagnostic?.Kind == NutDriverDiagnosticKind.DriverDataDump;
+
+    public string PendingDriverDiagnosticTool => PendingDriverDiagnostic?.Kind switch
+    {
+        NutDriverDiagnosticKind.UpsdrvctlHelp or NutDriverDiagnosticKind.UpsdrvctlList or NutDriverDiagnosticKind.UpsdrvctlStatus or NutDriverDiagnosticKind.UpsdrvctlDryRunStart => UpsdrvctlPath ?? UnavailableText,
+        _ => PendingDriverDiagnostic?.Driver?.Executable.Path ?? UnavailableText
+    };
+
+    public string PendingDriverDiagnosticUpsName => PendingDriverDiagnostic?.Driver?.UpsName ?? "Não aplicável";
+
+    public string PendingDriverDiagnosticPort => PendingDriverDiagnostic?.Driver?.NormalizedComPort ?? PendingDriverDiagnostic?.Driver?.ConfiguredPort ?? "Não aplicável";
+
+    public string PendingDriverDiagnosticHardwareText => PendingDriverDiagnosticContactsHardware ? "Sim" : "Não";
+
+    public string NutServiceStateForDriverDiagnostic => WindowsServices.Any(service => service.State == NutServiceState.Running) ? "Em execução" : WindowsServices.Any(service => service.State == NutServiceState.Stopped) ? "Parado" : "Indisponível";
+
     public bool HasPendingAdministrativeAction => PendingAdministrativeAction is not null;
 
     public string PendingAdministrativeActionText => PendingAdministrativeAction?.Action switch
@@ -170,7 +225,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _ => "Nenhuma ação administrativa pendente"
     };
 
-    public bool CanPrepareAdministrativeAction => !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && _currentInstallation is { IsDetected: true } && _windowsAdministration is not null;
+    public bool CanPrepareAdministrativeAction => !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingDriverDiagnostic && _currentInstallation is { IsDetected: true } && _windowsAdministration is not null;
 
     public bool CanExecuteAdministrativeAction => HasPendingAdministrativeAction && IsAdministrativeActionConfirmed && !HasDraftChanges && !HasPreview && !IsBusy && !IsDetectingInstallation && IsPendingAdministrativeActionCurrent();
 
@@ -179,6 +234,16 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool CanStopWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService?.State == NutServiceState.Running;
 
     public bool CanRestartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { StartMode: not NutServiceStartMode.Disabled } service && service.State is (NutServiceState.Running or NutServiceState.Stopped);
+
+    public bool CanRefreshDriverDiagnostics => _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction;
+
+    public bool CanPrepareDriverDiagnostic => _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && _currentInstallation is { IsDetected: true };
+
+    public bool CanExecuteDriverDiagnostic => HasPendingDriverDiagnostic && IsDriverDiagnosticConfirmed && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && IsPendingDriverDiagnosticCurrent();
+
+    public bool IsDriverDiagnosticCritical => DriverDiagnosticResult?.Status is NutDriverDiagnosticStatus.Conflict or NutDriverDiagnosticStatus.Failed or NutDriverDiagnosticStatus.Timeout or NutDriverDiagnosticStatus.CleanupFailed;
+
+    public string DriverDiagnosticCriticalText => "CRÍTICO — o resultado do diagnóstico requer atenção manual.";
 
     public string AdministrativeCriticalText => "CRÍTICO — a operação administrativa requer atenção manual.";
 
@@ -198,6 +263,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     {
         await RefreshInstallationAsync(cancellationToken);
         await RefreshWindowsAdministrationAsync(cancellationToken);
+        await RefreshDriverDiagnosticsAsync(cancellationToken);
     }
 
     public async Task RefreshInstallationAsync(CancellationToken cancellationToken = default)
@@ -487,6 +553,115 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         finally { IsBusy = false; }
     }
 
+    public async Task RefreshDriverDiagnosticsAsync(CancellationToken cancellationToken = default)
+    {
+        if (!CanRefreshDriverDiagnostics)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        var contextVersion = _installationContextVersion;
+        try
+        {
+            var snapshot = await _driverDiagnostics!.InspectAsync(_currentInstallation ?? NutInstallationInfo.NotDetected(), cancellationToken);
+            if (contextVersion != _installationContextVersion)
+            {
+                return;
+            }
+
+            ComPorts = snapshot.ComPorts;
+            ConfiguredDrivers = snapshot.ConfiguredDrivers;
+            SelectedConfiguredDriver = snapshot.ConfiguredDrivers.Count == 1 ? snapshot.ConfiguredDrivers[0] : null;
+            UpsdrvctlPath = snapshot.UpsdrvctlPath;
+            _upsConfFingerprint = snapshot.UpsConfFingerprint;
+            DriverDiagnosticStatusMessage = snapshot.DiagnosticMessage;
+            DriverDiagnosticResult = null;
+            InvalidateDriverDiagnostic();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            DriverDiagnosticStatusMessage = "A atualização de dispositivos e drivers foi cancelada.";
+        }
+        catch
+        {
+            DriverDiagnosticStatusMessage = "Não foi possível atualizar os dispositivos e drivers do NUT.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public void PrepareDriverDiagnostic(NutDriverDiagnosticKind kind)
+    {
+        if (!CanPrepareDriverDiagnostic)
+        {
+            DriverDiagnosticStatusMessage = HasDraftChanges || HasPreview
+                ? "Aplique ou descarte as alterações antes de executar diagnósticos do NUT."
+                : "O diagnóstico não está disponível no contexto atual.";
+            return;
+        }
+
+        var requiresDriver = kind is not NutDriverDiagnosticKind.UpsdrvctlHelp;
+        if (requiresDriver && SelectedConfiguredDriver is null)
+        {
+            DriverDiagnosticStatusMessage = "Selecione um dispositivo configurado antes de preparar o diagnóstico.";
+            return;
+        }
+
+        if (kind == NutDriverDiagnosticKind.DriverDataDump && !CanPrepareHardwareDiagnostic(SelectedConfiguredDriver))
+        {
+            return;
+        }
+
+        PendingDriverDiagnostic = new NutDriverDiagnosticRequest(
+            kind,
+            _currentInstallation!.InstallationDirectory!,
+            _currentInstallation.ConfigurationDirectory!,
+            SelectedConfiguredDriver,
+            kind == NutDriverDiagnosticKind.UpsdrvctlHelp ? null : _upsConfFingerprint);
+        IsDriverDiagnosticConfirmed = false;
+        DriverDiagnosticStatusMessage = null;
+        DriverDiagnosticResult = null;
+        NotifyDriverDiagnosticPropertiesChanged();
+    }
+
+    public async Task ExecuteDriverDiagnosticAsync(CancellationToken cancellationToken = default)
+    {
+        if (!CanExecuteDriverDiagnostic || PendingDriverDiagnostic is null || _driverDiagnostics is null)
+        {
+            return;
+        }
+
+        var request = PendingDriverDiagnostic;
+        IsBusy = true;
+        try
+        {
+            var result = await _driverDiagnostics.ExecuteAsync(request, cancellationToken);
+            if (!IsPendingDriverDiagnosticCurrent(request))
+            {
+                return;
+            }
+
+            DriverDiagnosticResult = result;
+            DriverDiagnosticStatusMessage = result.Message;
+            InvalidateDriverDiagnostic();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            DriverDiagnosticStatusMessage = "O diagnóstico foi cancelado antes de iniciar.";
+        }
+        catch
+        {
+            DriverDiagnosticStatusMessage = "Não foi possível executar o diagnóstico do NUT.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public void PrepareServiceAction(NutAdministrativeAction action)
     {
         if (!CanPrepareAdministrativeAction || SelectedWindowsService is not { IsAssociated: true } service || action is not (NutAdministrativeAction.StartService or NutAdministrativeAction.StopService or NutAdministrativeAction.RestartService))
@@ -563,7 +738,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private Task RefreshWindowsAdministration() => RefreshWindowsAdministrationAsync();
 
     [RelayCommand]
+    private Task RefreshDriverDiagnostics() => RefreshDriverDiagnosticsAsync();
+
+    [RelayCommand]
     private Task ExecuteAdministrativeAction() => ExecuteAdministrativeActionAsync();
+
+    [RelayCommand]
+    private Task ExecuteDriverDiagnostic() => ExecuteDriverDiagnosticAsync();
 
     private async Task LoadSelectedFileAsync(CancellationToken cancellationToken, bool preserveStatus = false)
     {
@@ -646,6 +827,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _currentInstallation = installation;
         InvalidateAdministrativeAction();
         _installationContextVersion++;
+        ClearDriverDiagnostics();
         ClearLoadedDocument(clearSelectedFile: true);
         InstallationStatusText = installation.IsDetected
             ? "Instalação NUT encontrada"
@@ -677,6 +859,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         WindowsEventLogDiagnosticMessage = snapshot.EventLogDiagnosticMessage;
         AdministrativeStatusMessage = snapshot.DiagnosticMessage;
         IsAdministrativeCritical = false;
+        InvalidateDriverDiagnostic();
         NotifyAdministrativePropertiesChanged();
     }
 
@@ -685,6 +868,68 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         PendingAdministrativeAction = null;
         IsAdministrativeActionConfirmed = false;
         NotifyAdministrativePropertiesChanged();
+    }
+
+    private bool CanPrepareHardwareDiagnostic(NutConfiguredDriver? driver)
+    {
+        if (driver is null || !driver.Executable.IsAvailable || !driver.Executable.IsTrusted)
+        {
+            DriverDiagnosticStatusMessage = "O executável do driver não está disponível ou não é confiável.";
+            return false;
+        }
+
+        if (!WindowsServices.Any(service => service.IsAssociated && service.State == NutServiceState.Stopped) ||
+            WindowsServices.Any(service => service.IsAssociated && service.State != NutServiceState.Stopped))
+        {
+            DriverDiagnosticStatusMessage = "O serviço NUT está em execução ou com estado desconhecido e pode estar usando o dispositivo. Pare-o explicitamente na seção Serviço antes de iniciar o diagnóstico do driver.";
+            return false;
+        }
+
+        if (driver.RuntimeState == NutDriverRuntimeState.Running)
+        {
+            DriverDiagnosticStatusMessage = "Há um processo do driver configurado em execução. Nenhum processo existente será interrompido.";
+            return false;
+        }
+
+        if (driver.NormalizedComPort is not null && !driver.IsConfiguredComPortPresent)
+        {
+            DriverDiagnosticStatusMessage = "A porta COM configurada não foi detectada pelo Windows.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool IsPendingDriverDiagnosticCurrent(NutDriverDiagnosticRequest? request = null)
+    {
+        var pending = request ?? PendingDriverDiagnostic;
+        if (pending is null || _currentInstallation?.InstallationDirectory is null || _currentInstallation.ConfigurationDirectory is null)
+        {
+            return false;
+        }
+
+        return string.Equals(pending.InstallationDirectory, _currentInstallation.InstallationDirectory, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(pending.ConfigurationDirectory, _currentInstallation.ConfigurationDirectory, StringComparison.OrdinalIgnoreCase) &&
+            (pending.Driver is null || string.Equals(pending.Driver.UpsName, SelectedConfiguredDriver?.UpsName, StringComparison.Ordinal));
+    }
+
+    private void InvalidateDriverDiagnostic()
+    {
+        PendingDriverDiagnostic = null;
+        IsDriverDiagnosticConfirmed = false;
+        NotifyDriverDiagnosticPropertiesChanged();
+    }
+
+    private void ClearDriverDiagnostics()
+    {
+        ComPorts = Array.Empty<NutComPortInfo>();
+        ConfiguredDrivers = Array.Empty<NutConfiguredDriver>();
+        SelectedConfiguredDriver = null;
+        UpsdrvctlPath = null;
+        _upsConfFingerprint = null;
+        DriverDiagnosticResult = null;
+        DriverDiagnosticStatusMessage = null;
+        InvalidateDriverDiagnostic();
     }
 
     private bool IsPendingAdministrativeActionCurrent()
@@ -821,6 +1066,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
         _draftVersion++;
         InvalidateAdministrativeAction();
+        InvalidateDriverDiagnostic();
         InvalidatePreview();
         NotifyWorkflowPropertiesChanged();
     }
@@ -930,6 +1176,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanDetectInstallation));
         OnPropertyChanged(nameof(CanSelectConfigurationFile));
         NotifyAdministrativePropertiesChanged();
+        NotifyDriverDiagnosticPropertiesChanged();
     }
 
     private void NotifyAdministrativePropertiesChanged()
@@ -947,7 +1194,39 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(PendingPermissionSid));
         OnPropertyChanged(nameof(PendingPermissionDirectory));
         OnPropertyChanged(nameof(PendingPermissionTargets));
+        NotifyDriverDiagnosticPropertiesChanged();
     }
+
+    private void NotifyDriverDiagnosticPropertiesChanged()
+    {
+        OnPropertyChanged(nameof(IsDriverDiagnosticsAvailable));
+        OnPropertyChanged(nameof(HasPendingDriverDiagnostic));
+        OnPropertyChanged(nameof(HasDriverDiagnosticResult));
+        OnPropertyChanged(nameof(PendingDriverDiagnosticText));
+        OnPropertyChanged(nameof(PendingDriverDiagnosticContactsHardware));
+        OnPropertyChanged(nameof(PendingDriverDiagnosticTool));
+        OnPropertyChanged(nameof(PendingDriverDiagnosticUpsName));
+        OnPropertyChanged(nameof(PendingDriverDiagnosticPort));
+        OnPropertyChanged(nameof(PendingDriverDiagnosticHardwareText));
+        OnPropertyChanged(nameof(NutServiceStateForDriverDiagnostic));
+        OnPropertyChanged(nameof(CanRefreshDriverDiagnostics));
+        OnPropertyChanged(nameof(CanPrepareDriverDiagnostic));
+        OnPropertyChanged(nameof(CanExecuteDriverDiagnostic));
+        OnPropertyChanged(nameof(IsDriverDiagnosticCritical));
+    }
+
+    private static string ToDriverDiagnosticText(NutDriverDiagnosticKind kind) => kind switch
+    {
+        NutDriverDiagnosticKind.UpsdrvctlHelp => "Ajuda do upsdrvctl",
+        NutDriverDiagnosticKind.UpsdrvctlList => "Listar drivers NUT",
+        NutDriverDiagnosticKind.UpsdrvctlStatus => "Consultar status dos drivers",
+        NutDriverDiagnosticKind.UpsdrvctlDryRunStart => "Validar configuração do driver (simulação)",
+        NutDriverDiagnosticKind.DriverHelp => "Ajuda do driver",
+        NutDriverDiagnosticKind.DriverVersion => "Versão do driver",
+        NutDriverDiagnosticKind.DriverVariableList => "Listar variáveis do driver",
+        NutDriverDiagnosticKind.DriverDataDump => "Coletar diagnóstico do dispositivo",
+        _ => "Diagnóstico do NUT"
+    };
 
     private static IReadOnlyList<NutConfigurationFileItemViewModel> CreateFileItems() =>
     [
@@ -983,6 +1262,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     partial void OnIsAdministrativeActionConfirmedChanged(bool value) => OnPropertyChanged(nameof(CanExecuteAdministrativeAction));
 
     partial void OnSelectedWindowsServiceChanged(NutServiceInfo? value) => InvalidateAdministrativeAction();
+
+    partial void OnSelectedConfiguredDriverChanged(NutConfiguredDriver? value) => InvalidateDriverDiagnostic();
+
+    partial void OnIsDriverDiagnosticConfirmedChanged(bool value) => OnPropertyChanged(nameof(CanExecuteDriverDiagnostic));
+
+    partial void OnDriverDiagnosticResultChanged(NutDriverDiagnosticResult? value) => NotifyDriverDiagnosticPropertiesChanged();
 
     partial void OnBackupPathChanged(string? value) => OnPropertyChanged(nameof(HasBackupPath));
 

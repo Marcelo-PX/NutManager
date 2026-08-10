@@ -30,8 +30,8 @@ Only one task should normally be in progress at a time.
 | T14 | DONE | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
 | T15 | DONE | Build graphical NUT configuration editor | Windows-first configuration experience |
 | T16 | DONE | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
-| T17 | READY | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
-| T18 | TODO | Add managed server profiles | Separate local and remote monitoring and management profiles |
+| T17 | DONE | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
+| T18 | READY | Add managed server profiles | Separate local and remote monitoring and management profiles |
 | T19 | TODO | Add remote SSH/SFTP management | Manual remote directory selection and secure management transport |
 | T20 | TODO | Add secure credential storage | Protected remote-management credentials |
 | T21 | TODO | Validate full Windows local and remote administration | End-to-end Windows-first validation |
@@ -190,7 +190,7 @@ Implement explicitly confirmed local Windows service, UAC, ACL, process, and Eve
 
 ## T17 — Add Windows COM-port and driver workflows
 
-**Status:** READY
+**Status:** DONE
 
 Implement explicitly confirmed local COM-port, driver, and NUT-tool diagnostics behind platform interfaces.
 
