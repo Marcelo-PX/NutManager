@@ -428,8 +428,27 @@ public sealed class WindowsSmbRemoteNutConfigurationSession : IRemoteNutConfigur
 
             await _fileSystem.WriteNewFileAsync(backupPath, reservation, CancellationToken.None).ConfigureAwait(false);
             backupReserved = true;
-            if (await IsAnyWriteReparsePointAsync(CancellationToken.None, targetPath, candidatePath, backupPath).ConfigureAwait(false) ||
-                !(await _fileSystem.ReadFileAsync(backupPath, CancellationToken.None).ConfigureAwait(false)).Span.SequenceEqual(reservation))
+            // This is the final TOCTOU guard. No SMB operation occurs between these
+            // revalidations and File.Replace except the replacement itself.
+            var finalTarget = await _fileSystem.ReadFileAsync(targetPath, CancellationToken.None).ConfigureAwait(false);
+            var finalCandidate = await _fileSystem.ReadFileAsync(candidatePath, CancellationToken.None).ConfigureAwait(false);
+            var finalBackup = await _fileSystem.ReadFileAsync(backupPath, CancellationToken.None).ConfigureAwait(false);
+            if (!finalBackup.Span.SequenceEqual(reservation))
+            {
+                InvalidateSafeWriteCapability();
+                return ManualReservationResult(backupPath);
+            }
+
+            if (!FingerprintMatches(finalTarget.Span, request.ExpectedOriginalFingerprint) ||
+                !FingerprintMatches(finalCandidate.Span, request.ExpectedCandidateFingerprint))
+            {
+                var cleanup = await TryDeleteOwnedFileAsync(backupPath, reservation).ConfigureAwait(false);
+                return cleanup
+                    ? new RemoteNutCommitResult(RemoteNutTransportStatus.Failed, message: "A configuração SMB foi alterada externamente antes da substituição final.")
+                    : ManualReservationResult(backupPath);
+            }
+
+            if (await IsAnyWriteReparsePointAsync(CancellationToken.None, targetPath, candidatePath, backupPath).ConfigureAwait(false))
             {
                 var cleanup = await TryDeleteOwnedFileAsync(backupPath, reservation).ConfigureAwait(false);
                 return cleanup
@@ -496,8 +515,37 @@ public sealed class WindowsSmbRemoteNutConfigurationSession : IRemoteNutConfigur
             replacedContent = await _fileSystem.ReadFileAsync(targetPath, CancellationToken.None).ConfigureAwait(false);
             await _fileSystem.WriteNewFileAsync(recoveryPath, reservation, CancellationToken.None).ConfigureAwait(false);
             recoveryReserved = true;
-            if (await IsAnyWriteReparsePointAsync(CancellationToken.None, targetPath, rollbackPath, recoveryPath).ConfigureAwait(false) ||
-                !(await _fileSystem.ReadFileAsync(recoveryPath, CancellationToken.None).ConfigureAwait(false)).Span.SequenceEqual(reservation))
+            // Revalidate every write participant immediately before replacement so the
+            // rollback cannot overwrite an edit made while its owned files were prepared.
+            var finalBackup = await _fileSystem.ReadFileAsync(backupPath, CancellationToken.None).ConfigureAwait(false);
+            var finalRollback = await _fileSystem.ReadFileAsync(rollbackPath, CancellationToken.None).ConfigureAwait(false);
+            var finalTarget = await _fileSystem.ReadFileAsync(targetPath, CancellationToken.None).ConfigureAwait(false);
+            var finalRecovery = await _fileSystem.ReadFileAsync(recoveryPath, CancellationToken.None).ConfigureAwait(false);
+            if (!finalRecovery.Span.SequenceEqual(reservation))
+            {
+                InvalidateSafeWriteCapability();
+                return ManualReservationResult(recoveryPath, isRecoveryPath: true);
+            }
+
+            if (!finalRollback.Span.SequenceEqual(original.Span))
+            {
+                var recoveryCleanup = await TryDeleteOwnedFileAsync(recoveryPath, reservation).ConfigureAwait(false);
+                InvalidateSafeWriteCapability();
+                return recoveryCleanup
+                    ? new RemoteNutCommitResult(RemoteNutTransportStatus.OutcomeUnknown, recoveryPath: recoveryPath, message: "O arquivo temporário de rollback SMB foi alterado antes da substituição.")
+                    : ManualReservationResult(recoveryPath, isRecoveryPath: true);
+            }
+
+            if (!finalBackup.Span.SequenceEqual(original.Span) || !finalTarget.Span.SequenceEqual(replacedContent.Span))
+            {
+                var rollbackCleanup = await TryDeleteOwnedFileAsync(rollbackPath, original).ConfigureAwait(false);
+                var recoveryCleanup = await TryDeleteOwnedFileAsync(recoveryPath, reservation).ConfigureAwait(false);
+                return rollbackCleanup && recoveryCleanup
+                    ? new RemoteNutCommitResult(RemoteNutTransportStatus.Failed, message: "A configuração SMB foi alterada externamente antes do rollback final.")
+                    : ManualReservationResult(recoveryPath, isRecoveryPath: true);
+            }
+
+            if (await IsAnyWriteReparsePointAsync(CancellationToken.None, targetPath, rollbackPath, recoveryPath).ConfigureAwait(false))
             {
                 var rollbackCleanup = await TryDeleteOwnedFileAsync(rollbackPath, original).ConfigureAwait(false);
                 var recoveryCleanup = await TryDeleteOwnedFileAsync(recoveryPath, reservation).ConfigureAwait(false);
@@ -508,6 +556,14 @@ public sealed class WindowsSmbRemoteNutConfigurationSession : IRemoteNutConfigur
 
             replacementPrepared = true;
             await _fileSystem.ReplaceFileAsync(rollbackPath, targetPath, recoveryPath, CancellationToken.None).ConfigureAwait(false);
+            var restoredTarget = await _fileSystem.ReadFileAsync(targetPath, CancellationToken.None).ConfigureAwait(false);
+            var recovery = await _fileSystem.ReadFileAsync(recoveryPath, CancellationToken.None).ConfigureAwait(false);
+            if (!restoredTarget.Span.SequenceEqual(original.Span) || !recovery.Span.SequenceEqual(replacedContent.Span))
+            {
+                InvalidateSafeWriteCapability();
+                return new RemoteNutCommitResult(RemoteNutTransportStatus.OutcomeUnknown, recoveryPath: recoveryPath, message: "O rollback SMB foi concluído, mas o conteúdo final não pôde ser confirmado.");
+            }
+
             return new RemoteNutCommitResult(RemoteNutTransportStatus.Success, recoveryPath: recoveryPath);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)

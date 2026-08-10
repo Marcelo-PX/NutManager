@@ -258,6 +258,69 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         Assert.Equal("MODE=external\n", fileSystem.GetText(targetPath));
     }
 
+    [Theory]
+    [InlineData("target")]
+    [InlineData("candidate")]
+    public async Task SmbCommitFinalRevalidationRejectsExternalParticipantChangesWithoutReplacing(string participant)
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var candidatePath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-candidate.tmp");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var candidate = Encoding.UTF8.GetBytes("MODE=netserver\n");
+        fileSystem.SetFile(targetPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
+        var replacesBeforeCommit = fileSystem.ReplaceCalls;
+        fileSystem.AfterWriteNewFile = path =>
+        {
+            if (path.EndsWith("original.bak", StringComparison.OrdinalIgnoreCase))
+            {
+                fileSystem.SetFile(participant == "target" ? targetPath : candidatePath, "MODE=external\n");
+            }
+        };
+
+        var result = await session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", ".nutmanager-nut.conf-original.bak", Fingerprint(original), Fingerprint(candidate)));
+
+        Assert.Equal(RemoteNutTransportStatus.Failed, result.Status);
+        Assert.Equal(replacesBeforeCommit, fileSystem.ReplaceCalls);
+        Assert.Equal("MODE=external\n", fileSystem.GetText(participant == "target" ? targetPath : candidatePath));
+    }
+
+    [Fact]
+    public async Task SmbCommitFinalRevalidationPreservesAnExternallyChangedBackupReservation()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var backupPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-original.bak");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var candidate = Encoding.UTF8.GetBytes("MODE=netserver\n");
+        fileSystem.SetFile(targetPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
+        var replacesBeforeCommit = fileSystem.ReplaceCalls;
+        fileSystem.AfterWriteNewFile = path =>
+        {
+            if (path.EndsWith("original.bak", StringComparison.OrdinalIgnoreCase))
+            {
+                fileSystem.SetFile(backupPath, "EXTERNAL BACKUP");
+            }
+        };
+
+        var result = await session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", ".nutmanager-nut.conf-original.bak", Fingerprint(original), Fingerprint(candidate)));
+
+        Assert.Equal(RemoteNutTransportStatus.OutcomeUnknown, result.Status);
+        Assert.Equal(replacesBeforeCommit, fileSystem.ReplaceCalls);
+        Assert.Equal("EXTERNAL BACKUP", fileSystem.GetText(backupPath));
+        Assert.False(session.IsSafeWriteCapabilityValidFor(ConfigurationDirectory));
+    }
+
     [Fact]
     public async Task SmbRollbackRestoresOriginalAndPreservesReplacedContentInRecoveryBackup()
     {
@@ -282,6 +345,81 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         Assert.Equal(RemoteNutTransportStatus.Success, result.Status);
         Assert.Equal("MODE=standalone\n", fileSystem.GetText(targetPath));
         Assert.Equal("MODE=netserver\n", fileSystem.GetText(result.RecoveryPath!));
+    }
+
+    [Theory]
+    [InlineData("target", RemoteNutTransportStatus.Failed)]
+    [InlineData("backup", RemoteNutTransportStatus.Failed)]
+    [InlineData("rollback", RemoteNutTransportStatus.OutcomeUnknown)]
+    [InlineData("recovery", RemoteNutTransportStatus.OutcomeUnknown)]
+    public async Task SmbRollbackFinalRevalidationRejectsExternalParticipantChangesWithoutReplacing(string participant, RemoteNutTransportStatus expectedStatus)
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var backupPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-original.bak");
+        var rollbackPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-rollback.tmp");
+        var recoveryPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-recovery.bak");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        fileSystem.SetFile(targetPath, "MODE=netserver\n");
+        fileSystem.SetFile(backupPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        var replacesBeforeRollback = fileSystem.ReplaceCalls;
+        fileSystem.AfterWriteNewFile = path =>
+        {
+            if (!path.EndsWith("recovery.bak", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var changedPath = participant switch
+            {
+                "target" => targetPath,
+                "backup" => backupPath,
+                "rollback" => rollbackPath,
+                _ => recoveryPath
+            };
+            fileSystem.SetFile(changedPath, "EXTERNAL CONTENT");
+        };
+
+        var result = await session.RollbackConfigurationAsync(new RemoteNutConfigurationRollbackRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-original.bak", ".nutmanager-nut.conf-rollback.tmp", ".nutmanager-nut.conf-recovery.bak", Fingerprint(original)));
+
+        Assert.Equal(expectedStatus, result.Status);
+        Assert.Equal(replacesBeforeRollback, fileSystem.ReplaceCalls);
+        Assert.Equal("EXTERNAL CONTENT", fileSystem.GetText(participant switch
+        {
+            "target" => targetPath,
+            "backup" => backupPath,
+            "rollback" => rollbackPath,
+            _ => recoveryPath
+        }));
+    }
+
+    [Theory]
+    [InlineData("target")]
+    [InlineData("recovery")]
+    public async Task SmbRollbackPostReplaceVerificationFailureIsCriticalAndDoesNotRetry(string participant)
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var backupPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-original.bak");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        fileSystem.SetFile(targetPath, "MODE=netserver\n");
+        fileSystem.SetFile(backupPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        var replacesBeforeRollback = fileSystem.ReplaceCalls;
+        fileSystem.AfterReplace = (_, target, recovery) => fileSystem.SetFile(participant == "target" ? target : recovery, "EXTERNAL CONTENT");
+
+        var result = await session.RollbackConfigurationAsync(new RemoteNutConfigurationRollbackRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-original.bak", ".nutmanager-nut.conf-rollback.tmp", ".nutmanager-nut.conf-recovery.bak", Fingerprint(original)));
+
+        Assert.Equal(RemoteNutTransportStatus.OutcomeUnknown, result.Status);
+        Assert.Equal(replacesBeforeRollback + 1, fileSystem.ReplaceCalls);
+        Assert.False(session.IsSafeWriteCapabilityValidFor(ConfigurationDirectory));
     }
 
     [Fact]
@@ -522,6 +660,8 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         public string? FailDeletePathsContaining { get; set; }
         public bool BlockReplace { get; private set; }
         public int ReplaceCalls { get; private set; }
+        public Action<string>? AfterWriteNewFile { get; set; }
+        public Action<string, string, string>? AfterReplace { get; set; }
         public IReadOnlyCollection<string> FilePaths => _files.Keys;
         public TaskCompletionSource ReplaceStarted { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource AllowReplace { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -573,6 +713,8 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
                 throw new IOException("CreateNew collision");
             }
 
+            AfterWriteNewFile?.Invoke(path);
+
             return Task.CompletedTask;
         }
 
@@ -608,6 +750,7 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
             _files[backupPath] = _files[targetPath].ToArray();
             _files[targetPath] = _files[candidatePath].ToArray();
             _files.Remove(candidatePath);
+            AfterReplace?.Invoke(candidatePath, targetPath, backupPath);
         }
 
         public Task<bool> IsReparsePointAsync(string path, CancellationToken cancellationToken) => Task.FromResult(false);
