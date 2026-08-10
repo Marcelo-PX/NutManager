@@ -42,7 +42,7 @@ Do not scan the whole repository unless the task genuinely requires it.
 
 ## Safety
 
-Automated tests and development fixtures must not depend on a real NUT server, UPS, serial port, USB device, service, elevation, or network access. They must not mutate real configuration, services, ACLs, drivers, hardware, or credentials. Use mocks, temporary directories, and deterministic fixtures.
+Automated tests and development fixtures must not depend on external network access, internet connectivity, a real NUT server, UPS, serial port, USB device, service, or elevation. Deterministic in-process or loopback fake servers and ephemeral local sockets are allowed for protocol tests. Tests must not mutate real configuration, services, ACLs, drivers, hardware, or credentials. Use mocks, temporary directories, and deterministic fixtures.
 
 Read-only inspection of a real NUT environment is allowed only when the task explicitly authorizes it. Record exactly what was observed and do not hardcode an environment observation as a universal product rule.
 

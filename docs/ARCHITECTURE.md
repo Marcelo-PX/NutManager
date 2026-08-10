@@ -63,7 +63,11 @@ The active profile is resolved during bootstrap into an immutable runtime contex
 
 ## 5. Persistence
 
-`settings.json` stores polling, timeout, theme, mock-mode, and legacy monitoring compatibility fields. `managed-servers.json` stores managed-profile metadata and the active profile, but never credentials. Both use per-user persistence and recoverable write behavior. T20 owns protected credential storage.
+`settings.json` is per-user UTF-8 JSON for polling, timeout, theme, mock-mode, and legacy monitoring compatibility fields. It uses temporary-file, atomic persistence and has no secrets in its current model.
+
+`managed-servers.json` is schema-versioned, per-user metadata for managed profiles and the active profile. It uses temporary-file, atomic persistence and never contains credentials. T20 owns protected credential storage.
+
+These stores do not use backup or rollback semantics. Backup, recoverable replacement, and rollback belong to the T14 configuration-file pipeline.
 
 ## 6. Monitoring
 
