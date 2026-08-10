@@ -60,6 +60,30 @@ public partial class AdministrationPageView : UserControl
         }
     }
 
+    private async void RemoteConnectCurrentIdentityButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { IsSmb: true } remoteManagement, CanConnectRemote: true })
+        {
+            await remoteManagement.ConnectWithCurrentWindowsIdentityAsync();
+        }
+    }
+
+    private async void RemoteConnectSmbButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { UsesSmbExplicitCredentials: true } remoteManagement, CanConnectRemote: true })
+        {
+            var password = SmbPasswordBox.Text ?? string.Empty;
+            try
+            {
+                await remoteManagement.ConnectWithPasswordAsync(password.AsMemory());
+            }
+            finally
+            {
+                SmbPasswordBox.Text = string.Empty;
+            }
+        }
+    }
+
     private async void RemoteConnectPrivateKeyButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
         if (DataContext is not AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanConnectRemote: true } || TopLevel.GetTopLevel(this) is not { } topLevel)

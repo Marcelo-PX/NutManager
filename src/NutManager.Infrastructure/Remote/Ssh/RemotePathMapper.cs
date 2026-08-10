@@ -1,3 +1,5 @@
+using NutManager.Core.Models;
+
 namespace NutManager.Infrastructure.Remote.Ssh;
 
 /// <summary>
@@ -14,7 +16,9 @@ public static class RemotePathMapper
             throw new ArgumentException("A remote child name must not contain path segments.", nameof(childName));
         }
 
-        return $"{directory.TrimEnd('/', '\\')}/{childName}";
+        return directory.TrimStart().StartsWith("\\\\", StringComparison.Ordinal)
+            ? SmbUncPath.CombineDirectChild(directory, childName)
+            : $"{directory.TrimEnd('/', '\\')}/{childName}";
     }
 
     public static string ToSftpPath(string remotePath)
@@ -24,6 +28,11 @@ public static class RemotePathMapper
         if (trimmed.Any(char.IsControl))
         {
             throw new ArgumentException("The remote path is invalid.", nameof(remotePath));
+        }
+
+        if (trimmed.StartsWith("\\\\", StringComparison.Ordinal))
+        {
+            return SmbUncPath.NormalizeUncPath(trimmed);
         }
 
         if (IsWindowsDrivePath(trimmed))

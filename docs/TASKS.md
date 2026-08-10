@@ -33,7 +33,8 @@ Only one task should normally be in progress at a time.
 | T17 | DONE | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
 | T18 | DONE | Add managed server profiles | Managed profile metadata and strict local/remote management-context separation |
 | T19 | DONE | Add remote SSH/SFTP management | Manual remote directory browse, validation, and secure management transport |
-| T20 | READY | Add secure credential storage | Protected remote-management credentials |
+| T19B | DONE | Add SMB remote configuration transport | Manual UNC SMB configuration access and verified safe replacement |
+| T20 | READY | Add secure credential storage | Protected SSH and SMB remote-management credentials |
 | T21 | TODO | Validate full Windows local and remote administration | End-to-end Windows-first validation |
 | T22 | TODO | Evaluate Linux administrative compatibility | Secondary, best-effort compatibility assessment |
 | T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
@@ -210,7 +211,7 @@ Add SSH/SFTP remote management transport, manual remote configuration-directory 
 
 **Status:** READY
 
-Store remote-management credentials using platform-appropriate protected storage without exposing secrets in logs or the interface.
+Store SSH and SMB remote-management credentials using platform-appropriate protected storage without exposing secrets in logs or the interface.
 
 ## T21 — Validate full Windows local and remote administration
 

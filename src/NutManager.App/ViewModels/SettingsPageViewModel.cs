@@ -62,6 +62,10 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     public IReadOnlyList<ManagedNutServerAccessMode> AccessModes { get; } = Enum.GetValues<ManagedNutServerAccessMode>();
 
+    public IReadOnlyList<RemoteConfigurationTransportKind> ConfigurationTransports { get; } = Enum.GetValues<RemoteConfigurationTransportKind>();
+
+    public IReadOnlyList<SmbAuthenticationMode> SmbAuthenticationModes { get; } = Enum.GetValues<SmbAuthenticationMode>();
+
     public ObservableCollection<ManagedNutServerProfile> ManagedProfiles { get; }
 
     public ManagedNutServerProfileDraftViewModel ProfileDraft { get; }

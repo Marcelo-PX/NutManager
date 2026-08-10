@@ -13,6 +13,7 @@ using NutManager.Infrastructure.NutProtocol;
 using NutManager.Infrastructure.Persistence;
 using NutManager.Infrastructure.Polling;
 using NutManager.Infrastructure.Platform.Windows;
+using NutManager.Infrastructure.Remote.Smb;
 using NutManager.Infrastructure.Remote.Ssh;
 
 namespace NutManager.App;
@@ -61,12 +62,14 @@ public partial class App : Application
         var overview = new OverviewPageViewModel(polling);
         var devices = new DevicesPageViewModel(client, endpoint, polling, runtimeProfile.Profile.Monitoring.PreferredUpsName);
         var isLocalManagement = runtimeProfile.Profile.Management.Mode == NutManagementMode.Local;
+        IRemoteNutConfigurationTransport? remoteTransport = runtimeProfile.Profile.Management.ConfigurationTransport switch
+        {
+            RemoteConfigurationTransportKind.Smb => new WindowsSmbRemoteNutConfigurationTransport(),
+            _ => new SshNetRemoteNutManagementTransport()
+        };
         var remoteManagement = isLocalManagement
             ? null
-            : new RemoteManagementSessionViewModel(
-                runtimeProfile.Profile,
-                new SshNetRemoteNutManagementTransport(),
-                profileMutator);
+            : new RemoteManagementSessionViewModel(runtimeProfile.Profile, remoteTransport, profileMutator);
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,

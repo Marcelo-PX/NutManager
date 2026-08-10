@@ -52,14 +52,22 @@ public sealed class ManagedNutServerProfileUpdateService
         CancellationToken cancellationToken = default) =>
         UpdateRemoteProfileAsync(
             expectedProfile,
-            current => new NutManagementProfile(
-                NutManagementMode.Remote,
-                current.Management.ManagementHost,
-                directory,
-                current.Management.SshPort,
-                current.Management.SshUsername,
-                current.Management.TrustedHostKeyFingerprint,
-                current.Management.TrustedHostKeyAlgorithm),
+            current => current.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
+                ? new NutManagementProfile(
+                    NutManagementMode.Remote,
+                    configurationTransport: RemoteConfigurationTransportKind.Smb,
+                    smbSharePath: current.Management.SmbSharePath,
+                    smbConfigurationDirectory: directory,
+                    smbAuthenticationMode: current.Management.SmbAuthenticationMode,
+                    smbUsername: current.Management.SmbUsername)
+                : new NutManagementProfile(
+                    NutManagementMode.Remote,
+                    current.Management.ManagementHost,
+                    directory,
+                    current.Management.SshPort,
+                    current.Management.SshUsername,
+                    current.Management.TrustedHostKeyFingerprint,
+                    current.Management.TrustedHostKeyAlgorithm),
             cancellationToken);
 
     public Task<ManagedNutServerProfile?> ForgetTrustedHostKeyAsync(
@@ -217,7 +225,7 @@ public sealed class ManagedNutServerProfileUpdateService
 
     private static ManagedNutServerProfile PreserveCurrentTrustMetadata(ManagedNutServerProfile current, ManagedNutServerProfile updated)
     {
-        if (updated.Management.Mode != NutManagementMode.Remote)
+        if (updated.Management.Mode != NutManagementMode.Remote || updated.Management.ConfigurationTransport != RemoteConfigurationTransportKind.SshSftp)
         {
             return updated;
         }
@@ -238,9 +246,15 @@ public sealed class ManagedNutServerProfileUpdateService
     private static bool MatchesSessionIdentity(ManagedNutServerProfile current, ManagedNutServerProfile expected) =>
         current.Management.Mode == NutManagementMode.Remote &&
         expected.Management.Mode == NutManagementMode.Remote &&
+        current.Management.ConfigurationTransport == expected.Management.ConfigurationTransport &&
+        (current.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
+            ? string.Equals(current.Management.SmbSharePath, expected.Management.SmbSharePath, StringComparison.OrdinalIgnoreCase) &&
+              current.Management.SmbAuthenticationMode == expected.Management.SmbAuthenticationMode &&
+              string.Equals(current.Management.SmbUsername, expected.Management.SmbUsername, StringComparison.Ordinal)
+            :
         string.Equals(current.Management.ManagementHost, expected.Management.ManagementHost, StringComparison.Ordinal) &&
         current.Management.SshPort == expected.Management.SshPort &&
         string.Equals(current.Management.SshUsername, expected.Management.SshUsername, StringComparison.Ordinal) &&
         string.Equals(current.Management.TrustedHostKeyFingerprint, expected.Management.TrustedHostKeyFingerprint, StringComparison.Ordinal) &&
-        string.Equals(current.Management.TrustedHostKeyAlgorithm, expected.Management.TrustedHostKeyAlgorithm, StringComparison.Ordinal);
+        string.Equals(current.Management.TrustedHostKeyAlgorithm, expected.Management.TrustedHostKeyAlgorithm, StringComparison.Ordinal));
 }

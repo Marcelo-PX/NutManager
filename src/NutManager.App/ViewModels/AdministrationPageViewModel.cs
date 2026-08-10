@@ -203,10 +203,14 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public string RemoteManagementHost => _profileContext?.Profile.Management.ManagementHost ?? UnavailableText;
 
-    public string RemoteConfigurationDirectory => _profileContext?.Profile.Management.RemoteConfigurationDirectory ?? "Não configurado";
+    public string RemoteConfigurationDirectory => _profileContext?.Profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
+        ? _profileContext.Profile.Management.SmbConfigurationDirectory ?? _profileContext.Profile.Management.SmbSharePath ?? "Não configurado"
+        : _profileContext?.Profile.Management.RemoteConfigurationDirectory ?? "Não configurado";
 
     public string ManagementAvailabilityText => IsRemoteManagementProfile
-        ? _remoteManagement?.StatusMessage ?? "Conecte a sessão SSH/SFTP para gerenciar a configuração remota."
+        ? _remoteManagement?.StatusMessage ?? (_remoteManagement?.IsSmb == true
+            ? "Conecte a sessão SMB para gerenciar os arquivos NUT remotos."
+            : "Conecte a sessão SSH/SFTP para gerenciar a configuração remota.")
         : "Gerenciamento local disponível conforme as permissões do perfil.";
 
     public RemoteManagementSessionViewModel? RemoteManagement => _remoteManagement;
@@ -1431,12 +1435,16 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         {
             var present = validation?.PresentFileNames.Contains(file.FileName, StringComparer.OrdinalIgnoreCase) == true;
             file.ApplyRemoteInfo(
-                validation?.IsValid == true ? NutManager.Infrastructure.Remote.Ssh.RemotePathMapper.Combine(validation.Directory, file.FileName) : null,
+                validation?.IsValid == true ? GetRemoteFilePath(validation.Directory, file.FileName) : null,
                 present);
         }
 
         NotifyWorkflowPropertiesChanged();
     }
+
+    private string GetRemoteFilePath(string directory, string fileName) => _remoteManagement?.IsSmb == true
+        ? SmbUncPath.CombineDirectChild(directory, fileName)
+        : NutManager.Infrastructure.Remote.Ssh.RemotePathMapper.Combine(directory, fileName);
 
     private void OnRemoteManagementPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {

@@ -46,7 +46,7 @@ NutManager
 │   └── NUT TCP protocol
 └── Management
     ├── Local Windows adapter
-    └── Remote SSH/SFTP transport
+    └── Remote configuration transports: SSH/SFTP or SMB
 ```
 
 The managed-profile model is implemented through `ManagedNutServerProfile`, `NutMonitoringProfile`, `NutManagementProfile`, `ManagedNutServerProfiles`, `ManagedServerCapabilities`, and `ManagedNutServerRuntimeContext`.
@@ -65,7 +65,7 @@ The active profile is resolved during bootstrap into an immutable runtime contex
 
 `settings.json` is per-user UTF-8 JSON for polling, timeout, theme, mock-mode, and legacy monitoring compatibility fields. It uses temporary-file, atomic persistence and has no secrets in its current model.
 
-`managed-servers.json` is schema-versioned, per-user metadata for managed profiles and the active profile. Schema v2 adds remote SSH port, user name, and a pinned host-key fingerprint/algorithm. It uses temporary-file, atomic persistence and never contains credentials; passwords, passphrases, and private-key material are session-only. T20 owns protected credential storage.
+`managed-servers.json` is schema-versioned, per-user metadata for managed profiles and the active profile. Schema v3 retains SSH metadata and adds an explicit SMB UNC share, optional child configuration directory, authentication mode, and non-secret user name. It uses temporary-file, atomic persistence and never contains passwords, passphrases, or private-key material; those remain session-only. T20 owns protected SSH and SMB credential storage.
 
 These stores do not use backup or rollback semantics. Backup, recoverable replacement, and rollback belong to the T14 configuration-file pipeline.
 
@@ -103,7 +103,7 @@ The adapter implements local installation detection, service metadata and contro
 
 ## 9. Local and remote management boundary
 
-Local Windows management is implemented through T17. A Remote profile uses an explicit SSH/SFTP session with strict pinned-host-key verification; an unknown key requires an explicit trust action, and a mismatch is rejected. Remote configuration directories are manually browsed and validated without autodiscovery or local-management fallback. Remote profiles may read and prepare configuration changes after validation. Writes remain read-only by default and require both the profile's Manage policy and an explicit capability probe on a Windows/OpenSSH server. That probe uses same-directory temporary files and `File.Replace`; the remote pipeline preserves T14-style fingerprints, candidate verification, backup, post-write verification, and recovery rollback through fixed structured remote operations.
+Local Windows management is implemented through T17. A Remote profile explicitly selects SSH/SFTP or SMB for configuration files; neither transport accesses a remote NutManager instance. SSH/SFTP uses strict pinned-host-key verification. SMB uses only a manually supplied UNC share and either the current Windows identity or a session-only WNet connection, with no share autodiscovery or mapped drive. Remote profiles may read and prepare configuration changes after validation. Writes remain read-only by default and require both the profile's Manage policy and an exact-directory capability probe: Windows/OpenSSH safe replacement for SSH/SFTP, or verified UNC `File.Replace` semantics for SMB. The remote pipeline preserves T14-style fingerprints, candidate verification, backup, post-write verification, rollback, and recovery paths.
 
 ## 10. Windows-first CI and packaging
 

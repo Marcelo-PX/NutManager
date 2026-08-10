@@ -143,6 +143,35 @@ public sealed class RemoteManagementSessionViewModelTests
         Assert.False(viewModel.CanUseCurrentDirectory);
     }
 
+    [Fact]
+    public async Task SmbProfileUsesOnlyTheSmbConnectionRequestAndDoesNotRequireHostKeyTrust()
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "SMB",
+            new NutMonitoringProfile("monitor.example"),
+            new NutManagementProfile(
+                NutManagementMode.Remote,
+                configurationTransport: RemoteConfigurationTransportKind.Smb,
+                smbSharePath: @"\\server\share",
+                smbConfigurationDirectory: @"\\server\share\NUT\etc"),
+            ManagedNutServerAccessMode.Manage);
+        var session = new FakeSession(RemoteNutPlatform.Unknown);
+        var transport = new FakeSmbTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, session));
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport);
+
+        await viewModel.ConnectWithCurrentWindowsIdentityAsync();
+        await viewModel.ValidateCurrentDirectoryAsync();
+        await viewModel.ProbeWriteCapabilityAsync();
+
+        Assert.True(viewModel.IsSmb);
+        Assert.False(viewModel.IsSshSftp);
+        Assert.False(viewModel.CanTrustHostKey);
+        Assert.Equal(1, transport.ConnectCalls);
+        Assert.IsType<SmbRemoteNutConnectionRequest>(transport.LastRequest);
+        Assert.True(viewModel.CanEditConfiguration);
+    }
+
     private static ManagedNutServerProfile RemoteProfile(ManagedNutServerAccessMode accessMode) => new(
         Guid.NewGuid(),
         "Remote",
@@ -168,6 +197,24 @@ public sealed class RemoteManagementSessionViewModelTests
         private readonly RemoteNutConnectionResult _result;
         public FakeTransport(RemoteNutConnectionResult result) => _result = result;
         public Task<RemoteNutConnectionResult> ConnectAsync(RemoteNutConnectionRequest request, CancellationToken cancellationToken = default) => Task.FromResult(_result);
+    }
+
+    private sealed class FakeSmbTransport : IRemoteNutConfigurationTransport
+    {
+        private readonly RemoteNutConnectionResult _result;
+
+        public FakeSmbTransport(RemoteNutConnectionResult result) => _result = result;
+
+        public int ConnectCalls { get; private set; }
+
+        public RemoteNutConfigurationConnectionRequest? LastRequest { get; private set; }
+
+        public Task<RemoteNutConnectionResult> ConnectAsync(RemoteNutConfigurationConnectionRequest request, CancellationToken cancellationToken = default)
+        {
+            ConnectCalls++;
+            LastRequest = request;
+            return Task.FromResult(_result);
+        }
     }
 
     private sealed class FakeSession : IRemoteNutManagementSession

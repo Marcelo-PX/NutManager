@@ -13,13 +13,13 @@ namespace NutManager.Infrastructure.Configuration;
 public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePipeline
 {
     private const string RedactedText = "<redacted>";
-    private readonly IRemoteNutManagementSession _session;
+    private readonly IRemoteNutConfigurationSession _session;
     private readonly string _configurationDirectory;
     private readonly NutConfigurationParser _parser;
     private readonly bool _canWrite;
 
     public RemoteNutConfigurationFilePipeline(
-        IRemoteNutManagementSession session,
+        IRemoteNutConfigurationSession session,
         string configurationDirectory,
         bool canWrite,
         NutConfigurationParser? parser = null)
@@ -98,9 +98,9 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             return new NutConfigurationApplyResult(NutConfigurationApplyStatus.NoChanges, message: "Configuration has no changes to apply.");
         }
 
-        if (!_canWrite || !_session.IsSafeWriteCapabilityValidFor(_configurationDirectory) || _session.Platform != RemoteNutPlatform.Windows)
+        if (!_canWrite || !_session.IsSafeWriteCapabilityValidFor(_configurationDirectory))
         {
-            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.Failed, message: "Remote configuration writing is available only after a verified Windows safe-write capability probe.");
+            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.Failed, message: "Remote configuration writing is available only after a verified safe-write capability probe.");
         }
 
         if (cancellationToken.IsCancellationRequested)
