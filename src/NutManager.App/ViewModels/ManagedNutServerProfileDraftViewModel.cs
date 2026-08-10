@@ -48,7 +48,26 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
     [ObservableProperty]
     private string? _trustedHostKeyAlgorithm;
 
+    [ObservableProperty]
+    private RemoteConfigurationTransportKind _configurationTransport = RemoteConfigurationTransportKind.SshSftp;
+
+    [ObservableProperty]
+    private string? _smbSharePath;
+
+    [ObservableProperty]
+    private string? _smbConfigurationDirectory;
+
+    [ObservableProperty]
+    private SmbAuthenticationMode _smbAuthenticationMode = SmbAuthenticationMode.CurrentWindowsIdentity;
+
+    [ObservableProperty]
+    private string? _smbUsername;
+
     public bool IsRemote => ManagementMode == NutManagementMode.Remote;
+
+    public bool IsSshSftp => IsRemote && ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp;
+
+    public bool IsSmb => IsRemote && ConfigurationTransport == RemoteConfigurationTransportKind.Smb;
 
     public static ManagedNutServerProfileDraftViewModel CreateLocal() => new(new ManagedNutServerProfile(
         Guid.NewGuid(),
@@ -89,6 +108,11 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SshUsername = profile.Management.SshUsername;
         TrustedHostKeyFingerprint = profile.Management.TrustedHostKeyFingerprint;
         TrustedHostKeyAlgorithm = profile.Management.TrustedHostKeyAlgorithm;
+        ConfigurationTransport = profile.Management.ConfigurationTransport;
+        SmbSharePath = profile.Management.SmbSharePath;
+        SmbConfigurationDirectory = profile.Management.SmbConfigurationDirectory;
+        SmbAuthenticationMode = profile.Management.SmbAuthenticationMode;
+        SmbUsername = profile.Management.SmbUsername;
     }
 
     public void CopyFrom(ManagedNutServerProfileDraftViewModel source)
@@ -107,6 +131,11 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SshUsername = source.SshUsername;
         TrustedHostKeyFingerprint = source.TrustedHostKeyFingerprint;
         TrustedHostKeyAlgorithm = source.TrustedHostKeyAlgorithm;
+        ConfigurationTransport = source.ConfigurationTransport;
+        SmbSharePath = source.SmbSharePath;
+        SmbConfigurationDirectory = source.SmbConfigurationDirectory;
+        SmbAuthenticationMode = source.SmbAuthenticationMode;
+        SmbUsername = source.SmbUsername;
     }
 
     public ManagedNutServerProfile CreateProfile() => new(
@@ -123,7 +152,12 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
             int.Parse(SshPort, System.Globalization.CultureInfo.InvariantCulture),
             SshUsername,
             TrustedHostKeyFingerprint,
-            TrustedHostKeyAlgorithm),
+            TrustedHostKeyAlgorithm,
+            ConfigurationTransport,
+            SmbSharePath,
+            SmbConfigurationDirectory,
+            SmbAuthenticationMode,
+            SmbUsername),
         AccessMode);
 
     public bool Matches(ManagedNutServerProfile profile)
@@ -141,8 +175,24 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
                string.Equals(SshPort, profile.Management.SshPort.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal) &&
                string.Equals(SshUsername, profile.Management.SshUsername, StringComparison.Ordinal) &&
                string.Equals(TrustedHostKeyFingerprint, profile.Management.TrustedHostKeyFingerprint, StringComparison.Ordinal) &&
-               string.Equals(TrustedHostKeyAlgorithm, profile.Management.TrustedHostKeyAlgorithm, StringComparison.Ordinal);
+               string.Equals(TrustedHostKeyAlgorithm, profile.Management.TrustedHostKeyAlgorithm, StringComparison.Ordinal) &&
+               ConfigurationTransport == profile.Management.ConfigurationTransport &&
+               string.Equals(SmbSharePath, profile.Management.SmbSharePath, StringComparison.Ordinal) &&
+               string.Equals(SmbConfigurationDirectory, profile.Management.SmbConfigurationDirectory, StringComparison.Ordinal) &&
+               SmbAuthenticationMode == profile.Management.SmbAuthenticationMode &&
+               string.Equals(SmbUsername, profile.Management.SmbUsername, StringComparison.Ordinal);
     }
 
-    partial void OnManagementModeChanged(NutManagementMode value) => OnPropertyChanged(nameof(IsRemote));
+    partial void OnManagementModeChanged(NutManagementMode value)
+    {
+        OnPropertyChanged(nameof(IsRemote));
+        OnPropertyChanged(nameof(IsSshSftp));
+        OnPropertyChanged(nameof(IsSmb));
+    }
+
+    partial void OnConfigurationTransportChanged(RemoteConfigurationTransportKind value)
+    {
+        OnPropertyChanged(nameof(IsSshSftp));
+        OnPropertyChanged(nameof(IsSmb));
+    }
 }

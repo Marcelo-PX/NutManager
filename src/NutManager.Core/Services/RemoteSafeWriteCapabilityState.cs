@@ -7,16 +7,19 @@ namespace NutManager.Core.Services;
 /// </summary>
 public sealed class RemoteSafeWriteCapabilityState
 {
+    private readonly StringComparer _directoryComparer;
     private string? _verifiedConfigurationDirectory;
     private bool _terminallyInvalidated;
+
+    public RemoteSafeWriteCapabilityState(StringComparer? directoryComparer = null) =>
+        _directoryComparer = directoryComparer ?? StringComparer.Ordinal;
 
     public bool IsValidFor(string normalizedConfigurationDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(normalizedConfigurationDirectory);
-        return !_terminallyInvalidated && string.Equals(
+        return !_terminallyInvalidated && _directoryComparer.Equals(
             _verifiedConfigurationDirectory,
-            normalizedConfigurationDirectory,
-            StringComparison.Ordinal);
+            normalizedConfigurationDirectory);
     }
 
     /// <summary>
@@ -48,7 +51,7 @@ public sealed class RemoteSafeWriteCapabilityState
 
     /// <summary>
     /// Makes the session permanently ineligible for remote writes after an indeterminate
-    /// commit or rollback outcome. Only a new SSH session may establish a new capability.
+    /// commit or rollback outcome. Only a new transport session may establish a new capability.
     /// </summary>
     public void InvalidateSession()
     {

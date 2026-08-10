@@ -153,6 +153,8 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
 
     public string HomeDirectory { get; }
 
+    public IRemoteNutConfigurationPathPolicy PathPolicy => SftpRemoteNutConfigurationPathPolicy.Instance;
+
     public async Task<RemoteNutDirectoryListing> BrowseDirectoryAsync(string directory, CancellationToken cancellationToken = default)
     {
         var sftpPath = RemotePathMapper.ToSftpPath(directory);
@@ -428,7 +430,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         }
     }
 
-    public async Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default)
+    public async Task<RemoteNutCommitResult> CommitConfigurationAsync(RemoteNutConfigurationCommitRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
@@ -456,7 +458,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         }
     }
 
-    public async Task<RemoteNutCommitResult> RollbackWindowsConfigurationAsync(RemoteNutWindowsRollbackRequest request, CancellationToken cancellationToken = default)
+    public async Task<RemoteNutCommitResult> RollbackConfigurationAsync(RemoteNutConfigurationRollbackRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (Platform != RemoteNutPlatform.Windows || !RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) ||
@@ -611,7 +613,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
 
     private static bool IsGeneratedBackupName(string name) => RemoteNutGeneratedBackupFile.IsValidName(name);
 
-    private static bool IsCommitRequestSafe(RemoteNutWindowsCommitRequest request) =>
+    private static bool IsCommitRequestSafe(RemoteNutConfigurationCommitRequest request) =>
         RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) &&
         RemoteNutGeneratedTemporaryFile.IsValidName(request.TemporaryFileName) &&
         IsGeneratedBackupName(request.BackupFileName);

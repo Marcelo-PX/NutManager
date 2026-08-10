@@ -11,14 +11,14 @@ namespace NutManager.App.ViewModels;
 public sealed partial class RemoteManagementSessionViewModel : ObservableObject, IAsyncDisposable
 {
     private ManagedNutServerProfile _profile;
-    private readonly IRemoteNutManagementTransport _transport;
+    private readonly IRemoteNutConfigurationTransport _transport;
     private readonly ManagedNutServerProfileUpdateService? _profileUpdater;
-    private IRemoteNutManagementSession? _session;
+    private IRemoteNutConfigurationSession? _session;
     private RemoteNutDirectoryValidationResult? _directoryValidation;
 
     public RemoteManagementSessionViewModel(
         ManagedNutServerProfile profile,
-        IRemoteNutManagementTransport transport,
+        IRemoteNutConfigurationTransport transport,
         ManagedNutServerProfileUpdateService? profileUpdater = null)
     {
         if (profile.Management.Mode != NutManagementMode.Remote)
@@ -30,7 +30,9 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
         _profileUpdater = profileUpdater;
         DirectoryEntries = new ObservableCollection<RemoteNutDirectoryEntry>();
-        CurrentDirectory = profile.Management.RemoteConfigurationDirectory ?? string.Empty;
+        CurrentDirectory = profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
+            ? profile.Management.SmbConfigurationDirectory ?? profile.Management.SmbSharePath ?? string.Empty
+            : profile.Management.RemoteConfigurationDirectory ?? string.Empty;
     }
 
     public event Action<INutConfigurationFilePipeline?, RemoteNutDirectoryValidationResult?, bool>? ConfigurationContextChanged;
@@ -58,7 +60,17 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     [ObservableProperty]
     private bool _isBusy;
 
-    public string ManagementHost => _profile.Management.ManagementHost!;
+    public bool IsSshSftp => _profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp;
+
+    public bool IsSmb => _profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb;
+
+    public bool UsesSmbExplicitCredentials => IsSmb && _profile.Management.SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials;
+
+    public bool UsesSmbCurrentWindowsIdentity => IsSmb && !UsesSmbExplicitCredentials;
+
+    public string ConfigurationTransportText => IsSmb ? "SMB" : "SSH/SFTP";
+
+    public string ManagementHost => _profile.Management.ManagementHost ?? "Não aplicável";
 
     public int SshPort => _profile.Management.SshPort;
 
@@ -68,15 +80,23 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public string TrustedHostKeyAlgorithm => _profile.Management.TrustedHostKeyAlgorithm ?? "Indisponível";
 
+    public string SmbSharePath => _profile.Management.SmbSharePath ?? "Não configurado";
+
+    public string SmbAuthenticationModeText => _profile.Management.SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials
+        ? "Credenciais explícitas da sessão"
+        : "Usuário Windows atual";
+
+    public string SmbUsername => _profile.Management.SmbUsername ?? "Não aplicável";
+
     public bool IsConnected => _session is not null;
 
     public bool IsDirectoryValidated => _directoryValidation?.IsValid == true;
 
-    public bool CanConnect => !IsBusy && !IsConnected && !string.IsNullOrWhiteSpace(_profile.Management.SshUsername);
+    public bool CanConnect => !IsBusy && !IsConnected && (IsSmb || !string.IsNullOrWhiteSpace(_profile.Management.SshUsername));
 
     public bool CanDisconnect => !IsBusy && IsConnected;
 
-    public bool CanTrustHostKey => !IsBusy && ConnectionState == RemoteNutConnectionState.HostKeyTrustRequired && PresentedHostKey is not null && _profileUpdater is not null;
+    public bool CanTrustHostKey => IsSshSftp && !IsBusy && ConnectionState == RemoteNutConnectionState.HostKeyTrustRequired && PresentedHostKey is not null && _profileUpdater is not null;
 
     public bool CanBrowse => !IsBusy && IsConnected;
 
@@ -94,7 +114,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public bool CanEditConfiguration =>
         _profile.AccessMode == ManagedNutServerAccessMode.Manage &&
-        WriteCapability is { IsSupported: true, Platform: RemoteNutPlatform.Windows };
+        WriteCapability is { IsSupported: true } && (IsSmb || Platform == RemoteNutPlatform.Windows);
 
     public string ConnectionStateText => ConnectionState switch
     {
@@ -121,8 +141,10 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     public string ReadCapabilityText => CanReadConfiguration ? "Disponível" : "Valide um diretório remoto para habilitar a leitura.";
 
     public string WriteCapabilityText => CanEditConfiguration
-        ? "Verificada para Windows/OpenSSH"
-        : WriteCapability?.Message ?? "A escrita remota requer verificação explícita de capacidade em um servidor Windows/OpenSSH.";
+        ? IsSmb ? "Verificada para este diretório SMB" : "Verificada para Windows/OpenSSH"
+        : WriteCapability?.Message ?? (IsSmb
+            ? "A escrita SMB requer verificação explícita de File.Replace neste diretório."
+            : "A escrita remota requer verificação explícita de capacidade em um servidor Windows/OpenSSH.");
 
     public bool IsWriteCapabilityCritical => !string.IsNullOrWhiteSpace(WriteCapability?.CleanupPath);
 
@@ -130,13 +152,31 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public async Task ConnectWithPasswordAsync(ReadOnlyMemory<char> password, CancellationToken cancellationToken = default)
     {
+        if (IsSmb)
+        {
+            if (_profile.Management.SmbAuthenticationMode != SmbAuthenticationMode.ExplicitCredentials)
+            {
+                await ConnectWithCurrentWindowsIdentityAsync(cancellationToken);
+                return;
+            }
+
+            if (password.IsEmpty)
+            {
+                StatusMessage = "Informe a senha da sessão SMB.";
+                return;
+            }
+
+            await ConnectSmbAsync(password, cancellationToken);
+            return;
+        }
+
         if (password.IsEmpty)
         {
             StatusMessage = "Informe uma credencial de sessão para conectar.";
             return;
         }
 
-        await ConnectAsync(new RemoteNutPasswordAuthentication(password), cancellationToken);
+        await ConnectSshAsync(new RemoteNutPasswordAuthentication(password), cancellationToken);
     }
 
     public async Task ConnectWithPrivateKeyAsync(string keyPath, ReadOnlyMemory<char> passphrase = default, CancellationToken cancellationToken = default)
@@ -147,7 +187,17 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
             return;
         }
 
-        await ConnectAsync(new RemoteNutPrivateKeyAuthentication(keyPath, passphrase), cancellationToken);
+        await ConnectSshAsync(new RemoteNutPrivateKeyAuthentication(keyPath, passphrase), cancellationToken);
+    }
+
+    public async Task ConnectWithCurrentWindowsIdentityAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsSmb)
+        {
+            return;
+        }
+
+        await ConnectSmbAsync(default, cancellationToken);
     }
 
     public async Task TrustPresentedHostKeyAsync(CancellationToken cancellationToken = default)
@@ -223,18 +273,26 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public async Task BrowseParentAsync(CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(CurrentDirectory))
+        if (_session is null || string.IsNullOrWhiteSpace(CurrentDirectory))
         {
             return;
         }
 
-        var slash = CurrentDirectory.TrimEnd('/').LastIndexOf('/');
-        if (slash < 0)
+        var parent = _session.PathPolicy.GetParentDirectory(CurrentDirectory);
+        if (parent is not null)
         {
-            return;
+            await BrowseDirectoryAsync(parent, cancellationToken);
+        }
+    }
+
+    public string CombineConfigurationFilePath(string directory, string fileName)
+    {
+        if (_session is null)
+        {
+            throw new InvalidOperationException("A remote configuration session is required to compose a configuration path.");
         }
 
-        await BrowseDirectoryAsync(slash == 0 ? "/" : CurrentDirectory[..slash], cancellationToken);
+        return _session.PathPolicy.CombineDirectChild(directory, fileName);
     }
 
     public Task BrowseChildAsync(RemoteNutDirectoryEntry? entry, CancellationToken cancellationToken = default) =>
@@ -381,9 +439,9 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         OnPropertyChanged(nameof(WriteCapabilityText));
     }
 
-    private async Task ConnectAsync(RemoteNutAuthentication authentication, CancellationToken cancellationToken)
+    private async Task ConnectSshAsync(RemoteNutAuthentication authentication, CancellationToken cancellationToken)
     {
-        if (!CanConnect)
+        if (!CanConnect || !IsSshSftp)
         {
             StatusMessage = "Configure um usuário SSH antes de conectar.";
             return;
@@ -403,21 +461,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
                     _profile.Management.TrustedHostKeyFingerprint,
                     authentication),
                 cancellationToken);
-            ConnectionState = result.State;
-            PresentedHostKey = result.HostKey;
-            StatusMessage = result.Message;
-            if (result.Session is null)
-            {
-                return;
-            }
-
-            _session = result.Session;
-            CurrentDirectory = _profile.Management.RemoteConfigurationDirectory ?? result.Session.HomeDirectory;
-            Platform = result.Session.Platform;
-            WriteCapability = null;
-            DirectoryEntries.Clear();
-            _directoryValidation = null;
-            NotifyConfigurationContextChanged();
+            AcceptConnectionResult(result, _profile.Management.RemoteConfigurationDirectory);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -433,6 +477,65 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         {
             IsBusy = false;
         }
+    }
+
+    private async Task ConnectSmbAsync(ReadOnlyMemory<char> password, CancellationToken cancellationToken)
+    {
+        if (!CanConnect || !IsSmb)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        ConnectionState = RemoteNutConnectionState.Connecting;
+        StatusMessage = null;
+        try
+        {
+            var management = _profile.Management;
+            var result = await _transport.ConnectAsync(
+                new SmbRemoteNutConnectionRequest(
+                    _profile.Id,
+                    management.SmbSharePath!,
+                    management.SmbAuthenticationMode,
+                    management.SmbUsername,
+                    password,
+                    _profile.AccessMode == ManagedNutServerAccessMode.Manage),
+                cancellationToken);
+            AcceptConnectionResult(result, management.SmbConfigurationDirectory ?? management.SmbSharePath);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            ConnectionState = RemoteNutConnectionState.Disconnected;
+            StatusMessage = "A conexão SMB foi cancelada.";
+        }
+        catch
+        {
+            ConnectionState = RemoteNutConnectionState.ConnectionFailed;
+            StatusMessage = "Não foi possível estabelecer a conexão SMB.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void AcceptConnectionResult(RemoteNutConnectionResult result, string? initialDirectory)
+    {
+        ConnectionState = result.State;
+        PresentedHostKey = IsSshSftp ? result.HostKey : null;
+        StatusMessage = result.Message;
+        if (result.Session is null)
+        {
+            return;
+        }
+
+        _session = result.Session;
+        CurrentDirectory = initialDirectory ?? result.Session.HomeDirectory;
+        Platform = result.Session.Platform;
+        WriteCapability = null;
+        DirectoryEntries.Clear();
+        _directoryValidation = null;
+        NotifyConfigurationContextChanged();
     }
 
     private void InvalidateDirectoryValidation()
@@ -462,6 +565,14 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         OnPropertyChanged(nameof(SshUsername));
         OnPropertyChanged(nameof(TrustedHostKeyFingerprint));
         OnPropertyChanged(nameof(TrustedHostKeyAlgorithm));
+        OnPropertyChanged(nameof(SmbSharePath));
+        OnPropertyChanged(nameof(SmbAuthenticationModeText));
+        OnPropertyChanged(nameof(SmbUsername));
+        OnPropertyChanged(nameof(IsSshSftp));
+        OnPropertyChanged(nameof(IsSmb));
+        OnPropertyChanged(nameof(UsesSmbExplicitCredentials));
+        OnPropertyChanged(nameof(UsesSmbCurrentWindowsIdentity));
+        OnPropertyChanged(nameof(ConfigurationTransportText));
         OnPropertyChanged(nameof(CanConnect));
         OnPropertyChanged(nameof(CanTrustHostKey));
     }

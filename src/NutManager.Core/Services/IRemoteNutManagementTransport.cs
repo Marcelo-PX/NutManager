@@ -165,9 +165,13 @@ public sealed class RemoteNutPrivateKeyAuthentication : RemoteNutAuthentication
     public ReadOnlyMemory<char> Passphrase { get; }
 }
 
-public sealed class RemoteNutConnectionRequest
+/// <summary>
+/// Base request for a configuration-file transport. It intentionally carries no
+/// monitoring endpoint because configuration access never redirects NUT TCP polling.
+/// </summary>
+public abstract class RemoteNutConfigurationConnectionRequest
 {
-    public RemoteNutConnectionRequest(Guid profileId, string host, int port, string username, string? trustedHostKeyFingerprint, RemoteNutAuthentication authentication)
+    protected RemoteNutConfigurationConnectionRequest(Guid profileId)
     {
         if (profileId == Guid.Empty)
         {
@@ -175,6 +179,16 @@ public sealed class RemoteNutConnectionRequest
         }
 
         ProfileId = profileId;
+    }
+
+    public Guid ProfileId { get; }
+}
+
+public sealed class RemoteNutConnectionRequest : RemoteNutConfigurationConnectionRequest
+{
+    public RemoteNutConnectionRequest(Guid profileId, string host, int port, string username, string? trustedHostKeyFingerprint, RemoteNutAuthentication authentication)
+        : base(profileId)
+    {
         Host = NutMonitoringProfile.ValidateRequiredText(host, nameof(host), 255);
         if (port is < 1 or > 65535)
         {
@@ -187,8 +201,6 @@ public sealed class RemoteNutConnectionRequest
         Authentication = authentication ?? throw new ArgumentNullException(nameof(authentication));
     }
 
-    public Guid ProfileId { get; }
-
     public string Host { get; }
 
     public int Port { get; }
@@ -200,9 +212,52 @@ public sealed class RemoteNutConnectionRequest
     public RemoteNutAuthentication Authentication { get; }
 }
 
+/// <summary>
+/// Session-only SMB connection request. The password is intentionally absent from
+/// persisted profile metadata and is never included in diagnostic result models.
+/// </summary>
+public sealed class SmbRemoteNutConnectionRequest : RemoteNutConfigurationConnectionRequest
+{
+    public SmbRemoteNutConnectionRequest(
+        Guid profileId,
+        string sharePath,
+        SmbAuthenticationMode authenticationMode,
+        string? username,
+        ReadOnlyMemory<char> password,
+        bool canWrite)
+        : base(profileId)
+    {
+        if (!Enum.IsDefined(authenticationMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(authenticationMode));
+        }
+
+        SharePath = SmbUncPath.NormalizeShareRoot(sharePath);
+        AuthenticationMode = authenticationMode;
+        Username = NutMonitoringProfile.NormalizeOptionalText(username, nameof(username), 255);
+        if (authenticationMode == SmbAuthenticationMode.ExplicitCredentials && (Username is null || password.IsEmpty))
+        {
+            throw new ArgumentException("SMB explicit credentials require a username and a session password.");
+        }
+
+        Password = password;
+        CanWrite = canWrite;
+    }
+
+    public string SharePath { get; }
+
+    public SmbAuthenticationMode AuthenticationMode { get; }
+
+    public string? Username { get; }
+
+    public ReadOnlyMemory<char> Password { get; }
+
+    public bool CanWrite { get; }
+}
+
 public sealed class RemoteNutConnectionResult
 {
-    public RemoteNutConnectionResult(RemoteNutConnectionState state, IRemoteNutManagementSession? session = null, RemoteNutHostKeyInfo? hostKey = null, string? message = null)
+    public RemoteNutConnectionResult(RemoteNutConnectionState state, IRemoteNutConfigurationSession? session = null, RemoteNutHostKeyInfo? hostKey = null, string? message = null)
     {
         State = state;
         Session = session;
@@ -212,7 +267,7 @@ public sealed class RemoteNutConnectionResult
 
     public RemoteNutConnectionState State { get; }
 
-    public IRemoteNutManagementSession? Session { get; }
+    public IRemoteNutConfigurationSession? Session { get; }
 
     public RemoteNutHostKeyInfo? HostKey { get; }
 
@@ -327,9 +382,9 @@ public sealed class RemoteNutCandidateUploadRequest
     public ReadOnlyMemory<byte> CandidateBytes { get; }
 }
 
-public sealed class RemoteNutWindowsCommitRequest
+public sealed class RemoteNutConfigurationCommitRequest
 {
-    public RemoteNutWindowsCommitRequest(string configurationDirectory, string targetFileName, string temporaryFileName, string backupFileName, string expectedOriginalFingerprint, string expectedCandidateFingerprint)
+    public RemoteNutConfigurationCommitRequest(string configurationDirectory, string targetFileName, string temporaryFileName, string backupFileName, string expectedOriginalFingerprint, string expectedCandidateFingerprint)
     {
         ConfigurationDirectory = NutMonitoringProfile.ValidateRequiredText(configurationDirectory, nameof(configurationDirectory), 4096);
         TargetFileName = NutMonitoringProfile.ValidateRequiredText(targetFileName, nameof(targetFileName), 128);
@@ -352,9 +407,9 @@ public sealed class RemoteNutWindowsCommitRequest
     public string ExpectedCandidateFingerprint { get; }
 }
 
-public sealed class RemoteNutWindowsRollbackRequest
+public sealed class RemoteNutConfigurationRollbackRequest
 {
-    public RemoteNutWindowsRollbackRequest(string configurationDirectory, string targetFileName, string backupFileName, string rollbackFileName, string recoveryFileName, string expectedOriginalFingerprint)
+    public RemoteNutConfigurationRollbackRequest(string configurationDirectory, string targetFileName, string backupFileName, string rollbackFileName, string recoveryFileName, string expectedOriginalFingerprint)
     {
         ConfigurationDirectory = NutMonitoringProfile.ValidateRequiredText(configurationDirectory, nameof(configurationDirectory), 4096);
         TargetFileName = NutMonitoringProfile.ValidateRequiredText(targetFileName, nameof(targetFileName), 128);
@@ -396,12 +451,43 @@ public sealed class RemoteNutCommitResult
     public string? Message { get; }
 }
 
-public interface IRemoteNutManagementTransport
+public interface IRemoteNutConfigurationTransport
 {
-    Task<RemoteNutConnectionResult> ConnectAsync(RemoteNutConnectionRequest request, CancellationToken cancellationToken = default);
+    Task<RemoteNutConnectionResult> ConnectAsync(RemoteNutConfigurationConnectionRequest request, CancellationToken cancellationToken = default);
 }
 
-public interface IRemoteNutManagementSession : IAsyncDisposable
+/// <summary>
+/// Applies transport-specific remote path text semantics without applying local host
+/// filesystem semantics. Implementations belong to their file transport.
+/// </summary>
+public interface IRemoteNutConfigurationPathPolicy
+{
+    string NormalizeDirectory(string directory);
+
+    string NormalizePath(string path);
+
+    string CombineDirectChild(string directory, string childName);
+
+    bool PathsEqual(string left, string right);
+
+    string? GetParentDirectory(string directory);
+}
+
+/// <summary>
+/// Legacy SSH/SFTP name retained for source compatibility. SMB implements the generic
+/// configuration transport contract directly and never instantiates an SSH client.
+/// </summary>
+public interface IRemoteNutManagementTransport : IRemoteNutConfigurationTransport
+{
+    Task<RemoteNutConnectionResult> ConnectAsync(RemoteNutConnectionRequest request, CancellationToken cancellationToken = default);
+
+    Task<RemoteNutConnectionResult> IRemoteNutConfigurationTransport.ConnectAsync(RemoteNutConfigurationConnectionRequest request, CancellationToken cancellationToken) =>
+        request is RemoteNutConnectionRequest sshRequest
+            ? ConnectAsync(sshRequest, cancellationToken)
+            : Task.FromResult(new RemoteNutConnectionResult(RemoteNutConnectionState.Failed, message: "The selected configuration transport is not supported by SSH/SFTP."));
+}
+
+public interface IRemoteNutConfigurationSession : IAsyncDisposable
 {
     RemoteNutPlatform Platform { get; }
 
@@ -413,6 +499,8 @@ public interface IRemoteNutManagementSession : IAsyncDisposable
 
     string HomeDirectory { get; }
 
+    IRemoteNutConfigurationPathPolicy PathPolicy { get; }
+
     Task<RemoteNutDirectoryListing> BrowseDirectoryAsync(string directory, CancellationToken cancellationToken = default);
 
     Task<RemoteNutDirectoryValidationResult> ValidateConfigurationDirectoryAsync(string directory, CancellationToken cancellationToken = default);
@@ -423,7 +511,7 @@ public interface IRemoteNutManagementSession : IAsyncDisposable
 
     /// <summary>
     /// Prevents further remote writes after an indeterminate commit or rollback outcome.
-    /// A new SSH session, directory validation, and capability probe are required before writing again.
+    /// A new transport session, directory validation, and capability probe are required before writing again.
     /// </summary>
     void InvalidateSafeWriteCapability();
 
@@ -431,7 +519,11 @@ public interface IRemoteNutManagementSession : IAsyncDisposable
 
     Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default);
 
-    Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default);
+    Task<RemoteNutCommitResult> CommitConfigurationAsync(RemoteNutConfigurationCommitRequest request, CancellationToken cancellationToken = default);
 
-    Task<RemoteNutCommitResult> RollbackWindowsConfigurationAsync(RemoteNutWindowsRollbackRequest request, CancellationToken cancellationToken = default);
+    Task<RemoteNutCommitResult> RollbackConfigurationAsync(RemoteNutConfigurationRollbackRequest request, CancellationToken cancellationToken = default);
+}
+
+public interface IRemoteNutManagementSession : IRemoteNutConfigurationSession
+{
 }

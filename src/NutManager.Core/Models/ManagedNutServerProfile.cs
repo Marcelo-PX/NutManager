@@ -66,7 +66,12 @@ public sealed record NutManagementProfile
         int sshPort = DefaultSshPort,
         string? sshUsername = null,
         string? trustedHostKeyFingerprint = null,
-        string? trustedHostKeyAlgorithm = null)
+        string? trustedHostKeyAlgorithm = null,
+        RemoteConfigurationTransportKind configurationTransport = RemoteConfigurationTransportKind.SshSftp,
+        string? smbSharePath = null,
+        string? smbConfigurationDirectory = null,
+        SmbAuthenticationMode smbAuthenticationMode = SmbAuthenticationMode.CurrentWindowsIdentity,
+        string? smbUsername = null)
     {
         if (!Enum.IsDefined(mode))
         {
@@ -74,7 +79,14 @@ public sealed record NutManagementProfile
         }
 
         Mode = mode;
-        if (mode == NutManagementMode.Remote)
+        if (mode == NutManagementMode.Remote && !Enum.IsDefined(configurationTransport))
+        {
+            throw new ArgumentOutOfRangeException(nameof(configurationTransport), "The remote configuration transport is invalid.");
+        }
+
+        Mode = mode;
+        ConfigurationTransport = mode == NutManagementMode.Remote ? configurationTransport : RemoteConfigurationTransportKind.SshSftp;
+        if (mode == NutManagementMode.Remote && configurationTransport == RemoteConfigurationTransportKind.SshSftp)
         {
             ManagementHost = NutMonitoringProfile.ValidateRequiredText(managementHost!, nameof(managementHost), 255);
             RemoteConfigurationDirectory = ValidateRemoteDirectory(remoteConfigurationDirectory);
@@ -89,6 +101,17 @@ public sealed record NutManagementProfile
             TrustedHostKeyAlgorithm = TrustedHostKeyFingerprint is null
                 ? null
                 : NutMonitoringProfile.NormalizeOptionalText(trustedHostKeyAlgorithm, nameof(trustedHostKeyAlgorithm), 128);
+            Smb = null;
+        }
+        else if (mode == NutManagementMode.Remote)
+        {
+            ManagementHost = null;
+            RemoteConfigurationDirectory = null;
+            SshPort = DefaultSshPort;
+            SshUsername = null;
+            TrustedHostKeyFingerprint = null;
+            TrustedHostKeyAlgorithm = null;
+            Smb = new SmbConfigurationProfile(smbSharePath!, smbConfigurationDirectory, smbAuthenticationMode, smbUsername);
         }
         else
         {
@@ -98,10 +121,13 @@ public sealed record NutManagementProfile
             SshUsername = null;
             TrustedHostKeyFingerprint = null;
             TrustedHostKeyAlgorithm = null;
+            Smb = null;
         }
     }
 
     public NutManagementMode Mode { get; }
+
+    public RemoteConfigurationTransportKind ConfigurationTransport { get; }
 
     public string? ManagementHost { get; }
 
@@ -114,6 +140,16 @@ public sealed record NutManagementProfile
     public string? TrustedHostKeyFingerprint { get; }
 
     public string? TrustedHostKeyAlgorithm { get; }
+
+    public SmbConfigurationProfile? Smb { get; }
+
+    public string? SmbSharePath => Smb?.SharePath;
+
+    public string? SmbConfigurationDirectory => Smb?.ConfigurationDirectory;
+
+    public SmbAuthenticationMode SmbAuthenticationMode => Smb?.AuthenticationMode ?? global::NutManager.Core.Models.SmbAuthenticationMode.CurrentWindowsIdentity;
+
+    public string? SmbUsername => Smb?.Username;
 
     private static string? ValidateRemoteDirectory(string? value)
     {
@@ -215,11 +251,11 @@ public sealed record ManagedNutServerProfile
 
 public sealed record ManagedNutServerProfiles
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public ManagedNutServerProfiles(int schemaVersion, Guid activeProfileId, IReadOnlyList<ManagedNutServerProfile> profiles)
     {
-        if (schemaVersion is not (1 or CurrentSchemaVersion))
+        if (schemaVersion is < 1 or > CurrentSchemaVersion)
         {
             throw new ArgumentOutOfRangeException(nameof(schemaVersion), "Unsupported managed server profile schema version.");
         }

@@ -19,6 +19,16 @@ public sealed class RemoteNutManagementTests
     public void RemotePathsAreNormalizedWithoutHostLocalPathSemantics(string input, string expected) =>
         Assert.Equal(expected, RemotePathMapper.ToSftpPath(input));
 
+    [Fact]
+    public void GenericConfigurationSessionUsesTransportNeutralCommitOperations()
+    {
+        var methodNames = typeof(IRemoteNutConfigurationSession).GetMethods().Select(method => method.Name).ToArray();
+
+        Assert.Contains(nameof(IRemoteNutConfigurationSession.CommitConfigurationAsync), methodNames);
+        Assert.Contains(nameof(IRemoteNutConfigurationSession.RollbackConfigurationAsync), methodNames);
+        Assert.DoesNotContain(methodNames, name => name.Contains("Windows", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("../etc/nut")]
     [InlineData("C:\\NUT-malicious\\..\\etc")]
@@ -29,7 +39,7 @@ public sealed class RemoteNutManagementTests
     [Fact]
     public void FixedWindowsCommitCommandContainsOnlyStructuredPayload()
     {
-        var request = new RemoteNutWindowsCommitRequest("C:/NUT/etc", "ups.conf", ".nutmanager-a.tmp", ".nutmanager-a.bak", "A", "B");
+        var request = new RemoteNutConfigurationCommitRequest("C:/NUT/etc", "ups.conf", ".nutmanager-a.tmp", ".nutmanager-a.bak", "A", "B");
         var command = RemoteWindowsCommandBuilder.BuildWindowsCommit(request);
 
         Assert.StartsWith("powershell.exe -NoProfile -NonInteractive -EncodedCommand ", command, StringComparison.Ordinal);
@@ -50,7 +60,7 @@ public sealed class RemoteNutManagementTests
     [Fact]
     public void RemoteRollbackScriptRevalidatesGeneratedBackupNames()
     {
-        var request = new RemoteNutWindowsRollbackRequest(
+        var request = new RemoteNutConfigurationRollbackRequest(
             "C:/NUT/etc",
             "ups.conf",
             ".nutmanager-ups.conf-original.bak",
@@ -466,6 +476,7 @@ public sealed class RemoteNutManagementTests
         public FakeRemoteSession(RemoteNutPlatform platform) => Platform = platform;
 
         public RemoteNutPlatform Platform { get; }
+        public IRemoteNutConfigurationPathPolicy PathPolicy => SftpRemoteNutConfigurationPathPolicy.Instance;
         public bool IsSafeWriteCapabilityValidFor(string configurationDirectory) =>
             Platform == RemoteNutPlatform.Windows &&
             !_safeWriteCapabilityInvalidated && _safeWriteDirectories.Contains(RemotePathMapper.ToSftpPath(configurationDirectory));
@@ -551,7 +562,7 @@ public sealed class RemoteNutManagementTests
                 : new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.NotFound));
         }
 
-        public Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default)
+        public Task<RemoteNutCommitResult> CommitConfigurationAsync(RemoteNutConfigurationCommitRequest request, CancellationToken cancellationToken = default)
         {
             CommitCalls++;
             if (CommitStatus is { } status)
@@ -574,7 +585,7 @@ public sealed class RemoteNutManagementTests
             return Task.FromResult(new RemoteNutCommitResult(RemoteNutTransportStatus.Success, backup));
         }
 
-        public Task<RemoteNutCommitResult> RollbackWindowsConfigurationAsync(RemoteNutWindowsRollbackRequest request, CancellationToken cancellationToken = default)
+        public Task<RemoteNutCommitResult> RollbackConfigurationAsync(RemoteNutConfigurationRollbackRequest request, CancellationToken cancellationToken = default)
         {
             RollbackCalls++;
             if (RollbackStatus != RemoteNutTransportStatus.Success)

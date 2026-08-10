@@ -2,30 +2,31 @@ using System.Security.Cryptography;
 using System.Text;
 using NutManager.Core.Configuration;
 using NutManager.Core.Services;
-using NutManager.Infrastructure.Remote.Ssh;
 
 namespace NutManager.Infrastructure.Configuration;
 
 /// <summary>
 /// Reuses the syntax-preserving configuration model for a validated remote directory.
-/// The remote session owns all SFTP and fixed Windows commit operations.
+/// The remote session owns all transport-specific file and commit operations.
 /// </summary>
 public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePipeline
 {
     private const string RedactedText = "<redacted>";
-    private readonly IRemoteNutManagementSession _session;
+    private readonly IRemoteNutConfigurationSession _session;
+    private readonly IRemoteNutConfigurationPathPolicy _pathPolicy;
     private readonly string _configurationDirectory;
     private readonly NutConfigurationParser _parser;
     private readonly bool _canWrite;
 
     public RemoteNutConfigurationFilePipeline(
-        IRemoteNutManagementSession session,
+        IRemoteNutConfigurationSession session,
         string configurationDirectory,
         bool canWrite,
         NutConfigurationParser? parser = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
-        _configurationDirectory = RemotePathMapper.ToSftpPath(configurationDirectory);
+        _pathPolicy = _session.PathPolicy;
+        _configurationDirectory = _pathPolicy.NormalizeDirectory(configurationDirectory);
         _canWrite = canWrite;
         _parser = parser ?? new NutConfigurationParser();
     }
@@ -33,7 +34,7 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
     public async Task<NutConfigurationLoadResult> LoadAsync(string targetPath, NutConfigurationFileKind fileKind, CancellationToken cancellationToken = default)
     {
         var expectedPath = GetTargetPath(fileKind);
-        if (!string.Equals(RemotePathMapper.ToSftpPath(targetPath), expectedPath, StringComparison.Ordinal))
+        if (!_pathPolicy.PathsEqual(_pathPolicy.NormalizePath(targetPath), expectedPath))
         {
             throw new ArgumentException("The remote configuration target is not recognized.", nameof(targetPath));
         }
@@ -98,9 +99,9 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             return new NutConfigurationApplyResult(NutConfigurationApplyStatus.NoChanges, message: "Configuration has no changes to apply.");
         }
 
-        if (!_canWrite || !_session.IsSafeWriteCapabilityValidFor(_configurationDirectory) || _session.Platform != RemoteNutPlatform.Windows)
+        if (!_canWrite || !_session.IsSafeWriteCapabilityValidFor(_configurationDirectory))
         {
-            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.Failed, message: "Remote configuration writing is available only after a verified Windows safe-write capability probe.");
+            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.Failed, message: "Remote configuration writing is available only after a verified safe-write capability probe.");
         }
 
         if (cancellationToken.IsCancellationRequested)
@@ -155,8 +156,8 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
                 temporaryName);
         }
 
-        var commit = await _session.CommitWindowsConfigurationAsync(
-            new RemoteNutWindowsCommitRequest(
+        var commit = await _session.CommitConfigurationAsync(
+            new RemoteNutConfigurationCommitRequest(
                 _configurationDirectory,
                 fileName,
                 temporaryName,
@@ -171,7 +172,7 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
                 NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown,
                 commit.BackupPath,
                 "The remote configuration commit outcome could not be confirmed.",
-                temporaryPath: RemotePathMapper.Combine(_configurationDirectory, temporaryName));
+                temporaryPath: _pathPolicy.CombineDirectChild(_configurationDirectory, temporaryName));
         }
 
         if (commit.Status != RemoteNutTransportStatus.Success)
@@ -181,7 +182,7 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
                 temporaryName);
         }
 
-        var backupPath = commit.BackupPath ?? RemotePathMapper.Combine(_configurationDirectory, backupName);
+        var backupPath = commit.BackupPath ?? _pathPolicy.CombineDirectChild(_configurationDirectory, backupName);
         var target = await _session.ReadFileAsync(change.Snapshot.TargetPath, CancellationToken.None);
         var backup = await _session.ReadFileAsync(backupPath, CancellationToken.None);
         if (target.Status == RemoteNutTransportStatus.Success && backup.Status == RemoteNutTransportStatus.Success &&
@@ -197,10 +198,10 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
     {
         var rollbackName = $".nutmanager-{fileName}-{Guid.NewGuid():N}.tmp";
         var recoveryName = $".nutmanager-recovery-{fileName}-{DateTime.UtcNow:yyyyMMddTHHmmssfffffffZ}-{Guid.NewGuid():N}.bak";
-        var rollback = await _session.RollbackWindowsConfigurationAsync(
-            new RemoteNutWindowsRollbackRequest(_configurationDirectory, fileName, backupName, rollbackName, recoveryName, change.Snapshot.OriginalFingerprint),
+        var rollback = await _session.RollbackConfigurationAsync(
+            new RemoteNutConfigurationRollbackRequest(_configurationDirectory, fileName, backupName, rollbackName, recoveryName, change.Snapshot.OriginalFingerprint),
             CancellationToken.None);
-        var recoveryPath = rollback.RecoveryPath ?? RemotePathMapper.Combine(_configurationDirectory, recoveryName);
+        var recoveryPath = rollback.RecoveryPath ?? _pathPolicy.CombineDirectChild(_configurationDirectory, recoveryName);
         if (rollback.Status == RemoteNutTransportStatus.OutcomeUnknown)
         {
             _session.InvalidateSafeWriteCapability();
@@ -210,7 +211,7 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
                 "The remote rollback outcome could not be confirmed.",
                 false,
                 recoveryPath,
-                RemotePathMapper.Combine(_configurationDirectory, rollbackName));
+                _pathPolicy.CombineDirectChild(_configurationDirectory, rollbackName));
         }
 
         if (rollback.Status == RemoteNutTransportStatus.Success)
@@ -228,7 +229,7 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
 
     private async Task<NutConfigurationApplyResult> CleanupCandidateAfterAbortAsync(NutConfigurationApplyResult originalResult, string temporaryName)
     {
-        var temporaryPath = RemotePathMapper.Combine(_configurationDirectory, temporaryName);
+        var temporaryPath = _pathPolicy.CombineDirectChild(_configurationDirectory, temporaryName);
         try
         {
             var cleanup = await _session.DeleteGeneratedTemporaryFileAsync(_configurationDirectory, temporaryName, CancellationToken.None);
@@ -257,7 +258,8 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
         }
     }
 
-    private string GetTargetPath(NutConfigurationFileKind fileKind) => RemotePathMapper.Combine(_configurationDirectory, RemoteNutConfigurationFiles.GetFileName(fileKind));
+    private string GetTargetPath(NutConfigurationFileKind fileKind) =>
+        _pathPolicy.CombineDirectChild(_configurationDirectory, RemoteNutConfigurationFiles.GetFileName(fileKind));
 
     private bool ValidateCandidate(ReadOnlySpan<byte> bytes, NutConfigurationPreparedChange change)
     {

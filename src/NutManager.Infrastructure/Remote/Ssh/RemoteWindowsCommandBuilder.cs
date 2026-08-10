@@ -13,7 +13,7 @@ public static class RemoteWindowsCommandBuilder
 
     public static string BuildWindowsPlatformProbe() => "powershell.exe -NoProfile -NonInteractive -EncodedCommand " + Encode("if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) { Write-Output 'NUTMANAGER_WINDOWS' }");
 
-    public static string BuildWindowsCommit(RemoteNutWindowsCommitRequest request) =>
+    public static string BuildWindowsCommit(RemoteNutConfigurationCommitRequest request) =>
         BuildStructuredCommand("commit", new
         {
             request.ConfigurationDirectory,
@@ -24,7 +24,7 @@ public static class RemoteWindowsCommandBuilder
             request.ExpectedCandidateFingerprint
         });
 
-    public static string BuildWindowsRollback(RemoteNutWindowsRollbackRequest request) =>
+    public static string BuildWindowsRollback(RemoteNutConfigurationRollbackRequest request) =>
         BuildStructuredCommand("rollback", new
         {
             request.ConfigurationDirectory,

@@ -3,6 +3,8 @@ using NutManager.App.ViewModels;
 using NutManager.Core.Configuration;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
+using NutManager.Infrastructure.Remote.Ssh;
+using NutManager.Infrastructure.Remote.Smb;
 using Xunit;
 
 namespace NutManager.Tests;
@@ -143,6 +145,35 @@ public sealed class RemoteManagementSessionViewModelTests
         Assert.False(viewModel.CanUseCurrentDirectory);
     }
 
+    [Fact]
+    public async Task SmbProfileUsesOnlyTheSmbConnectionRequestAndDoesNotRequireHostKeyTrust()
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "SMB",
+            new NutMonitoringProfile("monitor.example"),
+            new NutManagementProfile(
+                NutManagementMode.Remote,
+                configurationTransport: RemoteConfigurationTransportKind.Smb,
+                smbSharePath: @"\\server\share",
+                smbConfigurationDirectory: @"\\server\share\NUT\etc"),
+            ManagedNutServerAccessMode.Manage);
+        var session = new FakeSession(RemoteNutPlatform.Unknown, new SmbRemoteNutConfigurationPathPolicy(@"\\server\share"));
+        var transport = new FakeSmbTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, session));
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport);
+
+        await viewModel.ConnectWithCurrentWindowsIdentityAsync();
+        await viewModel.ValidateCurrentDirectoryAsync();
+        await viewModel.ProbeWriteCapabilityAsync();
+
+        Assert.True(viewModel.IsSmb);
+        Assert.False(viewModel.IsSshSftp);
+        Assert.False(viewModel.CanTrustHostKey);
+        Assert.Equal(1, transport.ConnectCalls);
+        Assert.IsType<SmbRemoteNutConnectionRequest>(transport.LastRequest);
+        Assert.True(viewModel.CanEditConfiguration);
+    }
+
     private static ManagedNutServerProfile RemoteProfile(ManagedNutServerAccessMode accessMode) => new(
         Guid.NewGuid(),
         "Remote",
@@ -170,10 +201,33 @@ public sealed class RemoteManagementSessionViewModelTests
         public Task<RemoteNutConnectionResult> ConnectAsync(RemoteNutConnectionRequest request, CancellationToken cancellationToken = default) => Task.FromResult(_result);
     }
 
+    private sealed class FakeSmbTransport : IRemoteNutConfigurationTransport
+    {
+        private readonly RemoteNutConnectionResult _result;
+
+        public FakeSmbTransport(RemoteNutConnectionResult result) => _result = result;
+
+        public int ConnectCalls { get; private set; }
+
+        public RemoteNutConfigurationConnectionRequest? LastRequest { get; private set; }
+
+        public Task<RemoteNutConnectionResult> ConnectAsync(RemoteNutConfigurationConnectionRequest request, CancellationToken cancellationToken = default)
+        {
+            ConnectCalls++;
+            LastRequest = request;
+            return Task.FromResult(_result);
+        }
+    }
+
     private sealed class FakeSession : IRemoteNutManagementSession
     {
-        public FakeSession(RemoteNutPlatform platform) => Platform = platform;
+        public FakeSession(RemoteNutPlatform platform, IRemoteNutConfigurationPathPolicy? pathPolicy = null)
+        {
+            Platform = platform;
+            PathPolicy = pathPolicy ?? SftpRemoteNutConfigurationPathPolicy.Instance;
+        }
         public RemoteNutPlatform Platform { get; }
+        public IRemoteNutConfigurationPathPolicy PathPolicy { get; }
         public bool IsSafeWriteCapabilityValidFor(string configurationDirectory) => true;
         public string HomeDirectory => "/etc/nut";
         public int ProbeCalls { get; private set; }
@@ -189,8 +243,8 @@ public sealed class RemoteManagementSessionViewModelTests
         public void InvalidateSafeWriteCapability() { }
         public Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutFileReadResult(RemoteNutTransportStatus.Unsupported));
         public Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.NotFound));
-        public Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported));
-        public Task<RemoteNutCommitResult> RollbackWindowsConfigurationAsync(RemoteNutWindowsRollbackRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported));
+        public Task<RemoteNutCommitResult> CommitConfigurationAsync(RemoteNutConfigurationCommitRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported));
+        public Task<RemoteNutCommitResult> RollbackConfigurationAsync(RemoteNutConfigurationRollbackRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

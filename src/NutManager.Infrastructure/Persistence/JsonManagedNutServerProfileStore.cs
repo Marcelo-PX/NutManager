@@ -133,7 +133,7 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
                 throw new ArgumentException("Profiles are required.");
             }
 
-            if (SchemaVersion is not (1 or ManagedNutServerProfiles.CurrentSchemaVersion))
+            if (SchemaVersion is < 1 or > ManagedNutServerProfiles.CurrentSchemaVersion)
             {
                 throw new ArgumentOutOfRangeException(nameof(SchemaVersion), "Unsupported managed server profile schema version.");
             }
@@ -141,7 +141,7 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
             return new ManagedNutServerProfiles(
                 ManagedNutServerProfiles.CurrentSchemaVersion,
                 ActiveProfileId,
-                Profiles.Select(profile => profile!.ToProfile(SchemaVersion == 1)).ToArray());
+                Profiles.Select(profile => profile!.ToProfile(SchemaVersion)).ToArray());
         }
 
         public static ProfileDocument FromProfiles(ManagedNutServerProfiles profiles) => new()
@@ -178,9 +178,19 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
 
         public string? TrustedHostKeyAlgorithm { get; set; }
 
+        public RemoteConfigurationTransportKind? ConfigurationTransport { get; set; }
+
+        public string? SmbSharePath { get; set; }
+
+        public string? SmbConfigurationDirectory { get; set; }
+
+        public SmbAuthenticationMode? SmbAuthenticationMode { get; set; }
+
+        public string? SmbUsername { get; set; }
+
         public ManagedNutServerAccessMode AccessMode { get; set; }
 
-        public ManagedNutServerProfile ToProfile(bool migrateSchema1) => new(
+        public ManagedNutServerProfile ToProfile(int schemaVersion) => new(
             Id,
             Name!,
             new NutMonitoringProfile(MonitoringHost!, MonitoringPort, PreferredUpsName),
@@ -188,10 +198,15 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
                 ManagementMode,
                 ManagementHost,
                 RemoteConfigurationDirectory,
-                migrateSchema1 ? NutManagementProfile.DefaultSshPort : SshPort,
-                migrateSchema1 ? null : SshUsername,
-                migrateSchema1 ? null : TrustedHostKeyFingerprint,
-                migrateSchema1 ? null : TrustedHostKeyAlgorithm),
+                schemaVersion == 1 ? NutManagementProfile.DefaultSshPort : SshPort,
+                schemaVersion == 1 ? null : SshUsername,
+                schemaVersion == 1 ? null : TrustedHostKeyFingerprint,
+                schemaVersion == 1 ? null : TrustedHostKeyAlgorithm,
+                schemaVersion < 3 ? RemoteConfigurationTransportKind.SshSftp : ConfigurationTransport ?? RemoteConfigurationTransportKind.SshSftp,
+                schemaVersion < 3 ? null : SmbSharePath,
+                schemaVersion < 3 ? null : SmbConfigurationDirectory,
+                schemaVersion < 3 ? global::NutManager.Core.Models.SmbAuthenticationMode.CurrentWindowsIdentity : SmbAuthenticationMode ?? global::NutManager.Core.Models.SmbAuthenticationMode.CurrentWindowsIdentity,
+                schemaVersion < 3 ? null : SmbUsername),
             AccessMode);
 
         public static ProfileEntry FromProfile(ManagedNutServerProfile profile) => new()
@@ -208,6 +223,11 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
             SshUsername = profile.Management.SshUsername,
             TrustedHostKeyFingerprint = profile.Management.TrustedHostKeyFingerprint,
             TrustedHostKeyAlgorithm = profile.Management.TrustedHostKeyAlgorithm,
+            ConfigurationTransport = profile.Management.Mode == NutManagementMode.Remote ? profile.Management.ConfigurationTransport : null,
+            SmbSharePath = profile.Management.SmbSharePath,
+            SmbConfigurationDirectory = profile.Management.SmbConfigurationDirectory,
+            SmbAuthenticationMode = profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb ? profile.Management.SmbAuthenticationMode : null,
+            SmbUsername = profile.Management.SmbUsername,
             AccessMode = profile.AccessMode
         };
     }

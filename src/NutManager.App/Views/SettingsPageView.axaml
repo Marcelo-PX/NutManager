@@ -49,6 +49,9 @@
               <ComboBox ItemsSource="{Binding ManagementModes}" SelectedItem="{Binding ProfileDraft.ManagementMode, Mode=TwoWay}" />
               <ComboBox ItemsSource="{Binding AccessModes}" SelectedItem="{Binding ProfileDraft.AccessMode, Mode=TwoWay}" />
               <StackPanel IsVisible="{Binding ProfileDraft.IsRemote}" Spacing="6">
+                <TextBlock Text="Transporte dos arquivos de configuração" FontWeight="SemiBold" />
+                <ComboBox ItemsSource="{Binding ConfigurationTransports}" SelectedItem="{Binding ProfileDraft.ConfigurationTransport, Mode=TwoWay}" />
+                <StackPanel IsVisible="{Binding ProfileDraft.IsSshSftp}" Spacing="6">
                 <TextBlock Text="Host de gerenciamento" FontWeight="SemiBold" />
                 <TextBox Text="{Binding ProfileDraft.ManagementHost, Mode=TwoWay}" />
                 <TextBlock Text="Porta SSH" FontWeight="SemiBold" />
@@ -62,8 +65,20 @@
                 <TextBlock Text="{Binding ProfileDraft.TrustedHostKeyAlgorithm}" TextWrapping="Wrap" />
                 <Button Content="Esquecer chave confiável do host" Command="{Binding ForgetTrustedHostKeyCommand}" IsEnabled="{Binding CanForgetTrustedHostKey}" HorizontalAlignment="Left" />
                 <TextBlock Text="Credenciais são usadas apenas durante a sessão remota e não são salvas no perfil." TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel IsVisible="{Binding ProfileDraft.IsSmb}" Spacing="6">
+                  <TextBlock Text="Compartilhamento SMB" FontWeight="SemiBold" />
+                  <TextBox Text="{Binding ProfileDraft.SmbSharePath, Mode=TwoWay}" PlaceholderText="\\server\share" />
+                  <TextBlock Text="Autenticação SMB" FontWeight="SemiBold" />
+                  <ComboBox ItemsSource="{Binding SmbAuthenticationModes}" SelectedItem="{Binding ProfileDraft.SmbAuthenticationMode, Mode=TwoWay}" />
+                  <TextBlock Text="Usuário SMB" FontWeight="SemiBold" />
+                  <TextBox Text="{Binding ProfileDraft.SmbUsername, Mode=TwoWay}" />
+                  <TextBlock Text="Diretório SMB de configuração (opcional)" FontWeight="SemiBold" />
+                  <TextBox Text="{Binding ProfileDraft.SmbConfigurationDirectory, Mode=TwoWay}" PlaceholderText="\\server\share\NUT\etc" />
+                  <TextBlock Text="A senha SMB é usada somente durante a sessão e não é salva no perfil." TextWrapping="Wrap" />
+                </StackPanel>
               </StackPanel>
-              <TextBlock Text="A instalação local será detectada automaticamente pelo NutManager. Diretórios remotos são acessados somente pelo transporte SSH/SFTP." TextWrapping="Wrap" />
+              <TextBlock Text="A instalação local será detectada automaticamente pelo NutManager. Diretórios remotos podem ser acessados por SSH/SFTP ou SMB; o transporte não altera o monitoring." TextWrapping="Wrap" />
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="Salvar perfil" Command="{Binding SaveProfileCommand}" IsEnabled="{Binding CanPersistProfiles}" />
                 <Button Content="Descartar alterações" Command="{Binding DiscardProfileDraftCommand}" IsEnabled="{Binding IsProfileDraftDirty}" />
