@@ -99,7 +99,7 @@ public sealed class ManagedNutServerProfileTests
     }
 
     [Fact]
-    public async Task StoreRoundTripsUtf8SchemaAndNoCredentialFields()
+    public async Task StoreRoundTripsUtf8SchemaAndNoSecretCredentialFields()
     {
         using var directory = new TemporaryDirectory();
         var store = new JsonManagedNutServerProfileStore(directory.Path);
@@ -113,11 +113,11 @@ public sealed class ManagedNutServerProfileTests
         Assert.Equal(document.SchemaVersion, loaded!.SchemaVersion);
         Assert.Equal(document.ActiveProfileId, loaded.ActiveProfileId);
         Assert.Equal(document.ActiveProfile, loaded.ActiveProfile);
-        Assert.Contains("\"schemaVersion\": 3", json);
-        Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("passphrase", json, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("privateKeyPath", json, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("credential", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"schemaVersion\": 4", json);
+        Assert.DoesNotContain("\"sshPassword\"", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"smbPassword\"", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"passphrase\"", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"credentialBlob\"", json, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(Directory.GetFiles(directory.Path, "*.tmp"));
     }
 
@@ -138,6 +138,8 @@ public sealed class ManagedNutServerProfileTests
         Assert.Equal(22, loaded.ActiveProfile.Management.SshPort);
         Assert.Null(loaded.ActiveProfile.Management.SshUsername);
         Assert.Null(loaded.ActiveProfile.Management.TrustedHostKeyFingerprint);
+        Assert.Equal(SshAuthenticationMode.Password, loaded.ActiveProfile.Management.SshAuthenticationMode);
+        Assert.Null(loaded.ActiveProfile.Management.SshPrivateKeyPath);
     }
 
     [Fact]
@@ -160,6 +162,8 @@ public sealed class ManagedNutServerProfileTests
         Assert.Equal(2222, loaded.ActiveProfile.Management.SshPort);
         Assert.Null(loaded.ActiveProfile.Management.SmbSharePath);
         Assert.Null(loaded.ActiveProfile.Management.SmbConfigurationDirectory);
+        Assert.Equal(SshAuthenticationMode.Password, loaded.ActiveProfile.Management.SshAuthenticationMode);
+        Assert.Null(loaded.ActiveProfile.Management.SshPrivateKeyPath);
     }
 
     [Fact]
@@ -189,8 +193,58 @@ public sealed class ManagedNutServerProfileTests
         Assert.Equal(@"\\server\share", loaded.ActiveProfile.Management.SmbSharePath);
         Assert.Equal(@"\\server\share\NUT\etc", loaded.ActiveProfile.Management.SmbConfigurationDirectory);
         Assert.Equal("DOMAIN\\nut", loaded.ActiveProfile.Management.SmbUsername);
-        Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"smbPassword\"", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("fictional-password", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SchemaVersionThreeSshProfileMigratesToPasswordWithoutKeyPathAndPreservesTrust()
+    {
+        using var directory = new TemporaryDirectory();
+        var id = Guid.NewGuid();
+        var fingerprint = "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        var store = new JsonManagedNutServerProfileStore(directory.Path);
+        var schemaVersionThree = $$"""{"schemaVersion":3,"activeProfileId":"{{id}}","profiles":[{"id":"{{id}}","name":"Remote","monitoringHost":"monitor.example","monitoringPort":3493,"managementMode":"Remote","managementHost":"management.example","remoteConfigurationDirectory":"/etc/nut","sshPort":22,"sshUsername":"nutadmin","trustedHostKeyFingerprint":"{{fingerprint}}","trustedHostKeyAlgorithm":"ssh-ed25519","configurationTransport":"SshSftp","accessMode":"Manage"}]}""";
+        Directory.CreateDirectory(directory.Path);
+        await File.WriteAllTextAsync(store.ProfilesPath, schemaVersionThree);
+
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(ManagedNutServerProfiles.CurrentSchemaVersion, loaded!.SchemaVersion);
+        Assert.Equal(id, loaded.ActiveProfileId);
+        Assert.Equal(SshAuthenticationMode.Password, loaded.ActiveProfile.Management.SshAuthenticationMode);
+        Assert.Null(loaded.ActiveProfile.Management.SshPrivateKeyPath);
+        Assert.Equal(fingerprint, loaded.ActiveProfile.Management.TrustedHostKeyFingerprint);
+    }
+
+    [Fact]
+    public async Task PrivateKeyAuthenticationMetadataRoundTripsWithoutKeyMaterial()
+    {
+        using var directory = new TemporaryDirectory();
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "Private key",
+            new NutMonitoringProfile("monitor.example"),
+            new NutManagementProfile(
+                NutManagementMode.Remote,
+                "management.example",
+                "/etc/nut",
+                sshUsername: "nutadmin",
+                sshAuthenticationMode: SshAuthenticationMode.PrivateKey,
+                sshPrivateKeyPath: @"C:\keys\fictional.key"),
+            ManagedNutServerAccessMode.Manage);
+        var store = new JsonManagedNutServerProfileStore(directory.Path);
+
+        await store.SaveAsync(Document(profile), CancellationToken.None);
+        var json = await File.ReadAllTextAsync(store.ProfilesPath);
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(SshAuthenticationMode.PrivateKey, loaded!.ActiveProfile.Management.SshAuthenticationMode);
+        Assert.Equal(@"C:\keys\fictional.key", loaded.ActiveProfile.Management.SshPrivateKeyPath);
+        Assert.Contains("sshPrivateKeyPath", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("fictional-password", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-key-content", json, StringComparison.Ordinal);
     }
 
     [Fact]

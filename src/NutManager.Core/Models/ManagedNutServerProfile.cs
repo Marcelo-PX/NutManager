@@ -12,6 +12,12 @@ public enum ManagedNutServerAccessMode
     Manage
 }
 
+public enum SshAuthenticationMode
+{
+    Password,
+    PrivateKey
+}
+
 public sealed record NutMonitoringProfile
 {
     public NutMonitoringProfile(string host, int port = NutEndpoint.DefaultPort, string? preferredUpsName = null)
@@ -71,7 +77,9 @@ public sealed record NutManagementProfile
         string? smbSharePath = null,
         string? smbConfigurationDirectory = null,
         SmbAuthenticationMode smbAuthenticationMode = SmbAuthenticationMode.CurrentWindowsIdentity,
-        string? smbUsername = null)
+        string? smbUsername = null,
+        SshAuthenticationMode sshAuthenticationMode = SshAuthenticationMode.Password,
+        string? sshPrivateKeyPath = null)
     {
         if (!Enum.IsDefined(mode))
         {
@@ -88,6 +96,11 @@ public sealed record NutManagementProfile
         ConfigurationTransport = mode == NutManagementMode.Remote ? configurationTransport : RemoteConfigurationTransportKind.SshSftp;
         if (mode == NutManagementMode.Remote && configurationTransport == RemoteConfigurationTransportKind.SshSftp)
         {
+            if (!Enum.IsDefined(sshAuthenticationMode))
+            {
+                throw new ArgumentOutOfRangeException(nameof(sshAuthenticationMode), "The SSH authentication mode is invalid.");
+            }
+
             ManagementHost = NutMonitoringProfile.ValidateRequiredText(managementHost!, nameof(managementHost), 255);
             RemoteConfigurationDirectory = ValidateRemoteDirectory(remoteConfigurationDirectory);
             if (sshPort is < 1 or > 65535)
@@ -101,6 +114,10 @@ public sealed record NutManagementProfile
             TrustedHostKeyAlgorithm = TrustedHostKeyFingerprint is null
                 ? null
                 : NutMonitoringProfile.NormalizeOptionalText(trustedHostKeyAlgorithm, nameof(trustedHostKeyAlgorithm), 128);
+            SshAuthenticationMode = sshAuthenticationMode;
+            SshPrivateKeyPath = sshAuthenticationMode == global::NutManager.Core.Models.SshAuthenticationMode.PrivateKey
+                ? NutMonitoringProfile.NormalizeOptionalText(sshPrivateKeyPath, nameof(sshPrivateKeyPath), 1024)
+                : null;
             Smb = null;
         }
         else if (mode == NutManagementMode.Remote)
@@ -111,6 +128,8 @@ public sealed record NutManagementProfile
             SshUsername = null;
             TrustedHostKeyFingerprint = null;
             TrustedHostKeyAlgorithm = null;
+            SshAuthenticationMode = global::NutManager.Core.Models.SshAuthenticationMode.Password;
+            SshPrivateKeyPath = null;
             Smb = new SmbConfigurationProfile(smbSharePath!, smbConfigurationDirectory, smbAuthenticationMode, smbUsername);
         }
         else
@@ -121,6 +140,8 @@ public sealed record NutManagementProfile
             SshUsername = null;
             TrustedHostKeyFingerprint = null;
             TrustedHostKeyAlgorithm = null;
+            SshAuthenticationMode = global::NutManager.Core.Models.SshAuthenticationMode.Password;
+            SshPrivateKeyPath = null;
             Smb = null;
         }
     }
@@ -140,6 +161,10 @@ public sealed record NutManagementProfile
     public string? TrustedHostKeyFingerprint { get; }
 
     public string? TrustedHostKeyAlgorithm { get; }
+
+    public SshAuthenticationMode SshAuthenticationMode { get; }
+
+    public string? SshPrivateKeyPath { get; }
 
     public SmbConfigurationProfile? Smb { get; }
 
@@ -251,7 +276,7 @@ public sealed record ManagedNutServerProfile
 
 public sealed record ManagedNutServerProfiles
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     public ManagedNutServerProfiles(int schemaVersion, Guid activeProfileId, IReadOnlyList<ManagedNutServerProfile> profiles)
     {

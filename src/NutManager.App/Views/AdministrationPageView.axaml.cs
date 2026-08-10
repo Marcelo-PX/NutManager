@@ -46,12 +46,12 @@ public partial class AdministrationPageView : UserControl
 
     private async void RemoteConnectPasswordButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
-        if (DataContext is AdministrationPageViewModel { RemoteManagement: { IsSshSftp: true } remoteManagement, CanConnectRemote: true })
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { UsesSshPassword: true } remoteManagement, CanConnectRemote: true })
         {
             var password = RemotePasswordBox.Text ?? string.Empty;
             try
             {
-                await remoteManagement.ConnectWithPasswordAsync(password.AsMemory());
+                await remoteManagement.ConnectWithPasswordAsync(password.AsMemory(), RemoteRememberCredentialCheckBox.IsChecked == true);
             }
             finally
             {
@@ -75,7 +75,7 @@ public partial class AdministrationPageView : UserControl
             var password = SmbPasswordBox.Text ?? string.Empty;
             try
             {
-                await remoteManagement.ConnectWithPasswordAsync(password.AsMemory());
+                await remoteManagement.ConnectWithPasswordAsync(password.AsMemory(), SmbRememberCredentialCheckBox.IsChecked == true);
             }
             finally
             {
@@ -86,28 +86,35 @@ public partial class AdministrationPageView : UserControl
 
     private async void RemoteConnectPrivateKeyButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
-        if (DataContext is not AdministrationPageViewModel { RemoteManagement: { IsSshSftp: true } remoteManagement, CanConnectRemote: true } || TopLevel.GetTopLevel(this) is not { } topLevel)
+        if (DataContext is not AdministrationPageViewModel { RemoteManagement: { UsesSshPrivateKey: true } remoteManagement, CanConnectRemote: true })
         {
             return;
         }
 
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var passphrase = RemotePassphraseBox.Text ?? string.Empty;
+        try
         {
-            Title = "Selecionar chave privada SSH",
-            AllowMultiple = false
-        });
-        var path = files.FirstOrDefault()?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(path))
+            await remoteManagement.ConnectWithPrivateKeyAsync(remoteManagement.ConfiguredSshPrivateKeyPath ?? string.Empty, passphrase.AsMemory(), RemoteRememberPassphraseCheckBox.IsChecked == true);
+        }
+        finally
         {
-            var passphrase = RemotePasswordBox.Text ?? string.Empty;
-            try
-            {
-                await remoteManagement.ConnectWithPrivateKeyAsync(path, passphrase.AsMemory());
-            }
-            finally
-            {
-                RemotePasswordBox.Text = string.Empty;
-            }
+            RemotePassphraseBox.Text = string.Empty;
+        }
+    }
+
+    private async void RemoteConnectStoredCredentialButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement })
+        {
+            await remoteManagement.ConnectWithStoredCredentialAsync();
+        }
+    }
+
+    private async void RemoteForgetStoredCredentialButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement })
+        {
+            await remoteManagement.ForgetStoredCredentialAsync();
         }
     }
 

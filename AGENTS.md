@@ -28,10 +28,10 @@ Do not scan the whole repository unless the task genuinely requires it.
 
 ## Platform policy
 
-- Windows x64 is the primary and official platform for development, CI, testing, packaging, distribution, and local administration.
+- Windows x64 is the only active and officially supported platform for development, CI, testing, packaging, distribution, and local administration.
 - Official CI runs on Windows only.
-- Linux is best-effort compatibility for shared code, not an official CI, release, or administration target.
-- Do not treat Linux as a required CI or release target unless a task explicitly requests T22 or Linux work.
+- Linux compatibility is deferred for possible future evaluation; it is not an active CI, release, or administration target.
+- Do not add Linux-specific work unless a future task explicitly reactivates that scope.
 
 ## Token and context economy
 

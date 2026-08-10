@@ -6,6 +6,7 @@
 - `READY` — specified and ready for implementation;
 - `IN PROGRESS` — currently assigned;
 - `BLOCKED` — waiting on a dependency or decision;
+- `DEFERRED` — intentionally postponed for future evaluation;
 - `DONE` — implemented and validated.
 
 Only one task should normally be in progress at a time.
@@ -24,7 +25,7 @@ Only one task should normally be in progress at a time.
 | T08 | DONE | Persist local settings | Atomic per-user settings storage |
 | T09 | DONE | Add polling and stale-data handling | Robust refresh and reconnect behavior |
 | T10 | DONE | Complete MVP diagnostics | Read-only diagnostics page |
-| T11 | IN PROGRESS | Package and validate MVP | Official Windows x64 package and live Windows NUT validation |
+| T11 | DONE | Package and validate MVP | Official Windows x64 package and completed live Windows NUT validation |
 | T12 | DONE | Detect local NUT installation on Windows | Autodetect installation, executables, version, and configuration directory |
 | T13 | DONE | Design syntax-preserving NUT configuration model | Safe model for managed and unmanaged configuration content |
 | T14 | DONE | Add configuration backup, write, and rollback pipeline | Previewed, validated, recoverable configuration changes |
@@ -34,9 +35,9 @@ Only one task should normally be in progress at a time.
 | T18 | DONE | Add managed server profiles | Managed profile metadata and strict local/remote management-context separation |
 | T19 | DONE | Add remote SSH/SFTP management | Manual remote directory browse, validation, and secure management transport |
 | T19B | DONE | Add SMB remote configuration transport | Manual UNC SMB configuration access and verified safe replacement |
-| T20 | READY | Add secure credential storage | Protected SSH and SMB remote-management credentials |
-| T21 | TODO | Validate full Windows local and remote administration | End-to-end Windows-first validation |
-| T22 | TODO | Evaluate Linux administrative compatibility | Secondary, best-effort compatibility assessment |
+| T20 | DONE | Add secure credential storage | Protected SSH and SMB remote-management credentials |
+| T21 | READY | Validate full Windows local and remote administration | End-to-end Windows-first validation |
+| T22 | DEFERRED | Future Linux compatibility evaluation | Compatibility may be reconsidered in a future task |
 | T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
 
 ---
@@ -155,9 +156,9 @@ Expose read-only endpoint, connection, discovery, polling, version, and applicat
 
 ## T11 — Package and validate MVP
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
-Produce and test the official self-contained Windows x64 package. Windows is the primary development, validation, and distribution platform; Linux has secondary, best-effort shared-code compatibility and no official package. T11 remains in progress until real Windows NUT validation is complete.
+Produce and test the official self-contained Windows x64 package. Windows x64 is the only active development, validation, and distribution platform. The real Windows NUT acceptance is complete; this section remains as the package-validation record.
 
 ## T12 — Detect local NUT installation on Windows
 
@@ -209,21 +210,21 @@ Add SSH/SFTP remote management transport, manual remote configuration-directory 
 
 ## T20 — Add secure credential storage
 
-**Status:** READY
+**Status:** DONE
 
-Store SSH and SMB remote-management credentials using platform-appropriate protected storage without exposing secrets in logs or the interface.
+Store opt-in SSH and SMB remote-management secrets in Windows Credential Manager without exposing them in logs, view-model state, or JSON profile metadata.
 
 ## T21 — Validate full Windows local and remote administration
 
-**Status:** TODO
+**Status:** READY
 
 Validate Windows-first local and remote administration, including recovery paths, without unsafe UPS operations.
 
 ## T22 — Evaluate Linux administrative compatibility
 
-**Status:** TODO
+**Status:** DEFERRED
 
-Evaluate Linux shared-code and administrative compatibility on demand. Linux remains secondary, best-effort compatibility without an official CI or package commitment.
+Future Linux compatibility evaluation. Linux is deferred and is not an active CI, packaging, distribution, or administration target.
 
 ## T23 — Evaluate upstream NUT improvements
 

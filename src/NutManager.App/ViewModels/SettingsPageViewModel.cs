@@ -13,6 +13,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     private readonly IApplicationSettingsStore? _settingsStore;
     private readonly IManagedNutServerProfileStore? _profileStore;
     private readonly ManagedNutServerProfileUpdateService? _profileMutator;
+    private readonly IRemoteCredentialStore? _credentialStore;
     private readonly bool _usesManagedProfileEndpoint;
     private ApplicationSettings _confirmedSettings;
     private ManagedNutServerProfiles _confirmedProfiles;
@@ -35,13 +36,15 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         IApplicationSettingsStore? settingsStore,
         ManagedNutServerProfiles? profiles,
         IManagedNutServerProfileStore? profileStore,
-        ManagedNutServerProfileUpdateService? profileMutator = null)
+        ManagedNutServerProfileUpdateService? profileMutator = null,
+        IRemoteCredentialStore? credentialStore = null)
         : base("Configurações", "Defina as preferências locais e os servidores NUT gerenciados.")
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settingsStore = settingsStore;
         _profileStore = profileStore;
         _profileMutator = profileStore is null ? null : profileMutator ?? new ManagedNutServerProfileUpdateService(profileStore);
+        _credentialStore = credentialStore;
         _usesManagedProfileEndpoint = profiles is not null;
         _confirmedSettings = settings;
         _confirmedProfiles = profiles ?? ManagedNutServerProfiles.CreateLegacyProfile(settings);
@@ -66,6 +69,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     public IReadOnlyList<SmbAuthenticationMode> SmbAuthenticationModes { get; } = Enum.GetValues<SmbAuthenticationMode>();
 
+    public IReadOnlyList<SshAuthenticationMode> SshAuthenticationModes { get; } = Enum.GetValues<SshAuthenticationMode>();
+
     public ObservableCollection<ManagedNutServerProfile> ManagedProfiles { get; }
 
     public ManagedNutServerProfileDraftViewModel ProfileDraft { get; }
@@ -87,6 +92,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     [ObservableProperty] private string? _profileSaveError;
     [ObservableProperty] private string? _profileLoadError;
     [ObservableProperty] private string? _profileStatusMessage;
+    [ObservableProperty] private RemoteCredentialStoreStatus _storedCredentialStatus = RemoteCredentialStoreStatus.NotFound;
 
     public bool IsProfileDraftDirty => _isCreatingProfile || (_draftBaseProfile is not null && !ProfileDraft.Matches(_draftBaseProfile));
 
@@ -105,6 +111,18 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public bool HasProfileLoadError => !string.IsNullOrWhiteSpace(ProfileLoadError);
 
     public bool CanPersistProfiles => _profileStore is not null && _canPersistProfiles && !IsSavingProfile;
+
+    public bool CanForgetStoredCredential => CanPersistProfiles && SelectedManagedProfile is not null && GetCredentialKind(SelectedManagedProfile) is not null;
+
+    public string StoredCredentialText => SelectedManagedProfile is { } profile && GetCredentialKind(profile) is { }
+        ? StoredCredentialStatus switch
+        {
+            RemoteCredentialStoreStatus.Success => "Credencial protegida salva: Sim",
+            RemoteCredentialStoreStatus.NotFound => "Credencial protegida salva: Não",
+            RemoteCredentialStoreStatus.Unsupported or RemoteCredentialStoreStatus.CredentialStoreUnavailable => "Credencial protegida: Indisponível",
+            _ => "Não foi possível consultar a credencial protegida."
+        }
+        : "Nenhuma credencial protegida é necessária para este perfil.";
 
     public event Action<ThemePreference>? ThemeChanged;
 
@@ -201,6 +219,14 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         {
             throw;
         }
+        catch (ManagedProfilePersistenceAfterCredentialRemovalException)
+        {
+            ProfileSaveError = "O perfil não pôde ser salvo. As credenciais protegidas associadas à identidade anterior foram removidas por segurança; informe-as novamente quando necessário.";
+        }
+        catch (ManagedProfileCredentialRemovalException)
+        {
+            ProfileSaveError = "O perfil não foi alterado porque a credencial protegida associada à identidade anterior não pôde ser removida.";
+        }
         catch (Exception)
         {
             ProfileSaveError = "Não foi possível validar ou salvar o perfil.";
@@ -254,6 +280,14 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (ManagedProfilePersistenceAfterCredentialRemovalException)
+        {
+            ProfileSaveError = "O perfil não pôde ser excluído. As credenciais protegidas associadas foram removidas por segurança; informe-as novamente quando necessário.";
+        }
+        catch (ManagedProfileCredentialRemovalException)
+        {
+            ProfileSaveError = "A exclusão foi abortada porque as credenciais protegidas não puderam ser removidas.";
         }
         catch (Exception)
         {
@@ -335,6 +369,44 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         {
             IsSavingProfile = false;
             NotifyProfilePropertiesChanged();
+        }
+    }
+
+    [RelayCommand]
+    private async Task ForgetStoredCredentialAsync(CancellationToken cancellationToken = default)
+    {
+        var profile = SelectedManagedProfile;
+        var kind = profile is null ? null : GetCredentialKind(profile);
+        if (_profileMutator is null || profile is null || kind is null || !CanForgetStoredCredential)
+        {
+            return;
+        }
+
+        var result = await _profileMutator.ForgetCredentialAsync(profile.Id, kind.Value, cancellationToken);
+        StoredCredentialStatus = result.IsSuccess ? RemoteCredentialStoreStatus.NotFound : result.Status;
+        ProfileStatusMessage = result.IsSuccess ? "A credencial protegida foi removida." : result.Message ?? "Não foi possível remover a credencial protegida.";
+    }
+
+    public async Task RefreshStoredCredentialStatusAsync(CancellationToken cancellationToken = default)
+    {
+        var profile = SelectedManagedProfile;
+        var kind = profile is null ? null : GetCredentialKind(profile);
+        if (kind is null)
+        {
+            StoredCredentialStatus = RemoteCredentialStoreStatus.NotFound;
+            return;
+        }
+
+        if (_credentialStore is null)
+        {
+            StoredCredentialStatus = RemoteCredentialStoreStatus.Unsupported;
+            return;
+        }
+
+        var result = await _credentialStore.ContainsAsync(profile!.Id, kind.Value, cancellationToken);
+        if (SelectedManagedProfile?.Id == profile.Id)
+        {
+            StoredCredentialStatus = result.Status;
         }
     }
 
@@ -466,6 +538,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             ProfileDraft.Apply(value);
             ProfileSaveError = null;
             NotifyProfilePropertiesChanged();
+            _ = RefreshStoredCredentialStatusAsync();
         }
     }
 
@@ -481,6 +554,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         ProfileSaveError = null;
         ProfileStatusMessage = "Preencha o perfil e salve-o para adicioná-lo à lista.";
         NotifyProfilePropertiesChanged();
+        _ = RefreshStoredCredentialStatusAsync();
     }
 
     private void ApplyConfirmedProfiles(ManagedNutServerProfiles document, Guid selectedId)
@@ -501,6 +575,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         SelectedManagedProfile = selected;
         _suppressProfileSelection = false;
         NotifyProfilePropertiesChanged();
+        _ = RefreshStoredCredentialStatusAsync();
     }
 
     private void OnProfileDraftPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs) => NotifyProfilePropertiesChanged();
@@ -515,5 +590,30 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanPersistProfiles));
         OnPropertyChanged(nameof(IsSelectedProfileActive));
         OnPropertyChanged(nameof(ActiveProfileName));
+        OnPropertyChanged(nameof(CanForgetStoredCredential));
+        OnPropertyChanged(nameof(StoredCredentialText));
+    }
+
+    partial void OnStoredCredentialStatusChanged(RemoteCredentialStoreStatus value)
+    {
+        OnPropertyChanged(nameof(StoredCredentialText));
+    }
+
+    private static RemoteCredentialKind? GetCredentialKind(ManagedNutServerProfile profile)
+    {
+        var management = profile.Management;
+        if (management.Mode != NutManagementMode.Remote)
+        {
+            return null;
+        }
+
+        if (management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb)
+        {
+            return management.SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials ? RemoteCredentialKind.SmbPassword : null;
+        }
+
+        return management.SshAuthenticationMode == SshAuthenticationMode.PrivateKey && !string.IsNullOrWhiteSpace(management.SshPrivateKeyPath)
+            ? RemoteCredentialKind.SshPrivateKeyPassphrase
+            : RemoteCredentialKind.SshPassword;
     }
 }

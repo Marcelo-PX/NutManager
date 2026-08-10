@@ -1,4 +1,5 @@
 using NutManager.App.ViewModels;
+using NutManager.App.Services;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 using Xunit;
@@ -105,6 +106,62 @@ public sealed class SettingsPageViewModelTests
         Assert.NotNull(failure.SaveError); Assert.False(failure.IsSaving); Assert.False(failure.IsSaved);
     }
 
+    [Fact]
+    public async Task ProfileSaveAfterCredentialRemovalClearlyReportsThePartialOutcome()
+    {
+        var profile = RemoteProfile();
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]);
+        var profileStore = new ProfileStore(profiles) { ThrowOnSave = true };
+        var credentials = new CredentialStore();
+        var viewModel = new SettingsPageViewModel(
+            new ApplicationSettings(),
+            null,
+            profiles,
+            profileStore,
+            new ManagedNutServerProfileUpdateService(profileStore, credentials),
+            credentials);
+        viewModel.ProfileDraft.ManagementHost = "new-management.example";
+
+        await viewModel.SaveProfileCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsProfileSaved);
+        Assert.Equal("management.example", profileStore.Current.ActiveProfile.Management.ManagementHost);
+        Assert.Contains("não pôde ser salvo", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("credenciais protegidas", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("novamente", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ProfileSaveBlockedByCredentialRemovalFailureExplainsThatTheProfileWasNotChanged()
+    {
+        var profile = RemoteProfile();
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]);
+        var profileStore = new ProfileStore(profiles);
+        var credentials = new CredentialStore { DeleteResult = new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.AccessDenied) };
+        var viewModel = new SettingsPageViewModel(
+            new ApplicationSettings(),
+            null,
+            profiles,
+            profileStore,
+            new ManagedNutServerProfileUpdateService(profileStore, credentials),
+            credentials);
+        viewModel.ProfileDraft.ManagementHost = "new-management.example";
+
+        await viewModel.SaveProfileCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsProfileSaved);
+        Assert.Equal("management.example", profileStore.Current.ActiveProfile.Management.ManagementHost);
+        Assert.Contains("não foi alterado", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("não pôde ser removida", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static ManagedNutServerProfile RemoteProfile() => new(
+        Guid.NewGuid(),
+        "Remote",
+        new NutMonitoringProfile("monitor.example"),
+        new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut", sshUsername: "nutadmin"),
+        ManagedNutServerAccessMode.Manage);
+
     private sealed class RecordingStore : IApplicationSettingsStore
     {
         private readonly List<ApplicationSettings> _settings;
@@ -119,5 +176,42 @@ public sealed class SettingsPageViewModelTests
     {
         public Task<ApplicationSettings> LoadAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task SaveAsync(ApplicationSettings settings, CancellationToken cancellationToken) => throw new IOException();
+    }
+
+    private sealed class ProfileStore : IManagedNutServerProfileStore
+    {
+        public ProfileStore(ManagedNutServerProfiles current) => Current = current;
+
+        public ManagedNutServerProfiles Current { get; private set; }
+
+        public bool ThrowOnSave { get; set; }
+
+        public Task<ManagedNutServerProfiles?> LoadAsync(CancellationToken cancellationToken) => Task.FromResult<ManagedNutServerProfiles?>(Current);
+
+        public Task SaveAsync(ManagedNutServerProfiles profiles, CancellationToken cancellationToken)
+        {
+            if (ThrowOnSave)
+            {
+                throw new IOException("Simulated profile persistence failure.");
+            }
+
+            Current = profiles;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CredentialStore : IRemoteCredentialStore
+    {
+        public RemoteCredentialStoreResult DeleteResult { get; set; } = new(RemoteCredentialStoreStatus.Success);
+
+        public Task<RemoteCredentialStoreResult> ContainsAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.NotFound));
+
+        public Task<RemoteCredentialReadResult> ReadAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteCredentialReadResult(RemoteCredentialStoreStatus.NotFound));
+
+        public Task<RemoteCredentialStoreResult> WriteAsync(Guid profileId, RemoteCredentialKind kind, ReadOnlyMemory<char> secret, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteCredentialStoreResult(RemoteCredentialStoreStatus.Success));
+
+        public Task<RemoteCredentialStoreResult> DeleteAsync(Guid profileId, RemoteCredentialKind kind, CancellationToken cancellationToken = default) => Task.FromResult(DeleteResult);
+
+        public Task<RemoteCredentialStoreResult> DeleteAllForProfileAsync(Guid profileId, CancellationToken cancellationToken = default) => Task.FromResult(DeleteResult);
     }
 }

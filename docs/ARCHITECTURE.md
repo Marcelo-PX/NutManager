@@ -2,7 +2,7 @@
 
 ## 1. Architectural goals
 
-- Windows-first desktop product with best-effort shared-code compatibility on Linux;
+- Windows x64 desktop product as the only active and supported target; Linux compatibility is deferred;
 - safe monitoring, configuration, and local administration boundaries;
 - clear separation of domain, UI, protocol, persistence, and operating-system concerns;
 - deterministic tests without a real UPS, NUT server, service, serial port, or elevation;
@@ -65,7 +65,7 @@ The active profile is resolved during bootstrap into an immutable runtime contex
 
 `settings.json` is per-user UTF-8 JSON for polling, timeout, theme, mock-mode, and legacy monitoring compatibility fields. It uses temporary-file, atomic persistence and has no secrets in its current model.
 
-`managed-servers.json` is schema-versioned, per-user metadata for managed profiles and the active profile. Schema v3 retains SSH metadata and adds an explicit SMB UNC share, optional child configuration directory, authentication mode, and non-secret user name. It uses temporary-file, atomic persistence and never contains passwords, passphrases, or private-key material; those remain session-only. T20 owns protected SSH and SMB credential storage.
+`managed-servers.json` is schema-versioned, per-user metadata for managed profiles and the active profile. Schema v4 retains SSH/SMB metadata and adds non-secret SSH authentication mode and optional private-key path. It uses temporary-file, atomic persistence and never contains passwords, passphrases, or private-key material. Those values are session-only by default and, only after an explicit successful connection, may be saved in app-owned `CRED_TYPE_GENERIC` Windows Credential Manager entries with local-machine persistence.
 
 These stores do not use backup or rollback semantics. Backup, recoverable replacement, and rollback belong to the T14 configuration-file pipeline.
 
@@ -103,11 +103,11 @@ The adapter implements local installation detection, service metadata and contro
 
 ## 9. Local and remote management boundary
 
-Local Windows management is implemented through T17. A Remote profile explicitly selects SSH/SFTP or SMB for configuration files; neither transport accesses a remote NutManager instance. SSH/SFTP uses strict pinned-host-key verification. SMB uses only a manually supplied UNC share and either the current Windows identity or a session-scoped isolated Windows outbound identity created with `LOGON_NEW_CREDENTIALS`; it owns no global WNet connection and never maps a drive, disconnects a redirector connection, or discovers shares. Explicit SMB passwords are session-only, converted only for the native logon boundary, and the resulting token is disposed when the session ends. Remote profiles may read and prepare configuration changes after validation. Writes remain read-only by default and require both the profile's Manage policy and an exact-directory capability probe: Windows/OpenSSH safe replacement for SSH/SFTP, or verified UNC `File.Replace` semantics for SMB. The transport-neutral remote pipeline preserves T14-style fingerprints, candidate verification, reserved generated backups, post-write verification, rollback, and recovery paths.
+Local Windows management is implemented through T17. A Remote profile explicitly selects SSH/SFTP or SMB for configuration files; neither transport accesses a remote NutManager instance. SSH/SFTP uses strict pinned-host-key verification. SMB uses only a manually supplied UNC share and either the current Windows identity or a session-scoped isolated Windows outbound identity created with `LOGON_NEW_CREDENTIALS`; it owns no global WNet connection and never maps a drive, disconnects a redirector connection, or discovers shares. Explicit SMB passwords are converted only for the native logon boundary and the resulting token is disposed when the session ends. A user may opt in after successful authentication to remember SSH or explicit-SMB secrets in Windows Credential Manager; the Core contract exposes only profile ID, fixed credential kind, and disposable secret buffers. Remote profiles may read and prepare configuration changes after validation. Writes remain read-only by default and require both the profile's Manage policy and an exact-directory capability probe: Windows/OpenSSH safe replacement for SSH/SFTP, or verified UNC `File.Replace` semantics for SMB. The transport-neutral remote pipeline preserves T14-style fingerprints, candidate verification, reserved generated backups, post-write verification, rollback, and recovery paths.
 
 ## 10. Windows-first CI and packaging
 
-Official CI and package validation run on `windows-latest` only. Windows x64 is the official package and distribution target. Linux is not a CI gate and has no official package; shared code remains best-effort compatible until T22 evaluates it separately.
+Official CI and package validation run on `windows-latest` only. Windows x64 is the only active, supported package and distribution target. Linux compatibility is deferred; it is not a CI gate and has no active package or administration support.
 
 ## 11. Error handling and logging
 

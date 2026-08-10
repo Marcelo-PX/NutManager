@@ -9,6 +9,7 @@ using NutManager.Core.Models;
 using NutManager.Core.Services;
 using NutManager.Infrastructure.Mock;
 using NutManager.Infrastructure.Configuration;
+using NutManager.Infrastructure.Credentials.Windows;
 using NutManager.Infrastructure.NutProtocol;
 using NutManager.Infrastructure.Persistence;
 using NutManager.Infrastructure.Polling;
@@ -45,7 +46,8 @@ public partial class App : Application
 
         var profileBootstrap = await new ManagedNutServerBootstrapper(profileStore).LoadAsync(settings, CancellationToken.None);
         var runtimeProfile = profileBootstrap.RuntimeContext;
-        var profileMutator = new ManagedNutServerProfileUpdateService(profileStore);
+        var credentialStore = new WindowsCredentialManagerRemoteCredentialStore();
+        var profileMutator = new ManagedNutServerProfileUpdateService(profileStore, credentialStore);
 
         INutClient client;
         var endpoint = runtimeProfile.Endpoint;
@@ -69,7 +71,7 @@ public partial class App : Application
         };
         var remoteManagement = isLocalManagement
             ? null
-            : new RemoteManagementSessionViewModel(runtimeProfile.Profile, remoteTransport, profileMutator);
+            : new RemoteManagementSessionViewModel(runtimeProfile.Profile, remoteTransport, profileMutator, credentialStore);
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
@@ -85,7 +87,7 @@ public partial class App : Application
             isLocalManagement ? new WindowsNutDriverDiagnostics() : null,
             runtimeProfile,
             remoteManagement);
-        var settingsPage = new SettingsPageViewModel(settings, store, profileBootstrap.Profiles, profileStore, profileMutator);
+        var settingsPage = new SettingsPageViewModel(settings, store, profileBootstrap.Profiles, profileStore, profileMutator, credentialStore);
         window.Closed += async (_, _) =>
         {
             if (remoteManagement is not null)
@@ -112,6 +114,11 @@ public partial class App : Application
         await devices.InitializeAsync();
         await diagnostics.RefreshLocalInstallationAsync();
         await administration.InitializeAsync();
+        await settingsPage.RefreshStoredCredentialStatusAsync();
+        if (remoteManagement is not null)
+        {
+            await remoteManagement.RefreshStoredCredentialStatusAsync();
+        }
     }
 
     private void ApplyTheme(ThemePreference preference)

@@ -409,7 +409,7 @@ public sealed class RemoteNutManagementTests
         Assert.True(RemoteNutGeneratedBackupFile.IsValidName(".nutmanager-ups.conf-abc.bak"));
 
     [Fact]
-    public void SessionOnlyAuthenticationDoesNotExposeCredentialsInPersistedProfileModel()
+    public void PersistedAuthenticationMetadataDoesNotExposeSecretValues()
     {
         var profile = new NutManagementProfile(
             NutManagementMode.Remote,
@@ -425,7 +425,8 @@ public sealed class RemoteNutManagementTests
         Assert.Equal(CanonicalFingerprint, profile.TrustedHostKeyFingerprint);
         Assert.DoesNotContain(typeof(NutManagementProfile).GetProperties(), property =>
             property.Name.Contains("password", StringComparison.OrdinalIgnoreCase) ||
-            property.Name.Contains("privatekey", StringComparison.OrdinalIgnoreCase));
+            property.Name.Contains("passphrase", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(typeof(NutManagementProfile).GetProperties(), property => property.Name == nameof(NutManagementProfile.SshPrivateKeyPath));
     }
 
     [Fact]
