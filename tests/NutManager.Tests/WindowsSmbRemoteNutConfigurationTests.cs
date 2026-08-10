@@ -347,6 +347,71 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         Assert.Equal("MODE=netserver\n", fileSystem.GetText(result.RecoveryPath!));
     }
 
+    [Fact]
+    public async Task SmbCommitPerformsTheFinalReparseChecksBeforeTheFinalReadsAndReplace()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        var candidate = Encoding.UTF8.GetBytes("MODE=netserver\n");
+        fileSystem.SetFile(targetPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        await session.UploadCandidateAsync(new RemoteNutCandidateUploadRequest(ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", candidate));
+        fileSystem.BeginOperationTraceAfterWriteNewPathSuffix = "original.bak";
+
+        var result = await session.CommitConfigurationAsync(new RemoteNutConfigurationCommitRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-candidate.tmp", ".nutmanager-nut.conf-original.bak", Fingerprint(original), Fingerprint(candidate)));
+
+        Assert.Equal(RemoteNutTransportStatus.Success, result.Status);
+        Assert.Equal(
+            new[]
+            {
+                "Reparse:nut.conf",
+                "Reparse:.nutmanager-nut.conf-candidate.tmp",
+                "Reparse:.nutmanager-nut.conf-original.bak",
+                "Read:nut.conf",
+                "Read:.nutmanager-nut.conf-candidate.tmp",
+                "Read:.nutmanager-nut.conf-original.bak",
+                "Replace:.nutmanager-nut.conf-candidate.tmp"
+            },
+            fileSystem.OperationTrace.Take(7));
+    }
+
+    [Fact]
+    public async Task SmbRollbackPerformsTheFinalReparseChecksBeforeTheFinalReadsAndReplace()
+    {
+        var fileSystem = new FakeSmbFileSystem();
+        var targetPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, "nut.conf");
+        var backupPath = SmbUncPath.CombineDirectChild(ConfigurationDirectory, ".nutmanager-nut.conf-original.bak");
+        var original = Encoding.UTF8.GetBytes("MODE=standalone\n");
+        fileSystem.SetFile(targetPath, "MODE=netserver\n");
+        fileSystem.SetFile(backupPath, Encoding.UTF8.GetString(original));
+        var session = CreateSession(fileSystem);
+        await session.ValidateConfigurationDirectoryAsync(ConfigurationDirectory);
+        Assert.True((await session.ProbeSafeWriteCapabilityAsync(ConfigurationDirectory)).IsSupported);
+        fileSystem.BeginOperationTraceAfterWriteNewPathSuffix = "recovery.bak";
+
+        var result = await session.RollbackConfigurationAsync(new RemoteNutConfigurationRollbackRequest(
+            ConfigurationDirectory, "nut.conf", ".nutmanager-nut.conf-original.bak", ".nutmanager-nut.conf-rollback.tmp", ".nutmanager-nut.conf-recovery.bak", Fingerprint(original)));
+
+        Assert.Equal(RemoteNutTransportStatus.Success, result.Status);
+        Assert.Equal(
+            new[]
+            {
+                "Reparse:nut.conf",
+                "Reparse:.nutmanager-nut.conf-rollback.tmp",
+                "Reparse:.nutmanager-nut.conf-recovery.bak",
+                "Read:.nutmanager-nut.conf-original.bak",
+                "Read:.nutmanager-nut.conf-rollback.tmp",
+                "Read:nut.conf",
+                "Read:.nutmanager-nut.conf-recovery.bak",
+                "Replace:.nutmanager-nut.conf-rollback.tmp"
+            },
+            fileSystem.OperationTrace.Take(8));
+    }
+
     [Theory]
     [InlineData("target", RemoteNutTransportStatus.Failed)]
     [InlineData("backup", RemoteNutTransportStatus.Failed)]
@@ -662,6 +727,8 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
         public int ReplaceCalls { get; private set; }
         public Action<string>? AfterWriteNewFile { get; set; }
         public Action<string, string, string>? AfterReplace { get; set; }
+        public string? BeginOperationTraceAfterWriteNewPathSuffix { get; set; }
+        public List<string> OperationTrace { get; } = [];
         public IReadOnlyCollection<string> FilePaths => _files.Keys;
         public TaskCompletionSource ReplaceStarted { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource AllowReplace { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -698,6 +765,7 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
 
         public Task<ReadOnlyMemory<byte>> ReadFileAsync(string path, CancellationToken cancellationToken)
         {
+            TraceOperation("Read", path);
             if (!_files.TryGetValue(path, out var bytes))
             {
                 throw new FileNotFoundException();
@@ -711,6 +779,13 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
             if (!_files.TryAdd(path, bytes.ToArray()))
             {
                 throw new IOException("CreateNew collision");
+            }
+
+            if (!string.IsNullOrWhiteSpace(BeginOperationTraceAfterWriteNewPathSuffix) &&
+                path.EndsWith(BeginOperationTraceAfterWriteNewPathSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                OperationTrace.Clear();
+                BeginOperationTraceAfterWriteNewPathSuffix = null;
             }
 
             AfterWriteNewFile?.Invoke(path);
@@ -734,6 +809,7 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
 
         public async Task ReplaceFileAsync(string candidatePath, string targetPath, string backupPath, CancellationToken cancellationToken)
         {
+            TraceOperation("Replace", candidatePath);
             ReplaceCalls++;
             if (ReplaceThrows)
             {
@@ -753,6 +829,18 @@ public sealed class WindowsSmbRemoteNutConfigurationTests
             AfterReplace?.Invoke(candidatePath, targetPath, backupPath);
         }
 
-        public Task<bool> IsReparsePointAsync(string path, CancellationToken cancellationToken) => Task.FromResult(false);
+        public Task<bool> IsReparsePointAsync(string path, CancellationToken cancellationToken)
+        {
+            TraceOperation("Reparse", path);
+            return Task.FromResult(false);
+        }
+
+        private void TraceOperation(string operation, string path)
+        {
+            if (BeginOperationTraceAfterWriteNewPathSuffix is null)
+            {
+                OperationTrace.Add($"{operation}:{path[(path.LastIndexOf('\\') + 1)..]}");
+            }
+        }
     }
 }
