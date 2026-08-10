@@ -14,7 +14,9 @@ public partial class DiagnosticsPageView : UserControl
 
     private async void SelectDirectoryButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
-        if (DataContext is not DiagnosticsPageViewModel viewModel || TopLevel.GetTopLevel(this) is not { } topLevel)
+        if (DataContext is not DiagnosticsPageViewModel viewModel ||
+            !viewModel.CanInspectLocalInstallation ||
+            TopLevel.GetTopLevel(this) is not { } topLevel)
         {
             return;
         }

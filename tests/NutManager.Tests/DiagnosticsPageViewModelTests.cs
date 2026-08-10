@@ -189,6 +189,8 @@ public sealed class DiagnosticsPageViewModelTests
         using var viewModel = CreateViewModel(new ApplicationSettings(), installationDetector: detector);
 
         Assert.Equal("Nenhuma instalação NUT local encontrada", viewModel.LocalInstallationStatusText);
+        Assert.True(viewModel.IsLocalManagementProfile);
+        Assert.True(viewModel.CanInspectLocalInstallation);
         var refresh = viewModel.RefreshLocalInstallationAsync();
         await detector.DetectStarted.Task;
         Assert.True(viewModel.IsDetectingLocalInstallation);
@@ -231,31 +233,45 @@ public sealed class DiagnosticsPageViewModelTests
         Assert.Equal(2, detector.DetectCalls);
     }
 
-    [Fact]
-    public async Task RemoteRuntimeProfileShowsIndependentMetadataAndNeverCallsTheLocalDetector()
+    [Theory]
+    [InlineData(ManagedNutServerAccessMode.Manage)]
+    [InlineData(ManagedNutServerAccessMode.ReadOnly)]
+    public void LocalManagedProfilesAllowLocalInstallationInspection(ManagedNutServerAccessMode accessMode)
     {
-        var profile = new ManagedNutServerProfile(
-            Guid.NewGuid(),
-            "Servidor remoto",
-            new NutMonitoringProfile("monitor.example", 3494, "remote-ups"),
-            new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut"),
-            ManagedNutServerAccessMode.ReadOnly);
-        var context = ManagedNutServerRuntimeContext.FromProfiles(
-            new ManagedNutServerProfiles(1, profile.Id, [profile]),
-            new ApplicationSettings());
+        var detector = new TestInstallationDetector();
+        using var viewModel = CreateViewModel(
+            new ApplicationSettings(),
+            installationDetector: detector,
+            profileContext: CreateProfileContext(NutManagementMode.Local, accessMode));
+
+        Assert.True(viewModel.IsLocalManagementProfile);
+        Assert.True(viewModel.CanInspectLocalInstallation);
+    }
+
+    [Theory]
+    [InlineData(ManagedNutServerAccessMode.Manage)]
+    [InlineData(ManagedNutServerAccessMode.ReadOnly)]
+    public async Task RemoteRuntimeProfilesNeverCallOrApplyLocalInstallation(ManagedNutServerAccessMode accessMode)
+    {
+        var context = CreateProfileContext(NutManagementMode.Remote, accessMode);
         var detector = new TestInstallationDetector();
         using var viewModel = CreateViewModel(new ApplicationSettings(host: "legacy", port: 3493), installationDetector: detector, profileContext: context);
 
         await viewModel.RefreshLocalInstallationAsync();
+        await viewModel.InspectLocalInstallationDirectoryAsync(@"C:\NUT");
 
         Assert.Equal("Servidor remoto", viewModel.ManagedProfileName);
         Assert.Equal("monitor.example", viewModel.Host);
         Assert.Equal("3494", viewModel.Port);
         Assert.Equal("remote-ups", viewModel.PreferredUpsName);
         Assert.Equal("Remoto", viewModel.ManagementModeText);
-        Assert.Equal("Somente leitura", viewModel.ManagementAccessText);
+        Assert.Equal(accessMode == ManagedNutServerAccessMode.ReadOnly ? "Somente leitura" : "Permitir gerenciamento", viewModel.ManagementAccessText);
+        Assert.False(viewModel.IsLocalManagementProfile);
+        Assert.False(viewModel.CanInspectLocalInstallation);
         Assert.Equal(0, detector.DetectCalls);
-        Assert.Contains("não será detectada", viewModel.LocalInstallationError);
+        Assert.Equal(0, detector.ManualInspectionCalls);
+        Assert.Equal("Indisponível", viewModel.InstallationDirectoryText);
+        Assert.Contains("não será inspecionada", viewModel.LocalInstallationError);
     }
 
     private static DiagnosticsPageViewModel CreateViewModel(
@@ -265,6 +281,23 @@ public sealed class DiagnosticsPageViewModelTests
         ILocalNutInstallationDetector? installationDetector = null,
         ManagedNutServerRuntimeContext? profileContext = null) =>
         new(settings, RuntimeInfo, coordinator, devices, installationDetector, profileContext);
+
+    private static ManagedNutServerRuntimeContext CreateProfileContext(
+        NutManagementMode managementMode,
+        ManagedNutServerAccessMode accessMode)
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            managementMode == NutManagementMode.Local ? "Servidor local" : "Servidor remoto",
+            new NutMonitoringProfile("monitor.example", 3494, "remote-ups"),
+            managementMode == NutManagementMode.Local
+                ? new NutManagementProfile(NutManagementMode.Local)
+                : new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut"),
+            accessMode);
+        return ManagedNutServerRuntimeContext.FromProfiles(
+            new ManagedNutServerProfiles(1, profile.Id, [profile]),
+            new ApplicationSettings());
+    }
 
     private static UpsSnapshot CreateSnapshot(string name, DataSource source) => new(
         new UpsIdentity(name, "UPS de teste", "Fabricante", "Modelo", "Serial"),

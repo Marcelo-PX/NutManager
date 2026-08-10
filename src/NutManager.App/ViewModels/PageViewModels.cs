@@ -293,6 +293,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     public string ManagedProfileName => _profileContext?.Profile.Name ?? "Perfil local atual";
     public string ManagementModeText => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote ? "Remoto" : "Local";
     public string ManagementAccessText => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? "Somente leitura" : "Permitir gerenciamento";
+    public bool IsLocalManagementProfile => _profileContext?.Profile.Management.Mode != NutManagementMode.Remote;
 
     public int DiscoveredUpsCount => _devices?.Devices.Count ?? 0;
     public string SelectedUpsName => _devices?.SelectedDevice?.Name ?? _pollingState.UpsName ?? NoSelectionText;
@@ -332,6 +333,10 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     public string? LocalInstallationError { get; private set; }
     public bool HasLocalInstallationError => !string.IsNullOrWhiteSpace(LocalInstallationError);
     public bool IsDetectingLocalInstallation { get; private set; }
+    public bool CanInspectLocalInstallation =>
+        IsLocalManagementProfile &&
+        _installationDetector is not null &&
+        !IsDetectingLocalInstallation;
 
     [RelayCommand]
     private Task DetectLocalInstallationAsync() => RefreshLocalInstallationAsync(CancellationToken.None);
@@ -482,6 +487,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         OnPropertyChanged(nameof(LocalInstallationError));
         OnPropertyChanged(nameof(HasLocalInstallationError));
         OnPropertyChanged(nameof(IsDetectingLocalInstallation));
+        OnPropertyChanged(nameof(CanInspectLocalInstallation));
     }
 
     private static void RunOnUiThread(Action action)
