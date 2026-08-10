@@ -821,7 +821,7 @@ public sealed class AdministrationPageViewModelTests
         Assert.False(viewModel.CanSelectConfigurationFile);
         Assert.False(viewModel.CanPrepareAdministrativeAction);
         Assert.False(viewModel.CanPrepareDriverDiagnostic);
-        Assert.Contains("Gerenciamento remoto", viewModel.ManagementAvailabilityText);
+        Assert.Contains("Conecte a sessão SSH/SFTP", viewModel.ManagementAvailabilityText);
     }
 
     [Fact]

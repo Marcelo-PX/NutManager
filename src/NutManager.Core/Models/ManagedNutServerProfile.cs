@@ -57,7 +57,16 @@ public sealed record NutMonitoringProfile
 
 public sealed record NutManagementProfile
 {
-    public NutManagementProfile(NutManagementMode mode, string? managementHost = null, string? remoteConfigurationDirectory = null)
+    public const int DefaultSshPort = 22;
+
+    public NutManagementProfile(
+        NutManagementMode mode,
+        string? managementHost = null,
+        string? remoteConfigurationDirectory = null,
+        int sshPort = DefaultSshPort,
+        string? sshUsername = null,
+        string? trustedHostKeyFingerprint = null,
+        string? trustedHostKeyAlgorithm = null)
     {
         if (!Enum.IsDefined(mode))
         {
@@ -69,11 +78,26 @@ public sealed record NutManagementProfile
         {
             ManagementHost = NutMonitoringProfile.ValidateRequiredText(managementHost!, nameof(managementHost), 255);
             RemoteConfigurationDirectory = ValidateRemoteDirectory(remoteConfigurationDirectory);
+            if (sshPort is < 1 or > 65535)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sshPort), "The SSH port must be between 1 and 65535.");
+            }
+
+            SshPort = sshPort;
+            SshUsername = NutMonitoringProfile.NormalizeOptionalText(sshUsername, nameof(sshUsername), 255);
+            TrustedHostKeyFingerprint = ValidateHostKeyFingerprint(trustedHostKeyFingerprint);
+            TrustedHostKeyAlgorithm = TrustedHostKeyFingerprint is null
+                ? null
+                : NutMonitoringProfile.NormalizeOptionalText(trustedHostKeyAlgorithm, nameof(trustedHostKeyAlgorithm), 128);
         }
         else
         {
             ManagementHost = null;
             RemoteConfigurationDirectory = null;
+            SshPort = DefaultSshPort;
+            SshUsername = null;
+            TrustedHostKeyFingerprint = null;
+            TrustedHostKeyAlgorithm = null;
         }
     }
 
@@ -82,6 +106,14 @@ public sealed record NutManagementProfile
     public string? ManagementHost { get; }
 
     public string? RemoteConfigurationDirectory { get; }
+
+    public int SshPort { get; }
+
+    public string? SshUsername { get; }
+
+    public string? TrustedHostKeyFingerprint { get; }
+
+    public string? TrustedHostKeyAlgorithm { get; }
 
     private static string? ValidateRemoteDirectory(string? value)
     {
@@ -94,6 +126,31 @@ public sealed record NutManagementProfile
         if (normalized.Length > 1024 || normalized.Any(char.IsControl))
         {
             throw new ArgumentException("The remote configuration directory is invalid.", nameof(value));
+        }
+
+        return normalized;
+    }
+
+    private static string? ValidateHostKeyFingerprint(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim();
+        if (!normalized.StartsWith("SHA256:", StringComparison.Ordinal) || normalized.Length > 512 || normalized.Any(char.IsControl))
+        {
+            throw new ArgumentException("The trusted host key fingerprint is invalid.", nameof(value));
+        }
+
+        try
+        {
+            _ = Convert.FromBase64String(normalized["SHA256:".Length..]);
+        }
+        catch (FormatException exception)
+        {
+            throw new ArgumentException("The trusted host key fingerprint is invalid.", nameof(value), exception);
         }
 
         return normalized;
@@ -142,11 +199,11 @@ public sealed record ManagedNutServerProfile
 
 public sealed record ManagedNutServerProfiles
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public ManagedNutServerProfiles(int schemaVersion, Guid activeProfileId, IReadOnlyList<ManagedNutServerProfile> profiles)
     {
-        if (schemaVersion != CurrentSchemaVersion)
+        if (schemaVersion is not (1 or CurrentSchemaVersion))
         {
             throw new ArgumentOutOfRangeException(nameof(schemaVersion), "Unsupported managed server profile schema version.");
         }
@@ -177,7 +234,7 @@ public sealed record ManagedNutServerProfiles
             throw new ArgumentException("The active profile must exist.", nameof(activeProfileId));
         }
 
-        SchemaVersion = schemaVersion;
+        SchemaVersion = CurrentSchemaVersion;
         ActiveProfileId = activeProfileId;
         Profiles = profiles.ToArray();
     }
@@ -209,14 +266,18 @@ public sealed record ManagedServerCapabilities(
     bool CanEditConfiguration,
     bool CanExecuteAdministrativeActions,
     bool CanRunDriverDiagnostics,
-    bool IsRemoteManagementAvailable)
+    bool IsRemoteManagementAvailable,
+    bool CanUseRemoteManagement = false,
+    bool CanInspectRemoteConfiguration = false,
+    bool CanEditConfigurationByPolicy = false)
 {
     public static ManagedServerCapabilities FromProfile(ManagedNutServerProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
         if (profile.Management.Mode == NutManagementMode.Remote)
         {
-            return new ManagedServerCapabilities(true, false, false, false, false, false);
+            var canManageRemotely = profile.AccessMode == ManagedNutServerAccessMode.Manage;
+            return new ManagedServerCapabilities(true, false, false, false, false, true, true, true, canManageRemotely);
         }
 
         var canManage = profile.AccessMode == ManagedNutServerAccessMode.Manage;

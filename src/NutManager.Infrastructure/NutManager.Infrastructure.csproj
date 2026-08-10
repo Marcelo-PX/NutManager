@@ -7,5 +7,6 @@
     <PackageReference Include="System.Diagnostics.EventLog" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="System.ServiceProcess.ServiceController" />
+    <PackageReference Include="SSH.NET" />
   </ItemGroup>
 </Project>

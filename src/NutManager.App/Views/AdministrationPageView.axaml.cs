@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using NutManager.App.ViewModels;
 using NutManager.Core.Administration;
+using NutManager.Core.Services;
 
 namespace NutManager.App.Views;
 
@@ -37,6 +38,113 @@ public partial class AdministrationPageView : UserControl
         if (DataContext is AdministrationPageViewModel viewModel && eventArgs.AddedItems.OfType<NutConfigurationFileItemViewModel>().FirstOrDefault() is { } file)
         {
             await viewModel.SelectFileAsync(file);
+        }
+    }
+
+    private async void RemoteConnectPasswordButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanConnectRemote: true })
+        {
+            var password = RemotePasswordBox.Text ?? string.Empty;
+            try
+            {
+                await remoteManagement.ConnectWithPasswordAsync(password.AsMemory());
+            }
+            finally
+            {
+                RemotePasswordBox.Text = string.Empty;
+            }
+        }
+    }
+
+    private async void RemoteConnectPrivateKeyButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is not AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanConnectRemote: true } || TopLevel.GetTopLevel(this) is not { } topLevel)
+        {
+            return;
+        }
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Selecionar chave privada SSH",
+            AllowMultiple = false
+        });
+        var path = files.FirstOrDefault()?.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            var passphrase = RemotePasswordBox.Text ?? string.Empty;
+            try
+            {
+                await remoteManagement.ConnectWithPrivateKeyAsync(path, passphrase.AsMemory());
+            }
+            finally
+            {
+                RemotePasswordBox.Text = string.Empty;
+            }
+        }
+    }
+
+    private async void RemoteDisconnectButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanDisconnectRemote: true })
+        {
+            await remoteManagement.DisconnectAsync();
+        }
+    }
+
+    private async void RemoteTrustHostKeyButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanTrustRemoteHostKey: true })
+        {
+            await remoteManagement.TrustPresentedHostKeyAsync();
+        }
+    }
+
+    private async void RemoteBrowseButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanBrowseRemoteDirectory: true })
+        {
+            await remoteManagement.BrowseDirectoryAsync(remoteManagement.CurrentDirectory);
+        }
+    }
+
+    private async void RemoteBrowseParentButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanBrowseRemoteDirectory: true })
+        {
+            await remoteManagement.BrowseParentAsync();
+        }
+    }
+
+    private async void RemoteValidateDirectoryButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanValidateRemoteDirectory: true })
+        {
+            await remoteManagement.ValidateCurrentDirectoryAsync();
+        }
+    }
+
+    private async void RemoteDirectoryList_OnSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanBrowseRemoteDirectory: true } && eventArgs.AddedItems.OfType<RemoteNutDirectoryEntry>().FirstOrDefault() is { } directory)
+        {
+            await remoteManagement.BrowseChildAsync(directory);
+        }
+    }
+
+    private async void RemoteUseDirectoryButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanUseRemoteDirectory: true })
+        {
+            await remoteManagement.UseCurrentDirectoryAsync();
+        }
+    }
+
+    private async void RemoteProbeWriteButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { } remoteManagement, CanProbeRemoteWriteCapability: true })
+        {
+            await remoteManagement.ProbeWriteCapabilityAsync();
         }
     }
 

@@ -32,6 +32,7 @@ public enum NutConfigurationApplyStatus
     PostApplyValidationFailedRollbackFailed,
     VerificationFailedRolledBack,
     VerificationFailedRollbackFailed,
+    RemoteCommitOutcomeUnknown,
     Cancelled,
     Failed
 }

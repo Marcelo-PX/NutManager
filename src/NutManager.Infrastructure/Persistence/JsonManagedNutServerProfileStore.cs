@@ -133,10 +133,15 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
                 throw new ArgumentException("Profiles are required.");
             }
 
+            if (SchemaVersion is not (1 or ManagedNutServerProfiles.CurrentSchemaVersion))
+            {
+                throw new ArgumentOutOfRangeException(nameof(SchemaVersion), "Unsupported managed server profile schema version.");
+            }
+
             return new ManagedNutServerProfiles(
-                SchemaVersion,
+                ManagedNutServerProfiles.CurrentSchemaVersion,
                 ActiveProfileId,
-                Profiles.Select(profile => profile!.ToProfile()).ToArray());
+                Profiles.Select(profile => profile!.ToProfile(SchemaVersion == 1)).ToArray());
         }
 
         public static ProfileDocument FromProfiles(ManagedNutServerProfiles profiles) => new()
@@ -165,13 +170,28 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
 
         public string? RemoteConfigurationDirectory { get; set; }
 
+        public int SshPort { get; set; }
+
+        public string? SshUsername { get; set; }
+
+        public string? TrustedHostKeyFingerprint { get; set; }
+
+        public string? TrustedHostKeyAlgorithm { get; set; }
+
         public ManagedNutServerAccessMode AccessMode { get; set; }
 
-        public ManagedNutServerProfile ToProfile() => new(
+        public ManagedNutServerProfile ToProfile(bool migrateSchema1) => new(
             Id,
             Name!,
             new NutMonitoringProfile(MonitoringHost!, MonitoringPort, PreferredUpsName),
-            new NutManagementProfile(ManagementMode, ManagementHost, RemoteConfigurationDirectory),
+            new NutManagementProfile(
+                ManagementMode,
+                ManagementHost,
+                RemoteConfigurationDirectory,
+                migrateSchema1 ? NutManagementProfile.DefaultSshPort : SshPort,
+                migrateSchema1 ? null : SshUsername,
+                migrateSchema1 ? null : TrustedHostKeyFingerprint,
+                migrateSchema1 ? null : TrustedHostKeyAlgorithm),
             AccessMode);
 
         public static ProfileEntry FromProfile(ManagedNutServerProfile profile) => new()
@@ -184,6 +204,10 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
             ManagementMode = profile.Management.Mode,
             ManagementHost = profile.Management.ManagementHost,
             RemoteConfigurationDirectory = profile.Management.RemoteConfigurationDirectory,
+            SshPort = profile.Management.SshPort,
+            SshUsername = profile.Management.SshUsername,
+            TrustedHostKeyFingerprint = profile.Management.TrustedHostKeyFingerprint,
+            TrustedHostKeyAlgorithm = profile.Management.TrustedHostKeyAlgorithm,
             AccessMode = profile.AccessMode
         };
     }

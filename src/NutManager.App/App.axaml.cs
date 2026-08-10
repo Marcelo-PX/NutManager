@@ -13,6 +13,7 @@ using NutManager.Infrastructure.NutProtocol;
 using NutManager.Infrastructure.Persistence;
 using NutManager.Infrastructure.Polling;
 using NutManager.Infrastructure.Platform.Windows;
+using NutManager.Infrastructure.Remote.Ssh;
 
 namespace NutManager.App;
 
@@ -59,6 +60,12 @@ public partial class App : Application
         var overview = new OverviewPageViewModel(polling);
         var devices = new DevicesPageViewModel(client, endpoint, polling, runtimeProfile.Profile.Monitoring.PreferredUpsName);
         var isLocalManagement = runtimeProfile.Profile.Management.Mode == NutManagementMode.Local;
+        var remoteManagement = isLocalManagement
+            ? null
+            : new RemoteManagementSessionViewModel(
+                runtimeProfile.Profile,
+                new SshNetRemoteNutManagementTransport(),
+                new ManagedNutServerProfileUpdateService(profileStore));
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
@@ -72,10 +79,16 @@ public partial class App : Application
             isLocalManagement ? new NutConfigurationFilePipeline() : null,
             isLocalManagement ? new WindowsLocalNutAdministration() : null,
             isLocalManagement ? new WindowsNutDriverDiagnostics() : null,
-            runtimeProfile);
+            runtimeProfile,
+            remoteManagement);
         var settingsPage = new SettingsPageViewModel(settings, store, profileBootstrap.Profiles, profileStore);
-        window.Closed += (_, _) =>
+        window.Closed += async (_, _) =>
         {
+            if (remoteManagement is not null)
+            {
+                await remoteManagement.DisposeAsync();
+            }
+
             diagnostics.Dispose();
             devices.Dispose();
             polling.Dispose();

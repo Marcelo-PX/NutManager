@@ -43,8 +43,53 @@
         <StackPanel Spacing="7">
           <TextBlock Text="Gerenciamento remoto" FontSize="20" FontWeight="SemiBold" />
           <TextBlock Text="{Binding ManagementAvailabilityText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <TextBlock><Run Text="Host de gerenciamento: " /><Run Text="{Binding RemoteManagementHost}" /></TextBlock>
-          <TextBlock><Run Text="Diretório remoto: " /><Run Text="{Binding RemoteConfigurationDirectory}" /></TextBlock>
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+            <TextBlock Text="Host" Grid.Row="0" />
+            <TextBlock Text="{Binding RemoteManagement.ManagementHost}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Porta SSH" Grid.Row="1" />
+            <TextBlock Text="{Binding RemoteManagement.SshPort}" Grid.Row="1" Grid.Column="1" />
+            <TextBlock Text="Usuário SSH" Grid.Row="2" />
+            <TextBlock Text="{Binding RemoteManagement.SshUsername}" Grid.Row="2" Grid.Column="1" />
+            <TextBlock Text="Fingerprint confiado" Grid.Row="3" />
+            <TextBlock Text="{Binding RemoteManagement.TrustedHostKeyFingerprint}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
+            <TextBlock Text="Estado" Grid.Row="4" />
+            <TextBlock Text="{Binding RemoteManagement.ConnectionStateText}" Grid.Row="4" Grid.Column="1" />
+          </Grid>
+          <TextBlock Text="Credenciais são usadas apenas nesta sessão e não são salvas no perfil." TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBox x:Name="RemotePasswordBox" Width="260" PasswordChar="●" PlaceholderText="Senha da sessão" />
+            <Button Content="Conectar com senha" Click="RemoteConnectPasswordButton_OnClick" IsEnabled="{Binding CanConnectRemote}" />
+            <Button Content="Conectar com chave privada..." Click="RemoteConnectPrivateKeyButton_OnClick" IsEnabled="{Binding CanConnectRemote}" />
+            <Button Content="Desconectar" Click="RemoteDisconnectButton_OnClick" IsEnabled="{Binding CanDisconnectRemote}" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding RemoteManagement.CanTrustHostKey}" Spacing="5">
+            <TextBlock Text="A chave apresentada será salva somente após sua confirmação explícita." TextWrapping="Wrap" />
+            <TextBlock Text="{Binding RemoteManagement.PresentedHostKey.Fingerprint}" TextWrapping="Wrap" />
+            <Button Content="Confiar nesta chave do host" Click="RemoteTrustHostKeyButton_OnClick" IsEnabled="{Binding CanTrustRemoteHostKey}" HorizontalAlignment="Left" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding RemoteManagement.IsConnected}" Spacing="7">
+            <TextBlock Text="Diretório de configuração remoto" FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBox Width="420" Text="{Binding RemoteManagement.CurrentDirectory, Mode=TwoWay}" PlaceholderText="Informe ou navegue até um diretório remoto" />
+              <Button Content="Navegar" Click="RemoteBrowseButton_OnClick" IsEnabled="{Binding CanBrowseRemoteDirectory}" />
+              <Button Content="Diretório pai" Click="RemoteBrowseParentButton_OnClick" IsEnabled="{Binding CanBrowseRemoteDirectory}" />
+              <Button Content="Validar diretório" Click="RemoteValidateDirectoryButton_OnClick" IsEnabled="{Binding CanValidateRemoteDirectory}" />
+            </StackPanel>
+            <ListBox ItemsSource="{Binding RemoteManagement.DirectoryEntries}" SelectionChanged="RemoteDirectoryList_OnSelectionChanged" IsEnabled="{Binding CanBrowseRemoteDirectory}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="3"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Text="{Binding FullPath}" FontSize="12" Opacity="0.75" TextWrapping="Wrap" /></StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Text="{Binding RemoteManagement.ReadCapabilityText}" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Usar este diretório" Click="RemoteUseDirectoryButton_OnClick" IsEnabled="{Binding CanUseRemoteDirectory}" />
+              <Button Content="Verificar capacidade de escrita" Click="RemoteProbeWriteButton_OnClick" IsEnabled="{Binding CanProbeRemoteWriteCapability}" />
+            </StackPanel>
+            <TextBlock Text="{Binding RemoteManagement.WriteCapabilityText}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding RemoteManagement.WriteCapabilityCriticalText}" IsVisible="{Binding RemoteManagement.IsWriteCapabilityCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          </StackPanel>
         </StackPanel>
       </Border>
 
@@ -72,7 +117,7 @@
         </StackPanel>
       </Border>
 
-      <Grid ColumnDefinitions="260,16,*" RowDefinitions="Auto" IsVisible="{Binding IsLocalManagementProfile}">
+      <Grid ColumnDefinitions="260,16,*" RowDefinitions="Auto" IsVisible="{Binding IsConfigurationEditorVisible}">
         <Border Grid.Column="0"
                 Padding="14"
                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"

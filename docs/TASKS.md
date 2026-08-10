@@ -32,8 +32,8 @@ Only one task should normally be in progress at a time.
 | T16 | DONE | Add Windows service, UAC, and ACL administration | Explicitly confirmed local administrative actions |
 | T17 | DONE | Add Windows COM-port and driver workflows | Local device and driver diagnostics |
 | T18 | DONE | Add managed server profiles | Managed profile metadata and strict local/remote management-context separation |
-| T19 | READY | Add remote SSH/SFTP management | Manual remote directory browse, validation, and secure management transport |
-| T20 | TODO | Add secure credential storage | Protected remote-management credentials |
+| T19 | DONE | Add remote SSH/SFTP management | Manual remote directory browse, validation, and secure management transport |
+| T20 | READY | Add secure credential storage | Protected remote-management credentials |
 | T21 | TODO | Validate full Windows local and remote administration | End-to-end Windows-first validation |
 | T22 | TODO | Evaluate Linux administrative compatibility | Secondary, best-effort compatibility assessment |
 | T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
@@ -202,13 +202,13 @@ Add managed local and remote monitoring and management profiles, manual remote c
 
 ## T19 — Add remote SSH/SFTP management
 
-**Status:** READY
+**Status:** DONE
 
-Add SSH/SFTP remote management transport, manual remote configuration-directory browse and selection, and remote validation. Remote autodiscovery is not permitted.
+Add SSH/SFTP remote management transport, manual remote configuration-directory browse and selection, strict host-key verification, and remote validation. Remote autodiscovery is not permitted. Remote writes remain limited to an explicitly verified Windows/OpenSSH safe-replace path.
 
 ## T20 — Add secure credential storage
 
-**Status:** TODO
+**Status:** READY
 
 Store remote-management credentials using platform-appropriate protected storage without exposing secrets in logs or the interface.
 

@@ -86,6 +86,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     public bool CanActivateSelectedProfile => CanPersistProfiles && SelectedManagedProfile is not null && SelectedManagedProfile.Id != _confirmedProfiles.ActiveProfileId && !IsProfileDraftDirty;
 
+    public bool CanForgetTrustedHostKey => CanPersistProfiles && !IsProfileDraftDirty && SelectedManagedProfile is { Management.Mode: NutManagementMode.Remote, Management.TrustedHostKeyFingerprint: not null };
+
     public bool IsSelectedProfileActive => SelectedManagedProfile?.Id == _confirmedProfiles.ActiveProfileId;
 
     public string ActiveProfileName => _confirmedProfiles.ActiveProfile.Name;
@@ -277,6 +279,54 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private async Task ForgetTrustedHostKeyAsync(CancellationToken cancellationToken = default)
+    {
+        var store = _profileStore;
+        var profile = SelectedManagedProfile;
+        if (store is null || profile is null || !CanForgetTrustedHostKey)
+        {
+            return;
+        }
+
+        IsSavingProfile = true;
+        ProfileSaveError = null;
+        try
+        {
+            var updated = new ManagedNutServerProfile(
+                profile.Id,
+                profile.Name,
+                profile.Monitoring,
+                new NutManagementProfile(
+                    NutManagementMode.Remote,
+                    profile.Management.ManagementHost,
+                    profile.Management.RemoteConfigurationDirectory,
+                    profile.Management.SshPort,
+                    profile.Management.SshUsername),
+                profile.AccessMode);
+            var document = new ManagedNutServerProfiles(
+                _confirmedProfiles.SchemaVersion,
+                _confirmedProfiles.ActiveProfileId,
+                _confirmedProfiles.Profiles.Select(candidate => candidate.Id == profile.Id ? updated : candidate).ToArray());
+            await store.SaveAsync(document, cancellationToken);
+            ApplyConfirmedProfiles(document, updated.Id);
+            ProfileStatusMessage = "A chave confiável do host foi removida. Uma nova chave deverá ser revisada antes da próxima conexão.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            ProfileSaveError = "Não foi possível remover a chave confiável do host.";
+        }
+        finally
+        {
+            IsSavingProfile = false;
+            NotifyProfilePropertiesChanged();
+        }
+    }
+
+    [RelayCommand]
     private void DiscardProfileDraft()
     {
         var profile = _draftSourceId is { } id
@@ -445,6 +495,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(IsCreatingProfile));
         OnPropertyChanged(nameof(CanDeleteSelectedProfile));
         OnPropertyChanged(nameof(CanActivateSelectedProfile));
+        OnPropertyChanged(nameof(CanForgetTrustedHostKey));
         OnPropertyChanged(nameof(CanPersistProfiles));
         OnPropertyChanged(nameof(IsSelectedProfileActive));
         OnPropertyChanged(nameof(ActiveProfileName));
