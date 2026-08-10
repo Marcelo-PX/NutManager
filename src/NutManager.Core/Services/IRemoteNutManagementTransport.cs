@@ -59,6 +59,17 @@ public static class RemoteNutConfigurationFiles
     public static bool IsRecognized(string fileName) => AllNames.Contains(fileName, StringComparer.OrdinalIgnoreCase);
 }
 
+public static class RemoteNutGeneratedTemporaryFile
+{
+    public static bool IsValidName(string? name) =>
+        !string.IsNullOrWhiteSpace(name) &&
+        name.StartsWith(".nutmanager-", StringComparison.Ordinal) &&
+        name.EndsWith(".tmp", StringComparison.Ordinal) &&
+        name.Length > ".nutmanager-".Length + ".tmp".Length &&
+        name.IndexOfAny(['/', '\\']) < 0 &&
+        !name.Contains("..", StringComparison.Ordinal);
+}
+
 public sealed class RemoteNutHostKeyInfo
 {
     public RemoteNutHostKeyInfo(string host, int port, string algorithm, string fingerprint)
@@ -72,7 +83,7 @@ public sealed class RemoteNutHostKeyInfo
         Port = port;
         Algorithm = NutMonitoringProfile.ValidateRequiredText(algorithm, nameof(algorithm), 128);
         Fingerprint = NutMonitoringProfile.ValidateRequiredText(fingerprint, nameof(fingerprint), 512);
-        if (!Fingerprint.StartsWith("SHA256:", StringComparison.Ordinal))
+        if (!IsCanonicalSha256Fingerprint(Fingerprint))
         {
             throw new ArgumentException("The host key fingerprint is invalid.", nameof(fingerprint));
         }
@@ -85,6 +96,26 @@ public sealed class RemoteNutHostKeyInfo
     public string Algorithm { get; }
 
     public string Fingerprint { get; }
+
+    private static bool IsCanonicalSha256Fingerprint(string fingerprint)
+    {
+        const string prefix = "SHA256:";
+        var encoded = fingerprint.StartsWith(prefix, StringComparison.Ordinal) ? fingerprint[prefix.Length..] : string.Empty;
+        if (encoded.Length != 43 || encoded.Contains('='))
+        {
+            return false;
+        }
+
+        try
+        {
+            var hash = Convert.FromBase64String(encoded + "=");
+            return hash.Length == 32 && string.Equals(Convert.ToBase64String(hash).TrimEnd('='), encoded, StringComparison.Ordinal);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
 }
 
 public abstract class RemoteNutAuthentication
@@ -231,6 +262,21 @@ public sealed class RemoteNutFileReadResult
     public string? Message { get; }
 }
 
+public sealed class RemoteNutTemporaryCleanupResult
+{
+    public RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus status, string? message = null)
+    {
+        Status = status;
+        Message = message;
+    }
+
+    public RemoteNutTransportStatus Status { get; }
+
+    public string? Message { get; }
+
+    public bool IsClean => Status is RemoteNutTransportStatus.Success or RemoteNutTransportStatus.NotFound;
+}
+
 public sealed class RemoteNutWriteCapabilityResult
 {
     public RemoteNutWriteCapabilityResult(bool isSupported, RemoteNutPlatform platform, string? cleanupPath = null, string? message = null)
@@ -358,6 +404,8 @@ public interface IRemoteNutManagementSession : IAsyncDisposable
     Task<RemoteNutWriteCapabilityResult> ProbeSafeWriteCapabilityAsync(string directory, CancellationToken cancellationToken = default);
 
     Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default);
+
+    Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default);
 
     Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default);
 

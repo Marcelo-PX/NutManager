@@ -121,6 +121,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     private static readonly TimeSpan CleanupTimeout = TimeSpan.FromSeconds(5);
     private readonly SshClient _sshClient;
     private readonly SftpClient _sftpClient;
+    private readonly HashSet<string> _validatedConfigurationDirectories = new(StringComparer.Ordinal);
     private bool _disposed;
 
     public SshNetRemoteNutManagementSession(SshClient sshClient, SftpClient sftpClient)
@@ -159,11 +160,13 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
                 .Select(entry => entry.Name)
                 .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                 .ToArray(), cancellationToken);
-            return new RemoteNutDirectoryValidationResult(
+            var result = new RemoteNutDirectoryValidationResult(
                 RemoteNutTransportStatus.Success,
                 sftpPath,
                 present,
                 present.Length == 0 ? "No recognized NUT configuration file was found in the selected directory." : null);
+            _validatedConfigurationDirectories.Add(sftpPath);
+            return result;
         }
         catch (SftpPermissionDeniedException)
         {
@@ -252,10 +255,9 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         {
             foreach (var name in new[] { sourceName, candidateName, backupName })
             {
-                var path = RemotePathMapper.Combine(sftpDirectory, name);
-                if (!await DeleteIfExistsBoundedAsync(path))
+                if (!await DeleteCapabilityProbeTemporaryFileAsync(sftpDirectory, name))
                 {
-                    cleanupPath ??= path;
+                    cleanupPath ??= RemotePathMapper.Combine(sftpDirectory, name);
                 }
             }
         }
@@ -272,12 +274,17 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     public async Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (!RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) || !IsGeneratedTemporaryName(request.TemporaryFileName))
+        if (!RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) || !RemoteNutGeneratedTemporaryFile.IsValidName(request.TemporaryFileName))
         {
             return new RemoteNutFileReadResult(RemoteNutTransportStatus.InvalidPath, message: "The remote candidate target is invalid.");
         }
 
-        var path = RemotePathMapper.Combine(RemotePathMapper.ToSftpPath(request.ConfigurationDirectory), request.TemporaryFileName);
+        if (!TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out var configurationDirectory))
+        {
+            return new RemoteNutFileReadResult(RemoteNutTransportStatus.InvalidPath, message: "The remote configuration directory was not validated for this session.");
+        }
+
+        var path = RemotePathMapper.Combine(configurationDirectory, request.TemporaryFileName);
         try
         {
             await WriteNewAsync(path, request.CandidateBytes, cancellationToken);
@@ -297,11 +304,61 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         }
     }
 
+    public async Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default)
+    {
+        if (!RemoteNutGeneratedTemporaryFile.IsValidName(temporaryFileName))
+        {
+            return new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.InvalidPath, "The remote temporary candidate path is invalid.");
+        }
+
+        string path;
+        try
+        {
+            if (!TryGetValidatedConfigurationDirectory(configurationDirectory, out var sftpDirectory))
+            {
+                return new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.InvalidPath, "The remote configuration directory was not validated for this session.");
+            }
+
+            path = RemotePathMapper.Combine(sftpDirectory, temporaryFileName);
+        }
+        catch (ArgumentException)
+        {
+            return new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.InvalidPath, "The remote temporary candidate path is invalid.");
+        }
+
+        try
+        {
+            var existed = await ExecuteSftpAsync(() =>
+            {
+                if (!_sftpClient.Exists(path))
+                {
+                    return false;
+                }
+
+                _sftpClient.DeleteFile(path);
+                return true;
+            }, cancellationToken);
+            return new RemoteNutTemporaryCleanupResult(existed ? RemoteNutTransportStatus.Success : RemoteNutTransportStatus.NotFound);
+        }
+        catch (SftpPermissionDeniedException)
+        {
+            return new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.AccessDenied, "The remote temporary candidate cannot be deleted.");
+        }
+        catch (TimeoutException)
+        {
+            return new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.Timeout, "The remote temporary candidate cleanup timed out.");
+        }
+        catch
+        {
+            return new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.Failed, "The remote temporary candidate cleanup failed.");
+        }
+    }
+
     public async Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
-        if (Platform != RemoteNutPlatform.Windows || !IsCommitRequestSafe(request))
+        if (Platform != RemoteNutPlatform.Windows || !IsCommitRequestSafe(request) || !TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out _))
         {
             return new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported, message: "Remote Windows safe write is not available.");
         }
@@ -327,7 +384,8 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     {
         ArgumentNullException.ThrowIfNull(request);
         if (Platform != RemoteNutPlatform.Windows || !RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) ||
-            !IsGeneratedTemporaryName(request.RollbackFileName) || !IsGeneratedBackupName(request.RecoveryFileName))
+            !TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out _) ||
+            !RemoteNutGeneratedTemporaryFile.IsValidName(request.RollbackFileName) || !IsGeneratedBackupName(request.RecoveryFileName))
         {
             return new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported, message: "Remote Windows rollback is not available.");
         }
@@ -355,6 +413,20 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    private bool TryGetValidatedConfigurationDirectory(string configurationDirectory, out string sftpDirectory)
+    {
+        try
+        {
+            sftpDirectory = RemotePathMapper.ToSftpPath(configurationDirectory);
+            return _validatedConfigurationDirectories.Contains(sftpDirectory);
+        }
+        catch (ArgumentException)
+        {
+            sftpDirectory = string.Empty;
+            return false;
+        }
     }
 
     private async Task<bool> ProbeWindowsPlatformAsync()
@@ -404,8 +476,14 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         return result.Result.Length > 4096 ? result.Result[..4096] : result.Result;
     }
 
-    private async Task<bool> DeleteIfExistsBoundedAsync(string path)
+    private async Task<bool> DeleteCapabilityProbeTemporaryFileAsync(string configurationDirectory, string temporaryFileName)
     {
+        if (!temporaryFileName.StartsWith(".nutmanager-capability-", StringComparison.Ordinal) || !RemoteNutGeneratedTemporaryFile.IsValidName(temporaryFileName))
+        {
+            return false;
+        }
+
+        var path = RemotePathMapper.Combine(configurationDirectory, temporaryFileName);
         try
         {
             ThrowIfDisposed();
@@ -425,11 +503,6 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         }
     }
 
-    private static bool IsGeneratedTemporaryName(string name) =>
-        name.StartsWith(".nutmanager-", StringComparison.Ordinal) &&
-        name.EndsWith(".tmp", StringComparison.Ordinal) &&
-        name.IndexOfAny(['/', '\\']) < 0;
-
     private static bool IsGeneratedBackupName(string name) =>
         name.StartsWith(".nutmanager-", StringComparison.Ordinal) &&
         name.EndsWith(".bak", StringComparison.Ordinal) &&
@@ -437,7 +510,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
 
     private static bool IsCommitRequestSafe(RemoteNutWindowsCommitRequest request) =>
         RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) &&
-        IsGeneratedTemporaryName(request.TemporaryFileName) &&
+        RemoteNutGeneratedTemporaryFile.IsValidName(request.TemporaryFileName) &&
         IsGeneratedBackupName(request.BackupFileName);
 
     private static string? GetParentPath(string path)

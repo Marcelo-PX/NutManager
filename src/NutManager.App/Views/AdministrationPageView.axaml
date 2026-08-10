@@ -404,6 +404,8 @@
           <TextBlock Text="{Binding BackupPath}" IsVisible="{Binding HasBackupPath}" MaxWidth="900" TextWrapping="Wrap" />
           <TextBlock Text="Recuperação:" IsVisible="{Binding HasRecoveryPath}" FontWeight="SemiBold" />
           <TextBlock Text="{Binding RecoveryPath}" IsVisible="{Binding HasRecoveryPath}" MaxWidth="900" TextWrapping="Wrap" />
+          <TextBlock Text="Temporário remoto:" IsVisible="{Binding HasTemporaryPath}" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding TemporaryPath}" IsVisible="{Binding HasTemporaryPath}" MaxWidth="900" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
     </StackPanel>

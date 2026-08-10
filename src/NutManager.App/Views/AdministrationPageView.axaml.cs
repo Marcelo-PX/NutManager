@@ -16,7 +16,10 @@ public partial class AdministrationPageView : UserControl
 
     private async void SelectDirectoryButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
-        if (DataContext is not AdministrationPageViewModel viewModel || TopLevel.GetTopLevel(this) is not { } topLevel)
+        if (DataContext is not AdministrationPageViewModel viewModel ||
+            !viewModel.IsLocalManagementProfile ||
+            !viewModel.CanChangeInstallation ||
+            TopLevel.GetTopLevel(this) is not { } topLevel)
         {
             return;
         }

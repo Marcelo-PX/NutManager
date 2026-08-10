@@ -7,7 +7,7 @@ namespace NutManager.Infrastructure.Remote.Ssh;
 /// </summary>
 public static class SshHostKeyFingerprint
 {
-    public static string Create(ReadOnlySpan<byte> hostKey) => "SHA256:" + Convert.ToBase64String(SHA256.HashData(hostKey));
+    public static string Create(ReadOnlySpan<byte> hostKey) => "SHA256:" + Convert.ToBase64String(SHA256.HashData(hostKey)).TrimEnd('=');
 
     public static bool Matches(string? trustedFingerprint, ReadOnlySpan<byte> presentedHostKey) =>
         !string.IsNullOrWhiteSpace(trustedFingerprint) &&

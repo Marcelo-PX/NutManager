@@ -4,7 +4,7 @@
 
 NutManager is a Windows-first desktop interface for Network UPS Tools (NUT). It makes NUT monitoring, configuration, diagnostics, and explicitly confirmed administration understandable without replacing NUT drivers, protocols, or configuration formats.
 
-Monitoring and management are distinct concerns. Monitoring uses standard NUT TCP access; management uses either local Windows capabilities or, in a later phase, an explicit remote transport.
+Monitoring and management are distinct concerns. Monitoring uses standard NUT TCP access; management uses either local Windows capabilities or an explicit SSH/SFTP remote transport.
 
 ## 2. Initial monitoring milestone
 
@@ -32,6 +32,7 @@ The current product also implements:
 - T16 Windows service, privilege, ACL, process, and Event Log administration;
 - T17 passive COM and controlled NUT-driver diagnostics;
 - T18 managed local and remote server profiles.
+- T19 SSH/SFTP remote configuration management.
 
 ## 4. Platform and quality requirements
 
@@ -62,7 +63,9 @@ Managed profiles separate monitoring from management metadata:
 - monitoring stores the NUT TCP host, port, and optional preferred UPS;
 - management is Local or Remote and has an explicit access mode.
 
-A remote profile can monitor through NUT TCP, but remote management is currently unavailable and must not fall back to local management. Remote SSH/SFTP transport, manual remote directory browse/selection, and remote validation are T19. Protected remote credentials are T20.
+A remote profile can monitor through NUT TCP and manage configuration only through an explicit SSH/SFTP session; it never falls back to local management. The user manually browses and validates the remote directory, with no autodiscovery. Host keys use explicit SHA-256 fingerprint pinning; an unknown key requires review and a mismatch is rejected. Credentials are session-only until T20.
+
+Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can write only to Windows/OpenSSH after an explicit safe-write capability probe. Remote service control, ACL, COM-port, and driver administration remain unavailable.
 
 ## 7. Post-MVP capability status
 
@@ -72,10 +75,10 @@ A remote profile can monitor through NUT TCP, but remote management is currently
 - syntax-preserving configuration parsing and graphical editing;
 - preview, backup, safe write, recovery, and rollback;
 - Windows local service, UAC, ACL, process, Event Log, COM, and driver diagnostics.
+- SSH/SFTP remote configuration management with manual directory validation and pinned host keys.
 
 ### Next
 
-- T19 SSH/SFTP remote management;
 - T20 protected credential storage;
 - T21 full local and remote Windows validation.
 

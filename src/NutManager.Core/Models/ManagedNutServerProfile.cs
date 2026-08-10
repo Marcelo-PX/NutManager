@@ -139,21 +139,37 @@ public sealed record NutManagementProfile
         }
 
         var normalized = value.Trim();
-        if (!normalized.StartsWith("SHA256:", StringComparison.Ordinal) || normalized.Length > 512 || normalized.Any(char.IsControl))
+        if (!IsCanonicalSha256Fingerprint(normalized))
         {
             throw new ArgumentException("The trusted host key fingerprint is invalid.", nameof(value));
         }
 
-        try
+        return normalized;
+    }
+
+    private static bool IsCanonicalSha256Fingerprint(string value)
+    {
+        const string prefix = "SHA256:";
+        if (!value.StartsWith(prefix, StringComparison.Ordinal) || value.Length > 512 || value.Any(char.IsControl))
         {
-            _ = Convert.FromBase64String(normalized["SHA256:".Length..]);
-        }
-        catch (FormatException exception)
-        {
-            throw new ArgumentException("The trusted host key fingerprint is invalid.", nameof(value), exception);
+            return false;
         }
 
-        return normalized;
+        var encoded = value[prefix.Length..];
+        if (encoded.Length != 43 || encoded.Contains('='))
+        {
+            return false;
+        }
+
+        try
+        {
+            var hash = Convert.FromBase64String(encoded + "=");
+            return hash.Length == 32 && string.Equals(Convert.ToBase64String(hash).TrimEnd('='), encoded, StringComparison.Ordinal);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 }
 

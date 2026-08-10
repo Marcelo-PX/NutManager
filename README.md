@@ -29,7 +29,9 @@ NutManager makes NUT monitoring, configuration, diagnostics, and explicitly conf
 
 ### Remote profiles
 
-Remote profiles can monitor through the standard NUT TCP connection. Remote management transport is not implemented yet: SSH/SFTP directory browsing and validation are planned for T19, and protected credential storage for T20.
+Remote profiles can monitor through the standard NUT TCP connection and manage configuration through SSH/SFTP. The user manually browses and validates the remote configuration directory; no remote autodiscovery or local-management fallback is used. Host keys require explicit SHA-256 fingerprint trust/pinning.
+
+Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can write only to Windows/OpenSSH targets after an explicit same-directory safe-write capability probe. Passwords, passphrases, and private-key paths remain session-only until T20. Remote service, ACL, COM-port, and driver administration are not implemented.
 
 ## Platform support
 

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NutManager.App.Services;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 
@@ -292,22 +293,15 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         ProfileSaveError = null;
         try
         {
-            var updated = new ManagedNutServerProfile(
-                profile.Id,
-                profile.Name,
-                profile.Monitoring,
-                new NutManagementProfile(
-                    NutManagementMode.Remote,
-                    profile.Management.ManagementHost,
-                    profile.Management.RemoteConfigurationDirectory,
-                    profile.Management.SshPort,
-                    profile.Management.SshUsername),
-                profile.AccessMode);
-            var document = new ManagedNutServerProfiles(
-                _confirmedProfiles.SchemaVersion,
-                _confirmedProfiles.ActiveProfileId,
-                _confirmedProfiles.Profiles.Select(candidate => candidate.Id == profile.Id ? updated : candidate).ToArray());
-            await store.SaveAsync(document, cancellationToken);
+            var updater = new ManagedNutServerProfileUpdateService(store);
+            var updated = await updater.ForgetTrustedHostKeyAsync(profile, cancellationToken);
+            var document = updated is null ? null : await store.LoadAsync(cancellationToken);
+            if (document is null || updated is null)
+            {
+                ProfileSaveError = "A chave confiável do host foi alterada por outro fluxo. Atualize o perfil antes de tentar novamente.";
+                return;
+            }
+
             ApplyConfirmedProfiles(document, updated.Id);
             ProfileStatusMessage = "A chave confiável do host foi removida. Uma nova chave deverá ser revisada antes da próxima conexão.";
         }

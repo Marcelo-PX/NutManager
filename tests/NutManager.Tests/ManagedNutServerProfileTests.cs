@@ -115,6 +115,8 @@ public sealed class ManagedNutServerProfileTests
         Assert.Equal(document.ActiveProfile, loaded.ActiveProfile);
         Assert.Contains("\"schemaVersion\": 2", json);
         Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("passphrase", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("privateKeyPath", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("credential", json, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(Directory.GetFiles(directory.Path, "*.tmp"));
     }

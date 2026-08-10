@@ -106,6 +106,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private string? _recoveryPath;
 
     [ObservableProperty]
+    private string? _temporaryPath;
+
+    [ObservableProperty]
     private IReadOnlyList<NutServiceInfo> _windowsServices = Array.Empty<NutServiceInfo>();
 
     [ObservableProperty]
@@ -231,6 +234,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool HasBackupPath => !string.IsNullOrWhiteSpace(BackupPath);
 
     public bool HasRecoveryPath => !string.IsNullOrWhiteSpace(RecoveryPath);
+
+    public bool HasTemporaryPath => !string.IsNullOrWhiteSpace(TemporaryPath);
 
     private bool CanInspectConfiguration => IsRemoteManagementProfile
         ? _remoteManagement?.CanReadConfiguration == true
@@ -551,11 +556,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         SetStatus(null);
         BackupPath = null;
         RecoveryPath = null;
+        TemporaryPath = null;
         try
         {
             var result = await _configurationPipeline.ApplyAsync(_preparedChange, cancellationToken);
             BackupPath = result.BackupPath;
             RecoveryPath = result.RecoveryPath;
+            TemporaryPath = result.TemporaryPath;
             ApplyResultStatus(result);
 
             if (result.Status == NutConfigurationApplyStatus.Success)
@@ -878,6 +885,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             SetStatus(null);
             BackupPath = null;
             RecoveryPath = null;
+            TemporaryPath = null;
         }
 
         try
@@ -1244,6 +1252,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             case NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown:
                 SetStatus("CRÍTICO — a operação remota pode ter sido executada. Atualize e verifique o arquivo antes de tentar novamente.", critical: true);
                 break;
+            case NutConfigurationApplyStatus.RemoteTemporaryCleanupFailed:
+                SetStatus("CRÍTICO — um arquivo temporário remoto contendo configuração pode necessitar remoção manual.", critical: true);
+                break;
             case NutConfigurationApplyStatus.Cancelled:
                 SetStatus("A aplicação das alterações foi cancelada.");
                 break;
@@ -1388,6 +1399,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     partial void OnBackupPathChanged(string? value) => OnPropertyChanged(nameof(HasBackupPath));
 
     partial void OnRecoveryPathChanged(string? value) => OnPropertyChanged(nameof(HasRecoveryPath));
+
+    partial void OnTemporaryPathChanged(string? value) => OnPropertyChanged(nameof(HasTemporaryPath));
 
     partial void OnStatusMessageChanged(string? value) => OnPropertyChanged(nameof(HasStatusMessage));
 

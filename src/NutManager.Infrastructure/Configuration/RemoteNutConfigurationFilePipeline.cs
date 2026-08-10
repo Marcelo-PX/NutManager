@@ -132,13 +132,18 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             cancellationToken);
         if (uploaded.Status != RemoteNutTransportStatus.Success || !uploaded.Bytes.Span.SequenceEqual(change.CandidateBytes.Span) || !ValidateCandidate(uploaded.Bytes.Span, change))
         {
-            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.TempWriteFailed, message: "Remote candidate upload could not be verified.");
+            var failure = new NutConfigurationApplyResult(NutConfigurationApplyStatus.TempWriteFailed, message: "Remote candidate upload could not be verified.");
+            return uploaded.Status == RemoteNutTransportStatus.Success
+                ? await CleanupCandidateAfterAbortAsync(failure, temporaryName)
+                : failure;
         }
 
         current = await _session.ReadFileAsync(change.Snapshot.TargetPath, cancellationToken);
         if (current.Status != RemoteNutTransportStatus.Success || !MatchesOriginal(change.Snapshot, current.Bytes.Span))
         {
-            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.ChangedExternally, message: "Remote configuration changed externally.");
+            return await CleanupCandidateAfterAbortAsync(
+                new NutConfigurationApplyResult(NutConfigurationApplyStatus.ChangedExternally, message: "Remote configuration changed externally."),
+                temporaryName);
         }
 
         var commit = await _session.CommitWindowsConfigurationAsync(
@@ -152,12 +157,18 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             CancellationToken.None);
         if (commit.Status == RemoteNutTransportStatus.OutcomeUnknown)
         {
-            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown, commit.BackupPath, "The remote configuration commit outcome could not be confirmed.");
+            return new NutConfigurationApplyResult(
+                NutConfigurationApplyStatus.RemoteCommitOutcomeUnknown,
+                commit.BackupPath,
+                "The remote configuration commit outcome could not be confirmed.",
+                temporaryPath: RemotePathMapper.Combine(_configurationDirectory, temporaryName));
         }
 
         if (commit.Status != RemoteNutTransportStatus.Success)
         {
-            return new NutConfigurationApplyResult(NutConfigurationApplyStatus.ReplaceFailed, commit.BackupPath, commit.Message);
+            return await CleanupCandidateAfterAbortAsync(
+                new NutConfigurationApplyResult(NutConfigurationApplyStatus.ReplaceFailed, commit.BackupPath, commit.Message),
+                temporaryName);
         }
 
         var backupPath = commit.BackupPath ?? RemotePathMapper.Combine(_configurationDirectory, backupName);
@@ -191,6 +202,37 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
         }
 
         return new NutConfigurationApplyResult(NutConfigurationApplyStatus.VerificationFailedRollbackFailed, backupPath, "Remote configuration may require manual recovery.", false, rollback.RecoveryPath);
+    }
+
+    private async Task<NutConfigurationApplyResult> CleanupCandidateAfterAbortAsync(NutConfigurationApplyResult originalResult, string temporaryName)
+    {
+        var temporaryPath = RemotePathMapper.Combine(_configurationDirectory, temporaryName);
+        try
+        {
+            var cleanup = await _session.DeleteGeneratedTemporaryFileAsync(_configurationDirectory, temporaryName, CancellationToken.None);
+            if (cleanup.IsClean)
+            {
+                return originalResult;
+            }
+
+            return new NutConfigurationApplyResult(
+                NutConfigurationApplyStatus.RemoteTemporaryCleanupFailed,
+                originalResult.BackupPath,
+                "The remote temporary candidate cleanup could not be confirmed.",
+                originalResult.RollbackSucceeded,
+                originalResult.RecoveryPath,
+                temporaryPath);
+        }
+        catch
+        {
+            return new NutConfigurationApplyResult(
+                NutConfigurationApplyStatus.RemoteTemporaryCleanupFailed,
+                originalResult.BackupPath,
+                "The remote temporary candidate cleanup could not be confirmed.",
+                originalResult.RollbackSucceeded,
+                originalResult.RecoveryPath,
+                temporaryPath);
+        }
     }
 
     private string GetTargetPath(NutConfigurationFileKind fileKind) => RemotePathMapper.Combine(_configurationDirectory, RemoteNutConfigurationFiles.GetFileName(fileKind));

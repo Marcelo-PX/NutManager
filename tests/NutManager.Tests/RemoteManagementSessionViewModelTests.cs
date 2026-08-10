@@ -9,6 +9,8 @@ namespace NutManager.Tests;
 
 public sealed class RemoteManagementSessionViewModelTests
 {
+    private const string CanonicalFingerprint = "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
     [Fact]
     public async Task UnknownHostKeyRequiresExplicitTrustAndPersistsOnlyFingerprintMetadata()
     {
@@ -16,7 +18,7 @@ public sealed class RemoteManagementSessionViewModelTests
         var store = new RecordingStore(new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]));
         var transport = new FakeTransport(new RemoteNutConnectionResult(
             RemoteNutConnectionState.HostKeyTrustRequired,
-            hostKey: new RemoteNutHostKeyInfo("management.example", 22, "ssh-ed25519", "SHA256:YWJjZA==")));
+            hostKey: new RemoteNutHostKeyInfo("management.example", 22, "ssh-ed25519", CanonicalFingerprint)));
         var viewModel = new RemoteManagementSessionViewModel(profile, transport, new ManagedNutServerProfileUpdateService(store));
 
         await viewModel.ConnectWithPasswordAsync("fictional-password".AsMemory());
@@ -25,9 +27,9 @@ public sealed class RemoteManagementSessionViewModelTests
         Assert.True(viewModel.CanTrustHostKey);
         await viewModel.TrustPresentedHostKeyAsync();
 
-        Assert.Equal("SHA256:YWJjZA==", viewModel.TrustedHostKeyFingerprint);
+        Assert.Equal(CanonicalFingerprint, viewModel.TrustedHostKeyFingerprint);
         Assert.NotNull(store.Saved);
-        Assert.Equal("SHA256:YWJjZA==", store.Saved!.ActiveProfile.Management.TrustedHostKeyFingerprint);
+        Assert.Equal(CanonicalFingerprint, store.Saved!.ActiveProfile.Management.TrustedHostKeyFingerprint);
         Assert.DoesNotContain("fictional-password", store.Saved.ActiveProfile.Management.TrustedHostKeyFingerprint, StringComparison.Ordinal);
     }
 
@@ -44,6 +46,23 @@ public sealed class RemoteManagementSessionViewModelTests
         Assert.True(viewModel.CanReadConfiguration);
         Assert.False(viewModel.CanProbeWriteCapability);
         Assert.False(viewModel.CanEditConfiguration);
+    }
+
+    [Fact]
+    public async Task HostKeyMismatchNeverPersistsThePresentedKey()
+    {
+        var profile = RemoteProfile(ManagedNutServerAccessMode.Manage);
+        var store = new RecordingStore(new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]));
+        var transport = new FakeTransport(new RemoteNutConnectionResult(
+            RemoteNutConnectionState.HostKeyMismatch,
+            hostKey: new RemoteNutHostKeyInfo("management.example", 22, "ssh-ed25519", CanonicalFingerprint)));
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport, new ManagedNutServerProfileUpdateService(store));
+
+        await viewModel.ConnectWithPasswordAsync("fictional-password".AsMemory());
+
+        Assert.Equal(RemoteNutConnectionState.HostKeyMismatch, viewModel.ConnectionState);
+        Assert.False(viewModel.CanTrustHostKey);
+        Assert.Null(store.Saved);
     }
 
     [Fact]
@@ -147,6 +166,7 @@ public sealed class RemoteManagementSessionViewModelTests
             return Task.FromResult(ProbeResult ?? new RemoteNutWriteCapabilityResult(true, Platform));
         }
         public Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutFileReadResult(RemoteNutTransportStatus.Unsupported));
+        public Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutTemporaryCleanupResult(RemoteNutTransportStatus.NotFound));
         public Task<RemoteNutCommitResult> CommitWindowsConfigurationAsync(RemoteNutWindowsCommitRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported));
         public Task<RemoteNutCommitResult> RollbackWindowsConfigurationAsync(RemoteNutWindowsRollbackRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;

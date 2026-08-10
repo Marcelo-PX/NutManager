@@ -33,6 +33,7 @@ public enum NutConfigurationApplyStatus
     VerificationFailedRolledBack,
     VerificationFailedRollbackFailed,
     RemoteCommitOutcomeUnknown,
+    RemoteTemporaryCleanupFailed,
     Cancelled,
     Failed
 }
@@ -186,13 +187,15 @@ public sealed class NutConfigurationApplyResult
         string? backupPath = null,
         string? message = null,
         bool rollbackSucceeded = false,
-        string? recoveryPath = null)
+        string? recoveryPath = null,
+        string? temporaryPath = null)
     {
         Status = status;
         BackupPath = backupPath;
         Message = message;
         RollbackSucceeded = rollbackSucceeded;
         RecoveryPath = recoveryPath;
+        TemporaryPath = temporaryPath;
     }
 
     public NutConfigurationApplyStatus Status { get; }
@@ -204,4 +207,7 @@ public sealed class NutConfigurationApplyResult
     public bool RollbackSucceeded { get; }
 
     public string? RecoveryPath { get; }
+
+    /// <summary>Remote candidate path retained only when a cleanup or commit outcome requires manual intervention.</summary>
+    public string? TemporaryPath { get; }
 }
