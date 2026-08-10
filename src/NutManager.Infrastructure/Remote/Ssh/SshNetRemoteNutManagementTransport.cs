@@ -133,7 +133,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     private readonly SshClient _sshClient;
     private readonly SftpClient _sftpClient;
     private readonly HashSet<string> _validatedConfigurationDirectories = new(StringComparer.Ordinal);
-    private bool _safeWriteCapabilityInvalidated;
+    private readonly RemoteSafeWriteCapabilityState _safeWriteCapability = new();
     private bool _disposed;
 
     public SshNetRemoteNutManagementSession(SshClient sshClient, SftpClient sftpClient)
@@ -146,7 +146,10 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
 
     public RemoteNutPlatform Platform { get; private set; } = RemoteNutPlatform.Unknown;
 
-    public bool IsSafeWriteCapabilityValid => !_safeWriteCapabilityInvalidated;
+    public bool IsSafeWriteCapabilityValidFor(string configurationDirectory) =>
+        Platform == RemoteNutPlatform.Windows &&
+        TryGetValidatedConfigurationDirectory(configurationDirectory, out var sftpDirectory) &&
+        _safeWriteCapability.IsValidFor(sftpDirectory);
 
     public string HomeDirectory { get; }
 
@@ -255,7 +258,12 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     public async Task<RemoteNutWriteCapabilityResult> ProbeSafeWriteCapabilityAsync(string directory, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (_safeWriteCapabilityInvalidated || !TryGetValidatedConfigurationDirectory(directory, out var sftpDirectory))
+        if (!_safeWriteCapability.TryBeginProbe())
+        {
+            return new RemoteNutWriteCapabilityResult(false, Platform, message: "The remote write state is indeterminate. Disconnect and reconnect before probing again.");
+        }
+
+        if (!TryGetValidatedConfigurationDirectory(directory, out var sftpDirectory))
         {
             return new RemoteNutWriteCapabilityResult(false, Platform, message: "The remote configuration directory was not validated for this session.");
         }
@@ -305,13 +313,21 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
             }
         }
 
-        return cleanupPath is null
-            ? result
-            : new RemoteNutWriteCapabilityResult(
+        if (cleanupPath is not null)
+        {
+            return new RemoteNutWriteCapabilityResult(
                 false,
                 Platform,
                 cleanupPath,
                 "The remote capability probe cleanup could not be confirmed. Review the remote temporary file before retrying.");
+        }
+
+        if (result.IsSupported && !_safeWriteCapability.TryCompleteProbe(sftpDirectory))
+        {
+            return new RemoteNutWriteCapabilityResult(false, Platform, message: "The remote write state is indeterminate. Disconnect and reconnect before probing again.");
+        }
+
+        return result;
     }
 
     public async Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default)
@@ -325,6 +341,11 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         if (!TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out var configurationDirectory))
         {
             return new RemoteNutFileReadResult(RemoteNutTransportStatus.InvalidPath, message: "The remote configuration directory was not validated for this session.");
+        }
+
+        if (!IsSafeWriteCapabilityValidFor(configurationDirectory))
+        {
+            return new RemoteNutFileReadResult(RemoteNutTransportStatus.Unsupported, message: "Remote candidate upload is available only after a verified Windows safe-write capability probe.");
         }
 
         var path = RemotePathMapper.Combine(configurationDirectory, request.TemporaryFileName);
@@ -351,7 +372,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
         }
     }
 
-    public void InvalidateSafeWriteCapability() => _safeWriteCapabilityInvalidated = true;
+    public void InvalidateSafeWriteCapability() => _safeWriteCapability.InvalidateSession();
 
     public async Task<RemoteNutTemporaryCleanupResult> DeleteGeneratedTemporaryFileAsync(string configurationDirectory, string temporaryFileName, CancellationToken cancellationToken = default)
     {
@@ -411,7 +432,7 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
-        if (_safeWriteCapabilityInvalidated || Platform != RemoteNutPlatform.Windows || !IsCommitRequestSafe(request) || !TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out _))
+        if (Platform != RemoteNutPlatform.Windows || !IsCommitRequestSafe(request) || !IsSafeWriteCapabilityValidFor(request.ConfigurationDirectory))
         {
             return new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported, message: "Remote Windows safe write is not available.");
         }
@@ -438,8 +459,8 @@ public sealed class SshNetRemoteNutManagementSession : IRemoteNutManagementSessi
     public async Task<RemoteNutCommitResult> RollbackWindowsConfigurationAsync(RemoteNutWindowsRollbackRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (_safeWriteCapabilityInvalidated || Platform != RemoteNutPlatform.Windows || !RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) ||
-            !TryGetValidatedConfigurationDirectory(request.ConfigurationDirectory, out _) ||
+        if (Platform != RemoteNutPlatform.Windows || !RemoteNutConfigurationFiles.IsRecognized(request.TargetFileName) ||
+            !IsSafeWriteCapabilityValidFor(request.ConfigurationDirectory) ||
             !IsGeneratedBackupName(request.BackupFileName) || !RemoteNutGeneratedTemporaryFile.IsValidName(request.RollbackFileName) || !IsGeneratedBackupName(request.RecoveryFileName))
         {
             return new RemoteNutCommitResult(RemoteNutTransportStatus.Unsupported, message: "Remote Windows rollback is not available.");

@@ -90,6 +90,7 @@ public sealed class RemoteNutManagementTests
     public async Task RemotePipelineUsesRemoteSessionForLoadPrepareAndWindowsSafeCommit()
     {
         var session = new FakeRemoteSession(RemoteNutPlatform.Windows);
+        session.MarkSafeWriteCapability("/etc/nut");
         session.SetFile("/etc/nut/nut.conf", "MODE=standalone\n");
         var pipeline = new RemoteNutConfigurationFilePipeline(session, "/etc/nut", true);
 
@@ -123,6 +124,99 @@ public sealed class RemoteNutManagementTests
         Assert.Equal(NutConfigurationApplyStatus.Failed, applied.Status);
         Assert.Equal(0, session.CommitCalls);
         Assert.Equal(0, session.UploadCalls);
+    }
+
+    [Fact]
+    public async Task RemotePipelineWithWritePolicyButNoSessionCapabilityRemainsBlocked()
+    {
+        var session = new FakeRemoteSession(RemoteNutPlatform.Windows);
+        session.SetFile("/etc/nut/nut.conf", "MODE=standalone\n");
+
+        var applied = await ApplyChangedNutConfAsync(session);
+
+        Assert.Equal(NutConfigurationApplyStatus.Failed, applied.Status);
+        Assert.Equal(0, session.UploadCalls);
+        Assert.Equal(0, session.CommitCalls);
+    }
+
+    [Fact]
+    public async Task RemotePipelineWithCapabilityForAnotherDirectoryRemainsBlocked()
+    {
+        var session = new FakeRemoteSession(RemoteNutPlatform.Windows);
+        session.MarkSafeWriteCapability("/other/nut");
+        session.SetFile("/etc/nut/nut.conf", "MODE=standalone\n");
+
+        var applied = await ApplyChangedNutConfAsync(session);
+
+        Assert.Equal(NutConfigurationApplyStatus.Failed, applied.Status);
+        Assert.Equal(0, session.UploadCalls);
+        Assert.Equal(0, session.CommitCalls);
+    }
+
+    [Fact]
+    public void SafeWriteCapabilityStartsUnverifiedAndRequiresSuccessfulCompletion()
+    {
+        var capability = new RemoteSafeWriteCapabilityState();
+
+        Assert.False(capability.IsValidFor("/etc/nut"));
+        Assert.True(capability.TryBeginProbe());
+        Assert.False(capability.IsValidFor("/etc/nut"));
+        Assert.True(capability.TryCompleteProbe("/etc/nut"));
+        Assert.True(capability.IsValidFor("/etc/nut"));
+    }
+
+    [Fact]
+    public void SafeWriteCapabilityIsBoundToTheExactProbedDirectory()
+    {
+        var capability = new RemoteSafeWriteCapabilityState();
+        Assert.True(capability.TryBeginProbe());
+        Assert.True(capability.TryCompleteProbe("/directory/A"));
+
+        Assert.True(capability.IsValidFor("/directory/A"));
+        Assert.False(capability.IsValidFor("/directory/B"));
+    }
+
+    [Theory]
+    [InlineData("File.Replace failure")]
+    [InlineData("cleanup failure")]
+    [InlineData("cancellation")]
+    public void FailedOrCancelledProbeDoesNotLeaveSafeWriteCapability(string failure)
+    {
+        Assert.False(string.IsNullOrWhiteSpace(failure));
+        var capability = new RemoteSafeWriteCapabilityState();
+        Assert.True(capability.TryBeginProbe());
+
+        Assert.False(capability.IsValidFor("/etc/nut"));
+    }
+
+    [Fact]
+    public void NewProbeFailureClearsThePreviouslyVerifiedDirectory()
+    {
+        var capability = new RemoteSafeWriteCapabilityState();
+        Assert.True(capability.TryBeginProbe());
+        Assert.True(capability.TryCompleteProbe("/directory/A"));
+
+        Assert.True(capability.TryBeginProbe());
+
+        Assert.False(capability.IsValidFor("/directory/A"));
+    }
+
+    [Fact]
+    public void OutcomeUnknownPermanentlyInvalidatesOnlyTheCurrentSession()
+    {
+        var capability = new RemoteSafeWriteCapabilityState();
+        Assert.True(capability.TryBeginProbe());
+        Assert.True(capability.TryCompleteProbe("/etc/nut"));
+        capability.InvalidateSession();
+
+        Assert.False(capability.IsValidFor("/etc/nut"));
+        Assert.False(capability.TryBeginProbe());
+        Assert.False(capability.TryCompleteProbe("/etc/nut"));
+
+        var reconnectedSessionCapability = new RemoteSafeWriteCapabilityState();
+        Assert.True(reconnectedSessionCapability.TryBeginProbe());
+        Assert.True(reconnectedSessionCapability.TryCompleteProbe("/etc/nut"));
+        Assert.True(reconnectedSessionCapability.IsValidFor("/etc/nut"));
     }
 
     [Fact]
@@ -346,6 +440,7 @@ public sealed class RemoteNutManagementTests
     private static FakeRemoteSession NewWritableSession()
     {
         var session = new FakeRemoteSession(RemoteNutPlatform.Windows);
+        session.MarkSafeWriteCapability("/etc/nut");
         session.SetFile("/etc/nut/nut.conf", "MODE=standalone\n");
         return session;
     }
@@ -365,11 +460,15 @@ public sealed class RemoteNutManagementTests
     private sealed class FakeRemoteSession : IRemoteNutManagementSession
     {
         private readonly Dictionary<string, byte[]> _files = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _safeWriteDirectories = new(StringComparer.Ordinal);
+        private bool _safeWriteCapabilityInvalidated;
 
         public FakeRemoteSession(RemoteNutPlatform platform) => Platform = platform;
 
         public RemoteNutPlatform Platform { get; }
-        public bool IsSafeWriteCapabilityValid => CapabilityInvalidationCalls == 0;
+        public bool IsSafeWriteCapabilityValidFor(string configurationDirectory) =>
+            Platform == RemoteNutPlatform.Windows &&
+            !_safeWriteCapabilityInvalidated && _safeWriteDirectories.Contains(RemotePathMapper.ToSftpPath(configurationDirectory));
         public string HomeDirectory => "/home/nut";
         public int CommitCalls { get; private set; }
         public int UploadCalls { get; private set; }
@@ -388,6 +487,7 @@ public sealed class RemoteNutManagementTests
 
         public void SetFile(string path, string text) => _files[path] = Encoding.UTF8.GetBytes(text);
         public string GetText(string path) => Encoding.UTF8.GetString(_files[path]);
+        public void MarkSafeWriteCapability(string configurationDirectory) => _safeWriteDirectories.Add(RemotePathMapper.ToSftpPath(configurationDirectory));
 
         public Task<RemoteNutDirectoryListing> BrowseDirectoryAsync(string directory, CancellationToken cancellationToken = default) =>
             Task.FromResult(new RemoteNutDirectoryListing(directory, "/", []));
@@ -400,10 +500,23 @@ public sealed class RemoteNutManagementTests
                 ? new RemoteNutFileReadResult(RemoteNutTransportStatus.Success, bytes)
                 : new RemoteNutFileReadResult(RemoteNutTransportStatus.NotFound));
 
-        public Task<RemoteNutWriteCapabilityResult> ProbeSafeWriteCapabilityAsync(string directory, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new RemoteNutWriteCapabilityResult(true, Platform));
+        public Task<RemoteNutWriteCapabilityResult> ProbeSafeWriteCapabilityAsync(string directory, CancellationToken cancellationToken = default)
+        {
+            if (_safeWriteCapabilityInvalidated)
+            {
+                return Task.FromResult(new RemoteNutWriteCapabilityResult(false, Platform));
+            }
 
-        public void InvalidateSafeWriteCapability() => CapabilityInvalidationCalls++;
+            MarkSafeWriteCapability(directory);
+            return Task.FromResult(new RemoteNutWriteCapabilityResult(true, Platform));
+        }
+
+        public void InvalidateSafeWriteCapability()
+        {
+            _safeWriteCapabilityInvalidated = true;
+            _safeWriteDirectories.Clear();
+            CapabilityInvalidationCalls++;
+        }
 
         public Task<RemoteNutFileReadResult> UploadCandidateAsync(RemoteNutCandidateUploadRequest request, CancellationToken cancellationToken = default)
         {

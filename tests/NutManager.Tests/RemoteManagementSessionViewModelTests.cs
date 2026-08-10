@@ -174,7 +174,7 @@ public sealed class RemoteManagementSessionViewModelTests
     {
         public FakeSession(RemoteNutPlatform platform) => Platform = platform;
         public RemoteNutPlatform Platform { get; }
-        public bool IsSafeWriteCapabilityValid => true;
+        public bool IsSafeWriteCapabilityValidFor(string configurationDirectory) => true;
         public string HomeDirectory => "/etc/nut";
         public int ProbeCalls { get; private set; }
         public RemoteNutWriteCapabilityResult? ProbeResult { get; init; }

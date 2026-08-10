@@ -405,7 +405,11 @@ public interface IRemoteNutManagementSession : IAsyncDisposable
 {
     RemoteNutPlatform Platform { get; }
 
-    bool IsSafeWriteCapabilityValid { get; }
+    /// <summary>
+    /// Gets whether this session completed a safe-write capability probe for the exact
+    /// validated remote configuration directory. A platform probe alone is insufficient.
+    /// </summary>
+    bool IsSafeWriteCapabilityValidFor(string configurationDirectory);
 
     string HomeDirectory { get; }
 

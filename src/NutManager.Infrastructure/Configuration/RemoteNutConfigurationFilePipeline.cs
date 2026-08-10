@@ -98,7 +98,7 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
             return new NutConfigurationApplyResult(NutConfigurationApplyStatus.NoChanges, message: "Configuration has no changes to apply.");
         }
 
-        if (!_canWrite || !_session.IsSafeWriteCapabilityValid || _session.Platform != RemoteNutPlatform.Windows)
+        if (!_canWrite || !_session.IsSafeWriteCapabilityValidFor(_configurationDirectory) || _session.Platform != RemoteNutPlatform.Windows)
         {
             return new NutConfigurationApplyResult(NutConfigurationApplyStatus.Failed, message: "Remote configuration writing is available only after a verified Windows safe-write capability probe.");
         }
