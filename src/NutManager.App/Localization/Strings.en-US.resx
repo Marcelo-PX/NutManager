@@ -7,4 +7,130 @@
   <data name="Appearance.Title" xml:space="preserve"><value>Appearance &amp; Language</value></data><data name="Appearance.Theme" xml:space="preserve"><value>Theme</value></data><data name="Appearance.Language" xml:space="preserve"><value>Language</value></data><data name="Appearance.Sidebar" xml:space="preserve"><value>Sidebar</value></data><data name="Appearance.RestartRequired" xml:space="preserve"><value>The language will be fully applied after restarting the application.</value></data><data name="Appearance.SaveError" xml:space="preserve"><value>The visual preferences could not be saved.</value></data>
   <data name="Theme.System" xml:space="preserve"><value>System</value></data><data name="Theme.Light" xml:space="preserve"><value>Light</value></data><data name="Theme.Dark" xml:space="preserve"><value>Dark</value></data><data name="Language.PtBr" xml:space="preserve"><value>Português (Brasil)</value></data><data name="Language.EnUs" xml:space="preserve"><value>English (United States)</value></data><data name="Sidebar.Expanded" xml:space="preserve"><value>Expanded</value></data><data name="Sidebar.Collapsed" xml:space="preserve"><value>Collapsed</value></data>
   <data name="Shell.ExpandNavigation" xml:space="preserve"><value>Expand navigation</value></data><data name="Shell.CollapseNavigation" xml:space="preserve"><value>Collapse navigation</value></data><data name="Shell.ActiveProfile" xml:space="preserve"><value>Active profile</value></data><data name="Shell.ProfileActive" xml:space="preserve"><value>Active</value></data><data name="Shell.NoActiveProfile" xml:space="preserve"><value>No active profile</value></data><data name="Shell.AdministrationConfirmation" xml:space="preserve"><value>Administrative actions require review and confirmation.</value></data><data name="Management.Local" xml:space="preserve"><value>Local</value></data><data name="Management.Remote" xml:space="preserve"><value>Remote</value></data><data name="Access.ReadOnly" xml:space="preserve"><value>Read only</value></data><data name="Access.Manage" xml:space="preserve"><value>Manage</value></data>
+  <data name="Settings.Title" xml:space="preserve"><value>Settings</value></data>
+  <data name="Settings.Description" xml:space="preserve"><value>Manage local preferences and NUT servers.</value></data>
+  <data name="Settings.GeneralTitle" xml:space="preserve"><value>General settings</value></data>
+  <data name="Settings.ConnectionTimeout" xml:space="preserve"><value>Connection timeout (seconds)</value></data>
+  <data name="Settings.PollingInterval" xml:space="preserve"><value>Polling interval (seconds)</value></data>
+  <data name="Settings.MockMode" xml:space="preserve"><value>Use simulated data</value></data>
+  <data name="Settings.Save" xml:space="preserve"><value>Save settings</value></data>
+  <data name="Settings.SaveSuccess" xml:space="preserve"><value>Settings saved.</value></data>
+  <data name="Settings.SaveError" xml:space="preserve"><value>The general settings could not be saved.</value></data>
+  <data name="Common.Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Common.Discard" xml:space="preserve"><value>Discard</value></data>
+  <data name="Common.Saving" xml:space="preserve"><value>Saving...</value></data>
+  <data name="Transport.Sftp" xml:space="preserve"><value>SFTP</value></data>
+  <data name="Transport.Smb" xml:space="preserve"><value>SMB</value></data>
+  <data name="SshAuth.Password" xml:space="preserve"><value>Password</value></data>
+  <data name="SshAuth.PrivateKey" xml:space="preserve"><value>Private key</value></data>
+  <data name="SmbAuth.CurrentWindowsIdentity" xml:space="preserve"><value>Current Windows identity</value></data>
+  <data name="SmbAuth.ExplicitCredentials" xml:space="preserve"><value>Explicit credentials</value></data>
+  <data name="Profiles.Title" xml:space="preserve"><value>Managed NUT servers</value></data>
+  <data name="Profiles.NewServer" xml:space="preserve"><value>New server</value></data>
+  <data name="Profiles.EditorTitle" xml:space="preserve"><value>Edit server</value></data>
+  <data name="Profiles.MonitoringSection" xml:space="preserve"><value>Monitoring</value></data>
+  <data name="Profiles.ManagementSection" xml:space="preserve"><value>Management</value></data>
+  <data name="Profiles.TransportSection" xml:space="preserve"><value>Remote transport</value></data>
+  <data name="Profiles.Name" xml:space="preserve"><value>Server name</value></data>
+  <data name="Profiles.MonitoringHost" xml:space="preserve"><value>Monitoring host</value></data>
+  <data name="Profiles.MonitoringPort" xml:space="preserve"><value>NUT port</value></data>
+  <data name="Profiles.PreferredUps" xml:space="preserve"><value>Preferred UPS (optional)</value></data>
+  <data name="Profiles.ManagementMode" xml:space="preserve"><value>Location</value></data>
+  <data name="Profiles.AccessMode" xml:space="preserve"><value>Access</value></data>
+  <data name="Profiles.Transport" xml:space="preserve"><value>Configuration transport</value></data>
+  <data name="Profiles.ManagementHost" xml:space="preserve"><value>Management host</value></data>
+  <data name="Profiles.SshPort" xml:space="preserve"><value>SSH port</value></data>
+  <data name="Profiles.SshUsername" xml:space="preserve"><value>SSH user (optional)</value></data>
+  <data name="Profiles.SshAuthentication" xml:space="preserve"><value>SSH authentication</value></data>
+  <data name="Profiles.PrivateKey" xml:space="preserve"><value>Private-key path</value></data>
+  <data name="Profiles.SelectPrivateKey" xml:space="preserve"><value>Select...</value></data>
+  <data name="Profiles.SelectPrivateKeyDialog" xml:space="preserve"><value>Select SSH private key</value></data>
+  <data name="Profiles.PrivateKeyMetadataHelp" xml:space="preserve"><value>Only the path is kept in the profile. The key contents are not read while editing.</value></data>
+  <data name="Profiles.RemoteDirectory" xml:space="preserve"><value>Remote configuration directory (optional)</value></data>
+  <data name="Profiles.TrustedHostKey" xml:space="preserve"><value>Trusted SSH host key</value></data>
+  <data name="Profiles.ForgetHostKey" xml:space="preserve"><value>Forget trusted key</value></data>
+  <data name="Profiles.ProtectedSecretHelp" xml:space="preserve"><value>Passwords and passphrases can be remembered only after a successful connection and are never saved in the profile.</value></data>
+  <data name="Profiles.SmbShare" xml:space="preserve"><value>SMB share</value></data>
+  <data name="Profiles.SmbAuthentication" xml:space="preserve"><value>SMB authentication</value></data>
+  <data name="Profiles.SmbUsername" xml:space="preserve"><value>SMB user</value></data>
+  <data name="Profiles.SmbDirectory" xml:space="preserve"><value>Configuration directory in share (optional)</value></data>
+  <data name="Profiles.SmbSecretHelp" xml:space="preserve"><value>The SMB password is never kept in the draft or saved in the profile.</value></data>
+  <data name="Profiles.StoredCredential" xml:space="preserve"><value>Protected credential</value></data>
+  <data name="Profiles.ForgetCredential" xml:space="preserve"><value>Forget protected credential</value></data>
+  <data name="Profiles.Activate" xml:space="preserve"><value>Make active</value></data>
+  <data name="Profiles.Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Profiles.RuntimeProfile" xml:space="preserve"><value>In use this session</value></data>
+  <data name="Profiles.PersistedActiveProfile" xml:space="preserve"><value>Selected for next start</value></data>
+  <data name="Profiles.RestartRequiredTitle" xml:space="preserve"><value>Restart required</value></data>
+  <data name="Profiles.RestartRequiredMessage" xml:space="preserve"><value>This server will become active after restarting NutManager. The current connection was not changed.</value></data>
+  <data name="Profiles.ActiveBadge" xml:space="preserve"><value>Active</value></data>
+  <data name="Profiles.LocalManagementHelp" xml:space="preserve"><value>The local installation is detected automatically. Remote metadata is not persisted in Local mode.</value></data>
+  <data name="Profiles.NewServerHelp" xml:space="preserve"><value>Complete and validate the server before saving it.</value></data>
+  <data name="Profiles.PersistenceBlocked" xml:space="preserve"><value>Profiles cannot be saved until the loading problem is resolved.</value></data>
+  <data name="Profiles.ConcurrentChange" xml:space="preserve"><value>The profile was changed by another flow. Reload before saving.</value></data>
+  <data name="Profiles.SaveSuccess" xml:space="preserve"><value>Profile saved.</value></data>
+  <data name="Profiles.Saving" xml:space="preserve"><value>Saving profile...</value></data>
+  <data name="Profiles.SaveFailed" xml:space="preserve"><value>The profile could not be saved.</value></data>
+  <data name="Profiles.SaveAfterCredentialRemovalFailed" xml:space="preserve"><value>The profile could not be saved. Protected credentials for the previous identity were removed for safety; enter them again when needed.</value></data>
+  <data name="Profiles.CredentialRemovalFailed" xml:space="preserve"><value>The profile was not changed because its previous protected credential could not be removed.</value></data>
+  <data name="Profiles.DeleteConcurrentChange" xml:space="preserve"><value>The profile was changed by another flow. Reload before deleting.</value></data>
+  <data name="Profiles.DeleteSuccess" xml:space="preserve"><value>Profile removed.</value></data>
+  <data name="Profiles.DeleteAfterCredentialRemovalFailed" xml:space="preserve"><value>The profile could not be deleted. Protected credentials were removed for safety.</value></data>
+  <data name="Profiles.DeleteCredentialRemovalFailed" xml:space="preserve"><value>Deletion was aborted because protected credentials could not be removed.</value></data>
+  <data name="Profiles.DeleteFailed" xml:space="preserve"><value>The profile could not be deleted.</value></data>
+  <data name="Profiles.ActivateConcurrentChange" xml:space="preserve"><value>The list was changed by another flow. Reload before activating.</value></data>
+  <data name="Profiles.ActivateSuccess" xml:space="preserve"><value>Active profile saved. Restart NutManager to apply the connection.</value></data>
+  <data name="Profiles.ActivateFailed" xml:space="preserve"><value>The profile could not be made active.</value></data>
+  <data name="Profiles.HostKeyConcurrentChange" xml:space="preserve"><value>The trusted key was changed by another flow.</value></data>
+  <data name="Profiles.HostKeyForgotten" xml:space="preserve"><value>The trusted key was removed. A new key must be reviewed on the next connection.</value></data>
+  <data name="Profiles.HostKeyForgetFailed" xml:space="preserve"><value>The trusted key could not be removed.</value></data>
+  <data name="DirtyDraft.Title" xml:space="preserve"><value>Unsaved changes</value></data>
+  <data name="DirtyDraft.Message" xml:space="preserve"><value>Save, discard, or continue editing before changing the current server.</value></data>
+  <data name="DirtyDraft.Save" xml:space="preserve"><value>Save and continue</value></data>
+  <data name="DirtyDraft.Discard" xml:space="preserve"><value>Discard and continue</value></data>
+  <data name="DirtyDraft.ContinueEditing" xml:space="preserve"><value>Continue editing</value></data>
+  <data name="ConnectionTest.Action" xml:space="preserve"><value>Test connection</value></data>
+  <data name="ConnectionTest.Running" xml:space="preserve"><value>Testing the monitoring endpoint...</value></data>
+  <data name="ConnectionTest.InvalidFields" xml:space="preserve"><value>Correct the host and port before testing.</value></data>
+  <data name="ConnectionTest.Success" xml:space="preserve"><value>NUT connection completed and a UPS was discovered.</value></data>
+  <data name="ConnectionTest.Unreachable" xml:space="preserve"><value>The endpoint could not be reached.</value></data>
+  <data name="ConnectionTest.Timeout" xml:space="preserve"><value>The test timed out.</value></data>
+  <data name="ConnectionTest.ProtocolError" xml:space="preserve"><value>The server returned an error or invalid NUT protocol.</value></data>
+  <data name="ConnectionTest.NoUps" xml:space="preserve"><value>The connection worked, but no UPS was discovered.</value></data>
+  <data name="ConnectionTest.PreferredUpsMissing" xml:space="preserve"><value>The preferred UPS was not found on the server.</value></data>
+  <data name="ConnectionTest.Cancelled" xml:space="preserve"><value>The test was cancelled.</value></data>
+  <data name="ConnectionTest.Failed" xml:space="preserve"><value>The test could not be completed.</value></data>
+  <data name="Credential.StoredYes" xml:space="preserve"><value>Protected credential saved: Yes</value></data>
+  <data name="Credential.StoredNo" xml:space="preserve"><value>Protected credential saved: No</value></data>
+  <data name="Credential.Unavailable" xml:space="preserve"><value>Protected credential: Unavailable</value></data>
+  <data name="Credential.QueryFailed" xml:space="preserve"><value>The protected credential could not be checked.</value></data>
+  <data name="Credential.NotRequired" xml:space="preserve"><value>No protected credential is required for this profile.</value></data>
+  <data name="Credential.ForgetSuccess" xml:space="preserve"><value>The protected credential was removed.</value></data>
+  <data name="Credential.ForgetFailed" xml:space="preserve"><value>The protected credential could not be removed.</value></data>
+  <data name="Validation.Host.Required" xml:space="preserve"><value>Enter a host.</value></data>
+  <data name="Validation.Host.Invalid" xml:space="preserve"><value>Use only IPv4, IPv6, a hostname, or FQDN, without a user, URL, port, or path.</value></data>
+  <data name="Validation.Port.Required" xml:space="preserve"><value>Enter a port.</value></data>
+  <data name="Validation.Port.Invalid" xml:space="preserve"><value>The port must be an integer.</value></data>
+  <data name="Validation.Port.Range" xml:space="preserve"><value>The port must be between 1 and 65535.</value></data>
+  <data name="Validation.Profile.NameRequired" xml:space="preserve"><value>Enter a server name.</value></data>
+  <data name="Validation.Profile.NameTooLong" xml:space="preserve"><value>The name can have at most 80 characters.</value></data>
+  <data name="Validation.Profile.NameInvalid" xml:space="preserve"><value>The name contains invalid control characters.</value></data>
+  <data name="Validation.Profile.NameDuplicate" xml:space="preserve"><value>A server with this name already exists.</value></data>
+  <data name="Validation.Profile.PreferredUpsInvalid" xml:space="preserve"><value>The preferred UPS name is too long or contains invalid characters.</value></data>
+  <data name="Validation.Profile.ManagementModeInvalid" xml:space="preserve"><value>Select a valid location.</value></data>
+  <data name="Validation.Profile.AccessModeInvalid" xml:space="preserve"><value>Select a valid access level.</value></data>
+  <data name="Validation.Profile.FixErrors" xml:space="preserve"><value>Correct the indicated errors before saving.</value></data>
+  <data name="Validation.Remote.TransportInvalid" xml:space="preserve"><value>Select SFTP or SMB.</value></data>
+  <data name="Validation.Remote.ConfigurationDirectoryRecommended" xml:space="preserve"><value>The directory can be set later, but it is required before managing remote configuration.</value></data>
+  <data name="Validation.Remote.ConfigurationDirectoryInvalid" xml:space="preserve"><value>The remote directory is too long or contains invalid characters.</value></data>
+  <data name="Validation.Ssh.AuthenticationInvalid" xml:space="preserve"><value>Select a valid SSH authentication mode.</value></data>
+  <data name="Validation.Ssh.PrivateKeyRequired" xml:space="preserve"><value>Enter the private-key path.</value></data>
+  <data name="Validation.Ssh.PrivateKeyInvalid" xml:space="preserve"><value>The private-key path is too long or contains invalid characters.</value></data>
+  <data name="Validation.Ssh.UsernameInvalid" xml:space="preserve"><value>The SSH user is too long or contains invalid characters.</value></data>
+  <data name="Validation.Smb.ShareRootRequired" xml:space="preserve"><value>Enter the SMB share.</value></data>
+  <data name="Validation.Smb.ShareRootInvalid" xml:space="preserve"><value>Use an exact UNC root in the form \\server\share.</value></data>
+  <data name="Validation.Smb.AuthenticationInvalid" xml:space="preserve"><value>Select a valid SMB authentication mode.</value></data>
+  <data name="Validation.Smb.UsernameRequired" xml:space="preserve"><value>Enter the user for explicit credentials.</value></data>
+  <data name="Validation.Smb.UsernameInvalid" xml:space="preserve"><value>The SMB user is too long or contains invalid characters.</value></data>
+  <data name="Validation.Smb.ConfigurationDirectoryOutsideShare" xml:space="preserve"><value>The directory must remain inside the configured share.</value></data>
 </root>

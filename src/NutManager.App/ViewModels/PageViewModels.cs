@@ -285,11 +285,11 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     public string Architecture => _runtimeInfo.Architecture;
 
     public string ModeText => _settings.MockMode ? "Dados simulados" : "Servidor NUT real";
-    public string Host => _profileContext?.Endpoint.Host ?? _settings.Host;
-    public string Port => (_profileContext?.Endpoint.Port ?? _settings.Port).ToString(CultureInfo.InvariantCulture);
+    public string Host => _profileContext?.Endpoint.Host ?? UnavailableText;
+    public string Port => _profileContext?.Endpoint.Port.ToString(CultureInfo.InvariantCulture) ?? UnavailableText;
     public string ConnectionTimeoutText => FormatDuration(_settings.ConnectionTimeout);
     public string PollingIntervalText => FormatDuration(_settings.PollingInterval);
-    public string PreferredUpsName => _profileContext?.Profile.Monitoring.PreferredUpsName ?? _settings.PreferredUpsName ?? "Não configurado";
+    public string PreferredUpsName => _profileContext?.Profile.Monitoring.PreferredUpsName ?? "Não configurado";
     public string ManagedProfileName => _profileContext?.Profile.Name ?? "Perfil local atual";
     public string ManagementModeText => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote ? "Remoto" : "Local";
     public string ManagementAccessText => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? "Somente leitura" : "Permitir gerenciamento";

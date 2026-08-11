@@ -73,8 +73,14 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
     {
         ArgumentNullException.ThrowIfNull(settings);
         cancellationToken.ThrowIfCancellationRequested();
-        _ = new ApplicationSettings(settings.SchemaVersion, settings.Host, settings.Port, settings.PreferredUpsName,
-            settings.PollingInterval, settings.ConnectionTimeout, settings.Theme, settings.MockMode, settings.Language, settings.SidebarPreference);
+        _ = new ApplicationSettings(
+            settings.SchemaVersion,
+            settings.PollingInterval,
+            settings.ConnectionTimeout,
+            settings.Theme,
+            settings.MockMode,
+            settings.Language,
+            settings.SidebarPreference);
 
         var directory = Path.GetDirectoryName(_settingsPath)!;
         var temporaryPath = Path.Combine(directory, $".{FileName}.{Guid.NewGuid():N}.tmp");
@@ -114,37 +120,50 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
     private sealed class SettingsDocument
     {
         public int SchemaVersion { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Host { get; set; }
-        public int Port { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Port { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? PreferredUpsName { get; set; }
         public double PollingIntervalSeconds { get; set; }
         public double ConnectionTimeoutSeconds { get; set; }
         public ThemePreference Theme { get; set; }
-        public bool MockMode { get; set; }
+        public bool? MockMode { get; set; }
         public UiLanguagePreference Language { get; set; } = UiLanguagePreference.PtBr;
         public SidebarPreference SidebarPreference { get; set; } = SidebarPreference.Expanded;
 
         public ApplicationSettings ToSettings()
         {
-            if (SchemaVersion == 1)
+            if (SchemaVersion is < 1 or > ApplicationSettings.CurrentSchemaVersion)
             {
-                return new ApplicationSettings(
-                    host: Host!, port: Port, preferredUpsName: PreferredUpsName,
-                    pollingInterval: TimeSpan.FromSeconds(PollingIntervalSeconds), connectionTimeout: TimeSpan.FromSeconds(ConnectionTimeoutSeconds),
-                    theme: Theme, mockMode: MockMode);
+                throw new ArgumentOutOfRangeException(nameof(SchemaVersion), "Unsupported settings schema version.");
             }
 
+            if (MockMode is null)
+            {
+                throw new ArgumentException("The mock-mode preference is required.", nameof(MockMode));
+            }
+
+            var legacyEndpoint = SchemaVersion <= 2
+                ? new LegacyMonitoringEndpoint(Host!, Port ?? 0, PreferredUpsName)
+                : null;
             return new ApplicationSettings(
-                SchemaVersion, Host!, Port, PreferredUpsName,
-                TimeSpan.FromSeconds(PollingIntervalSeconds), TimeSpan.FromSeconds(ConnectionTimeoutSeconds), Theme, MockMode, Language, SidebarPreference);
+                ApplicationSettings.CurrentSchemaVersion,
+                TimeSpan.FromSeconds(PollingIntervalSeconds),
+                TimeSpan.FromSeconds(ConnectionTimeoutSeconds),
+                Theme,
+                MockMode.Value,
+                SchemaVersion == 1 ? UiLanguagePreference.PtBr : Language,
+                SchemaVersion == 1 ? SidebarPreference.Expanded : SidebarPreference,
+                legacyEndpoint);
         }
 
         public static SettingsDocument FromSettings(ApplicationSettings settings) => new()
         {
             SchemaVersion = settings.SchemaVersion,
-            Host = settings.Host,
-            Port = settings.Port,
-            PreferredUpsName = settings.PreferredUpsName,
             PollingIntervalSeconds = settings.PollingInterval.TotalSeconds,
             ConnectionTimeoutSeconds = settings.ConnectionTimeout.TotalSeconds,
             Theme = settings.Theme,

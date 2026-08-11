@@ -286,7 +286,9 @@ public sealed class ManagedNutServerProfileTests
     [Fact]
     public async Task BootstrapMigratesLegacySettingsAndPreservesFallbackWhenPersistenceFails()
     {
-        var settings = new ApplicationSettings(host: "legacy.example", port: 4444, preferredUpsName: "ups-a", mockMode: false);
+        var settings = new ApplicationSettings(
+            mockMode: false,
+            legacyMonitoringEndpoint: new LegacyMonitoringEndpoint("legacy.example", 4444, "ups-a"));
         var savedStore = new RecordingProfileStore();
         var migrated = await new ManagedNutServerBootstrapper(savedStore).LoadAsync(settings, CancellationToken.None);
 
@@ -320,12 +322,33 @@ public sealed class ManagedNutServerProfileTests
             new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut"),
             ManagedNutServerAccessMode.Manage);
         var profiles = new ManagedNutServerProfiles(1, remote.Id, [local, remote]);
-        var result = await new ManagedNutServerBootstrapper(new RecordingProfileStore(profiles)).LoadAsync(new ApplicationSettings(host: "legacy", port: 3493), CancellationToken.None);
+        var store = new RecordingProfileStore(profiles);
+        var result = await new ManagedNutServerBootstrapper(store).LoadAsync(
+            new ApplicationSettings(legacyMonitoringEndpoint: new LegacyMonitoringEndpoint("legacy")),
+            CancellationToken.None);
 
         Assert.Equal("monitor.example", result.RuntimeContext.Endpoint.Host);
         Assert.Equal(3494, result.RuntimeContext.Endpoint.Port);
         Assert.Equal("management.example", result.RuntimeContext.Profile.Management.ManagementHost);
         Assert.False(result.RuntimeContext.Capabilities.CanInspectLocalManagement);
+        Assert.Null(store.Saved);
+        Assert.Equal(2, result.Profiles.Profiles.Count);
+    }
+
+    [Fact]
+    public async Task NewInstallationBootstrapsOneLocalProfileWithoutRemoteOrSecretMetadata()
+    {
+        var store = new RecordingProfileStore();
+
+        var result = await new ManagedNutServerBootstrapper(store).LoadAsync(new ApplicationSettings(), CancellationToken.None);
+
+        var profile = Assert.Single(result.Profiles.Profiles);
+        Assert.Equal("localhost", profile.Monitoring.Host);
+        Assert.Equal(NutEndpoint.DefaultPort, profile.Monitoring.Port);
+        Assert.Equal(NutManagementMode.Local, profile.Management.Mode);
+        Assert.Null(profile.Management.Smb);
+        Assert.Null(profile.Management.SshPrivateKeyPath);
+        Assert.True(result.WasMigrated);
     }
 
     private static ManagedNutServerProfile Profile(

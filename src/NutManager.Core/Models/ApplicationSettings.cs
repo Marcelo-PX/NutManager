@@ -2,29 +2,21 @@ namespace NutManager.Core.Models;
 
 public sealed record ApplicationSettings
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public ApplicationSettings(
         int schemaVersion = CurrentSchemaVersion,
-        string host = "localhost",
-        int port = NutEndpoint.DefaultPort,
-        string? preferredUpsName = null,
         TimeSpan? pollingInterval = null,
         TimeSpan? connectionTimeout = null,
         ThemePreference theme = ThemePreference.System,
-        bool mockMode = true,
+        bool mockMode = false,
         UiLanguagePreference language = UiLanguagePreference.PtBr,
-        SidebarPreference sidebarPreference = SidebarPreference.Expanded)
+        SidebarPreference sidebarPreference = SidebarPreference.Expanded,
+        LegacyMonitoringEndpoint? legacyMonitoringEndpoint = null)
     {
         if (schemaVersion != CurrentSchemaVersion)
         {
             throw new ArgumentOutOfRangeException(nameof(schemaVersion), "Unsupported settings schema version.");
-        }
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(host);
-        if (port is < 1 or > 65535)
-        {
-            throw new ArgumentOutOfRangeException(nameof(port), "The port must be between 1 and 65535.");
         }
 
         PollingInterval = pollingInterval ?? TimeSpan.FromSeconds(5);
@@ -55,25 +47,46 @@ public sealed record ApplicationSettings
         }
 
         SchemaVersion = schemaVersion;
-        Host = host;
-        Port = port;
-        PreferredUpsName = string.IsNullOrWhiteSpace(preferredUpsName) ? null : preferredUpsName;
         Theme = theme;
         MockMode = mockMode;
         Language = language;
         SidebarPreference = sidebarPreference;
+        LegacyMonitoringEndpoint = legacyMonitoringEndpoint;
     }
 
     public int SchemaVersion { get; }
-    public string Host { get; }
-    public int Port { get; }
-    public string? PreferredUpsName { get; }
     public TimeSpan PollingInterval { get; }
     public TimeSpan ConnectionTimeout { get; }
     public ThemePreference Theme { get; }
     public bool MockMode { get; }
     public UiLanguagePreference Language { get; }
     public SidebarPreference SidebarPreference { get; }
+    public LegacyMonitoringEndpoint? LegacyMonitoringEndpoint { get; }
+}
+
+/// <summary>
+/// Compatibility payload populated only while reading legacy settings. Managed
+/// server profiles are the runtime and persistence source of monitoring endpoints.
+/// </summary>
+public sealed record LegacyMonitoringEndpoint
+{
+    public LegacyMonitoringEndpoint(string host, int port = NutEndpoint.DefaultPort, string? preferredUpsName = null)
+    {
+        Host = NutMonitoringProfile.ValidateRequiredText(host, nameof(host), 255);
+        if (port is < 1 or > 65535)
+        {
+            throw new ArgumentOutOfRangeException(nameof(port), "The port must be between 1 and 65535.");
+        }
+
+        Port = port;
+        PreferredUpsName = NutMonitoringProfile.NormalizeOptionalText(preferredUpsName, nameof(preferredUpsName), 255);
+    }
+
+    public string Host { get; }
+
+    public int Port { get; }
+
+    public string? PreferredUpsName { get; }
 }
 
 public enum UiLanguagePreference

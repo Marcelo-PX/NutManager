@@ -2,7 +2,7 @@
 
 ## Status and purpose
 
-The shared Windows-first presentation foundation is implemented. It modernizes the Avalonia shell without changing NUT, safe-write, remote-transport, credential, driver, or privilege boundaries. The screen-specific profile work in T24A, page decomposition in T24B, and semantic configuration work in T25+ remain future work; this document describes both the implemented foundation and the visual contract those tasks must reuse.
+The shared Windows-first presentation foundation is implemented. It modernizes the Avalonia shell without changing NUT, safe-write, remote-transport, credential, driver, or privilege boundaries. T24A now applies that foundation to managed-server profiles; page decomposition in T24B and semantic configuration work in T25+ remain future work.
 
 ## Implemented shared presentation layer
 
@@ -64,6 +64,10 @@ The resource dictionaries define spacing 4/8/12/16/20/24/32; radii 6/8/12/16; a 
 `NutAccentBrush`, `NutAccentBrightBrush`, and `NutSelectionBrush` are product-owned tokens. `NutColors.axaml` supplies intentional Light and Dark surface/text palettes plus invariant accent, cyan, healthy, warning, critical, purple, focus, and unavailable semantics. Shell navigation and selected `ListBoxItem` presentation use these resources rather than the Windows accent, so red is never normal selection. Compatibility aliases keep existing page surfaces on the same themed palette while T24B remains pending. Option controls introduced by later tasks use localized presentation objects, not raw `Enum.ToString()` values.
 
 The shell follows the one-scroll-owner rule: `MainWindow` contains no page-level `ScrollViewer`; its content host gives the selected page the available space, and each page remains responsible for its own vertical scrolling. Medium and Compact modes reduce shell content padding; Medium projects collapsed navigation and Compact uses overlay navigation rather than horizontal scrolling. T24B remains responsible for replacing rigid internal page layouts where needed.
+
+## Managed-server Settings surface
+
+T24A uses the shared card, typography, spacing, border, product-selection, healthy, warning, and critical resources rather than introducing page-local colors. Managed servers appear as useful cards with endpoint, localized Local/Remote and ReadOnly/Manage summaries, transport, and active status. The editor uses a wide list/editor split and projects to a single column below its compact threshold, retaining one vertical scroll owner and no ordinary horizontal scroll. Inline validation and connection-test results always include text; the dirty-draft decision is keyboard-operable and does not rely on color.
 
 ## Administration information architecture
 

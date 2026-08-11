@@ -6,16 +6,16 @@ These are current findings from the ongoing Windows/NUT validation stream (T21).
 
 | ID | Finding | Planned response |
 | --- | --- | --- |
-| F-01 | A host input accepted `NOBREAK@127.0.0.1`, mixing UPS identity with a network host. | T24A typed host validation. |
-| F-02 | Mock mode currently defaults to enabled and confused the first live test. | T24A mock/demo policy and migration. |
-| F-03 | Starting a Remote draft then choosing Local is blocked by dirty-draft handling. | T24A reversible Local/Remote draft. |
+| F-01 | A host input accepted `NOBREAK@127.0.0.1`, mixing UPS identity with a network host. | Resolved in T24A by pure typed host validation. |
+| F-02 | Mock mode currently defaults to enabled and confused the first live test. | Resolved in T24A: new installs default disabled and persisted legacy choices are preserved. |
+| F-03 | Starting a Remote draft then choosing Local is blocked by dirty-draft handling. | Resolved in T24A by one reversible Local/Remote draft. |
 | F-04 | A red Windows system accent colors normal selection and resembles an error. | T24 product-owned selection tokens. |
-| F-05 | Internal enum values such as `Smb`, `CurrentWindowsIdentity`, `Manage`, and `Remote` reach the UI. | T24/T24A localized option presentation. |
+| F-05 | Internal enum values such as `Smb`, `CurrentWindowsIdentity`, `Manage`, and `Remote` reach the UI. | Resolved for the T24A managed-profile surface through localized presentation options. |
 | F-06 | NUT installation/configuration detection succeeds while version metadata can be unavailable. | T24B bounded read-only version fallback. |
 | F-07 | Administration combines configuration, remote access, drivers, Windows service, ACL, processes, events, and results in one long surface. | T24B presentation decomposition. |
 | F-08 | COM and driver areas need empty states and grouped commands. | T24B presentation work. |
-| F-09 | Active-profile change requires restart, but restart-required is not a first-class state. | T24A profile UX. |
-| F-10 | `ApplicationSettings` still mirrors legacy endpoint fields while managed profiles are the active profile source. | T24A source-of-truth migration plan. |
+| F-09 | Active-profile change requires restart, but restart-required is not a first-class state. | Resolved in T24A by comparing startup runtime and persisted active profile IDs. |
+| F-10 | `ApplicationSettings` still mirrors legacy endpoint fields while managed profiles are the active profile source. | Resolved in T24A schema v3; legacy endpoint fields are read-only migration compatibility. |
 | F-11 | The shell and pages have nested scrolling and rigid grids. | T24/T24B single-scroll and responsive layout work. |
 | F-12 | Current user-facing strings are largely hard-coded. | T24 localization foundation. |
 

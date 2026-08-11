@@ -87,7 +87,15 @@ public partial class App : Application
             isLocalManagement ? new WindowsNutDriverDiagnostics() : null,
             runtimeProfile,
             remoteManagement);
-        var settingsPage = new SettingsPageViewModel(settings, store, profileBootstrap.Profiles, profileStore, profileMutator, credentialStore);
+        var settingsPage = new SettingsPageViewModel(
+            settings,
+            store,
+            profileBootstrap.Profiles,
+            profileStore,
+            profileMutator,
+            credentialStore,
+            new ManagedNutConnectionTester(new NutTcpClient()),
+            runtimeProfile.Profile.Id);
         window.Closed += async (_, _) =>
         {
             if (remoteManagement is not null)
