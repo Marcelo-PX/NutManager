@@ -82,12 +82,23 @@ Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can w
 ### Next
 
 - T21 full local and remote Windows validation.
+- T24–T29 planned modern responsive UI, localization, and graphical-configuration cycle after the current validation stream.
 
 ### Later
 
 - T22 deferred Linux compatibility evaluation;
 - T23 upstream NUT improvement evaluation;
 - multi-server simultaneous runtime, history, notifications, and other future product capabilities as separately scoped.
+
+## 8. Planned graphical-first administration (T24–T29)
+
+The current implementation preserves and edits existing configuration entries through T13/T14. T24–T29 are planned, not implemented. Their product objective is that normal administrators can configure supported NUT settings graphically without manually editing supported `.conf` files.
+
+Dedicated experiences are planned for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`. Generated text remains a read-only preview or advanced inspection, never the primary editor. Forms create a semantic draft, validate it through Core semantic schemas, project it to the T13 syntax-preserving document, and apply only through the existing T14 local/SFTP/SMB safe-write pipeline. Applying a configuration change never silently restarts a service.
+
+The planned UX includes driver-aware UPS controls, setting-specific Automatic semantics, a `runtimecal` assistant, graphical custom parameters that preserve unknown content, redacted change-only secrets, semantic review, responsive review drawer, and explicit confirmation. Schema sources are primary official NUT manpages and driver documentation/help; runtime internet access and guessed defaults are excluded.
+
+T24 also establishes `pt-BR` (default) and `en-US` UI localization. User-facing presentation is localized through stable semantic resource keys, while NUT filenames, directives, drivers, status/configuration tokens, and serialization stay invariant. Display formatting follows culture; NUT serialization is culture-invariant. Both cultures and responsive/accessibility states are planned T29 validation requirements.
 
 ## 8. MVP package acceptance
 
