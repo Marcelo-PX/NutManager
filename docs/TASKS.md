@@ -40,7 +40,7 @@ Only one task should normally be in progress at a time.
 | T22 | DEFERRED | Future Linux compatibility evaluation | Compatibility may be reconsidered in a future task |
 | T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
 | T24 | DONE | Modern responsive shell, design system and localization foundation | Windows-first responsive presentation and pt-BR/en-US foundation |
-| T24A | TODO | Managed server profile UX and typed validation | Reversible profiles, typed validation, and migration planning |
+| T24A | DONE | Managed server profile UX and typed validation | Reversible profiles, typed validation, deterministic migration, and explicit connection testing |
 | T24B | TODO | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
 | T25 | TODO | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
 | T26 | TODO | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
@@ -285,7 +285,7 @@ Build the Windows-first responsive shell and design tokens, with official `pt-BR
 
 ## T24A — Managed server profile UX and typed validation
 
-**Status:** TODO
+**Status:** DONE
 
 **Dependency:** T24
 

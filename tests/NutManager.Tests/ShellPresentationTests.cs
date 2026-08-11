@@ -47,6 +47,43 @@ public sealed class ShellPresentationTests
         Assert.NotEqual(portuguese.Get("Nav.Settings"), english.Get("Nav.Settings"));
     }
 
+    [Fact]
+    public void EveryTypedValidationResourceResolvesInBothOfficialCultures()
+    {
+        var keys = NutManagerLocalizer.GetAvailableKeys(UiLanguagePreference.PtBr)
+            .Where(key => key.StartsWith("Validation.", StringComparison.Ordinal))
+            .ToArray();
+        var portuguese = new NutManagerLocalizer(UiLanguagePreference.PtBr);
+        var english = new NutManagerLocalizer(UiLanguagePreference.EnUs);
+
+        Assert.NotEmpty(keys);
+        Assert.All(keys, key =>
+        {
+            Assert.NotEqual(key, portuguese.Get(key));
+            Assert.NotEqual(key, english.Get(key));
+        });
+    }
+
+    [Fact]
+    public void ManagedProfileOptionsUseLocalizedPresentationInsteadOfRawEnumNames()
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "Server",
+            new NutMonitoringProfile("host"),
+            new NutManagementProfile(NutManagementMode.Local),
+            ManagedNutServerAccessMode.ReadOnly);
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]);
+        var portuguese = new SettingsPageViewModel(new ApplicationSettings(), null, profiles, null);
+        var english = new SettingsPageViewModel(new ApplicationSettings(language: UiLanguagePreference.EnUs), null, profiles, null);
+
+        Assert.Equal("Identidade atual do Windows", portuguese.SmbAuthenticationOptions.Single(option => option.Value == SmbAuthenticationMode.CurrentWindowsIdentity).Title);
+        Assert.Equal("Current Windows identity", english.SmbAuthenticationOptions.Single(option => option.Value == SmbAuthenticationMode.CurrentWindowsIdentity).Title);
+        Assert.Equal("Remoto", portuguese.ManagementModeOptions.Single(option => option.Value == NutManagementMode.Remote).Title);
+        Assert.Equal("Remote", english.ManagementModeOptions.Single(option => option.Value == NutManagementMode.Remote).Title);
+        Assert.DoesNotContain("Smb", portuguese.ConfigurationTransportOptions.Select(option => option.Title));
+    }
+
     [Theory]
     [InlineData(1200, ShellLayoutState.Wide)]
     [InlineData(1199, ShellLayoutState.Medium)]

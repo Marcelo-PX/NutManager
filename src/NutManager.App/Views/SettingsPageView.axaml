@@ -1,141 +1,348 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:models="clr-namespace:NutManager.Core.Models;assembly=NutManager.Core"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.SettingsPageView"
              x:DataType="viewModels:SettingsPageViewModel">
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="16" MaxWidth="900">
+  <UserControl.Resources>
+    <DataTemplate x:Key="ValidationIssueTemplate" x:DataType="viewModels:LocalizedValidationIssueViewModel">
+      <Grid Margin="0,2,0,0">
+        <TextBlock Text="{Binding Message}"
+                   IsVisible="{Binding IsError}"
+                   Foreground="{DynamicResource NutCriticalBrush}"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   AutomationProperties.Name="{Binding Message}" />
+        <TextBlock Text="{Binding Message}"
+                   IsVisible="{Binding IsWarning}"
+                   Foreground="{DynamicResource NutWarningBrush}"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   AutomationProperties.Name="{Binding Message}" />
+        <TextBlock Text="{Binding Message}"
+                   IsVisible="{Binding IsInfo}"
+                   Foreground="{DynamicResource NutTextSecondaryBrush}"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   AutomationProperties.Name="{Binding Message}" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="20" MaxWidth="1180">
       <StackPanel Spacing="4">
-        <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
+        <TextBlock Text="{Binding Description}"
+                   Foreground="{DynamicResource NutTextSecondaryBrush}"
+                   TextWrapping="Wrap" />
       </StackPanel>
 
-      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+      <Border Classes="nut-card">
         <StackPanel Spacing="12">
-          <TextBlock Text="{Binding AppearanceTitle}" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding AppearanceThemeLabel}" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}">
-            <ComboBox.ItemTemplate><DataTemplate x:DataType="viewModels:ThemeOption"><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
-          </ComboBox>
-          <TextBlock Text="{Binding AppearanceLanguageLabel}" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}">
-            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
-          </ComboBox>
-          <TextBlock Text="{Binding AppearanceSidebarLabel}" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}">
-            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
-          </ComboBox>
-          <TextBlock Text="{Binding RestartLanguageMessage}" IsVisible="{Binding IsLanguageRestartRequired}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding AppearanceTitle}" Classes="nut-section-title" />
+          <Grid x:Name="AppearanceLayout" ColumnDefinitions="*,*,*" ColumnSpacing="12">
+            <StackPanel x:Name="ThemePreferencePanel" Grid.Column="0" Spacing="6">
+              <TextBlock Text="{Binding AppearanceThemeLabel}" FontWeight="SemiBold" />
+              <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}">
+                <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <StackPanel x:Name="LanguagePreferencePanel" Grid.Column="1" Spacing="6">
+              <TextBlock Text="{Binding AppearanceLanguageLabel}" FontWeight="SemiBold" />
+              <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}">
+                <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <StackPanel x:Name="SidebarPreferencePanel" Grid.Column="2" Spacing="6">
+              <TextBlock Text="{Binding AppearanceSidebarLabel}" FontWeight="SemiBold" />
+              <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}">
+                <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+          </Grid>
+          <TextBlock Text="{Binding RestartLanguageMessage}"
+                     IsVisible="{Binding IsLanguageRestartRequired}"
+                     Foreground="{DynamicResource NutWarningBrush}"
+                     TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 
-      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
-        <StackPanel Spacing="12">
-          <TextBlock Text="Servidores NUT gerenciados" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock TextWrapping="Wrap"><Run Text="Perfil ativo: " /><Run Text="{Binding ActiveProfileName}" /></TextBlock>
-          <TextBlock Text="O perfil ativo será aplicado ao reiniciar o aplicativo." TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="260,16,*" RowDefinitions="Auto">
-            <StackPanel Grid.Column="0" Spacing="8">
-              <ListBox ItemsSource="{Binding ManagedProfiles}" SelectedItem="{Binding SelectedManagedProfile, Mode=TwoWay}">
+      <Border Classes="nut-card">
+        <StackPanel Spacing="16">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding ManagedServersTitle}" Classes="nut-section-title" />
+              <TextBlock Foreground="{DynamicResource NutTextSecondaryBrush}" TextWrapping="Wrap">
+                <Run Text="{Binding RuntimeProfileLabel}" /><Run Text=": " /><Run Text="{Binding RuntimeProfileName}" />
+                <Run Text="  •  " />
+                <Run Text="{Binding PersistedActiveProfileLabel}" /><Run Text=": " /><Run Text="{Binding PersistedActiveProfileName}" />
+              </TextBlock>
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Classes="nut-primary"
+                    Content="{Binding NewServerText}"
+                    Command="{Binding NewServerCommand}"
+                    AutomationProperties.Name="{Binding NewServerText}" />
+          </Grid>
+
+          <Border Background="{DynamicResource NutSurface2Brush}"
+                  BorderBrush="{DynamicResource NutWarningBrush}"
+                  BorderThickness="1"
+                  CornerRadius="8"
+                  Padding="12"
+                  IsVisible="{Binding IsActiveProfileRestartRequired}">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding RestartRequiredTitle}" FontWeight="SemiBold" Foreground="{DynamicResource NutWarningBrush}" />
+              <TextBlock Text="{Binding RestartRequiredMessage}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
+          <Grid x:Name="ManagedProfilesLayout" ColumnDefinitions="290,16,*" RowDefinitions="Auto">
+            <StackPanel x:Name="ProfileListPanel" Grid.Column="0" Spacing="10">
+              <ListBox ItemsSource="{Binding ManagedProfileCards}"
+                       SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
+                       MinHeight="180"
+                       MaxHeight="520">
                 <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="models:ManagedNutServerProfile">
-                    <StackPanel Margin="4" Spacing="2">
-                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                      <TextBlock Text="{Binding Monitoring.Host}" FontSize="12" />
-                      <TextBlock Text="{Binding Management.Mode}" FontSize="12" />
-                    </StackPanel>
+                  <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
+                    <Grid Margin="6" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <Border Grid.Column="1"
+                              Padding="7,2"
+                              CornerRadius="6"
+                              Background="{DynamicResource NutSurface2Brush}"
+                              IsVisible="{Binding IsActive}">
+                        <TextBlock Text="{Binding ActiveText}" Foreground="{DynamicResource NutHealthyBrush}" FontSize="12" />
+                      </Border>
+                      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Endpoint}" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                      <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" ItemSpacing="6" LineSpacing="2">
+                        <TextBlock Text="{Binding ManagementMode}" FontSize="12" />
+                        <TextBlock Text="•" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" />
+                        <TextBlock Text="{Binding AccessMode}" FontSize="12" />
+                        <TextBlock Text="•" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" IsVisible="{Binding HasTransport}" />
+                        <TextBlock Text="{Binding Transport}" FontSize="12" IsVisible="{Binding HasTransport}" />
+                      </WrapPanel>
+                    </Grid>
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="Criar Local" Command="{Binding CreateLocalProfileCommand}" />
-                <Button Content="Criar Remote" Command="{Binding CreateRemoteProfileCommand}" />
-              </StackPanel>
-              <Button Content="Tornar ativo" Command="{Binding ActivateSelectedProfileCommand}" IsEnabled="{Binding CanActivateSelectedProfile}" HorizontalAlignment="Left" />
-              <Button Content="Excluir perfil" Command="{Binding DeleteSelectedProfileCommand}" IsEnabled="{Binding CanDeleteSelectedProfile}" HorizontalAlignment="Left" />
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button Content="{Binding ActivateProfileText}"
+                        Command="{Binding ActivateSelectedProfileCommand}"
+                        IsEnabled="{Binding CanActivateSelectedProfile}" />
+                <Button Grid.Column="1"
+                        Classes="nut-danger"
+                        Content="{Binding DeleteProfileText}"
+                        Command="{Binding DeleteSelectedProfileCommand}"
+                        IsEnabled="{Binding CanDeleteSelectedProfile}" />
+              </Grid>
             </StackPanel>
 
-            <StackPanel Grid.Column="2" Spacing="8">
-              <TextBlock Text="Editor do perfil" FontSize="16" FontWeight="SemiBold" />
-              <TextBlock Text="Nome" FontWeight="SemiBold" />
-              <TextBox Text="{Binding ProfileDraft.Name, Mode=TwoWay}" />
-              <TextBlock Text="Monitoring" FontWeight="SemiBold" />
-              <TextBox PlaceholderText="Host" Text="{Binding ProfileDraft.MonitoringHost, Mode=TwoWay}" />
-              <TextBox PlaceholderText="Porta" Text="{Binding ProfileDraft.MonitoringPort, Mode=TwoWay}" />
-              <TextBox PlaceholderText="UPS preferido (opcional)" Text="{Binding ProfileDraft.PreferredUpsName, Mode=TwoWay}" />
-              <TextBlock Text="Modo de gerenciamento" FontWeight="SemiBold" />
-              <ComboBox ItemsSource="{Binding ManagementModes}" SelectedItem="{Binding ProfileDraft.ManagementMode, Mode=TwoWay}" />
-              <ComboBox ItemsSource="{Binding AccessModes}" SelectedItem="{Binding ProfileDraft.AccessMode, Mode=TwoWay}" />
-              <StackPanel IsVisible="{Binding ProfileDraft.IsRemote}" Spacing="6">
-                <TextBlock Text="Transporte dos arquivos de configuração" FontWeight="SemiBold" />
-                <ComboBox ItemsSource="{Binding ConfigurationTransports}" SelectedItem="{Binding ProfileDraft.ConfigurationTransport, Mode=TwoWay}" />
-                <StackPanel IsVisible="{Binding ProfileDraft.IsSshSftp}" Spacing="6">
-                <TextBlock Text="Host de gerenciamento" FontWeight="SemiBold" />
-                <TextBox Text="{Binding ProfileDraft.ManagementHost, Mode=TwoWay}" />
-                <TextBlock Text="Porta SSH" FontWeight="SemiBold" />
-                <TextBox Text="{Binding ProfileDraft.SshPort, Mode=TwoWay}" />
-                <TextBlock Text="Usuário SSH" FontWeight="SemiBold" />
-                <TextBox Text="{Binding ProfileDraft.SshUsername, Mode=TwoWay}" />
-                <TextBlock Text="Autenticação SSH" FontWeight="SemiBold" />
-                <ComboBox ItemsSource="{Binding SshAuthenticationModes}" SelectedItem="{Binding ProfileDraft.SshAuthenticationMode, Mode=TwoWay}" />
-                <StackPanel IsVisible="{Binding ProfileDraft.IsSshPrivateKey}" Spacing="6">
-                  <TextBlock Text="Chave privada" FontWeight="SemiBold" />
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox Width="420" Text="{Binding ProfileDraft.SshPrivateKeyPath, Mode=TwoWay}" PlaceholderText="Caminho da chave privada (somente para Chave privada)" />
-                    <Button Content="Selecionar..." Click="SelectSshPrivateKeyButton_OnClick" />
+            <StackPanel x:Name="ProfileEditorPanel" Grid.Column="2" Spacing="14">
+              <TextBlock Text="{Binding EditorTitle}" Classes="nut-section-title" />
+
+              <Border Background="{DynamicResource NutSurface2Brush}" CornerRadius="8" Padding="14">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="{Binding NameLabel}" FontWeight="SemiBold" />
+                  <TextBox Text="{Binding ProfileDraft.Name, Mode=TwoWay}"
+                           AutomationProperties.Name="{Binding NameLabel}" />
+                  <ItemsControl ItemsSource="{Binding NameValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource NutSurface2Brush}" CornerRadius="8" Padding="14">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="{Binding MonitoringSectionTitle}" FontWeight="SemiBold" FontSize="16" />
+                  <TextBlock Text="{Binding MonitoringHostLabel}" FontWeight="SemiBold" />
+                  <TextBox Text="{Binding ProfileDraft.MonitoringHost, Mode=TwoWay}"
+                           AutomationProperties.Name="{Binding MonitoringHostLabel}" />
+                  <ItemsControl ItemsSource="{Binding MonitoringHostValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="{Binding MonitoringPortLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.MonitoringPort, Mode=TwoWay}" AutomationProperties.Name="{Binding MonitoringPortLabel}" />
+                      <ItemsControl ItemsSource="{Binding MonitoringPortValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="6">
+                      <TextBlock Text="{Binding PreferredUpsLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.PreferredUpsName, Mode=TwoWay}" AutomationProperties.Name="{Binding PreferredUpsLabel}" />
+                      <ItemsControl ItemsSource="{Binding PreferredUpsValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                    </StackPanel>
+                  </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button Classes="nut-primary"
+                            Content="{Binding TestConnectionText}"
+                            Command="{Binding TestConnectionCommand}"
+                            IsEnabled="{Binding CanTestConnection}" />
+                    <TextBlock Text="{Binding ConnectionTestResultText}"
+                               IsVisible="{Binding IsConnectionTestHealthy}"
+                               Foreground="{DynamicResource NutHealthyBrush}"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="{Binding ConnectionTestResultText}" />
+                    <TextBlock Text="{Binding ConnectionTestResultText}"
+                               IsVisible="{Binding IsConnectionTestWarning}"
+                               Foreground="{DynamicResource NutWarningBrush}"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="{Binding ConnectionTestResultText}" />
+                    <TextBlock Text="{Binding ConnectionTestResultText}"
+                               IsVisible="{Binding IsConnectionTestCritical}"
+                               Foreground="{DynamicResource NutCriticalBrush}"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="{Binding ConnectionTestResultText}" />
+                    <TextBlock Text="{Binding ConnectionTestResultText}"
+                               IsVisible="{Binding IsConnectionTestNeutral}"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="{Binding ConnectionTestResultText}" />
                   </StackPanel>
-                  <TextBlock Text="O caminho é apenas metadata. O conteúdo da chave não é lido nem salvo ao editar o perfil." TextWrapping="Wrap" />
                 </StackPanel>
-                <TextBlock Text="Diretório remoto de configuração (opcional)" FontWeight="SemiBold" />
-                <TextBox Text="{Binding ProfileDraft.RemoteConfigurationDirectory, Mode=TwoWay}" />
-                <TextBlock Text="Chave SSH confiável" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding ProfileDraft.TrustedHostKeyFingerprint}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding ProfileDraft.TrustedHostKeyAlgorithm}" TextWrapping="Wrap" />
-                <Button Content="Esquecer chave confiável do host" Command="{Binding ForgetTrustedHostKeyCommand}" IsEnabled="{Binding CanForgetTrustedHostKey}" HorizontalAlignment="Left" />
-                <TextBlock Text="As senhas e passphrases podem ser lembradas somente após uma conexão bem-sucedida; nunca são salvas no perfil." TextWrapping="Wrap" />
+              </Border>
+
+              <Border Background="{DynamicResource NutSurface2Brush}" CornerRadius="8" Padding="14">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="{Binding ManagementSectionTitle}" FontWeight="SemiBold" FontSize="16" />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="{Binding ManagementModeLabel}" FontWeight="SemiBold" />
+                      <ComboBox ItemsSource="{Binding ManagementModeOptions}" SelectedItem="{Binding SelectedManagementModeOption, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="6">
+                      <TextBlock Text="{Binding AccessModeLabel}" FontWeight="SemiBold" />
+                      <ComboBox ItemsSource="{Binding AccessModeOptions}" SelectedItem="{Binding SelectedAccessModeOption, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </StackPanel>
+                  </Grid>
+
+                  <StackPanel IsVisible="{Binding ProfileDraft.IsRemote}" Spacing="10">
+                    <TextBlock Text="{Binding TransportSectionTitle}" FontWeight="SemiBold" FontSize="16" Margin="0,6,0,0" />
+                    <TextBlock Text="{Binding TransportLabel}" FontWeight="SemiBold" />
+                    <ComboBox ItemsSource="{Binding ConfigurationTransportOptions}" SelectedItem="{Binding SelectedConfigurationTransportOption, Mode=TwoWay}">
+                      <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <StackPanel IsVisible="{Binding ProfileDraft.IsSshSftp}" Spacing="8">
+                      <TextBlock Text="{Binding ManagementHostLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.ManagementHost, Mode=TwoWay}" AutomationProperties.Name="{Binding ManagementHostLabel}" />
+                      <ItemsControl ItemsSource="{Binding ManagementHostValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                      <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="{Binding SshPortLabel}" FontWeight="SemiBold" />
+                          <TextBox Text="{Binding ProfileDraft.SshPort, Mode=TwoWay}" AutomationProperties.Name="{Binding SshPortLabel}" />
+                          <ItemsControl ItemsSource="{Binding SshPortValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6">
+                          <TextBlock Text="{Binding SshUsernameLabel}" FontWeight="SemiBold" />
+                          <TextBox Text="{Binding ProfileDraft.SshUsername, Mode=TwoWay}" AutomationProperties.Name="{Binding SshUsernameLabel}" />
+                          <ItemsControl ItemsSource="{Binding SshUsernameValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                        </StackPanel>
+                      </Grid>
+                      <TextBlock Text="{Binding SshAuthenticationLabel}" FontWeight="SemiBold" />
+                      <ComboBox ItemsSource="{Binding SshAuthenticationOptions}" SelectedItem="{Binding SelectedSshAuthenticationOption, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <StackPanel IsVisible="{Binding ProfileDraft.IsSshPrivateKey}" Spacing="6">
+                        <TextBlock Text="{Binding PrivateKeyLabel}" FontWeight="SemiBold" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                          <TextBox Text="{Binding ProfileDraft.SshPrivateKeyPath, Mode=TwoWay}" AutomationProperties.Name="{Binding PrivateKeyLabel}" />
+                          <Button Grid.Column="1" Content="{Binding SelectPrivateKeyText}" Click="SelectSshPrivateKeyButton_OnClick" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding SshPrivateKeyValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                        <TextBlock Text="{Binding PrivateKeyMetadataHelp}" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding RemoteDirectoryLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.RemoteConfigurationDirectory, Mode=TwoWay}" AutomationProperties.Name="{Binding RemoteDirectoryLabel}" />
+                      <ItemsControl ItemsSource="{Binding RemoteDirectoryValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                      <TextBlock Text="{Binding TrustedHostKeyLabel}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding ProfileDraft.TrustedHostKeyFingerprint}" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding ProfileDraft.TrustedHostKeyAlgorithm}" TextWrapping="Wrap" />
+                      <Button Content="{Binding ForgetHostKeyText}" Command="{Binding ForgetTrustedHostKeyCommand}" IsEnabled="{Binding CanForgetTrustedHostKey}" HorizontalAlignment="Left" />
+                      <TextBlock Text="{Binding ProtectedSecretHelp}" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel IsVisible="{Binding ProfileDraft.IsSmb}" Spacing="8">
+                      <TextBlock Text="{Binding SmbShareLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.SmbSharePath, Mode=TwoWay}" PlaceholderText="\\server\share" AutomationProperties.Name="{Binding SmbShareLabel}" />
+                      <ItemsControl ItemsSource="{Binding SmbShareValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                      <TextBlock Text="{Binding SmbAuthenticationLabel}" FontWeight="SemiBold" />
+                      <ComboBox ItemsSource="{Binding SmbAuthenticationOptions}" SelectedItem="{Binding SelectedSmbAuthenticationOption, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <TextBlock Text="{Binding SmbUsernameLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.SmbUsername, Mode=TwoWay}" AutomationProperties.Name="{Binding SmbUsernameLabel}" />
+                      <ItemsControl ItemsSource="{Binding SmbUsernameValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                      <TextBlock Text="{Binding SmbDirectoryLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.SmbConfigurationDirectory, Mode=TwoWay}" AutomationProperties.Name="{Binding SmbDirectoryLabel}" />
+                      <ItemsControl ItemsSource="{Binding SmbDirectoryValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                      <TextBlock Text="{Binding SmbSecretHelp}" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
+                    <Button Content="{Binding ForgetCredentialText}" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
+                  </StackPanel>
+
+                  <TextBlock Text="{Binding LocalManagementHelp}"
+                             IsVisible="{Binding !ProfileDraft.IsRemote}"
+                             Foreground="{DynamicResource NutTextSecondaryBrush}"
+                             TextWrapping="Wrap" />
                 </StackPanel>
-                <StackPanel IsVisible="{Binding ProfileDraft.IsSmb}" Spacing="6">
-                  <TextBlock Text="Compartilhamento SMB" FontWeight="SemiBold" />
-                  <TextBox Text="{Binding ProfileDraft.SmbSharePath, Mode=TwoWay}" PlaceholderText="\\server\share" />
-                  <TextBlock Text="Autenticação SMB" FontWeight="SemiBold" />
-                  <ComboBox ItemsSource="{Binding SmbAuthenticationModes}" SelectedItem="{Binding ProfileDraft.SmbAuthenticationMode, Mode=TwoWay}" />
-                  <TextBlock Text="Usuário SMB" FontWeight="SemiBold" />
-                  <TextBox Text="{Binding ProfileDraft.SmbUsername, Mode=TwoWay}" />
-                  <TextBlock Text="Diretório SMB de configuração (opcional)" FontWeight="SemiBold" />
-                  <TextBox Text="{Binding ProfileDraft.SmbConfigurationDirectory, Mode=TwoWay}" PlaceholderText="\\server\share\NUT\etc" />
-                  <TextBlock Text="A senha SMB pode ser lembrada somente após a verificação bem-sucedida do compartilhamento; nunca é salva no perfil." TextWrapping="Wrap" />
+              </Border>
+
+              <Border Background="{DynamicResource NutSurface2Brush}"
+                      BorderBrush="{DynamicResource NutWarningBrush}"
+                      BorderThickness="1"
+                      CornerRadius="8"
+                      Padding="12"
+                      IsVisible="{Binding IsDirtyDraftDecisionVisible}">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{Binding DirtyDraftTitle}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding DirtyDraftMessage}" TextWrapping="Wrap" />
+                  <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                    <Button Classes="nut-primary" Content="{Binding SaveAndContinueText}" Command="{Binding SaveDirtyDraftAndContinueCommand}" IsEnabled="{Binding CanSaveProfile}" />
+                    <Button Content="{Binding DiscardAndContinueText}" Command="{Binding DiscardDirtyDraftAndContinueCommand}" />
+                    <Button Content="{Binding ContinueEditingText}" Command="{Binding ContinueEditingCommand}" />
+                  </WrapPanel>
                 </StackPanel>
-                <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
-                <Button Content="Esquecer credencial protegida" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
-              </StackPanel>
-              <TextBlock Text="A instalação local será detectada automaticamente pelo NutManager. Diretórios remotos podem ser acessados por SSH/SFTP ou SMB; o transporte não altera o monitoring." TextWrapping="Wrap" />
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="Salvar perfil" Command="{Binding SaveProfileCommand}" IsEnabled="{Binding CanPersistProfiles}" />
-                <Button Content="Descartar alterações" Command="{Binding DiscardProfileDraftCommand}" IsEnabled="{Binding IsProfileDraftDirty}" />
-              </StackPanel>
-              <TextBlock Text="Salvando perfil..." IsVisible="{Binding IsSavingProfile}" />
-              <TextBlock Text="Perfil salvo." IsVisible="{Binding IsProfileSaved}" />
-              <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding ProfileStatusMessage}" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding ProfileSaveError}" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" TextWrapping="Wrap" />
+              </Border>
+
+              <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                <Button Classes="nut-success" Content="{Binding SaveProfileText}" Command="{Binding SaveProfileCommand}" IsEnabled="{Binding CanSaveProfile}" />
+                <Button Content="{Binding DiscardProfileText}" Command="{Binding DiscardProfileDraftCommand}" IsEnabled="{Binding IsProfileDraftDirty}" />
+              </WrapPanel>
+              <TextBlock Text="{Binding ProfileSavingText}" IsVisible="{Binding IsSavingProfile}" />
+              <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding HasProfileStatusMessage}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding HasProfileSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" AutomationProperties.Name="{Binding ProfileSaveError}" />
+              <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
             </StackPanel>
           </Grid>
         </StackPanel>
       </Border>
 
-      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+      <Border Classes="nut-card">
         <StackPanel Spacing="12">
-          <TextBlock Text="Configurações gerais" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="Comunicação" FontWeight="SemiBold" />
-          <TextBox PlaceholderText="Timeout em segundos" Text="{Binding ConnectionTimeoutSeconds}" />
-          <TextBox PlaceholderText="Intervalo de polling em segundos" Text="{Binding PollingIntervalSeconds}" />
-          <CheckBox Content="Usar dados simulados (modo mock)" IsChecked="{Binding MockMode}" />
-          <Button Content="Salvar configurações" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
-          <TextBlock Text="Salvando..." IsVisible="{Binding IsSaving}" />
-          <TextBlock Text="Configurações salvas." IsVisible="{Binding IsSaved}" />
-          <TextBlock Text="{Binding SaveError}" IsVisible="{Binding SaveError}" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding LoadError}" IsVisible="{Binding LoadError}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding GeneralSettingsTitle}" Classes="nut-section-title" />
+          <Grid x:Name="GeneralPreferencesLayout" ColumnDefinitions="*,*" ColumnSpacing="12">
+            <StackPanel x:Name="ConnectionTimeoutPanel" Spacing="6">
+              <TextBlock Text="{Binding ConnectionTimeoutLabel}" FontWeight="SemiBold" />
+              <TextBox Text="{Binding ConnectionTimeoutSeconds}" AutomationProperties.Name="{Binding ConnectionTimeoutLabel}" />
+            </StackPanel>
+            <StackPanel x:Name="PollingIntervalPanel" Grid.Column="1" Spacing="6">
+              <TextBlock Text="{Binding PollingIntervalLabel}" FontWeight="SemiBold" />
+              <TextBox Text="{Binding PollingIntervalSeconds}" AutomationProperties.Name="{Binding PollingIntervalLabel}" />
+            </StackPanel>
+          </Grid>
+          <CheckBox Content="{Binding MockModeLabel}" IsChecked="{Binding MockMode}" />
+          <Button Classes="nut-primary" Content="{Binding SaveSettingsText}" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
+          <TextBlock Text="{Binding SavingText}" IsVisible="{Binding IsSaving}" />
+          <TextBlock Text="{Binding SettingsSavedText}" IsVisible="{Binding IsSaved}" Foreground="{DynamicResource NutHealthyBrush}" />
+          <TextBlock Text="{Binding SaveError}" IsVisible="{Binding HasSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding LoadError}" IsVisible="{Binding HasLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
     </StackPanel>

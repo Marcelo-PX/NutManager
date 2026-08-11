@@ -63,7 +63,7 @@ The active profile is resolved during bootstrap into an immutable runtime contex
 
 ## 5. Persistence
 
-`settings.json` is per-user UTF-8 JSON for polling, timeout, theme, mock-mode, and legacy monitoring compatibility fields. It uses temporary-file, atomic persistence and has no secrets in its current model.
+`settings.json` schema v3 is per-user UTF-8 JSON for polling, timeout, theme, mock-mode, language, and sidebar preferences. It uses temporary-file, atomic persistence and has no secrets. The persistence DTO can read legacy v1/v2 endpoint fields for one-time managed-profile bootstrap, but current serialization and runtime settings no longer mirror an endpoint.
 
 `managed-servers.json` is schema-versioned, per-user metadata for managed profiles and the active profile. Schema v4 retains SSH/SMB metadata and adds non-secret SSH authentication mode and optional private-key path. It uses temporary-file, atomic persistence and never contains passwords, passphrases, or private-key material. Those values are session-only by default and, only after an explicit successful connection, may be saved in app-owned `CRED_TYPE_GENERIC` Windows Credential Manager entries with local-machine persistence.
 
@@ -104,11 +104,11 @@ The review-drawer host is a presentation boundary only and is Hidden in the curr
 
 `pt-BR` is the default culture and `en-US` is an official culture. The shell and Appearance & Language surface resolve semantic keys through `NutManagerLocalizer`; the two culture resource sets are tested for exact key parity and deterministic fallback. The language preference is persisted, with full application after restart rather than a partial live switch. Display values follow UI culture; every NUT parser and serializer remains culture-invariant. NUT filenames, directives, driver names, status tokens, and SFTP stay invariant. Existing pages not yet redesigned are not retroactively described as localized. See [UI design system](UI-DESIGN-SYSTEM.md) and [Localization](LOCALIZATION.md).
 
-### Planned profile-validation and presentation boundary (T24A/T24B)
+### Profile validation and presentation boundary (T24A/T24B)
 
-T24A separates pure typed syntactic validation in Core from semantic/cross-field draft validation and explicit operational I/O. A managed-profile UI draft is not persistence: host/port/UNC rules are deterministic and do not resolve DNS, while Test Connection is an explicit staged operation. Planned migration makes managed profiles the source of monitoring endpoint, preferred UPS, and management metadata; application settings retain UI/runtime preferences and legacy endpoint fields only for migration compatibility. See [Profile validation architecture](PROFILE-VALIDATION-ARCHITECTURE.md).
+T24A implements pure typed syntactic validation and cross-field materialization in Core, reversible draft/dirty-decision presentation in App, and explicit operational `LIST UPS` testing through Infrastructure. Host/port/UNC validation performs no DNS or I/O. The settings v3 migration makes managed profiles authoritative for endpoint and preferred UPS; compatibility endpoint data exists only while reading legacy settings and only bootstraps when no profile document exists. See [Profile validation architecture](PROFILE-VALIDATION-ARCHITECTURE.md).
 
-T24B only decomposes App presentation into focused Administration areas and responsive current pages. It does not alter Core/Infrastructure safe-write, privilege, driver, remote, credential, or secret-input boundaries. Existing live observations are tracked in [Live validation findings](LIVE-VALIDATION-FINDINGS.md), not asserted as completed T21 acceptance.
+T24B remains planned and only decomposes App presentation into focused Administration areas and responsive current pages. It does not alter Core/Infrastructure safe-write, privilege, driver, remote, credential, or secret-input boundaries. Existing live observations are tracked in [Live validation findings](LIVE-VALIDATION-FINDINGS.md), not asserted as completed T21 acceptance.
 
 ## 8. Windows local administration
 

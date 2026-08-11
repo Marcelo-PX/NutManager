@@ -2,34 +2,38 @@
 
 ## Purpose and boundary
 
-T24A plans typed, reusable validation for managed-server profile drafts before persistence. A draft is presentation state, not a persisted profile. Validation never resolves DNS or opens a connection during ordinary editing; Test Connection is an explicit operational workflow.
+T24A implements typed, reusable validation for managed-server profile drafts before persistence. A draft is reversible App presentation state, not a persisted profile. Ordinary editing never resolves DNS, opens a connection, reads a private key, or acquires a secret. Test Connection is a separate explicit operational workflow.
 
-## Validation levels
+## Implemented validation levels
 
-1. **Syntactic** — pure, deterministic checks for host, port, profile name, UNC, SSH port, and character/range formats.
-2. **Semantic/cross-field** — profile consistency after syntax is valid: Remote/SFTP needs a management host; Remote/SMB needs a UNC share; explicit SMB credentials need a username; SSH private-key mode needs a key path; Local does not persist remote metadata; profile names are unique.
-3. **Operational** — explicit I/O: host format, DNS when applicable, TCP connect, NUT protocol response, `LIST UPS`, then preferred-UPS presence. Operational failure does not make a syntactically valid host invalid. Diagnostics and logs exclude secrets.
+1. **Syntactic** — `NutManager.Core.Validation` contains pure deterministic host, port, profile-name, UNC, optional-text, and range checks. `ValidationSeverity`, `FieldValidationIssue`, and `FieldValidationResult<T>` carry stable codes and localization resource keys; Core contains no human-language validation messages.
+2. **Semantic/cross-field** — `ManagedNutServerProfileValidator` validates the applicable draft branch and materializes a domain profile only with no Error. Local drops remote metadata; SFTP drops SMB metadata; SMB drops SSH metadata. Warnings remain saveable.
+3. **Operational** — `IManagedNutConnectionTester` and `ManagedNutConnectionTester` execute the existing read-only NUT `LIST UPS` client only after explicit user action. Results distinguish success, unreachable endpoint, timeout, protocol/server error, no UPS, missing preferred UPS, cancellation, and generic failure.
 
-## Host and port rules
+## Host, port, and UNC rules
 
-A host represents only a network host. A pure Core validator accepts IPv4, IPv6, single-label hostnames, and DNS/FQDN names. It rejects `UPS@host`, `user@host`, schemes, `host:3493`, UNC paths, slash paths/URLs, whitespace, and control characters. IPv6 zone/scope syntax is admitted only if the chosen .NET/Windows implementation can support it deterministically with tests. The syntactic validator does not perform DNS.
+A host represents only a network host. The Core validator accepts IPv4, IPv6 without a scope identifier, single-label hostnames, and DNS/FQDN names. It rejects `UPS@host`, `user@host`, schemes, `host:3493`, UNC paths, slash paths, filesystem paths, embedded whitespace, controls, and partially supported IPv6 scope syntax. It does not perform DNS.
 
-Ports are `1..65535`. UI controls should be numeric, but Core retains the invariant.
+TCP and SSH ports are parsed from draft text without throwing and must be `1..65535`. A partial or invalid value remains editable but produces an Error. SMB share roots must be exact `\\server\share` UNC roots; optional SMB configuration directories are checked by the existing share-containment boundary.
 
-The implementation may use concepts equivalent to `ValidationSeverity` (`Info`, `Warning`, `Error`), `FieldValidationIssue` (code, severity, resource key), and `FieldValidationResult<T>` (value, issues, validity). This is deliberately a small reusable model, not a value object for every string.
+Profile names are trimmed, limited to 80 characters, reject controls, and are unique case-insensitively. The profile being edited is excluded from its own uniqueness check, and its stable ID is preserved.
 
-## UX and localization
+## Draft and persistence boundary
 
-Errors validate inline without blocking partial typing, but an Error disables Save. Warnings permit Save; Info provides help. Local/Remote and SFTP/SMB selection is reversible while drafting. Dirty state offers Save, Discard, or Continue editing rather than trapping a draft. The active-profile restart requirement is a first-class visible state.
+Settings exposes one **New server** flow. Local/Remote, ReadOnly/Manage, and SFTP/SMB selections are reversible; inactive typed values remain in the in-memory draft for convenient switching. Materialization persists only the selected branch. Passwords and passphrases never enter the draft.
 
-Validation and option labels are localized in both official cultures with semantic keys such as `Validation.Host.Required`, `Validation.Host.Invalid`, `Validation.Host.NoScheme`, `Validation.Port.Range`, `Validation.Profile.NameDuplicate`, `Validation.Remote.ManagementHostRequired`, and `Validation.Smb.ShareRootRequired`. NUT technical tokens remain invariant.
+Replacing a dirty editor context creates a pending action and requires Save, Discard, or Continue editing. Save routes through `ManagedNutServerProfileUpdateService`, retaining its concurrency checks, trusted-host-key behavior, and protected-credential invalidation rules. A failed Save leaves the draft available.
 
-## Source-of-truth and mock policy
+The runtime profile ID captured at startup remains immutable for the session. The persisted active ID may change, and their difference produces the localized restart-required state; polling and the shell continue to represent the startup runtime profile.
 
-The planned T24A migration separates application preferences (theme, language, sidebar/review state, polling, timeout, mock/demo preference) from managed profiles (monitoring endpoint, preferred UPS, and management metadata). Legacy endpoint fields remain migration compatibility only after schema evolution; no migration is implemented by this documentation task.
+## Settings source of truth
 
-For new normal installations, target policy is mock mode disabled. Existing installations preserve their persisted choice during migration. Active mock/demo mode must be persistently and unambiguously labelled.
+`ApplicationSettings` schema v3 stores application preferences only: polling, connection timeout, theme, mock mode, language, and sidebar preference. Current serialization does not write Host, Port, or Preferred UPS. `JsonApplicationSettingsStore` can still read schemas v1/v2 and exposes their endpoint through an explicit compatibility payload used only by `ManagedNutServerBootstrapper` when no managed-profile document exists. A valid managed-profile document always wins and is never rewritten by migration.
 
-## Validation expectations
+New installations default mock mode to disabled. Existing explicit legacy `true` and `false` values are preserved. Malformed settings and managed-profile files are reported and are not silently overwritten. No secret is migrated.
 
-T24A tests host/port parsing, cross-field validation, Local↔Remote and SFTP↔SMB reversibility, dirty-draft decisions, settings migration, connection-tester fakes, and pt-BR/en-US resource completeness. No test uses real DNS, credentials, NUT, service, serial port, or remote transport.
+## UX, localization, and tests
+
+Settings uses the T24 cards, product-owned selection, responsive list/editor layout, inline textual issues, localized presentation options, active-profile badge, restart banner, and explicit Test Connection result. Official `pt-BR` and `en-US` resources have exact key parity; NUT technical tokens remain invariant.
+
+Tests are deterministic and use pure validators, stores, credential fakes, and connection-tester fakes. No test performs DNS, external network access, credential mutation, configuration write, service/ACL/UAC operation, or hardware access.

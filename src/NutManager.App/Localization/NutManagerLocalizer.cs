@@ -10,15 +10,7 @@ public sealed class NutManagerLocalizer
     private static readonly ResourceManager ResourceManager = new("NutManager.App.Localization.Strings", typeof(NutManagerLocalizer).Assembly);
 
     public static IReadOnlyCollection<string> RequiredKeys { get; } =
-    [
-        "App.Name", "Nav.Overview", "Nav.Devices", "Nav.Administration", "Nav.Diagnostics", "Nav.Settings",
-        "Shell.ToggleNavigation", "Shell.ToggleTheme", "Shell.SimulationActive", "Shell.ReviewChanges",
-        "Shell.ExpandNavigation", "Shell.CollapseNavigation", "Shell.ActiveProfile", "Shell.ProfileActive", "Shell.NoActiveProfile", "Shell.AdministrationConfirmation",
-        "Management.Local", "Management.Remote", "Access.ReadOnly", "Access.Manage",
-        "Status.Connected", "Status.Connecting", "Status.Reconnecting", "Status.Disconnected", "Status.ConnectionFailed", "Status.Stale", "Status.Unavailable",
-        "Appearance.Title", "Appearance.Theme", "Appearance.Language", "Appearance.Sidebar", "Appearance.RestartRequired", "Appearance.SaveError",
-        "Theme.System", "Theme.Light", "Theme.Dark", "Language.PtBr", "Language.EnUs", "Sidebar.Expanded", "Sidebar.Collapsed"
-    ];
+        GetAvailableKeys(UiLanguagePreference.PtBr).OrderBy(key => key, StringComparer.Ordinal).ToArray();
 
     public NutManagerLocalizer(UiLanguagePreference language) => Language = language;
 

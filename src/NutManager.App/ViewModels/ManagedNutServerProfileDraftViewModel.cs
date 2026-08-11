@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using NutManager.Core.Models;
+using NutManager.Core.Validation;
 
 namespace NutManager.App.ViewModels;
 
@@ -77,22 +78,17 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
 
     public bool IsSshPrivateKey => IsSshSftp && SshAuthenticationMode == SshAuthenticationMode.PrivateKey;
 
-    public static ManagedNutServerProfileDraftViewModel CreateLocal() => new(new ManagedNutServerProfile(
-        Guid.NewGuid(),
-        "Novo servidor local",
-        new NutMonitoringProfile("localhost"),
-        new NutManagementProfile(NutManagementMode.Local),
-        ManagedNutServerAccessMode.ReadOnly));
-
-    public static ManagedNutServerProfileDraftViewModel CreateRemote()
+    public static ManagedNutServerProfileDraftViewModel CreateNew()
     {
         var draft = new ManagedNutServerProfileDraftViewModel(new ManagedNutServerProfile(
             Guid.NewGuid(),
-            "Novo servidor remoto",
-            new NutMonitoringProfile("pendente"),
-            new NutManagementProfile(NutManagementMode.Remote, "pendente"),
+            "Novo servidor",
+            new NutMonitoringProfile("localhost"),
+            new NutManagementProfile(NutManagementMode.Local),
             ManagedNutServerAccessMode.ReadOnly));
-        draft.MonitoringHost = string.Empty;
+        draft.Name = string.Empty;
+        draft.ManagementMode = NutManagementMode.Local;
+        draft.MonitoringHost = "localhost";
         draft.ManagementHost = string.Empty;
         draft.SshUsername = null;
         draft.TrustedHostKeyFingerprint = null;
@@ -150,29 +146,30 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SmbUsername = source.SmbUsername;
     }
 
-    public ManagedNutServerProfile CreateProfile() => new(
+    public ManagedNutServerProfileInput ToInput() => new(
         Id,
         Name,
-        new NutMonitoringProfile(
-            MonitoringHost,
-            int.Parse(MonitoringPort, System.Globalization.CultureInfo.InvariantCulture),
-            PreferredUpsName),
-        new NutManagementProfile(
-            ManagementMode,
-            ManagementHost,
-            RemoteConfigurationDirectory,
-            int.Parse(SshPort, System.Globalization.CultureInfo.InvariantCulture),
-            SshUsername,
-            TrustedHostKeyFingerprint,
-            TrustedHostKeyAlgorithm,
-            ConfigurationTransport,
-            SmbSharePath,
-            SmbConfigurationDirectory,
-            SmbAuthenticationMode,
-            SmbUsername,
-            SshAuthenticationMode,
-            SshPrivateKeyPath),
-        AccessMode);
+        MonitoringHost,
+        MonitoringPort,
+        PreferredUpsName,
+        ManagementMode,
+        AccessMode,
+        ManagementHost,
+        RemoteConfigurationDirectory,
+        SshPort,
+        SshUsername,
+        SshAuthenticationMode,
+        SshPrivateKeyPath,
+        TrustedHostKeyFingerprint,
+        TrustedHostKeyAlgorithm,
+        ConfigurationTransport,
+        SmbSharePath,
+        SmbConfigurationDirectory,
+        SmbAuthenticationMode,
+        SmbUsername);
+
+    public ManagedNutServerProfileValidationResult Validate(IEnumerable<ManagedNutServerProfile> existingProfiles) =>
+        ManagedNutServerProfileValidator.Validate(ToInput(), existingProfiles);
 
     public bool Matches(ManagedNutServerProfile profile)
     {

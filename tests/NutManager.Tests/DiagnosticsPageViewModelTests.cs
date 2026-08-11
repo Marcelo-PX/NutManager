@@ -14,12 +14,10 @@ public sealed class DiagnosticsPageViewModelTests
     public void ShowsDeterministicApplicationAndMockConfigurationInformation()
     {
         using var viewModel = CreateViewModel(new ApplicationSettings(
-            host: "nut.example",
-            port: 3494,
-            preferredUpsName: "preferred-ups",
             pollingInterval: TimeSpan.FromSeconds(8),
             connectionTimeout: TimeSpan.FromSeconds(3),
-            mockMode: true));
+            mockMode: true),
+            profileContext: CreateProfileContext(NutManagementMode.Local, ManagedNutServerAccessMode.Manage));
 
         Assert.Equal("NutManager", viewModel.ApplicationName);
         Assert.Equal("10.2.3-test", viewModel.ApplicationVersion);
@@ -27,11 +25,11 @@ public sealed class DiagnosticsPageViewModelTests
         Assert.Equal("Test OS", viewModel.OperatingSystem);
         Assert.Equal("TestArchitecture", viewModel.Architecture);
         Assert.Equal("Dados simulados", viewModel.ModeText);
-        Assert.Equal("nut.example", viewModel.Host);
+        Assert.Equal("monitor.example", viewModel.Host);
         Assert.Equal("3494", viewModel.Port);
         Assert.Equal("3 s", viewModel.ConnectionTimeoutText);
         Assert.Equal("8 s", viewModel.PollingIntervalText);
-        Assert.Equal("preferred-ups", viewModel.PreferredUpsName);
+        Assert.Equal("remote-ups", viewModel.PreferredUpsName);
     }
 
     [Fact]
@@ -255,7 +253,7 @@ public sealed class DiagnosticsPageViewModelTests
     {
         var context = CreateProfileContext(NutManagementMode.Remote, accessMode);
         var detector = new TestInstallationDetector();
-        using var viewModel = CreateViewModel(new ApplicationSettings(host: "legacy", port: 3493), installationDetector: detector, profileContext: context);
+        using var viewModel = CreateViewModel(new ApplicationSettings(), installationDetector: detector, profileContext: context);
 
         await viewModel.RefreshLocalInstallationAsync();
         await viewModel.InspectLocalInstallationDirectoryAsync(@"C:\NUT");

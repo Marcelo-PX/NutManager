@@ -327,10 +327,11 @@ public sealed record ManagedNutServerProfiles
     public static ManagedNutServerProfiles CreateLegacyProfile(ApplicationSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        var endpoint = settings.LegacyMonitoringEndpoint ?? new LegacyMonitoringEndpoint("localhost");
         var profile = new ManagedNutServerProfile(
             Guid.NewGuid(),
             "Perfil atual",
-            new NutMonitoringProfile(settings.Host, settings.Port, settings.PreferredUpsName),
+            new NutMonitoringProfile(endpoint.Host, endpoint.Port, endpoint.PreferredUpsName),
             new NutManagementProfile(NutManagementMode.Local),
             ManagedNutServerAccessMode.Manage);
         return new ManagedNutServerProfiles(CurrentSchemaVersion, profile.Id, [profile]);
