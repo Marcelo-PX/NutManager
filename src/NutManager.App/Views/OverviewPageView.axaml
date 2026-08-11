@@ -3,7 +3,8 @@
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.OverviewPageView"
              x:DataType="viewModels:OverviewPageViewModel">
-  <StackPanel Spacing="24">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="24">
     <StackPanel Spacing="8">
       <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
       <TextBlock Text="{Binding Description}" MaxWidth="720" TextWrapping="Wrap" />
@@ -101,5 +102,6 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </StackPanel>
-  </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

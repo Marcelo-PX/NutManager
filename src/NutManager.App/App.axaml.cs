@@ -101,7 +101,17 @@ public partial class App : Application
         };
         if (loadError is not null) settingsPage.SetLoadError(loadError);
         if (profileBootstrap.Warning is not null) settingsPage.SetProfileLoadError(profileBootstrap.Warning, profileBootstrap.IsProfileDocumentLoadFailure);
-        var viewModel = new MainWindowViewModel(settings.Theme, overview, devices, settingsPage, diagnostics, administration);
+        var viewModel = new MainWindowViewModel(
+            settings.Theme,
+            overview,
+            devices,
+            settingsPage,
+            diagnostics,
+            administration,
+            settings.Language,
+            settings.SidebarPreference,
+            settings.MockMode,
+            $"{endpoint.Host}:{endpoint.Port}");
         viewModel.ThemeChanged += async preference =>
         {
             ApplyTheme(preference);
@@ -109,6 +119,8 @@ public partial class App : Application
             try { await settingsPage.PersistThemeAsync(preference); } catch (OperationCanceledException) { }
         };
         settingsPage.ThemeChanged += viewModel.SetTheme;
+        settingsPage.SidebarPreferenceChanged += preference => viewModel.SidebarPreference = preference;
+        viewModel.SidebarPreferenceChanged += settingsPage.ApplySidebarPreference;
         ApplyTheme(settings.Theme);
         window.DataContext = viewModel;
         await devices.InitializeAsync();

@@ -6,7 +6,34 @@
              x:Class="NutManager.App.App">
   <Application.Styles>
     <fluent:FluentTheme />
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI, Arial" />
+    </Style>
   </Application.Styles>
+  <Application.Resources>
+    <x:Double x:Key="NutSpacing4">4</x:Double>
+    <x:Double x:Key="NutSpacing8">8</x:Double>
+    <x:Double x:Key="NutSpacing12">12</x:Double>
+    <x:Double x:Key="NutSpacing16">16</x:Double>
+    <x:Double x:Key="NutSpacing20">20</x:Double>
+    <x:Double x:Key="NutSpacing24">24</x:Double>
+    <x:Double x:Key="NutSpacing32">32</x:Double>
+    <x:Double x:Key="NutRadius6">6</x:Double>
+    <x:Double x:Key="NutRadius8">8</x:Double>
+    <x:Double x:Key="NutRadius12">12</x:Double>
+    <x:TimeSpan x:Key="NutMotionHover">0:0:0.14</x:TimeSpan>
+    <x:TimeSpan x:Key="NutMotionPage">0:0:0.18</x:TimeSpan>
+    <x:TimeSpan x:Key="NutMotionShell">0:0:0.22</x:TimeSpan>
+    <SolidColorBrush x:Key="NutAccentBrush" Color="#0A84C6" />
+    <SolidColorBrush x:Key="NutSelectionBrush" Color="#163E5B" Opacity="0.32" />
+    <SolidColorBrush x:Key="NutSurfaceBrush" Color="#F7F8FA" />
+    <SolidColorBrush x:Key="NutElevatedSurfaceBrush" Color="#EEF1F5" />
+    <SolidColorBrush x:Key="NutBorderBrush" Color="#C6CDD5" />
+    <SolidColorBrush x:Key="NutHealthyBrush" Color="#218739" />
+    <SolidColorBrush x:Key="NutWarningBrush" Color="#B87900" />
+    <SolidColorBrush x:Key="NutCriticalBrush" Color="#C42B1C" />
+    <SolidColorBrush x:Key="NutUnavailableBrush" Color="#7A7A7A" />
+  </Application.Resources>
   <Application.DataTemplates>
     <DataTemplate DataType="viewModels:OverviewPageViewModel">
       <views:OverviewPageView />

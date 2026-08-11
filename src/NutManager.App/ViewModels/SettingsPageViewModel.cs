@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NutManager.App.Localization;
 using NutManager.App.Services;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
@@ -23,6 +24,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     private bool _suppressProfileSelection;
     private bool _canPersistThemeAutomatically = true;
     private bool _canPersistProfiles = true;
+    private bool _isApplyingVisualPreferences;
 
     public SettingsPageViewModel() : this(new ApplicationSettings(), null, null, null) { }
 
@@ -54,12 +56,41 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         _draftSourceId = _confirmedProfiles.ActiveProfileId;
         _draftBaseProfile = _confirmedProfiles.ActiveProfile;
         _selectedManagedProfile = _confirmedProfiles.ActiveProfile;
+        var localizer = new NutManagerLocalizer(settings.Language);
+        ThemeOptions =
+        [
+            new ThemeOption(ThemePreference.System, localizer.Get("Theme.System")),
+            new ThemeOption(ThemePreference.Light, localizer.Get("Theme.Light")),
+            new ThemeOption(ThemePreference.Dark, localizer.Get("Theme.Dark"))
+        ];
+        LanguageOptions =
+        [
+            new PresentationOption<UiLanguagePreference>(UiLanguagePreference.PtBr, localizer.Get("Language.PtBr")),
+            new PresentationOption<UiLanguagePreference>(UiLanguagePreference.EnUs, localizer.Get("Language.EnUs"))
+        ];
+        SidebarOptions =
+        [
+            new PresentationOption<SidebarPreference>(SidebarPreference.Expanded, localizer.Get("Sidebar.Expanded")),
+            new PresentationOption<SidebarPreference>(SidebarPreference.Collapsed, localizer.Get("Sidebar.Collapsed"))
+        ];
+        _isApplyingVisualPreferences = true;
         Apply(settings);
-        ThemeOptions = [new(ThemePreference.System, "Seguir o sistema"), new(ThemePreference.Light, "Claro"), new(ThemePreference.Dark, "Escuro")];
         SelectedThemeOption = ThemeOptions.Single(option => option.Preference == settings.Theme);
+        SelectedLanguageOption = LanguageOptions.Single(option => option.Value == settings.Language);
+        SelectedSidebarOption = SidebarOptions.Single(option => option.Value == settings.SidebarPreference);
+        _isApplyingVisualPreferences = false;
     }
 
     public IReadOnlyList<ThemeOption> ThemeOptions { get; }
+    public IReadOnlyList<PresentationOption<UiLanguagePreference>> LanguageOptions { get; }
+    public IReadOnlyList<PresentationOption<SidebarPreference>> SidebarOptions { get; }
+    public NutManagerLocalizer Localizer { get; private set; } = new(UiLanguagePreference.PtBr);
+    public string AppearanceTitle => Localizer.Get("Appearance.Title");
+    public string AppearanceThemeLabel => Localizer.Get("Appearance.Theme");
+    public string AppearanceLanguageLabel => Localizer.Get("Appearance.Language");
+    public string AppearanceSidebarLabel => Localizer.Get("Appearance.Sidebar");
+    public string RestartLanguageMessage => Localizer.Get("Appearance.RestartRequired");
+    public bool IsLanguageRestartRequired { get; private set; }
 
     public IReadOnlyList<NutManagementMode> ManagementModes { get; } = Enum.GetValues<NutManagementMode>();
 
@@ -82,6 +113,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     [ObservableProperty] private string _connectionTimeoutSeconds = "5";
     [ObservableProperty] private bool _mockMode = true;
     [ObservableProperty] private ThemeOption? _selectedThemeOption;
+    [ObservableProperty] private PresentationOption<UiLanguagePreference>? _selectedLanguageOption;
+    [ObservableProperty] private PresentationOption<SidebarPreference>? _selectedSidebarOption;
     [ObservableProperty] private bool _isSaving;
     [ObservableProperty] private string? _saveError;
     [ObservableProperty] private string? _loadError;
@@ -125,6 +158,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         : "Nenhuma credencial protegida é necessária para este perfil.";
 
     public event Action<ThemePreference>? ThemeChanged;
+    public event Action<SidebarPreference>? SidebarPreferenceChanged;
 
     [RelayCommand]
     private async Task SaveAsync(CancellationToken cancellationToken = default)
@@ -440,7 +474,9 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             pollingInterval: TimeSpan.FromSeconds(double.Parse(PollingIntervalSeconds, System.Globalization.CultureInfo.InvariantCulture)),
             connectionTimeout: TimeSpan.FromSeconds(double.Parse(ConnectionTimeoutSeconds, System.Globalization.CultureInfo.InvariantCulture)),
             theme: SelectedThemeOption?.Preference ?? ThemePreference.System,
-            mockMode: MockMode);
+            mockMode: MockMode,
+            language: SelectedLanguageOption?.Value ?? UiLanguagePreference.PtBr,
+            sidebarPreference: SelectedSidebarOption?.Value ?? SidebarPreference.Expanded);
     }
 
     public void Apply(ApplicationSettings settings)
@@ -451,6 +487,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         PollingIntervalSeconds = settings.PollingInterval.TotalSeconds.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
         ConnectionTimeoutSeconds = settings.ConnectionTimeout.TotalSeconds.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
         MockMode = settings.MockMode;
+        Localizer = new NutManagerLocalizer(settings.Language);
     }
 
     public async Task PersistThemeAsync(ThemePreference theme, CancellationToken cancellationToken = default)
@@ -468,7 +505,9 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             _confirmedSettings.PollingInterval,
             _confirmedSettings.ConnectionTimeout,
             theme,
-            _confirmedSettings.MockMode);
+            _confirmedSettings.MockMode,
+            _confirmedSettings.Language,
+            _confirmedSettings.SidebarPreference);
         try
         {
             await _settingsStore.SaveAsync(settings, cancellationToken);
@@ -511,6 +550,61 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         if (value is not null)
         {
             ThemeChanged?.Invoke(value.Preference);
+        }
+    }
+
+    public void ApplySidebarPreference(SidebarPreference preference)
+    {
+        var option = SidebarOptions.Single(option => option.Value == preference);
+        if (!Equals(SelectedSidebarOption, option))
+        {
+            SelectedSidebarOption = option;
+        }
+    }
+
+    partial void OnSelectedLanguageOptionChanged(PresentationOption<UiLanguagePreference>? value)
+    {
+        if (value is null) return;
+        if (_isApplyingVisualPreferences) return;
+        IsLanguageRestartRequired = value.Value != Localizer.Language;
+        OnPropertyChanged(nameof(IsLanguageRestartRequired));
+        _ = PersistVisualPreferencesAsync(value.Value, SelectedSidebarOption?.Value ?? SidebarPreference.Expanded);
+    }
+
+    partial void OnSelectedSidebarOptionChanged(PresentationOption<SidebarPreference>? value)
+    {
+        if (value is null) return;
+        if (_isApplyingVisualPreferences) return;
+        SidebarPreferenceChanged?.Invoke(value.Value);
+        _ = PersistVisualPreferencesAsync(SelectedLanguageOption?.Value ?? UiLanguagePreference.PtBr, value.Value);
+    }
+
+    public async Task PersistVisualPreferencesAsync(UiLanguagePreference language, SidebarPreference sidebarPreference, CancellationToken cancellationToken = default)
+    {
+        if (_settingsStore is null) return;
+        var settings = new ApplicationSettings(
+            _confirmedSettings.SchemaVersion,
+            _usesManagedProfileEndpoint ? _confirmedProfiles.ActiveProfile.Monitoring.Host : _confirmedSettings.Host,
+            _usesManagedProfileEndpoint ? _confirmedProfiles.ActiveProfile.Monitoring.Port : _confirmedSettings.Port,
+            _usesManagedProfileEndpoint ? _confirmedProfiles.ActiveProfile.Monitoring.PreferredUpsName : _confirmedSettings.PreferredUpsName,
+            _confirmedSettings.PollingInterval,
+            _confirmedSettings.ConnectionTimeout,
+            _confirmedSettings.Theme,
+            _confirmedSettings.MockMode,
+            language,
+            sidebarPreference);
+        try
+        {
+            await _settingsStore.SaveAsync(settings, cancellationToken);
+            _confirmedSettings = settings;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            SaveError = Localizer.Get("Appearance.SaveError");
         }
     }
 
