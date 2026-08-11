@@ -3,6 +3,7 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Threading;
 using NutManager.App.Services;
+using NutManager.App.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NutManager.Core.Models;
@@ -25,15 +26,20 @@ public abstract class PageViewModel : ObservableObject
 }
 public sealed partial class OverviewPageViewModel : PageViewModel
 {
-    private const string UnavailableText = "Indisponível";
     private readonly INutClient? _nutClient;
     private readonly NutEndpoint? _endpoint;
     private readonly string? _upsName;
     private readonly IUpsPollingCoordinator? _polling;
 
     public OverviewPageViewModel()
-        : base("Visão geral", "Acompanhe o estado geral do seu ambiente de energia.")
+        : this(UiLanguagePreference.PtBr)
     {
+    }
+
+    public OverviewPageViewModel(UiLanguagePreference language)
+        : base(new NutManagerLocalizer(language).Get("Overview.Title"), new NutManagerLocalizer(language).Get("Overview.Description"))
+    {
+        Strings = new NutManagerLocalizer(language);
         _connectionState = ConnectionState.Disconnected;
         _dataFreshness = DataFreshness.Unavailable;
         _metricCards = CreateMetricCards(null);
@@ -46,12 +52,24 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         string upsName,
         ConnectionState connectionState,
         DataFreshness dataFreshness)
-        : base("Visão geral", "Acompanhe o estado geral do seu ambiente de energia.")
+        : this(nutClient, endpoint, upsName, connectionState, dataFreshness, UiLanguagePreference.PtBr)
+    {
+    }
+
+    public OverviewPageViewModel(
+        INutClient nutClient,
+        NutEndpoint endpoint,
+        string upsName,
+        ConnectionState connectionState,
+        DataFreshness dataFreshness,
+        UiLanguagePreference language)
+        : base(new NutManagerLocalizer(language).Get("Overview.Title"), new NutManagerLocalizer(language).Get("Overview.Description"))
     {
         ArgumentNullException.ThrowIfNull(nutClient);
         ArgumentNullException.ThrowIfNull(endpoint);
         ArgumentException.ThrowIfNullOrWhiteSpace(upsName);
 
+        Strings = new NutManagerLocalizer(language);
         _nutClient = nutClient;
         _endpoint = endpoint;
         _upsName = upsName;
@@ -61,13 +79,15 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         _statusItems = Array.Empty<OverviewStatusItemViewModel>();
     }
 
-    public OverviewPageViewModel(IUpsPollingCoordinator polling)
-        : this()
+    public OverviewPageViewModel(IUpsPollingCoordinator polling, UiLanguagePreference language = UiLanguagePreference.PtBr)
+        : this(language)
     {
         _polling = polling;
         polling.StateChanged += ApplyPollingState;
         ApplyPollingState(polling.State);
     }
+
+    public NutManagerLocalizer Strings { get; }
 
     private void ApplyPollingState(PollingState state)
     {
@@ -102,32 +122,34 @@ public sealed partial class OverviewPageViewModel : PageViewModel
 
     public UpsIdentity? Identity => Snapshot?.Identity;
 
-    public string SourceLabel => Snapshot?.Source == DataSource.Simulated ? "Dados simulados" : string.Empty;
+    public string SourceLabel => Snapshot?.Source == DataSource.Simulated ? Strings.Get("Shell.SimulationActive") : string.Empty;
 
     public bool IsSimulated => Snapshot?.Source == DataSource.Simulated;
+
+    public bool HasNoStatusItems => StatusItems.Count == 0;
 
     public bool HasLoadError => !string.IsNullOrWhiteSpace(LoadError);
 
     public string ConnectionStateText => ConnectionState switch
     {
-        ConnectionState.Disconnected => "Desconectado",
-        ConnectionState.Connecting => "Conectando",
-        ConnectionState.Connected => "Conectado",
-        ConnectionState.Reconnecting => "Reconectando",
-        ConnectionState.ConnectionFailed => "Falha de conexão",
-        _ => "Desconhecido"
+        ConnectionState.Disconnected => Strings.Get("Status.Disconnected"),
+        ConnectionState.Connecting => Strings.Get("Status.Connecting"),
+        ConnectionState.Connected => Strings.Get("Status.Connected"),
+        ConnectionState.Reconnecting => Strings.Get("Status.Reconnecting"),
+        ConnectionState.ConnectionFailed => Strings.Get("Status.ConnectionFailed"),
+        _ => Strings.Get("Status.Unavailable")
     };
 
     public string DataFreshnessText => DataFreshness switch
     {
-        DataFreshness.Unavailable => "Indisponível",
-        DataFreshness.Fresh => "Atualizado",
-        DataFreshness.Stale => "Dados desatualizados",
-        _ => "Desconhecido"
+        DataFreshness.Unavailable => Strings.Get("Status.Unavailable"),
+        DataFreshness.Fresh => Strings.Get("Status.Fresh"),
+        DataFreshness.Stale => Strings.Get("Status.Stale"),
+        _ => Strings.Get("Status.Unavailable")
     };
 
     public string LastSuccessfulUpdateText => Snapshot is null
-        ? UnavailableText
+        ? Strings.Get("Status.Unavailable")
         : Snapshot.LastSuccessfulUpdate.ToString("g", CultureInfo.CurrentCulture);
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -151,7 +173,7 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         }
         catch (Exception)
         {
-            LoadError = "Não foi possível carregar os dados do UPS.";
+            LoadError = Strings.Get("Overview.LoadError");
         }
         finally
         {
@@ -176,74 +198,78 @@ public sealed partial class OverviewPageViewModel : PageViewModel
     partial void OnLoadErrorChanged(string? value) =>
         OnPropertyChanged(nameof(HasLoadError));
 
-    private static IReadOnlyList<OverviewMetricViewModel> CreateMetricCards(UpsSnapshot? snapshot) =>
+    partial void OnStatusItemsChanged(IReadOnlyList<OverviewStatusItemViewModel> value) =>
+        OnPropertyChanged(nameof(HasNoStatusItems));
+
+    private IReadOnlyList<OverviewMetricViewModel> CreateMetricCards(UpsSnapshot? snapshot) =>
     [
-        CreateDecimalMetric("Carga da bateria", snapshot?.BatteryChargePercentage, "%"),
-        CreateDurationMetric("Autonomia", snapshot?.Runtime),
-        CreateDecimalMetric("Carga do UPS", snapshot?.LoadPercentage, "%"),
-        CreateDecimalMetric("Tensão de entrada", snapshot?.InputVoltage, "V"),
-        CreateDecimalMetric("Tensão de saída", snapshot?.OutputVoltage, "V"),
-        CreateDecimalMetric("Frequência", snapshot?.Frequency, "Hz"),
-        CreateDecimalMetric("Temperatura", snapshot?.Temperature, "°C"),
-        CreateDecimalMetric("Tensão da bateria", snapshot?.BatteryVoltage, "V")
+        CreateDecimalMetric(Strings.Get("Overview.Metric.BatteryCharge"), snapshot?.BatteryChargePercentage, "%"),
+        CreateDurationMetric(Strings.Get("Overview.Metric.Runtime"), snapshot?.Runtime),
+        CreateDecimalMetric(Strings.Get("Overview.Metric.Load"), snapshot?.LoadPercentage, "%"),
+        CreateDecimalMetric(Strings.Get("Overview.Metric.InputVoltage"), snapshot?.InputVoltage, "V"),
+        CreateDecimalMetric(Strings.Get("Overview.Metric.OutputVoltage"), snapshot?.OutputVoltage, "V"),
+        CreateDecimalMetric(Strings.Get("Overview.Metric.Frequency"), snapshot?.Frequency, "Hz"),
+        CreateDecimalMetric(Strings.Get("Overview.Metric.Temperature"), snapshot?.Temperature, "°C"),
+        CreateDecimalMetric(Strings.Get("Overview.Metric.BatteryVoltage"), snapshot?.BatteryVoltage, "V")
     ];
 
-    private static OverviewMetricViewModel CreateDecimalMetric(string title, decimal? value, string unit) =>
+    private OverviewMetricViewModel CreateDecimalMetric(string title, decimal? value, string unit) =>
         value is null
-            ? new OverviewMetricViewModel(title, UnavailableText, null)
+            ? new OverviewMetricViewModel(title, Strings.Get("Status.Unavailable"), null)
             : new OverviewMetricViewModel(title, value.Value.ToString("0.##", CultureInfo.CurrentCulture), unit);
 
-    private static OverviewMetricViewModel CreateDurationMetric(string title, TimeSpan? value) =>
+    private OverviewMetricViewModel CreateDurationMetric(string title, TimeSpan? value) =>
         value is null
-            ? new OverviewMetricViewModel(title, UnavailableText, null)
+            ? new OverviewMetricViewModel(title, Strings.Get("Status.Unavailable"), null)
             : new OverviewMetricViewModel(title, FormatDuration(value.Value), null);
 
     private static string FormatDuration(TimeSpan value) => value.TotalHours >= 1
         ? $"{(int)value.TotalHours} h {value.Minutes:D2} min"
         : $"{Math.Max(0, (int)value.TotalMinutes)} min";
 
-    private static OverviewStatusItemViewModel CreateStatusItem(UpsStatusToken token) =>
+    private OverviewStatusItemViewModel CreateStatusItem(UpsStatusToken token) =>
         new(
             token.OriginalToken,
             token.State switch
             {
-                StatusSemanticState.Online => "Em rede",
-                StatusSemanticState.OnBattery => "Em bateria",
-                StatusSemanticState.LowBattery => "Bateria baixa",
-                StatusSemanticState.ReplaceBattery => "Substituir bateria",
-                StatusSemanticState.Charging => "Carregando",
-                StatusSemanticState.Discharging => "Descarregando",
-                StatusSemanticState.Bypass => "Bypass",
-                StatusSemanticState.OutputOff => "Saída desligada",
-                StatusSemanticState.Overloaded => "Sobrecarga",
-                StatusSemanticState.Calibration => "Calibração",
+                StatusSemanticState.Online => Strings.Get("UpsStatus.Online"),
+                StatusSemanticState.OnBattery => Strings.Get("UpsStatus.OnBattery"),
+                StatusSemanticState.LowBattery => Strings.Get("UpsStatus.LowBattery"),
+                StatusSemanticState.ReplaceBattery => Strings.Get("UpsStatus.ReplaceBattery"),
+                StatusSemanticState.Charging => Strings.Get("UpsStatus.Charging"),
+                StatusSemanticState.Discharging => Strings.Get("UpsStatus.Discharging"),
+                StatusSemanticState.Bypass => Strings.Get("UpsStatus.Bypass"),
+                StatusSemanticState.OutputOff => Strings.Get("UpsStatus.OutputOff"),
+                StatusSemanticState.Overloaded => Strings.Get("UpsStatus.Overloaded"),
+                StatusSemanticState.Calibration => Strings.Get("UpsStatus.Calibration"),
                 _ => token.OriginalToken
             },
             token.Severity switch
             {
-                StatusSeverity.Normal => "Normal",
-                StatusSeverity.Informational => "Informativo",
-                StatusSeverity.Warning => "Aviso",
-                StatusSeverity.Critical => "Crítico",
-                _ => "Desconhecido"
+                StatusSeverity.Normal => Strings.Get("Severity.Normal"),
+                StatusSeverity.Informational => Strings.Get("Severity.Informational"),
+                StatusSeverity.Warning => Strings.Get("Severity.Warning"),
+                StatusSeverity.Critical => Strings.Get("Severity.Critical"),
+                _ => Strings.Get("Common.Unknown")
             });
 }
 
 public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposable
 {
-    private const string UnavailableText = "Indisponível";
-    private const string NoSelectionText = "Nenhum UPS selecionado";
     private readonly ApplicationSettings _settings;
     private readonly ApplicationRuntimeInfo _runtimeInfo;
     private readonly IUpsPollingCoordinator? _polling;
     private readonly DevicesPageViewModel? _devices;
     private readonly ILocalNutInstallationDetector? _installationDetector;
+    private readonly ILocalNutVersionResolver? _versionResolver;
     private readonly ManagedNutServerRuntimeContext? _profileContext;
     private PollingState _pollingState;
     private NutInstallationInfo _localInstallation = NutInstallationInfo.NotDetected();
+    private NutVersionSource _localVersionSource = NutVersionSource.Unavailable;
+    private string? _diagnosticCopyStatusMessage;
 
     public DiagnosticsPageViewModel()
-        : this(new ApplicationSettings(), new ApplicationRuntimeInfo(UnavailableText, UnavailableText, UnavailableText, UnavailableText))
+        : this(new ApplicationSettings(), new ApplicationRuntimeInfo("-", "-", "-", "-"))
     {
     }
 
@@ -253,8 +279,10 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         IUpsPollingCoordinator? polling = null,
         DevicesPageViewModel? devices = null,
         ILocalNutInstallationDetector? installationDetector = null,
-        ManagedNutServerRuntimeContext? profileContext = null)
-        : base("Diagnóstico", "Informações somente leitura para verificar o estado atual do NutManager.")
+        ManagedNutServerRuntimeContext? profileContext = null,
+        UiLanguagePreference language = UiLanguagePreference.PtBr,
+        ILocalNutVersionResolver? versionResolver = null)
+        : base(new NutManagerLocalizer(language).Get("Diagnostics.Title"), new NutManagerLocalizer(language).Get("Diagnostics.Description"))
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(runtimeInfo);
@@ -264,7 +292,9 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         _polling = polling;
         _devices = devices;
         _installationDetector = installationDetector;
+        _versionResolver = versionResolver;
         _profileContext = profileContext;
+        Strings = new NutManagerLocalizer(language);
         _pollingState = polling?.State ?? PollingState.Unavailable;
 
         if (_polling is not null)
@@ -278,58 +308,123 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         }
     }
 
+    public NutManagerLocalizer Strings { get; }
+
+    public IReadOnlyList<string> DiagnosticGroups =>
+    [
+        Strings.Get("Diagnostics.Group.Overview"),
+        Strings.Get("Diagnostics.Group.Connection"),
+        Strings.Get("Diagnostics.Group.Polling"),
+        Strings.Get("Diagnostics.Group.Discovery"),
+        Strings.Get("Diagnostics.Group.Environment"),
+        Strings.Get("Diagnostics.Group.Technical")
+    ];
+
+    public string? DiagnosticCopyStatusMessage
+    {
+        get => _diagnosticCopyStatusMessage;
+        private set
+        {
+            if (SetProperty(ref _diagnosticCopyStatusMessage, value))
+            {
+                OnPropertyChanged(nameof(HasDiagnosticCopyStatusMessage));
+            }
+        }
+    }
+
+    public bool HasDiagnosticCopyStatusMessage => !string.IsNullOrWhiteSpace(DiagnosticCopyStatusMessage);
+
     public string ApplicationName => "NutManager";
     public string ApplicationVersion => _runtimeInfo.Version;
     public string Runtime => _runtimeInfo.Runtime;
     public string OperatingSystem => _runtimeInfo.OperatingSystem;
     public string Architecture => _runtimeInfo.Architecture;
 
-    public string ModeText => _settings.MockMode ? "Dados simulados" : "Servidor NUT real";
-    public string Host => _profileContext?.Endpoint.Host ?? UnavailableText;
-    public string Port => _profileContext?.Endpoint.Port.ToString(CultureInfo.InvariantCulture) ?? UnavailableText;
+    public string ModeText => _settings.MockMode ? Strings.Get("Shell.SimulationActive") : Strings.Get("Diagnostics.LiveServer");
+    public string Host => _profileContext?.Endpoint.Host ?? Strings.Get("Status.Unavailable");
+    public string Port => _profileContext?.Endpoint.Port.ToString(CultureInfo.InvariantCulture) ?? Strings.Get("Status.Unavailable");
     public string ConnectionTimeoutText => FormatDuration(_settings.ConnectionTimeout);
     public string PollingIntervalText => FormatDuration(_settings.PollingInterval);
-    public string PreferredUpsName => _profileContext?.Profile.Monitoring.PreferredUpsName ?? "Não configurado";
-    public string ManagedProfileName => _profileContext?.Profile.Name ?? "Perfil local atual";
-    public string ManagementModeText => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote ? "Remoto" : "Local";
-    public string ManagementAccessText => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? "Somente leitura" : "Permitir gerenciamento";
+    public string PreferredUpsName => _profileContext?.Profile.Monitoring.PreferredUpsName ?? Strings.Get("Common.NotConfigured");
+    public string ManagedProfileName => _profileContext?.Profile.Name ?? Strings.Get("Diagnostics.CurrentLocalProfile");
+    public string ManagementModeText => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote ? Strings.Get("Management.Remote") : Strings.Get("Management.Local");
+    public string ManagementAccessText => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? Strings.Get("Access.ReadOnly") : Strings.Get("Diagnostics.AccessManage");
     public bool IsLocalManagementProfile => _profileContext?.Profile.Management.Mode != NutManagementMode.Remote;
 
     public int DiscoveredUpsCount => _devices?.Devices.Count ?? 0;
-    public string SelectedUpsName => _devices?.SelectedDevice?.Name ?? _pollingState.UpsName ?? NoSelectionText;
-    public string SelectedUpsDescription => DisplayIdentity?.Description ?? UnavailableText;
-    public string Manufacturer => DisplayIdentity?.Manufacturer ?? UnavailableText;
-    public string Model => DisplayIdentity?.Model ?? UnavailableText;
-    public string SerialNumber => DisplayIdentity?.SerialNumber ?? UnavailableText;
+    public string SelectedUpsName => _devices?.SelectedDevice?.Name ?? _pollingState.UpsName ?? Strings.Get("Diagnostics.NoUpsSelected");
+    public string SelectedUpsDescription => DisplayIdentity?.Description ?? Strings.Get("Status.Unavailable");
+    public string Manufacturer => DisplayIdentity?.Manufacturer ?? Strings.Get("Status.Unavailable");
+    public string Model => DisplayIdentity?.Model ?? Strings.Get("Status.Unavailable");
+    public string SerialNumber => DisplayIdentity?.SerialNumber ?? Strings.Get("Status.Unavailable");
 
     public string ConnectionStateText => ToConnectionStateText(_pollingState.ConnectionState);
     public string DataFreshnessText => ToDataFreshnessText(_pollingState.DataFreshness);
-    public string SnapshotStatusText => _pollingState.Snapshot is null ? "Sem snapshot disponível" : "Snapshot disponível";
+    public string SnapshotStatusText => _pollingState.Snapshot is null ? Strings.Get("Diagnostics.SnapshotUnavailable") : Strings.Get("Diagnostics.SnapshotAvailable");
     public string DataSourceText => _pollingState.Snapshot?.Source switch
     {
-        DataSource.Simulated => "Dados simulados",
-        DataSource.Live => "Servidor NUT",
-        _ => UnavailableText
+        DataSource.Simulated => Strings.Get("Shell.SimulationActive"),
+        DataSource.Live => Strings.Get("Diagnostics.DataSource.NutServer"),
+        _ => Strings.Get("Status.Unavailable")
     };
     public string LastSuccessfulUpdateText => _pollingState.Snapshot is null
-        ? UnavailableText
+        ? Strings.Get("Status.Unavailable")
         : _pollingState.Snapshot.LastSuccessfulUpdate.ToString("g", CultureInfo.CurrentCulture);
-    public string LastErrorText => string.IsNullOrWhiteSpace(_pollingState.LastError) ? "Nenhum erro" : _pollingState.LastError;
+    public string LastErrorText => string.IsNullOrWhiteSpace(_pollingState.LastError) ? Strings.Get("Diagnostics.NoError") : _pollingState.LastError;
 
     public string LocalInstallationStatusText => _localInstallation.IsDetected
-        ? "Instalação NUT encontrada"
-        : "Nenhuma instalação NUT local encontrada";
-    public string InstallationDirectoryText => _localInstallation.InstallationDirectory ?? UnavailableText;
-    public string ConfigurationDirectoryText => _localInstallation.ConfigurationDirectory ?? UnavailableText;
-    public string LocalInstallationVersionText => _localInstallation.Version ?? UnavailableText;
-    public string DetectionSourceText => _localInstallation.DetectionSource ?? UnavailableText;
+        ? Strings.Get("Diagnostics.InstallationFound")
+        : Strings.Get("Diagnostics.InstallationNotFound");
+    public string InstallationDirectoryText => _localInstallation.InstallationDirectory ?? Strings.Get("Status.Unavailable");
+    public string ConfigurationDirectoryText => _localInstallation.ConfigurationDirectory ?? Strings.Get("Status.Unavailable");
+    public string LocalInstallationVersionText => _localInstallation.Version ?? Strings.Get("Status.Unavailable");
+    public string LocalVersionSourceText => _localVersionSource switch
+    {
+        NutVersionSource.FileMetadata => Strings.Get("Diagnostics.VersionSource.Metadata"),
+        NutVersionSource.ExecutableFallback => Strings.Get("Diagnostics.VersionSource.Fallback"),
+        _ => Strings.Get("Status.Unavailable")
+    };
+    public string DetectionSourceText => _localInstallation.DetectionSource ?? Strings.Get("Status.Unavailable");
     public string ExecutablesText => _localInstallation.Executables.Count == 0
-        ? "Nenhum executável encontrado"
+        ? Strings.Get("Diagnostics.NoExecutables")
         : string.Join(Environment.NewLine, _localInstallation.Executables.Select(entry => $"{entry.Key}: {entry.Value}"));
     public string ConfigurationFilesText => _localInstallation.ConfigurationFiles.Count == 0
-        ? "Nenhum arquivo encontrado"
+        ? Strings.Get("Diagnostics.NoFiles")
         : string.Join(Environment.NewLine, _localInstallation.ConfigurationFiles.Select(file =>
-            $"{file.Name}: {(file.Exists ? (file.IsReadable ? "Disponível" : "Sem acesso de leitura") : "Ausente")}"));
+            $"{file.Name}: {(file.Exists ? (file.IsReadable ? Strings.Get("Diagnostics.FileAvailable") : Strings.Get("Diagnostics.FileUnreadable")) : Strings.Get("Diagnostics.FileMissing"))}"));
+
+    public string CreateDiagnosticReport()
+    {
+        var lines = new[]
+        {
+            Strings.Get("Diagnostics.Report.Title"),
+            ReportLine("Diagnostics.Report.ApplicationVersion", ApplicationVersion),
+            ReportLine("Diagnostics.Report.Runtime", Runtime),
+            ReportLine("Diagnostics.Report.OperatingSystem", OperatingSystem),
+            ReportLine("Diagnostics.Report.Architecture", Architecture),
+            ReportLine("Diagnostics.Report.Mode", ModeText),
+            ReportLine("Diagnostics.Report.Profile", ManagedProfileName),
+            ReportLine("Diagnostics.Report.MonitoringEndpoint", $"{Host}:{Port}"),
+            ReportLine("Diagnostics.Report.ManagementMode", ManagementModeText),
+            ReportLine("Diagnostics.Report.Access", ManagementAccessText),
+            ReportLine("Diagnostics.Report.Connection", ConnectionStateText),
+            ReportLine("Diagnostics.Report.Freshness", DataFreshnessText),
+            ReportLine("Diagnostics.Report.Snapshot", SnapshotStatusText),
+            ReportLine("Diagnostics.Report.Source", DataSourceText),
+            ReportLine("Diagnostics.Report.DiscoveredUps", DiscoveredUpsCount.ToString(CultureInfo.InvariantCulture)),
+            ReportLine("Diagnostics.Report.SelectedUps", SelectedUpsName),
+            ReportLine("Diagnostics.Report.LocalInstallation", LocalInstallationStatusText),
+            ReportLine("Diagnostics.Report.NutVersion", LocalInstallationVersionText),
+            ReportLine("Diagnostics.Report.DetectionSource", DetectionSourceText),
+            ReportLine("Diagnostics.Report.ErrorState", string.IsNullOrWhiteSpace(_pollingState.LastError)
+                ? Strings.Get("Diagnostics.Report.None")
+                : Strings.Get("Diagnostics.Report.PresentRedacted")),
+        };
+        return string.Join("\n", lines);
+    }
+
+    public void ReportDiagnosticCopyResult(bool succeeded) =>
+        DiagnosticCopyStatusMessage = Strings.Get(succeeded ? "Diagnostics.Copied" : "Diagnostics.CopyFailed");
     public string? LocalInstallationError { get; private set; }
     public bool HasLocalInstallationError => !string.IsNullOrWhiteSpace(LocalInstallationError);
     public bool IsDetectingLocalInstallation { get; private set; }
@@ -346,7 +441,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         if (_profileContext?.Profile.Management.Mode == NutManagementMode.Remote)
         {
             ApplyLocalInstallation(NutInstallationInfo.NotDetected());
-            LocalInstallationError = "O perfil ativo usa gerenciamento remoto; a instalação local não será detectada.";
+            LocalInstallationError = Strings.Get("Diagnostics.RemoteNoLocalDetection");
             NotifyLocalInstallationPropertiesChanged();
             return;
         }
@@ -354,7 +449,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         if (_installationDetector is null)
         {
             ApplyLocalInstallation(NutInstallationInfo.NotDetected());
-            LocalInstallationError = "A detecção local não está disponível.";
+            LocalInstallationError = Strings.Get("Diagnostics.DetectionUnavailable");
             NotifyLocalInstallationPropertiesChanged();
             return;
         }
@@ -370,7 +465,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         if (_profileContext?.Profile.Management.Mode == NutManagementMode.Remote)
         {
             ApplyLocalInstallation(NutInstallationInfo.NotDetected());
-            LocalInstallationError = "O perfil ativo usa gerenciamento remoto; a instalação local não será inspecionada.";
+            LocalInstallationError = Strings.Get("Diagnostics.RemoteNoLocalInspection");
             NotifyLocalInstallationPropertiesChanged();
             return Task.CompletedTask;
         }
@@ -378,7 +473,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         if (_installationDetector is null)
         {
             ApplyLocalInstallation(NutInstallationInfo.NotDetected());
-            LocalInstallationError = "A detecção local não está disponível.";
+            LocalInstallationError = Strings.Get("Diagnostics.DetectionUnavailable");
             NotifyLocalInstallationPropertiesChanged();
             return Task.CompletedTask;
         }
@@ -412,7 +507,18 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         NotifyLocalInstallationPropertiesChanged();
         try
         {
-            ApplyLocalInstallation(await inspectAsync(cancellationToken));
+            var installation = await inspectAsync(cancellationToken);
+            var resolution = _versionResolver is null
+                ? (string.IsNullOrWhiteSpace(installation.Version)
+                    ? NutVersionResolution.Unavailable
+                    : new NutVersionResolution(installation.Version, NutVersionSource.FileMetadata))
+                : await _versionResolver.ResolveAsync(installation, cancellationToken);
+            _localVersionSource = resolution.Source;
+            if (string.IsNullOrWhiteSpace(installation.Version) && !string.IsNullOrWhiteSpace(resolution.Version))
+            {
+                installation = installation with { Version = resolution.Version };
+            }
+            ApplyLocalInstallation(installation);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -421,7 +527,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         catch (Exception)
         {
             ApplyLocalInstallation(NutInstallationInfo.NotDetected());
-            LocalInstallationError = "Não foi possível inspecionar a instalação local do NUT.";
+            LocalInstallationError = Strings.Get("Diagnostics.InspectionFailed");
         }
         finally
         {
@@ -432,6 +538,10 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
 
     private void ApplyLocalInstallation(NutInstallationInfo installation)
     {
+        if (!installation.IsDetected || string.IsNullOrWhiteSpace(installation.Version))
+        {
+            _localVersionSource = NutVersionSource.Unavailable;
+        }
         _localInstallation = installation;
         LocalInstallationError = installation.ErrorMessage;
     }
@@ -481,6 +591,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         OnPropertyChanged(nameof(InstallationDirectoryText));
         OnPropertyChanged(nameof(ConfigurationDirectoryText));
         OnPropertyChanged(nameof(LocalInstallationVersionText));
+        OnPropertyChanged(nameof(LocalVersionSourceText));
         OnPropertyChanged(nameof(DetectionSourceText));
         OnPropertyChanged(nameof(ExecutablesText));
         OnPropertyChanged(nameof(ConfigurationFilesText));
@@ -505,21 +616,23 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         ? $"{value.TotalSeconds:0} s"
         : value.ToString("c", CultureInfo.InvariantCulture);
 
-    public static string ToConnectionStateText(ConnectionState state) => state switch
+    private string ReportLine(string labelKey, string value) => $"{Strings.Get(labelKey)}: {value}";
+
+    public string ToConnectionStateText(ConnectionState state) => state switch
     {
-        ConnectionState.Disconnected => "Desconectado",
-        ConnectionState.Connecting => "Conectando",
-        ConnectionState.Connected => "Conectado",
-        ConnectionState.Reconnecting => "Reconectando",
-        ConnectionState.ConnectionFailed => "Falha de conexão",
-        _ => UnavailableText
+        ConnectionState.Disconnected => Strings.Get("Status.Disconnected"),
+        ConnectionState.Connecting => Strings.Get("Status.Connecting"),
+        ConnectionState.Connected => Strings.Get("Status.Connected"),
+        ConnectionState.Reconnecting => Strings.Get("Status.Reconnecting"),
+        ConnectionState.ConnectionFailed => Strings.Get("Status.ConnectionFailed"),
+        _ => Strings.Get("Status.Unavailable")
     };
 
-    public static string ToDataFreshnessText(DataFreshness freshness) => freshness switch
+    public string ToDataFreshnessText(DataFreshness freshness) => freshness switch
     {
-        DataFreshness.Unavailable => "Indisponível",
-        DataFreshness.Fresh => "Atualizado",
-        DataFreshness.Stale => "Dados desatualizados",
-        _ => UnavailableText
+        DataFreshness.Unavailable => Strings.Get("Status.Unavailable"),
+        DataFreshness.Fresh => Strings.Get("Status.Fresh"),
+        DataFreshness.Stale => Strings.Get("Status.Stale"),
+        _ => Strings.Get("Status.Unavailable")
     };
 }

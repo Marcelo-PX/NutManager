@@ -16,6 +16,8 @@ public sealed class NutManagerLocalizer
 
     public UiLanguagePreference Language { get; }
 
+    public string this[string key] => Get(key);
+
     public string Get(string key) =>
         ResourceManager.GetString(key, Culture) ??
         ResourceManager.GetString(key, CultureInfo.GetCultureInfo("pt-BR")) ??

@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             x:Class="NutManager.App.Views.RemoteAccessAdministrationView"
+             x:DataType="viewModels:AdministrationPageViewModel">
+  <StackPanel Spacing="16">
+    <Border Classes="nut-card" IsVisible="{Binding IsLocalManagementProfile}">
+      <StackPanel Spacing="6"><TextBlock Text="{Binding Strings[Administration.Remote.Unavailable]}" Classes="nut-section-title" /><TextBlock Text="{Binding Strings[Administration.Remote.RemoteOnly]}" TextWrapping="Wrap" /></StackPanel>
+    </Border>
+    <StackPanel Spacing="16" IsVisible="{Binding IsRemoteManagementProfile}">
+      <Border Classes="nut-card">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[Administration.Remote.Connection]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding ManagementAvailabilityText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <WrapPanel IsVisible="{Binding RemoteManagement.IsSshSftp}">
+            <StackPanel Width="230" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.Host]}" Classes="nut-metadata" /><TextBlock Text="{Binding RemoteManagement.ManagementHost}" TextWrapping="Wrap" /></StackPanel>
+            <StackPanel Width="150" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Remote.SshPort]}" Classes="nut-metadata" /><TextBlock Text="{Binding RemoteManagement.SshPort}" /></StackPanel>
+            <StackPanel Width="230" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.User]}" Classes="nut-metadata" /><TextBlock Text="{Binding RemoteManagement.SshUsername}" /></StackPanel>
+            <StackPanel Width="230" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.Authentication]}" Classes="nut-metadata" /><TextBlock Text="{Binding RemoteManagement.SshAuthenticationModeText}" /></StackPanel>
+            <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Remote.TrustedFingerprint]}" Classes="nut-metadata" /><TextBlock Text="{Binding RemoteManagement.TrustedHostKeyFingerprint}" TextWrapping="Wrap" /></StackPanel>
+          </WrapPanel>
+          <WrapPanel IsVisible="{Binding RemoteManagement.IsSmb}">
+            <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Remote.Share]}" Classes="nut-metadata" /><TextBlock Text="{Binding RemoteManagement.SmbSharePath}" TextWrapping="Wrap" /></StackPanel>
+            <StackPanel Width="230" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.Authentication]}" Classes="nut-metadata" /><TextBlock Text="{Binding RemoteManagement.SmbAuthenticationModeText}" /></StackPanel>
+            <StackPanel Width="230" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.User]}" Classes="nut-metadata" /><TextBlock Text="{Binding RemoteManagement.SmbUsername}" TextWrapping="Wrap" /></StackPanel>
+          </WrapPanel>
+          <TextBlock Text="{Binding RemoteManagement.StoredCredentialText}" TextWrapping="Wrap" />
+
+          <StackPanel IsVisible="{Binding RemoteManagement.UsesSshPassword}" Spacing="8">
+            <TextBox x:Name="RemotePasswordBox" MaxWidth="360" HorizontalAlignment="Stretch" PasswordChar="●" PlaceholderText="{Binding Strings[Administration.Remote.SessionPassword]}" />
+            <CheckBox x:Name="RemoteRememberCredentialCheckBox" Content="{Binding Strings[Administration.Remote.RememberCredential]}" />
+            <Button Classes="nut-primary" Content="{Binding Strings[Administration.Remote.ConnectPassword]}" Click="RemoteConnectPasswordButton_OnClick" IsEnabled="{Binding CanConnectRemote}" HorizontalAlignment="Left" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding RemoteManagement.UsesSshPrivateKey}" Spacing="8">
+            <TextBox x:Name="RemotePassphraseBox" MaxWidth="360" HorizontalAlignment="Stretch" PasswordChar="●" PlaceholderText="{Binding Strings[Administration.Remote.OptionalPassphrase]}" />
+            <CheckBox x:Name="RemoteRememberPassphraseCheckBox" Content="{Binding Strings[Administration.Remote.RememberPassphrase]}" />
+            <Button Classes="nut-primary" Content="{Binding Strings[Administration.Remote.ConnectKey]}" Click="RemoteConnectPrivateKeyButton_OnClick" IsEnabled="{Binding CanConnectRemote}" HorizontalAlignment="Left" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding RemoteManagement.UsesSmbExplicitCredentials}" Spacing="8">
+            <TextBox x:Name="SmbPasswordBox" MaxWidth="360" HorizontalAlignment="Stretch" PasswordChar="●" PlaceholderText="{Binding Strings[Administration.Remote.SmbSessionPassword]}" />
+            <CheckBox x:Name="SmbRememberCredentialCheckBox" Content="{Binding Strings[Administration.Remote.RememberCredential]}" />
+            <Button Classes="nut-primary" Content="{Binding Strings[Administration.Remote.ConnectSmb]}" Click="RemoteConnectSmbButton_OnClick" IsEnabled="{Binding CanConnectRemote}" HorizontalAlignment="Left" />
+          </StackPanel>
+          <WrapPanel>
+            <Button Content="{Binding Strings[Administration.Remote.ConnectCurrentIdentity]}" Click="RemoteConnectCurrentIdentityButton_OnClick" IsVisible="{Binding RemoteManagement.UsesSmbCurrentWindowsIdentity}" IsEnabled="{Binding CanConnectRemote}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Remote.ConnectStored]}" Click="RemoteConnectStoredCredentialButton_OnClick" IsEnabled="{Binding RemoteManagement.CanConnectWithStoredCredential}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Remote.ForgetStored]}" Click="RemoteForgetStoredCredentialButton_OnClick" IsEnabled="{Binding RemoteManagement.CanForgetStoredCredential}" Margin="0,0,8,8" />
+            <Button Classes="nut-danger" Content="{Binding Strings[Administration.Remote.Disconnect]}" Click="RemoteDisconnectButton_OnClick" IsEnabled="{Binding CanDisconnectRemote}" Margin="0,0,8,8" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card-elevated" IsVisible="{Binding RemoteManagement.CanTrustHostKey}">
+        <StackPanel Spacing="7">
+          <TextBlock Text="{Binding Strings[Administration.Remote.HostKeyReview]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding Strings[Administration.Remote.HostKeyNotice]}" TextWrapping="Wrap" />
+          <TextBlock><Run Text="{Binding RemoteManagement.PresentedHostKey.Algorithm}" /><Run Text=" · " /><Run Text="{Binding RemoteManagement.PresentedHostKey.Fingerprint}" /></TextBlock>
+          <Button Classes="nut-primary" Content="{Binding Strings[Administration.Remote.TrustHostKey]}" Click="RemoteTrustHostKeyButton_OnClick" IsEnabled="{Binding CanTrustRemoteHostKey}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card" IsVisible="{Binding RemoteManagement.IsConnected}">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[Administration.Remote.Directory]}" Classes="nut-section-title" />
+          <TextBox Text="{Binding RemoteManagement.CurrentDirectory, Mode=TwoWay}" PlaceholderText="{Binding Strings[Administration.Remote.DirectoryWatermark]}" />
+          <WrapPanel>
+            <Button Content="{Binding Strings[Administration.Remote.Browse]}" Click="RemoteBrowseButton_OnClick" IsEnabled="{Binding CanBrowseRemoteDirectory}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Remote.Parent]}" Click="RemoteBrowseParentButton_OnClick" IsEnabled="{Binding CanBrowseRemoteDirectory}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Remote.Validate]}" Click="RemoteValidateDirectoryButton_OnClick" IsEnabled="{Binding CanValidateRemoteDirectory}" Margin="0,0,8,8" />
+          </WrapPanel>
+          <ListBox ItemsSource="{Binding RemoteManagement.DirectoryEntries}" SelectionChanged="RemoteDirectoryList_OnSelectionChanged" IsEnabled="{Binding CanBrowseRemoteDirectory}">
+            <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Text="{Binding FullPath}" Classes="nut-metadata" TextWrapping="Wrap" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock Text="{Binding RemoteManagement.ReadCapabilityText}" TextWrapping="Wrap" />
+          <WrapPanel>
+            <Button Classes="nut-primary" Content="{Binding Strings[Administration.Remote.UseDirectory]}" Click="RemoteUseDirectoryButton_OnClick" IsEnabled="{Binding CanUseRemoteDirectory}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Remote.ProbeWrite]}" Click="RemoteProbeWriteButton_OnClick" IsEnabled="{Binding CanProbeRemoteWriteCapability}" Margin="0,0,8,8" />
+          </WrapPanel>
+          <TextBlock Text="{Binding RemoteManagement.WriteCapabilityText}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding RemoteManagement.WriteCapabilityCriticalText}" IsVisible="{Binding RemoteManagement.IsWriteCapabilityCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

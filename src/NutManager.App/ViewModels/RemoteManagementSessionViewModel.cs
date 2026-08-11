@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using NutManager.App.Localization;
 using NutManager.App.Services;
 using NutManager.Core.Configuration;
 using NutManager.Core.Models;
@@ -14,6 +15,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     private readonly IRemoteNutConfigurationTransport _transport;
     private readonly ManagedNutServerProfileUpdateService? _profileUpdater;
     private readonly IRemoteCredentialStore? _credentialStore;
+    private readonly NutManagerLocalizer _strings;
     private IRemoteNutConfigurationSession? _session;
     private RemoteNutDirectoryValidationResult? _directoryValidation;
 
@@ -21,7 +23,8 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         ManagedNutServerProfile profile,
         IRemoteNutConfigurationTransport transport,
         ManagedNutServerProfileUpdateService? profileUpdater = null,
-        IRemoteCredentialStore? credentialStore = null)
+        IRemoteCredentialStore? credentialStore = null,
+        UiLanguagePreference language = UiLanguagePreference.PtBr)
     {
         if (profile.Management.Mode != NutManagementMode.Remote)
         {
@@ -32,6 +35,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
         _profileUpdater = profileUpdater;
         _credentialStore = credentialStore;
+        _strings = new NutManagerLocalizer(language);
         DirectoryEntries = new ObservableCollection<RemoteNutDirectoryEntry>();
         CurrentDirectory = profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
             ? profile.Management.SmbConfigurationDirectory ?? profile.Management.SmbSharePath ?? string.Empty
@@ -80,29 +84,31 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public string ConfigurationTransportText => IsSmb ? "SMB" : "SSH/SFTP";
 
-    public string ManagementHost => _profile.Management.ManagementHost ?? "Não aplicável";
+    public string ManagementHost => _profile.Management.ManagementHost ?? L("Common.NotApplicable");
 
     public int SshPort => _profile.Management.SshPort;
 
-    public string SshUsername => _profile.Management.SshUsername ?? "Não configurado";
+    public string SshUsername => _profile.Management.SshUsername ?? L("Common.NotConfigured");
 
-    public string SshAuthenticationModeText => _profile.Management.SshAuthenticationMode == SshAuthenticationMode.PrivateKey ? "Chave privada" : "Senha";
+    public string SshAuthenticationModeText => _profile.Management.SshAuthenticationMode == SshAuthenticationMode.PrivateKey
+        ? L("Authentication.PrivateKey")
+        : L("Authentication.Password");
 
-    public string SshPrivateKeyPath => _profile.Management.SshPrivateKeyPath ?? "Não configurada";
+    public string SshPrivateKeyPath => _profile.Management.SshPrivateKeyPath ?? L("Common.NotConfigured.Feminine");
 
     public string? ConfiguredSshPrivateKeyPath => _profile.Management.SshPrivateKeyPath;
 
-    public string TrustedHostKeyFingerprint => _profile.Management.TrustedHostKeyFingerprint ?? "Não configurada";
+    public string TrustedHostKeyFingerprint => _profile.Management.TrustedHostKeyFingerprint ?? L("Common.NotConfigured.Feminine");
 
-    public string TrustedHostKeyAlgorithm => _profile.Management.TrustedHostKeyAlgorithm ?? "Indisponível";
+    public string TrustedHostKeyAlgorithm => _profile.Management.TrustedHostKeyAlgorithm ?? L("Common.Unavailable");
 
-    public string SmbSharePath => _profile.Management.SmbSharePath ?? "Não configurado";
+    public string SmbSharePath => _profile.Management.SmbSharePath ?? L("Common.NotConfigured");
 
     public string SmbAuthenticationModeText => _profile.Management.SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials
-        ? "Credenciais explícitas da sessão"
-        : "Usuário Windows atual";
+        ? L("Authentication.ExplicitSessionCredentials")
+        : L("Authentication.CurrentWindowsUser");
 
-    public string SmbUsername => _profile.Management.SmbUsername ?? "Não aplicável";
+    public string SmbUsername => _profile.Management.SmbUsername ?? L("Common.NotApplicable");
 
     public bool IsConnected => _session is not null;
 
@@ -117,13 +123,13 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     public bool CanForgetStoredCredential => !IsBusy && GetCredentialKind() is not null && _profileUpdater is not null;
 
     public string StoredCredentialText => GetCredentialKind() is null
-        ? UsesSmbCurrentWindowsIdentity ? "Nenhuma credencial protegida é necessária." : "Não aplicável"
+        ? UsesSmbCurrentWindowsIdentity ? L("Remote.Credential.NotRequired") : L("Common.NotApplicable")
         : StoredCredentialStatus switch
         {
-            RemoteCredentialStoreStatus.Success => "Credencial salva: Sim",
-            RemoteCredentialStoreStatus.NotFound => "Credencial salva: Não",
-            RemoteCredentialStoreStatus.Unsupported or RemoteCredentialStoreStatus.CredentialStoreUnavailable => "Credencial salva: Indisponível",
-            _ => "Não foi possível consultar a credencial protegida."
+            RemoteCredentialStoreStatus.Success => L("Remote.Credential.Saved.Yes"),
+            RemoteCredentialStoreStatus.NotFound => L("Remote.Credential.Saved.No"),
+            RemoteCredentialStoreStatus.Unsupported or RemoteCredentialStoreStatus.CredentialStoreUnavailable => L("Remote.Credential.Saved.Unavailable"),
+            _ => L("Remote.Credential.QueryFailed")
         };
 
     public bool CanDisconnect => !IsBusy && IsConnected;
@@ -150,37 +156,37 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public string ConnectionStateText => ConnectionState switch
     {
-        RemoteNutConnectionState.Disconnected => "Não conectado",
-        RemoteNutConnectionState.Connecting => "Conectando",
-        RemoteNutConnectionState.HostKeyTrustRequired => "Chave do host precisa ser confiada",
-        RemoteNutConnectionState.Connected => "Conectado",
-        RemoteNutConnectionState.Validating => "Validando diretório",
-        RemoteNutConnectionState.Ready => "Diretório validado",
-        RemoteNutConnectionState.AuthenticationFailed => "Falha de autenticação",
-        RemoteNutConnectionState.HostKeyMismatch => "Chave do host não corresponde",
-        RemoteNutConnectionState.AccessDenied => "Acesso negado",
-        RemoteNutConnectionState.Timeout => "Tempo limite excedido",
-        _ => "Falha de conexão"
+        RemoteNutConnectionState.Disconnected => L("Remote.Connection.Disconnected"),
+        RemoteNutConnectionState.Connecting => L("Remote.Connection.Connecting"),
+        RemoteNutConnectionState.HostKeyTrustRequired => L("Remote.Connection.HostKeyTrustRequired"),
+        RemoteNutConnectionState.Connected => L("Remote.Connection.Connected"),
+        RemoteNutConnectionState.Validating => L("Remote.Connection.Validating"),
+        RemoteNutConnectionState.Ready => L("Remote.Connection.Ready"),
+        RemoteNutConnectionState.AuthenticationFailed => L("Remote.Connection.AuthenticationFailed"),
+        RemoteNutConnectionState.HostKeyMismatch => L("Remote.Connection.HostKeyMismatch"),
+        RemoteNutConnectionState.AccessDenied => L("Remote.Connection.AccessDenied"),
+        RemoteNutConnectionState.Timeout => L("Remote.Connection.Timeout"),
+        _ => L("Remote.Connection.Failed")
     };
 
     public string PlatformText => Platform switch
     {
         RemoteNutPlatform.Windows => "Windows",
-        RemoteNutPlatform.NonWindows => "Não Windows",
-        _ => "Indisponível"
+        RemoteNutPlatform.NonWindows => L("Platform.NonWindows"),
+        _ => L("Common.Unavailable")
     };
 
-    public string ReadCapabilityText => CanReadConfiguration ? "Disponível" : "Valide um diretório remoto para habilitar a leitura.";
+    public string ReadCapabilityText => CanReadConfiguration ? L("Common.Available") : L("Remote.Capability.ValidateForRead");
 
     public string WriteCapabilityText => CanEditConfiguration
-        ? IsSmb ? "Verificada para este diretório SMB" : "Verificada para Windows/OpenSSH"
+        ? IsSmb ? L("Remote.Capability.SmbVerified") : L("Remote.Capability.SshVerified")
         : WriteCapability?.Message ?? (IsSmb
-            ? "A escrita SMB requer verificação explícita de File.Replace neste diretório."
-            : "A escrita remota requer verificação explícita de capacidade em um servidor Windows/OpenSSH.");
+            ? L("Remote.Capability.SmbProbeRequired")
+            : L("Remote.Capability.SshProbeRequired"));
 
     public bool IsWriteCapabilityCritical => !string.IsNullOrWhiteSpace(WriteCapability?.CleanupPath);
 
-    public string WriteCapabilityCriticalText => "CRÍTICO — o arquivo temporário remoto pode necessitar de limpeza manual antes de tentar novamente.";
+    public string WriteCapabilityCriticalText => L("Remote.Capability.CriticalCleanup");
 
     public async Task ConnectWithPasswordAsync(ReadOnlyMemory<char> password, bool rememberCredential = false, CancellationToken cancellationToken = default)
     {
@@ -194,7 +200,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
             if (password.IsEmpty)
             {
-                StatusMessage = "Informe a senha da sessão SMB.";
+                StatusMessage = L("Remote.Message.EnterSmbPassword");
                 return;
             }
 
@@ -208,13 +214,13 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
         if (!UsesSshPassword)
         {
-            StatusMessage = "Este perfil exige autenticação SSH por chave privada.";
+            StatusMessage = L("Remote.Message.RequiresPrivateKey");
             return;
         }
 
         if (password.IsEmpty)
         {
-            StatusMessage = "Informe uma credencial de sessão para conectar.";
+            StatusMessage = L("Remote.Message.EnterSessionCredential");
             return;
         }
 
@@ -229,13 +235,13 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     {
         if (!IsSshSftp || !UsesSshPrivateKey)
         {
-            StatusMessage = "Este perfil exige autenticação SSH por senha.";
+            StatusMessage = L("Remote.Message.RequiresPassword");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(keyPath))
         {
-            StatusMessage = "Selecione uma chave privada para conectar.";
+            StatusMessage = L("Remote.Message.SelectPrivateKey");
             return;
         }
 
@@ -281,7 +287,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         StoredCredentialStatus = read.Status;
         if (!read.IsSuccess || read.Secret is null)
         {
-            StatusMessage = read.Message ?? "A credencial protegida não está disponível.";
+            StatusMessage = read.Message ?? L("Remote.Message.ProtectedCredentialUnavailable");
             return;
         }
 
@@ -290,7 +296,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
             var keyPath = _profile.Management.SshPrivateKeyPath;
             if (string.IsNullOrWhiteSpace(keyPath))
             {
-                StatusMessage = "Configure a chave privada no perfil antes de usar a passphrase salva.";
+                StatusMessage = L("Remote.Message.ConfigurePrivateKeyFirst");
                 return;
             }
 
@@ -317,7 +323,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
         var result = await _profileUpdater.ForgetCredentialAsync(_profile.Id, kind.Value, cancellationToken);
         StoredCredentialStatus = result.IsSuccess ? RemoteCredentialStoreStatus.NotFound : result.Status;
-        StatusMessage = result.IsSuccess ? "A credencial protegida foi removida." : result.Message ?? "Não foi possível remover a credencial protegida.";
+        StatusMessage = result.IsSuccess ? L("Remote.Message.CredentialRemoved") : result.Message ?? L("Remote.Message.CredentialRemoveFailed");
     }
 
     public async Task TrustPresentedHostKeyAsync(CancellationToken cancellationToken = default)
@@ -332,8 +338,8 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         {
             var updated = await _profileUpdater.TrustHostKeyAsync(_profile, PresentedHostKey.Algorithm, PresentedHostKey.Fingerprint, cancellationToken);
             StatusMessage = updated is null
-                ? "A chave não foi salva porque os metadados do perfil foram alterados. Revise o perfil e conecte novamente."
-                : "A chave do host foi confiada. Conecte novamente para iniciar a sessão SSH.";
+                ? L("Remote.Message.HostKeyProfileChanged")
+                : L("Remote.Message.HostKeyTrusted");
             if (updated is not null)
             {
                 _profile = updated;
@@ -344,11 +350,11 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            StatusMessage = "A confiança da chave do host foi cancelada.";
+            StatusMessage = L("Remote.Message.HostKeyTrustCancelled");
         }
         catch
         {
-            StatusMessage = "Não foi possível salvar a chave confiável do host.";
+            StatusMessage = L("Remote.Message.HostKeySaveFailed");
         }
         finally
         {
@@ -379,11 +385,11 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            StatusMessage = "A navegação remota foi cancelada.";
+            StatusMessage = L("Remote.Message.BrowseCancelled");
         }
         catch
         {
-            StatusMessage = "Não foi possível listar o diretório remoto selecionado.";
+            StatusMessage = L("Remote.Message.BrowseFailed");
         }
         finally
         {
@@ -454,12 +460,12 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             ConnectionState = RemoteNutConnectionState.Connected;
-            StatusMessage = "A validação do diretório remoto foi cancelada.";
+            StatusMessage = L("Remote.Message.ValidationCancelled");
         }
         catch
         {
             ConnectionState = RemoteNutConnectionState.Failed;
-            StatusMessage = "Não foi possível validar o diretório remoto.";
+            StatusMessage = L("Remote.Message.ValidationFailed");
             InvalidateDirectoryValidation();
         }
         finally
@@ -480,8 +486,8 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         {
             var updated = await _profileUpdater.SaveRemoteDirectoryAsync(_profile, CurrentDirectory, cancellationToken);
             StatusMessage = updated is null
-                ? "O diretório não foi salvo porque os metadados do perfil foram alterados."
-                : "O diretório remoto foi salvo no perfil. A conexão de monitoring não foi alterada.";
+                ? L("Remote.Message.DirectoryProfileChanged")
+                : L("Remote.Message.DirectorySaved");
             if (updated is not null)
             {
                 _profile = updated;
@@ -490,11 +496,11 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            StatusMessage = "O salvamento do diretório remoto foi cancelado.";
+            StatusMessage = L("Remote.Message.DirectorySaveCancelled");
         }
         catch
         {
-            StatusMessage = "Não foi possível salvar o diretório remoto no perfil.";
+            StatusMessage = L("Remote.Message.DirectorySaveFailed");
         }
         finally
         {
@@ -519,11 +525,11 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            StatusMessage = "A verificação de capacidade de gravação foi cancelada.";
+            StatusMessage = L("Remote.Message.WriteProbeCancelled");
         }
         catch
         {
-            WriteCapability = new RemoteNutWriteCapabilityResult(false, Platform, message: "Não foi possível verificar a capacidade de gravação remota.");
+            WriteCapability = new RemoteNutWriteCapabilityResult(false, Platform, message: L("Remote.Message.WriteProbeFailed"));
             NotifyConfigurationContextChanged();
         }
         finally
@@ -544,7 +550,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         DirectoryEntries.Clear();
         InvalidateDirectoryValidation();
         ConnectionState = RemoteNutConnectionState.Disconnected;
-        StatusMessage = "Sessão remota desconectada.";
+        StatusMessage = L("Remote.Message.Disconnected");
     }
 
     public async ValueTask DisposeAsync() => await DisconnectAsync();
@@ -554,7 +560,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         WriteCapability = new RemoteNutWriteCapabilityResult(
             false,
             Platform,
-            message: "A operação remota teve resultado indeterminado. Desconecte, conecte novamente e refaça a validação de capacidade antes de gravar.");
+            message: L("Remote.Message.OutcomeUnknown"));
         OnPropertyChanged(nameof(CanEditConfiguration));
         OnPropertyChanged(nameof(WriteCapabilityText));
     }
@@ -563,7 +569,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     {
         if (!CanConnect || !IsSshSftp)
         {
-            StatusMessage = "Configure um usuário SSH antes de conectar.";
+            StatusMessage = L("Remote.Message.ConfigureSshUser");
             return false;
         }
 
@@ -587,13 +593,13 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             ConnectionState = RemoteNutConnectionState.Disconnected;
-            StatusMessage = "A conexão remota foi cancelada.";
+            StatusMessage = L("Remote.Message.ConnectionCancelled");
             return false;
         }
         catch
         {
             ConnectionState = RemoteNutConnectionState.ConnectionFailed;
-            StatusMessage = "Não foi possível estabelecer a conexão remota.";
+            StatusMessage = L("Remote.Message.ConnectionFailed");
             return false;
         }
         finally
@@ -630,13 +636,13 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             ConnectionState = RemoteNutConnectionState.Disconnected;
-            StatusMessage = "A conexão SMB foi cancelada.";
+            StatusMessage = L("Remote.Message.SmbConnectionCancelled");
             return false;
         }
         catch
         {
             ConnectionState = RemoteNutConnectionState.ConnectionFailed;
-            StatusMessage = "Não foi possível estabelecer a conexão SMB.";
+            StatusMessage = L("Remote.Message.SmbConnectionFailed");
             return false;
         }
         finally
@@ -649,15 +655,15 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     {
         if (_profileUpdater is null)
         {
-            StatusMessage = "Conectado, mas o armazenamento protegido de credenciais não está disponível.";
+            StatusMessage = L("Remote.Message.CredentialStoreUnavailable");
             return;
         }
 
         var result = await _profileUpdater.SaveCredentialForCurrentSessionAsync(_profile, kind, secret, cancellationToken);
         StoredCredentialStatus = result.Status;
         StatusMessage = result.IsSuccess
-            ? "Conectado. A credencial foi salva no Windows."
-            : result.Message ?? "Conectado, mas a credencial não pôde ser salva.";
+            ? L("Remote.Message.CredentialSaved")
+            : result.Message ?? L("Remote.Message.CredentialSaveFailed");
     }
 
     private RemoteCredentialKind? GetCredentialKind()
@@ -674,6 +680,8 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
         return UsesSmbExplicitCredentials ? RemoteCredentialKind.SmbPassword : null;
     }
+
+    private string L(string key) => _strings.Get(key);
 
     private void AcceptConnectionResult(RemoteNutConnectionResult result, string? initialDirectory)
     {

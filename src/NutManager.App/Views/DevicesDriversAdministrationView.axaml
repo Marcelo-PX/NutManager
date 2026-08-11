@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             x:Class="NutManager.App.Views.DevicesDriversAdministrationView"
+             x:DataType="viewModels:AdministrationPageViewModel">
+  <StackPanel Spacing="16">
+    <Border Classes="nut-card" IsVisible="{Binding IsRemoteManagementProfile}">
+      <StackPanel Spacing="6"><TextBlock Text="{Binding Strings[Administration.Drivers.Unavailable]}" Classes="nut-section-title" /><TextBlock Text="{Binding Strings[Administration.Drivers.LocalOnly]}" TextWrapping="Wrap" /></StackPanel>
+    </Border>
+    <StackPanel Spacing="16" IsVisible="{Binding IsLocalManagementProfile}">
+      <Border Classes="nut-card">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="3"><TextBlock Text="{Binding Strings[Administration.Drivers.Configured]}" Classes="nut-section-title" /><TextBlock Text="{Binding Strings[Administration.Drivers.PassiveNotice]}" Classes="nut-metadata" TextWrapping="Wrap" /></StackPanel>
+            <Button Grid.Column="1" Content="{Binding Strings[Common.Refresh]}" Command="{Binding RefreshDriverDiagnosticsCommand}" IsEnabled="{Binding CanRefreshDriverDiagnostics}" />
+          </Grid>
+          <TextBlock Text="{Binding Strings[Administration.Drivers.NoConfigured]}" IsVisible="{Binding HasNoConfiguredDrivers}" TextWrapping="Wrap" />
+          <ListBox ItemsSource="{Binding ConfiguredDrivers}" SelectedItem="{Binding SelectedConfiguredDriver, Mode=TwoWay}" IsEnabled="{Binding CanPrepareDriverDiagnostic}" IsVisible="{Binding HasConfiguredDrivers}">
+            <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="6,4"><TextBlock Text="{Binding UpsName}" FontWeight="SemiBold" /><TextBlock Text="{Binding Description}" Classes="nut-metadata" TextWrapping="Wrap" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <WrapPanel IsVisible="{Binding HasSelectedConfiguredDriver}">
+            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="UPS" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.UpsName}" /></StackPanel>
+            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Driver]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.DriverName}" /></StackPanel>
+            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Port]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.NormalizedComPort}" /></StackPanel>
+            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Protocol]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.Protocol}" /></StackPanel>
+            <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="driverpath" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.DriverPath}" TextWrapping="Wrap" /></StackPanel>
+            <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Executable]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.Executable.Path}" TextWrapping="Wrap" /><TextBlock Text="{Binding SelectedConfiguredDriverStateText}" Classes="nut-metadata" /></StackPanel>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[Administration.Drivers.ComPorts]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding Strings[Administration.Drivers.NoComPorts]}" IsVisible="{Binding HasNoComPorts}" />
+          <ItemsControl ItemsSource="{Binding ComPorts}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="Auto,12,*,12,*" Margin="0,3"><TextBlock Text="{Binding PortName}" FontWeight="SemiBold" /><TextBlock Grid.Column="2" Text="{Binding FriendlyName}" TextWrapping="Wrap" /><TextBlock Grid.Column="4" Text="{Binding Manufacturer}" Classes="nut-metadata" TextWrapping="Wrap" /></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[Administration.Drivers.Diagnostics]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding UpsdrvctlPath}" Classes="nut-metadata" TextWrapping="Wrap" />
+          <WrapPanel>
+            <Button Content="{Binding Strings[Administration.Drivers.UpsdrvctlHelp]}" Click="UpsdrvctlHelpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Drivers.List]}" Click="UpsdrvctlListButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Drivers.Status]}" Click="UpsdrvctlStatusButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Drivers.DryRun]}" Click="UpsdrvctlDryRunButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Drivers.DriverHelp]}" Click="DriverHelpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Drivers.DriverVersion]}" Click="DriverVersionButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Drivers.Variables]}" Click="DriverVariablesButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" Margin="0,0,8,8" />
+            <Button Classes="nut-primary" Content="{Binding Strings[Administration.Drivers.DataDump]}" Click="DriverDataDumpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" Margin="0,0,8,8" />
+          </WrapPanel>
+          <TextBlock Text="{Binding Strings[Administration.Drivers.DryRunNotice]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card-elevated" IsVisible="{Binding HasPendingDriverDiagnostic}">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{Binding Strings[Administration.Drivers.Review]}" Classes="nut-section-title" />
+          <TextBlock><Run Text="{Binding Strings[Common.Operation]}" /><Run Text=": " /><Run Text="{Binding PendingDriverDiagnosticText}" /></TextBlock>
+          <TextBlock><Run Text="UPS: " /><Run Text="{Binding PendingDriverDiagnosticUpsName}" /></TextBlock>
+          <TextBlock><Run Text="{Binding Strings[Common.Tool]}" /><Run Text=": " /><Run Text="{Binding PendingDriverDiagnosticTool}" /></TextBlock>
+          <TextBlock><Run Text="{Binding Strings[Common.ConfigurationDirectory]}" /><Run Text=": " /><Run Text="{Binding ConfigurationDirectoryText}" /></TextBlock>
+          <TextBlock><Run Text="{Binding Strings[Administration.Drivers.Port]}" /><Run Text=": " /><Run Text="{Binding PendingDriverDiagnosticPort}" /></TextBlock>
+          <TextBlock><Run Text="{Binding Strings[Administration.Drivers.HardwareContact]}" /><Run Text=": " /><Run Text="{Binding PendingDriverDiagnosticHardwareText}" /></TextBlock>
+          <TextBlock Text="{Binding Strings[Administration.Drivers.HardwareWarning]}" IsVisible="{Binding PendingDriverDiagnosticContactsHardware}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <CheckBox Content="{Binding Strings[Administration.Drivers.Confirm]}" IsChecked="{Binding IsDriverDiagnosticConfirmed, Mode=TwoWay}" />
+          <Button Classes="nut-primary" Content="{Binding Strings[Administration.Drivers.Execute]}" Command="{Binding ExecuteDriverDiagnosticCommand}" IsEnabled="{Binding CanExecuteDriverDiagnostic}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card" IsVisible="{Binding HasDriverDiagnosticResult}">
+        <StackPanel Spacing="5"><TextBlock Text="{Binding Strings[Administration.Drivers.Result]}" Classes="nut-section-title" /><TextBlock Text="{Binding DriverDiagnosticCriticalText}" IsVisible="{Binding IsDriverDiagnosticCritical}" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="{Binding DriverDiagnosticResult.Message}" TextWrapping="Wrap" /><TextBlock Text="{Binding DriverDiagnosticResult.StandardOutput}" FontFamily="Consolas" TextWrapping="Wrap" /><TextBlock Text="{Binding DriverDiagnosticResult.StandardError}" FontFamily="Consolas" TextWrapping="Wrap" /></StackPanel>
+      </Border>
+      <TextBlock Text="{Binding DriverDiagnosticStatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

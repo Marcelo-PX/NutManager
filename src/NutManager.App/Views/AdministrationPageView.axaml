@@ -1,454 +1,70 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             xmlns:views="clr-namespace:NutManager.App.Views"
              x:Class="NutManager.App.Views.AdministrationPageView"
              x:DataType="viewModels:AdministrationPageViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="18">
-      <StackPanel Spacing="5">
-        <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
+    <StackPanel Spacing="20">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
         <TextBlock Text="{Binding Description}" MaxWidth="900" TextWrapping="Wrap" />
-        <TextBlock Text="{Binding EditingScopeText}"
-                   MaxWidth="900"
-                   TextWrapping="Wrap"
-                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
       </StackPanel>
 
-      <Border Padding="20"
-              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-              BorderThickness="1"
-              CornerRadius="8">
-        <StackPanel Spacing="7">
-          <TextBlock Text="Servidor gerenciado" FontSize="20" FontWeight="SemiBold" />
-          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-            <TextBlock Text="Perfil" Grid.Row="0" />
-            <TextBlock Text="{Binding ManagedProfileName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Monitoring" Grid.Row="1" />
-            <TextBlock Text="{Binding ManagedProfileMonitoringEndpoint}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Gerenciamento" Grid.Row="2" />
-            <TextBlock Text="{Binding ManagedProfileManagementMode}" Grid.Row="2" Grid.Column="1" />
-            <TextBlock Text="Acesso" Grid.Row="3" />
-            <TextBlock Text="{Binding ManagedProfileAccessMode}" Grid.Row="3" Grid.Column="1" />
-          </Grid>
-        </StackPanel>
-      </Border>
-
-      <Border Padding="20"
-              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-              BorderThickness="1"
-              CornerRadius="8"
-              IsVisible="{Binding IsRemoteManagementProfile}">
-        <StackPanel Spacing="7">
-          <TextBlock Text="Gerenciamento remoto" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding ManagementAvailabilityText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <Grid IsVisible="{Binding RemoteManagement.IsSshSftp}" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-            <TextBlock Text="Host" Grid.Row="0" />
-            <TextBlock Text="{Binding RemoteManagement.ManagementHost}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Porta SSH" Grid.Row="1" />
-            <TextBlock Text="{Binding RemoteManagement.SshPort}" Grid.Row="1" Grid.Column="1" />
-            <TextBlock Text="Usuário SSH" Grid.Row="2" />
-            <TextBlock Text="{Binding RemoteManagement.SshUsername}" Grid.Row="2" Grid.Column="1" />
-            <TextBlock Text="Fingerprint confiado" Grid.Row="3" />
-            <TextBlock Text="{Binding RemoteManagement.TrustedHostKeyFingerprint}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Estado" Grid.Row="4" />
-            <TextBlock Text="{Binding RemoteManagement.ConnectionStateText}" Grid.Row="4" Grid.Column="1" />
-            <TextBlock Text="Autenticação" Grid.Row="5" />
-            <TextBlock Text="{Binding RemoteManagement.SshAuthenticationModeText}" Grid.Row="5" Grid.Column="1" />
-            <TextBlock Text="Chave privada" Grid.Row="6" />
-            <TextBlock Text="{Binding RemoteManagement.SshPrivateKeyPath}" Grid.Row="6" Grid.Column="1" TextWrapping="Wrap" />
-          </Grid>
-          <StackPanel IsVisible="{Binding RemoteManagement.IsSshSftp}" Spacing="7">
-          <TextBlock Text="{Binding RemoteManagement.StoredCredentialText}" TextWrapping="Wrap" />
-          <StackPanel IsVisible="{Binding RemoteManagement.UsesSshPassword}" Orientation="Horizontal" Spacing="8">
-            <TextBox x:Name="RemotePasswordBox" Width="260" PasswordChar="●" PlaceholderText="Senha da sessão" />
-            <CheckBox x:Name="RemoteRememberCredentialCheckBox" Content="Lembrar esta credencial no Windows" VerticalAlignment="Center" />
-            <Button Content="Conectar com senha" Click="RemoteConnectPasswordButton_OnClick" IsEnabled="{Binding CanConnectRemote}" />
-          </StackPanel>
-          <StackPanel IsVisible="{Binding RemoteManagement.UsesSshPrivateKey}" Orientation="Horizontal" Spacing="8">
-            <TextBox x:Name="RemotePassphraseBox" Width="260" PasswordChar="●" PlaceholderText="Passphrase opcional" />
-            <CheckBox x:Name="RemoteRememberPassphraseCheckBox" Content="Lembrar esta passphrase no Windows" VerticalAlignment="Center" />
-            <Button Content="Conectar com chave configurada" Click="RemoteConnectPrivateKeyButton_OnClick" IsEnabled="{Binding CanConnectRemote}" />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Conectar com credencial salva" Click="RemoteConnectStoredCredentialButton_OnClick" IsEnabled="{Binding RemoteManagement.CanConnectWithStoredCredential}" />
-            <Button Content="Esquecer credencial salva" Click="RemoteForgetStoredCredentialButton_OnClick" IsEnabled="{Binding RemoteManagement.CanForgetStoredCredential}" />
-            <Button Content="Desconectar" Click="RemoteDisconnectButton_OnClick" IsEnabled="{Binding CanDisconnectRemote}" />
-          </StackPanel>
-          </StackPanel>
-          <StackPanel IsVisible="{Binding RemoteManagement.IsSmb}" Spacing="7">
-            <TextBlock Text="Gerenciamento de configuração via SMB" FontWeight="SemiBold" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-              <TextBlock Text="Compartilhamento" Grid.Row="0" />
-              <TextBlock Text="{Binding RemoteManagement.SmbSharePath}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Autenticação" Grid.Row="1" />
-              <TextBlock Text="{Binding RemoteManagement.SmbAuthenticationModeText}" Grid.Row="1" Grid.Column="1" />
-              <TextBlock Text="Usuário" Grid.Row="2" />
-              <TextBlock Text="{Binding RemoteManagement.SmbUsername}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
-            </Grid>
-            <TextBlock Text="{Binding RemoteManagement.StoredCredentialText}" TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Content="Conectar com usuário Windows atual" Click="RemoteConnectCurrentIdentityButton_OnClick" IsVisible="{Binding RemoteManagement.UsesSmbCurrentWindowsIdentity}" IsEnabled="{Binding CanConnectRemote}" />
-              <TextBox x:Name="SmbPasswordBox" Width="260" PasswordChar="●" PlaceholderText="Senha SMB da sessão" IsVisible="{Binding RemoteManagement.UsesSmbExplicitCredentials}" />
-              <CheckBox x:Name="SmbRememberCredentialCheckBox" Content="Lembrar esta credencial no Windows" IsVisible="{Binding RemoteManagement.UsesSmbExplicitCredentials}" VerticalAlignment="Center" />
-              <Button Content="Conectar SMB" Click="RemoteConnectSmbButton_OnClick" IsVisible="{Binding RemoteManagement.UsesSmbExplicitCredentials}" IsEnabled="{Binding CanConnectRemote}" />
-              <Button Content="Conectar com credencial salva" Click="RemoteConnectStoredCredentialButton_OnClick" IsVisible="{Binding RemoteManagement.UsesSmbExplicitCredentials}" IsEnabled="{Binding RemoteManagement.CanConnectWithStoredCredential}" />
-              <Button Content="Esquecer credencial salva" Click="RemoteForgetStoredCredentialButton_OnClick" IsVisible="{Binding RemoteManagement.UsesSmbExplicitCredentials}" IsEnabled="{Binding RemoteManagement.CanForgetStoredCredential}" />
-              <Button Content="Desconectar" Click="RemoteDisconnectButton_OnClick" IsEnabled="{Binding CanDisconnectRemote}" />
+      <Border Classes="nut-card">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <StackPanel Spacing="3">
+              <TextBlock Text="{Binding Strings[Administration.Context.Title]}" Classes="nut-section-title" />
+              <TextBlock Text="{Binding ManagedProfileName}" FontWeight="SemiBold" TextWrapping="Wrap" />
             </StackPanel>
-          </StackPanel>
-          <StackPanel IsVisible="{Binding RemoteManagement.CanTrustHostKey}" Spacing="5">
-            <TextBlock Text="A chave apresentada será salva somente após sua confirmação explícita." TextWrapping="Wrap" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="4">
-              <TextBlock Text="Algoritmo:" Grid.Row="0" />
-              <TextBlock Text="{Binding RemoteManagement.PresentedHostKey.Algorithm}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Fingerprint:" Grid.Row="1" />
-              <TextBlock Text="{Binding RemoteManagement.PresentedHostKey.Fingerprint}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
-            </Grid>
-            <Button Content="Confiar nesta chave do host" Click="RemoteTrustHostKeyButton_OnClick" IsEnabled="{Binding CanTrustRemoteHostKey}" HorizontalAlignment="Left" />
-          </StackPanel>
-          <StackPanel IsVisible="{Binding RemoteManagement.IsConnected}" Spacing="7">
-            <TextBlock Text="Diretório de configuração remoto" FontWeight="SemiBold" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <TextBox Width="420" Text="{Binding RemoteManagement.CurrentDirectory, Mode=TwoWay}" PlaceholderText="Informe ou navegue até um diretório remoto" />
-              <Button Content="Navegar" Click="RemoteBrowseButton_OnClick" IsEnabled="{Binding CanBrowseRemoteDirectory}" />
-              <Button Content="Diretório pai" Click="RemoteBrowseParentButton_OnClick" IsEnabled="{Binding CanBrowseRemoteDirectory}" />
-              <Button Content="Validar diretório" Click="RemoteValidateDirectoryButton_OnClick" IsEnabled="{Binding CanValidateRemoteDirectory}" />
-            </StackPanel>
-            <ListBox ItemsSource="{Binding RemoteManagement.DirectoryEntries}" SelectionChanged="RemoteDirectoryList_OnSelectionChanged" IsEnabled="{Binding CanBrowseRemoteDirectory}">
-              <ListBox.ItemTemplate>
-                <DataTemplate>
-                  <StackPanel Margin="3"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Text="{Binding FullPath}" FontSize="12" Opacity="0.75" TextWrapping="Wrap" /></StackPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-            <TextBlock Text="{Binding RemoteManagement.ReadCapabilityText}" TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Content="Usar este diretório" Click="RemoteUseDirectoryButton_OnClick" IsEnabled="{Binding CanUseRemoteDirectory}" />
-              <Button Content="Verificar capacidade de escrita" Click="RemoteProbeWriteButton_OnClick" IsEnabled="{Binding CanProbeRemoteWriteCapability}" />
-            </StackPanel>
-            <TextBlock Text="{Binding RemoteManagement.WriteCapabilityText}" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding RemoteManagement.WriteCapabilityCriticalText}" IsVisible="{Binding RemoteManagement.IsWriteCapabilityCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          </StackPanel>
-        </StackPanel>
-      </Border>
-
-      <Border Padding="20"
-              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-              BorderThickness="1"
-              CornerRadius="8"
-              IsVisible="{Binding IsLocalManagementProfile}">
-        <StackPanel Spacing="10">
-          <TextBlock Text="Instalação local do NUT" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding InstallationStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-            <TextBlock Text="Diretório da instalação" Grid.Row="0" />
-            <TextBlock Text="{Binding InstallationDirectoryText}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Diretório de configuração" Grid.Row="1" />
-            <TextBlock Text="{Binding ConfigurationDirectoryText}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Versão" Grid.Row="2" />
-            <TextBlock Text="{Binding InstallationVersionText}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
-          </Grid>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Detectar novamente" Command="{Binding DetectInstallationCommand}" IsEnabled="{Binding CanChangeInstallation}" />
-            <Button Content="Selecionar pasta..." Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanChangeInstallation}" />
-          </StackPanel>
-        </StackPanel>
-      </Border>
-
-      <Grid ColumnDefinitions="260,16,*" RowDefinitions="Auto" IsVisible="{Binding IsConfigurationEditorVisible}">
-        <Border Grid.Column="0"
-                Padding="14"
-                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                BorderThickness="1"
-                CornerRadius="8">
-          <StackPanel Spacing="10">
-            <TextBlock Text="Arquivos de configuração" FontSize="20" FontWeight="SemiBold" />
-            <ListBox ItemsSource="{Binding ConfigurationFiles}"
-                     IsEnabled="{Binding CanSelectConfigurationFile}"
-                     SelectedItem="{Binding SelectedFile, Mode=OneWay}"
-                     SelectionChanged="ConfigurationFileList_OnSelectionChanged">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="viewModels:NutConfigurationFileItemViewModel">
-                  <StackPanel Margin="4" Spacing="2">
-                    <TextBlock Text="{Binding Category}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding FileName}" FontSize="12" Opacity="0.78" />
-                    <TextBlock Text="{Binding StatusText}" FontSize="12" TextWrapping="Wrap" />
-                  </StackPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-          </StackPanel>
-        </Border>
-
-        <Border Grid.Column="2"
-                Padding="18"
-                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                BorderThickness="1"
-                CornerRadius="8">
-          <StackPanel Spacing="14">
-            <TextBlock Text="Nenhum arquivo carregado." IsVisible="{Binding HasNoLoadedFile}" />
-            <StackPanel Spacing="12" IsVisible="{Binding HasLoadedFile}">
-              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-                <TextBlock Text="Arquivo" Grid.Row="0" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding SelectedFileName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-                <TextBlock Text="Estado" Grid.Row="1" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding SelectedFileStatusText}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
-                <TextBlock Text="Codificação" Grid.Row="2" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding SelectedFileEncodingText}" Grid.Row="2" Grid.Column="1" />
-              </Grid>
-
-              <ItemsControl ItemsSource="{Binding Sections}" IsEnabled="{Binding CanEditEntries}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="viewModels:NutConfigurationSectionViewModel">
-                    <Expander Header="{Binding Name}" IsExpanded="True" Margin="0,4">
-                      <StackPanel Spacing="9" Margin="0,8,0,0">
-                        <ItemsControl ItemsSource="{Binding Entries}">
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="viewModels:NutConfigurationEntryViewModel">
-                              <Border Padding="10"
-                                      Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
-                                      CornerRadius="6">
-                                <StackPanel Spacing="6">
-                                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                      <TextBlock Text="{Binding EntryTypeText}" FontSize="12" Opacity="0.75" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="1" FontSize="12" Opacity="0.75">
-                                      <Run Text="Linha " />
-                                      <Run Text="{Binding LineNumber}" />
-                                    </TextBlock>
-                                  </Grid>
-                                  <TextBlock Text="{Binding SensitiveHint}"
-                                             IsVisible="{Binding IsSensitive}"
-                                             TextWrapping="Wrap" />
-                                  <TextBlock Text="{Binding InputLabel}" FontWeight="SemiBold" />
-                                  <TextBox Text="{Binding DraftValue, Mode=TwoWay}"
-                                           IsVisible="{Binding IsNotSensitive}"
-                                           TextWrapping="Wrap" />
-                                  <TextBox Text="{Binding DraftValue, Mode=TwoWay}"
-                                           PasswordChar="●"
-                                           IsVisible="{Binding IsSensitive}"
-                                           TextWrapping="Wrap" />
-                                </StackPanel>
-                              </Border>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Text="{Binding RawContentSummary}"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                   TextWrapping="Wrap" />
-                      </StackPanel>
-                    </Expander>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="Descartar alterações" Command="{Binding DiscardCommand}" IsEnabled="{Binding CanDiscard}" />
-                <Button Content="Recarregar arquivo" Command="{Binding ReloadCommand}" IsEnabled="{Binding CanReload}" />
-                <Button Content="Revisar alterações" Command="{Binding ReviewCommand}" IsEnabled="{Binding CanReview}" />
-              </StackPanel>
-            </StackPanel>
-          </StackPanel>
-        </Border>
-      </Grid>
-
-      <Border Padding="20"
-              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-              BorderThickness="1"
-              CornerRadius="8"
-              IsVisible="{Binding HasPreview}">
-        <StackPanel Spacing="10">
-          <TextBlock Text="Revisão das alterações" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="O preview é gerado pelo pipeline seguro. Linhas sensíveis permanecem redigidas." TextWrapping="Wrap" />
-          <ItemsControl ItemsSource="{Binding PreviewLines}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="viewModels:NutConfigurationPreviewLineViewModel">
-                <Grid ColumnDefinitions="Auto,16,*,16,*" Margin="0,3">
-                  <TextBlock Text="{Binding LineNumber}" FontWeight="SemiBold" />
-                  <TextBlock Grid.Column="2" Text="{Binding OriginalText}" TextWrapping="Wrap" />
-                  <TextBlock Grid.Column="3" Text="→" HorizontalAlignment="Center" />
-                  <TextBlock Grid.Column="4" Text="{Binding CandidateText}" TextWrapping="Wrap" />
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <CheckBox Content="Confirmo que revisei as alterações e desejo aplicá-las."
-                    IsChecked="{Binding IsPreviewConfirmed, Mode=TwoWay}" />
-          <Button Content="Aplicar alterações" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" HorizontalAlignment="Left" />
-          <TextBlock Text="Um backup será criado antes da substituição. Alguns ajustes do NUT podem exigir recarregamento ou reinicialização de serviços."
-                     MaxWidth="900"
-                     TextWrapping="Wrap"
-                     Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-        </StackPanel>
-      </Border>
-
-      <Border Padding="20"
-              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-              BorderThickness="1"
-              CornerRadius="8"
-              IsVisible="{Binding IsLocalManagementProfile}">
-        <StackPanel Spacing="10">
-          <TextBlock Text="Dispositivos e drivers" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="A enumeração de portas é passiva: nenhuma porta COM é aberta para teste." TextWrapping="Wrap" />
-          <Button Content="Atualizar dispositivos e drivers" Command="{Binding RefreshDriverDiagnosticsCommand}" IsEnabled="{Binding CanRefreshDriverDiagnostics}" HorizontalAlignment="Left" />
-
-          <TextBlock Text="Dispositivos configurados" FontSize="16" FontWeight="SemiBold" />
-          <ListBox ItemsSource="{Binding ConfiguredDrivers}"
-                   SelectedItem="{Binding SelectedConfiguredDriver, Mode=TwoWay}"
-                   IsEnabled="{Binding CanPrepareDriverDiagnostic}">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <StackPanel Margin="0,4" Spacing="2">
-                  <TextBlock Text="{Binding UpsName}" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
-                  <TextBlock><Run Text="Driver: " /><Run Text="{Binding DriverName}" /></TextBlock>
-                  <TextBlock><Run Text="Porta: " /><Run Text="{Binding NormalizedComPort}" /></TextBlock>
-                  <TextBlock><Run Text="Protocolo: " /><Run Text="{Binding Protocol}" /></TextBlock>
-                  <TextBlock><Run Text="Driverpath: " /><Run Text="{Binding DriverPath}" /></TextBlock>
-                  <TextBlock><Run Text="Executável: " /><Run Text="{Binding Executable.Path}" /></TextBlock>
-                  <TextBlock><Run Text="Estado: " /><Run Text="{Binding Executable.State}" /></TextBlock>
-                </StackPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-
-          <TextBlock Text="Portas COM" FontSize="16" FontWeight="SemiBold" />
-          <ItemsControl ItemsSource="{Binding ComPorts}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Grid ColumnDefinitions="Auto,12,*,12,*,12,*" Margin="0,2">
-                  <TextBlock Text="{Binding PortName}" FontWeight="SemiBold" />
-                  <TextBlock Grid.Column="2" Text="{Binding FriendlyName}" TextWrapping="Wrap" />
-                  <TextBlock Grid.Column="4" Text="{Binding Manufacturer}" TextWrapping="Wrap" />
-                  <TextBlock Grid.Column="6" Text="{Binding Status}" TextWrapping="Wrap" />
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <TextBlock Text="Diagnósticos do NUT" FontSize="16" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding UpsdrvctlPath}" TextWrapping="Wrap" />
-          <WrapPanel ItemHeight="32" ItemWidth="245">
-            <Button Content="Ajuda do upsdrvctl" Click="UpsdrvctlHelpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
-            <Button Content="Listar drivers" Click="UpsdrvctlListButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
-            <Button Content="Consultar status" Click="UpsdrvctlStatusButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
-            <Button Content="Validar configuração do driver (simulação)" Click="UpsdrvctlDryRunButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
-            <Button Content="Ajuda do driver" Click="DriverHelpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
-            <Button Content="Versão do driver" Click="DriverVersionButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
-            <Button Content="Listar variáveis do driver" Click="DriverVariablesButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
-            <Button Content="Coletar diagnóstico do dispositivo" Click="DriverDataDumpButton_OnClick" IsEnabled="{Binding CanPrepareDriverDiagnostic}" />
-          </WrapPanel>
-          <TextBlock Text="A validação usa o modo de teste do NUT e não inicia o driver." TextWrapping="Wrap" />
-
-          <StackPanel IsVisible="{Binding HasPendingDriverDiagnostic}" Spacing="5">
-            <TextBlock Text="Revisão do diagnóstico" FontWeight="SemiBold" />
-            <TextBlock><Run Text="Operação: " /><Run Text="{Binding PendingDriverDiagnosticText}" /></TextBlock>
-            <TextBlock><Run Text="UPS: " /><Run Text="{Binding PendingDriverDiagnosticUpsName}" /></TextBlock>
-            <TextBlock><Run Text="Ferramenta: " /><Run Text="{Binding PendingDriverDiagnosticTool}" /></TextBlock>
-            <TextBlock><Run Text="Configuração: " /><Run Text="{Binding ConfigurationDirectoryText}" /></TextBlock>
-            <TextBlock><Run Text="Porta: " /><Run Text="{Binding PendingDriverDiagnosticPort}" /></TextBlock>
-            <TextBlock><Run Text="Contato com hardware: " /><Run Text="{Binding PendingDriverDiagnosticHardwareText}" /></TextBlock>
-            <TextBlock><Run Text="Serviço NUT: " /><Run Text="{Binding NutServiceStateForDriverDiagnostic}" /></TextBlock>
-            <TextBlock Text="Este diagnóstico abrirá o dispositivo configurado por meio do driver NUT."
-                       IsVisible="{Binding PendingDriverDiagnosticContactsHardware}"
-                       FontWeight="SemiBold"
+            <TextBlock Grid.Column="1"
+                       Text="{Binding AdministrationAvailabilityText}"
+                       VerticalAlignment="Center"
                        TextWrapping="Wrap" />
-            <CheckBox Content="Confirmo que revisei este diagnóstico." IsChecked="{Binding IsDriverDiagnosticConfirmed, Mode=TwoWay}" />
-            <Button Content="Executar diagnóstico" Command="{Binding ExecuteDriverDiagnosticCommand}" IsEnabled="{Binding CanExecuteDriverDiagnostic}" HorizontalAlignment="Left" />
-          </StackPanel>
-
-          <StackPanel IsVisible="{Binding HasDriverDiagnosticResult}" Spacing="4">
-            <TextBlock Text="Resultado do diagnóstico" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding DriverDiagnosticCriticalText}" IsVisible="{Binding IsDriverDiagnosticCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
-            <TextBlock><Run Text="Status: " /><Run Text="{Binding DriverDiagnosticResult.Status}" /></TextBlock>
-            <TextBlock><Run Text="Ferramenta: " /><Run Text="{Binding DriverDiagnosticResult.ToolName}" /></TextBlock>
-            <TextBlock><Run Text="Código de saída: " /><Run Text="{Binding DriverDiagnosticResult.ExitCode}" /></TextBlock>
-            <TextBlock Text="{Binding DriverDiagnosticResult.Message}" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding DriverDiagnosticResult.StandardOutput}" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding DriverDiagnosticResult.StandardError}" TextWrapping="Wrap" />
-          </StackPanel>
-          <TextBlock Text="{Binding DriverDiagnosticStatusMessage}" TextWrapping="Wrap" />
-        </StackPanel>
-      </Border>
-
-      <Border Padding="20"
-              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-              BorderThickness="1"
-              CornerRadius="8"
-              IsVisible="{Binding IsLocalManagementProfile}">
-        <StackPanel Spacing="10">
-          <TextBlock Text="Administração do Windows" FontSize="20" FontWeight="SemiBold" />
-          <Button Content="Atualizar estado" Command="{Binding RefreshWindowsAdministrationCommand}" HorizontalAlignment="Left" />
-          <TextBlock Text="Serviço NUT" FontSize="16" FontWeight="SemiBold" />
-          <ListBox ItemsSource="{Binding WindowsServices}" SelectedItem="{Binding SelectedWindowsService, Mode=TwoWay}">
-            <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="0,3"><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" /><TextBlock Text="{Binding ServiceName}" /><TextBlock Text="{Binding State}" /><TextBlock Text="{Binding StartMode}" /><TextBlock Text="{Binding BinaryPath}" TextWrapping="Wrap" /><TextBlock Text="{Binding AssociationConfidence}" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
-          </ListBox>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Iniciar" Click="StartServiceButton_OnClick" IsEnabled="{Binding CanStartWindowsService}" />
-            <Button Content="Parar" Click="StopServiceButton_OnClick" IsEnabled="{Binding CanStopWindowsService}" />
-            <Button Content="Reiniciar" Click="RestartServiceButton_OnClick" IsEnabled="{Binding CanRestartWindowsService}" />
-          </StackPanel>
-          <TextBlock Text="Permissões" FontSize="16" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding WindowsPermissionAssessment.Message}" TextWrapping="Wrap" />
-          <Button Content="Preparar correção de permissões" Click="RepairPermissionsButton_OnClick" IsEnabled="{Binding CanPrepareAdministrativeAction}" HorizontalAlignment="Left" />
-          <TextBlock Text="Processos NUT" FontSize="16" FontWeight="SemiBold" />
-          <ItemsControl ItemsSource="{Binding WindowsProcesses}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="Auto,12,Auto,12,*,12,Auto" Margin="0,2"><TextBlock Text="{Binding Name}" /><TextBlock Grid.Column="2" Text="{Binding ProcessId}" /><TextBlock Grid.Column="4" Text="{Binding ExecutablePath}" TextWrapping="Wrap" /><TextBlock Grid.Column="6" Text="{Binding AssociationConfidence}" /></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-          <TextBlock Text="Eventos" FontSize="16" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding WindowsEventLogDiagnosticMessage}" TextWrapping="Wrap" />
-          <ItemsControl ItemsSource="{Binding WindowsEvents}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,3"><TextBlock><Run Text="{Binding Timestamp}" /><Run Text=" · " /><Run Text="{Binding LogName}" /><Run Text=" · " /><Run Text="{Binding Provider}" /><Run Text=" · " /><Run Text="{Binding EventId}" /><Run Text=" · " /><Run Text="{Binding Level}" /></TextBlock><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-          <StackPanel IsVisible="{Binding HasPendingAdministrativeAction}" Spacing="6">
-            <TextBlock Text="Revisão da ação administrativa" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding PendingAdministrativeActionText}" />
-            <StackPanel IsVisible="{Binding IsPermissionRepairPending}" Spacing="4">
-              <TextBlock Text="Usuário:" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionIdentity}" TextWrapping="Wrap" />
-              <TextBlock Text="SID:" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionSid}" TextWrapping="Wrap" />
-              <TextBlock Text="Diretório:" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionDirectory}" TextWrapping="Wrap" />
-              <TextBlock Text="Direito: Modify" FontWeight="SemiBold" />
-              <TextBlock Text="Alvos reconhecidos:" FontWeight="SemiBold" />
-              <ItemsControl ItemsSource="{Binding PendingPermissionTargets}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-              <TextBlock Text="As ACLs existentes serão preservadas. Será adicionada somente a permissão Modify ao SID indicado." TextWrapping="Wrap" />
+          </Grid>
+          <WrapPanel ItemWidth="220" ItemHeight="52">
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Text="{Binding Strings[Administration.Context.Endpoint]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding ManagedProfileMonitoringEndpoint}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
             </StackPanel>
-            <CheckBox Content="Confirmo que revisei esta ação administrativa." IsChecked="{Binding IsAdministrativeActionConfirmed, Mode=TwoWay}" />
-            <Button Content="Executar ação administrativa" Command="{Binding ExecuteAdministrativeActionCommand}" IsEnabled="{Binding CanExecuteAdministrativeAction}" HorizontalAlignment="Left" />
-          </StackPanel>
-          <TextBlock Text="{Binding AdministrativeCriticalText}" IsVisible="{Binding IsAdministrativeCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding AdministrativeStatusMessage}" TextWrapping="Wrap" />
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Text="{Binding Strings[Administration.Context.Management]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding ManagementModeDisplayText}" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Text="{Binding Strings[Administration.Context.Access]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding AccessModeDisplayText}" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Text="{Binding Strings[Administration.Context.Transport]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding TransportDisplayText}" />
+            </StackPanel>
+          </WrapPanel>
         </StackPanel>
       </Border>
 
-      <Border Padding="20"
-              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-              BorderThickness="1"
-              CornerRadius="8"
-              IsVisible="{Binding HasStatusMessage}">
-        <StackPanel Spacing="7">
-          <TextBlock Text="Resultado" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding CriticalResultText}"
-                     IsVisible="{Binding IsCriticalResult}"
-                     FontWeight="SemiBold"
-                     MaxWidth="900"
-                     TextWrapping="Wrap" />
-          <TextBlock Text="{Binding StatusMessage}" MaxWidth="900" TextWrapping="Wrap" />
-          <TextBlock Text="Backup:" IsVisible="{Binding HasBackupPath}" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding BackupPath}" IsVisible="{Binding HasBackupPath}" MaxWidth="900" TextWrapping="Wrap" />
-          <TextBlock Text="Recuperação:" IsVisible="{Binding HasRecoveryPath}" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding RecoveryPath}" IsVisible="{Binding HasRecoveryPath}" MaxWidth="900" TextWrapping="Wrap" />
-          <TextBlock Text="Temporário remoto:" IsVisible="{Binding HasTemporaryPath}" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding TemporaryPath}" IsVisible="{Binding HasTemporaryPath}" MaxWidth="900" TextWrapping="Wrap" />
-        </StackPanel>
-      </Border>
+      <ListBox ItemsSource="{Binding AdministrationSections}"
+               SelectedItem="{Binding SelectedAdministrationSection, Mode=TwoWay}"
+               HorizontalAlignment="Stretch">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:AdministrationSectionItemViewModel">
+            <StackPanel Width="220" Margin="8,6" Spacing="3">
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Description}" Classes="nut-metadata" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding AvailabilityText}" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <views:NutConfigurationAdministrationView IsVisible="{Binding IsNutConfigurationSectionSelected}" />
+      <views:WindowsServiceAdministrationView IsVisible="{Binding IsWindowsServiceSectionSelected}" />
+      <views:DevicesDriversAdministrationView IsVisible="{Binding IsDevicesDriversSectionSelected}" />
+      <views:RemoteAccessAdministrationView IsVisible="{Binding IsRemoteAccessSectionSelected}" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

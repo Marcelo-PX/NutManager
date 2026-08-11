@@ -11,13 +11,13 @@ These are current findings from the ongoing Windows/NUT validation stream (T21).
 | F-03 | Starting a Remote draft then choosing Local is blocked by dirty-draft handling. | Resolved in T24A by one reversible Local/Remote draft. |
 | F-04 | A red Windows system accent colors normal selection and resembles an error. | T24 product-owned selection tokens. |
 | F-05 | Internal enum values such as `Smb`, `CurrentWindowsIdentity`, `Manage`, and `Remote` reach the UI. | Resolved for the T24A managed-profile surface through localized presentation options. |
-| F-06 | NUT installation/configuration detection succeeds while version metadata can be unavailable. | T24B bounded read-only version fallback. |
-| F-07 | Administration combines configuration, remote access, drivers, Windows service, ACL, processes, events, and results in one long surface. | T24B presentation decomposition. |
-| F-08 | COM and driver areas need empty states and grouped commands. | T24B presentation work. |
+| F-06 | NUT installation/configuration detection succeeds while version metadata can be unavailable. | Resolved in T24B by metadata-first, bounded read-only `upsdrvctl.exe -V` fallback. |
+| F-07 | Administration combines configuration, remote access, drivers, Windows service, ACL, processes, events, and results in one long surface. | Resolved in T24B with four focused presentation areas over the same capability context. |
+| F-08 | COM and driver areas need empty states and grouped commands. | Resolved in T24B with localized empty states and intention-grouped diagnostic commands. |
 | F-09 | Active-profile change requires restart, but restart-required is not a first-class state. | Resolved in T24A by comparing startup runtime and persisted active profile IDs. |
 | F-10 | `ApplicationSettings` still mirrors legacy endpoint fields while managed profiles are the active profile source. | Resolved in T24A schema v3; legacy endpoint fields are read-only migration compatibility. |
-| F-11 | The shell and pages have nested scrolling and rigid grids. | T24/T24B single-scroll and responsive layout work. |
-| F-12 | Current user-facing strings are largely hard-coded. | T24 localization foundation. |
+| F-11 | The shell and pages have nested scrolling and rigid grids. | Resolved for current Overview, Devices, Diagnostics, and Administration surfaces by T24/T24B single-scroll responsive composition. |
+| F-12 | Current user-facing strings are largely hard-coded. | Resolved for T24/T24A/T24B touched surfaces through semantic `pt-BR`/`en-US` resources; future forms localize as introduced. |
 
 ## Observed positive baseline
 

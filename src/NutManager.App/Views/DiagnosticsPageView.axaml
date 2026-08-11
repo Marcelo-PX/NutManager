@@ -4,123 +4,44 @@
              x:Class="NutManager.App.Views.DiagnosticsPageView"
              x:DataType="viewModels:DiagnosticsPageViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="16">
-      <StackPanel Spacing="4">
-        <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding Description}" MaxWidth="760" TextWrapping="Wrap" />
-      </StackPanel>
-
-      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="16">
-        <Border Grid.Row="0" Grid.Column="0" Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
-          <StackPanel Spacing="10">
-            <TextBlock Text="Aplicação" FontSize="20" FontWeight="SemiBold" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-              <TextBlock Text="Nome" Grid.Row="0" />
-              <TextBlock Text="{Binding ApplicationName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Versão" Grid.Row="1" />
-              <TextBlock Text="{Binding ApplicationVersion}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Runtime" Grid.Row="2" />
-              <TextBlock Text="{Binding Runtime}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Sistema operacional" Grid.Row="3" />
-              <TextBlock Text="{Binding OperatingSystem}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
-            </Grid>
-            <TextBlock Text="Arquitetura" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding Architecture}" TextWrapping="Wrap" />
-          </StackPanel>
-        </Border>
-
-        <Border Grid.Row="0" Grid.Column="1" Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
-          <StackPanel Spacing="10">
-            <TextBlock Text="Servidor NUT" FontSize="20" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding ModeText}" FontWeight="SemiBold" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-              <TextBlock Text="Perfil gerenciado" Grid.Row="0" />
-              <TextBlock Text="{Binding ManagedProfileName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Management" Grid.Row="1" />
-              <TextBlock Text="{Binding ManagementModeText}" Grid.Row="1" Grid.Column="1" />
-              <TextBlock Text="Acesso" Grid.Row="2" />
-              <TextBlock Text="{Binding ManagementAccessText}" Grid.Row="2" Grid.Column="1" />
-              <TextBlock Text="Host" Grid.Row="3" />
-              <TextBlock Text="{Binding Host}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Porta" Grid.Row="4" />
-              <TextBlock Text="{Binding Port}" Grid.Row="4" Grid.Column="1" />
-              <TextBlock Text="Timeout" Grid.Row="5" />
-              <TextBlock Text="{Binding ConnectionTimeoutText}" Grid.Row="5" Grid.Column="1" />
-              <TextBlock Text="Intervalo de polling" Grid.Row="6" />
-              <TextBlock Text="{Binding PollingIntervalText}" Grid.Row="6" Grid.Column="1" />
-              <TextBlock Text="UPS preferido" Grid.Row="7" />
-              <TextBlock Text="{Binding PreferredUpsName}" Grid.Row="7" Grid.Column="1" TextWrapping="Wrap" />
-            </Grid>
-          </StackPanel>
-        </Border>
-
-        <Border Grid.Row="1" Grid.Column="0" Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
-          <StackPanel Spacing="10">
-            <TextBlock Text="Dispositivo" FontSize="20" FontWeight="SemiBold" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-              <TextBlock Text="UPS descobertos" Grid.Row="0" />
-              <TextBlock Text="{Binding DiscoveredUpsCount}" Grid.Row="0" Grid.Column="1" />
-              <TextBlock Text="UPS selecionado" Grid.Row="1" />
-              <TextBlock Text="{Binding SelectedUpsName}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Descrição" Grid.Row="2" />
-              <TextBlock Text="{Binding SelectedUpsDescription}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Fabricante / modelo" Grid.Row="3" />
-              <TextBlock Grid.Row="3" Grid.Column="1" TextWrapping="Wrap"><Run Text="{Binding Manufacturer}" /><Run Text=" / " /><Run Text="{Binding Model}" /></TextBlock>
-              <TextBlock Text="Número de série" Grid.Row="4" />
-              <TextBlock Text="{Binding SerialNumber}" Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" />
-            </Grid>
-          </StackPanel>
-        </Border>
-
-        <Border Grid.Row="1" Grid.Column="1" Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
-          <StackPanel Spacing="10">
-            <TextBlock Text="Polling" FontSize="20" FontWeight="SemiBold" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-              <TextBlock Text="Conexão" Grid.Row="0" />
-              <TextBlock Text="{Binding ConnectionStateText}" Grid.Row="0" Grid.Column="1" />
-              <TextBlock Text="Atualização" Grid.Row="1" />
-              <TextBlock Text="{Binding DataFreshnessText}" Grid.Row="1" Grid.Column="1" />
-              <TextBlock Text="Snapshot" Grid.Row="2" />
-              <TextBlock Text="{Binding SnapshotStatusText}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Origem dos dados" Grid.Row="3" />
-              <TextBlock Text="{Binding DataSourceText}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
-              <TextBlock Text="Última leitura" Grid.Row="4" />
-              <TextBlock Text="{Binding LastSuccessfulUpdateText}" Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" />
-            </Grid>
-          </StackPanel>
-        </Border>
+    <StackPanel Spacing="20">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+        <StackPanel Spacing="6"><TextBlock Text="{Binding Title}" Classes="nut-page-title" /><TextBlock Text="{Binding Description}" MaxWidth="760" TextWrapping="Wrap" /></StackPanel>
+        <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Top">
+          <Button Classes="nut-primary" Content="{Binding Strings[Diagnostics.Copy]}" Click="CopyDiagnosticsButton_OnClick" />
+          <TextBlock Text="{Binding DiagnosticCopyStatusMessage}" IsVisible="{Binding HasDiagnosticCopyStatusMessage}" Classes="nut-metadata" TextWrapping="Wrap" MaxWidth="240" />
+        </StackPanel>
       </Grid>
 
-      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8" IsVisible="{Binding IsLocalManagementProfile}">
-        <StackPanel Spacing="10">
-          <TextBlock Text="Instalação local do NUT" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding LocalInstallationStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-            <TextBlock Text="Diretório da instalação" Grid.Row="0" />
-            <TextBlock Text="{Binding InstallationDirectoryText}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Diretório de configuração" Grid.Row="1" />
-            <TextBlock Text="{Binding ConfigurationDirectoryText}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Versão" Grid.Row="2" />
-            <TextBlock Text="{Binding LocalInstallationVersionText}" Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" />
-            <TextBlock Text="Origem da detecção" Grid.Row="3" />
-            <TextBlock Text="{Binding DetectionSourceText}" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" />
-          </Grid>
-          <TextBlock Text="Executáveis encontrados" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding ExecutablesText}" MaxWidth="900" TextWrapping="Wrap" />
-          <TextBlock Text="Arquivos de configuração" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding ConfigurationFilesText}" MaxWidth="900" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding LocalInstallationError}" IsVisible="{Binding HasLocalInstallationError}" MaxWidth="900" TextWrapping="Wrap" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Detectar novamente" Command="{Binding DetectLocalInstallationCommand}" IsEnabled="{Binding CanInspectLocalInstallation}" />
-            <Button Content="Selecionar diretório..." Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanInspectLocalInstallation}" />
-          </StackPanel>
-        </StackPanel>
-      </Border>
+      <WrapPanel>
+        <Border Classes="nut-card" Width="420" Margin="0,0,16,16">
+          <StackPanel Spacing="10"><TextBlock Text="{Binding Strings[Diagnostics.Group.Overview]}" Classes="nut-section-title" /><TextBlock Text="{Binding ModeText}" FontWeight="SemiBold" /><WrapPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.Application]}" Classes="nut-metadata" /><TextBlock Text="{Binding ApplicationName}" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.Version]}" Classes="nut-metadata" /><TextBlock Text="{Binding ApplicationVersion}" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.Runtime]}" Classes="nut-metadata" /><TextBlock Text="{Binding Runtime}" TextWrapping="Wrap" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.Architecture]}" Classes="nut-metadata" /><TextBlock Text="{Binding Architecture}" /></StackPanel></WrapPanel></StackPanel>
+        </Border>
 
-      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
-        <StackPanel Spacing="8">
-          <TextBlock Text="Último erro" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding LastErrorText}" MaxWidth="900" TextWrapping="Wrap" />
+        <Border Classes="nut-card" Width="420" Margin="0,0,16,16">
+          <StackPanel Spacing="10"><TextBlock Text="{Binding Strings[Diagnostics.Group.Connection]}" Classes="nut-section-title" /><WrapPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.Profile]}" Classes="nut-metadata" /><TextBlock Text="{Binding ManagedProfileName}" TextWrapping="Wrap" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" /><TextBlock Text="{Binding ConnectionStateText}" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.Host]}" Classes="nut-metadata" /><TextBlock Text="{Binding Host}" TextWrapping="Wrap" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Port]}" Classes="nut-metadata" /><TextBlock Text="{Binding Port}" /></StackPanel></WrapPanel></StackPanel>
+        </Border>
+
+        <Border Classes="nut-card" Width="420" Margin="0,0,16,16">
+          <StackPanel Spacing="10"><TextBlock Text="{Binding Strings[Diagnostics.Group.Polling]}" Classes="nut-section-title" /><WrapPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.Freshness]}" Classes="nut-metadata" /><TextBlock Text="{Binding DataFreshnessText}" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.Snapshot]}" Classes="nut-metadata" /><TextBlock Text="{Binding SnapshotStatusText}" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.Source]}" Classes="nut-metadata" /><TextBlock Text="{Binding DataSourceText}" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.LastReading]}" Classes="nut-metadata" /><TextBlock Text="{Binding LastSuccessfulUpdateText}" /></StackPanel></WrapPanel></StackPanel>
+        </Border>
+
+        <Border Classes="nut-card" Width="420" Margin="0,0,16,16">
+          <StackPanel Spacing="10"><TextBlock Text="{Binding Strings[Diagnostics.Group.Discovery]}" Classes="nut-section-title" /><WrapPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.DiscoveredUps]}" Classes="nut-metadata" /><TextBlock Text="{Binding DiscoveredUpsCount}" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.SelectedUps]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedUpsName}" TextWrapping="Wrap" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.Manufacturer]}" Classes="nut-metadata" /><TextBlock Text="{Binding Manufacturer}" TextWrapping="Wrap" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.Model]}" Classes="nut-metadata" /><TextBlock Text="{Binding Model}" TextWrapping="Wrap" /></StackPanel></WrapPanel></StackPanel>
+        </Border>
+
+        <Border Classes="nut-card" Width="420" Margin="0,0,16,16">
+          <StackPanel Spacing="10"><TextBlock Text="{Binding Strings[Diagnostics.Group.Environment]}" Classes="nut-section-title" /><TextBlock Text="{Binding OperatingSystem}" TextWrapping="Wrap" /><TextBlock Text="{Binding LastErrorText}" TextWrapping="Wrap" /></StackPanel>
+        </Border>
+      </WrapPanel>
+
+      <Border Classes="nut-card-elevated" IsVisible="{Binding IsLocalManagementProfile}">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="3"><TextBlock Text="{Binding Strings[Diagnostics.Group.Technical]}" Classes="nut-section-title" /><TextBlock Text="{Binding LocalInstallationStatusText}" FontWeight="SemiBold" /></StackPanel><WrapPanel Grid.Column="1"><Button Content="{Binding Strings[Common.RefreshDetection]}" Command="{Binding DetectLocalInstallationCommand}" IsEnabled="{Binding CanInspectLocalInstallation}" Margin="0,0,8,8" /><Button Content="{Binding Strings[Common.SelectFolder]}" Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanInspectLocalInstallation}" Margin="0,0,8,8" /></WrapPanel></Grid>
+          <WrapPanel><StackPanel Width="300" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.InstallationDirectory]}" Classes="nut-metadata" /><TextBlock Text="{Binding InstallationDirectoryText}" TextWrapping="Wrap" /></StackPanel><StackPanel Width="300" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.ConfigurationDirectory]}" Classes="nut-metadata" /><TextBlock Text="{Binding ConfigurationDirectoryText}" TextWrapping="Wrap" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.Version]}" Classes="nut-metadata" /><TextBlock Text="{Binding LocalInstallationVersionText}" /><TextBlock Text="{Binding LocalVersionSourceText}" Classes="nut-metadata" /></StackPanel><StackPanel Width="240" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Diagnostics.DetectionSource]}" Classes="nut-metadata" /><TextBlock Text="{Binding DetectionSourceText}" TextWrapping="Wrap" /></StackPanel></WrapPanel>
+          <Expander Header="{Binding Strings[Diagnostics.Executables]}" IsExpanded="False"><TextBlock Text="{Binding ExecutablesText}" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,8,0,0" /></Expander>
+          <Expander Header="{Binding Strings[Diagnostics.ConfigurationFiles]}" IsExpanded="False"><TextBlock Text="{Binding ConfigurationFilesText}" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,8,0,0" /></Expander>
+          <TextBlock Text="{Binding LocalInstallationError}" IsVisible="{Binding HasLocalInstallationError}" TextWrapping="Wrap" Foreground="{DynamicResource NutCriticalBrush}" />
         </StackPanel>
       </Border>
     </StackPanel>

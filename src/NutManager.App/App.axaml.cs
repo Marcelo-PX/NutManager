@@ -61,8 +61,8 @@ public partial class App : Application
         }
 
         var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
-        var overview = new OverviewPageViewModel(polling);
-        var devices = new DevicesPageViewModel(client, endpoint, polling, runtimeProfile.Profile.Monitoring.PreferredUpsName);
+        var overview = new OverviewPageViewModel(polling, settings.Language);
+        var devices = new DevicesPageViewModel(client, endpoint, polling, runtimeProfile.Profile.Monitoring.PreferredUpsName, settings.Language);
         var isLocalManagement = runtimeProfile.Profile.Management.Mode == NutManagementMode.Local;
         IRemoteNutConfigurationTransport? remoteTransport = runtimeProfile.Profile.Management.ConfigurationTransport switch
         {
@@ -71,7 +71,7 @@ public partial class App : Application
         };
         var remoteManagement = isLocalManagement
             ? null
-            : new RemoteManagementSessionViewModel(runtimeProfile.Profile, remoteTransport, profileMutator, credentialStore);
+            : new RemoteManagementSessionViewModel(runtimeProfile.Profile, remoteTransport, profileMutator, credentialStore, settings.Language);
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
@@ -79,14 +79,17 @@ public partial class App : Application
             polling,
             devices,
             installationDetector,
-            runtimeProfile);
+            runtimeProfile,
+            settings.Language,
+            isLocalManagement ? new WindowsNutVersionResolver() : null);
         var administration = new AdministrationPageViewModel(
             installationDetector,
             isLocalManagement ? new NutConfigurationFilePipeline() : null,
             isLocalManagement ? new WindowsLocalNutAdministration() : null,
             isLocalManagement ? new WindowsNutDriverDiagnostics() : null,
             runtimeProfile,
-            remoteManagement);
+            remoteManagement,
+            settings.Language);
         var settingsPage = new SettingsPageViewModel(
             settings,
             store,
