@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="using:NutManager.App.ViewModels"
              x:Class="NutManager.App.Presentation.Controls.NutReviewDrawerHost"
              x:Name="Root"
              IsVisible="{Binding IsOpen, ElementName=Root}">
@@ -9,11 +10,92 @@
           BorderThickness="1,0,0,0"
           Padding="20">
     <Grid RowDefinitions="Auto,*" RowSpacing="16">
-      <StackPanel Spacing="4">
-        <TextBlock Text="{Binding Title, ElementName=Root}" Classes="nut-section-title" />
-        <TextBlock Text="{Binding PendingText, ElementName=Root}" Classes="nut-metadata" />
-      </StackPanel>
-      <ContentControl Grid.Row="1" Content="{Binding DrawerContent, ElementName=Root}" />
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <StackPanel Spacing="4">
+          <TextBlock Text="{Binding Title, ElementName=Root}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding PendingText, ElementName=Root}" Classes="nut-metadata" />
+        </StackPanel>
+        <Button Grid.Column="1"
+                Classes="nut-icon"
+                Command="{Binding CloseCommand, ElementName=Root}"
+                ToolTip.Tip="{Binding CloseText, ElementName=Root}"
+                AutomationProperties.Name="{Binding CloseText, ElementName=Root}">
+          <PathIcon Data="{DynamicResource NutIconClose}" Width="18" Height="18" />
+        </Button>
+      </Grid>
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <ContentControl Content="{Binding DrawerContent, ElementName=Root}">
+          <ContentControl.DataTemplates>
+            <DataTemplate DataType="viewModels:SemanticConfigurationReviewViewModel">
+              <StackPanel Spacing="16">
+                <StackPanel Spacing="8" IsVisible="{Binding HasChanges}">
+                  <TextBlock Text="{Binding ChangesTitle}" Classes="nut-card-title" />
+                  <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="viewModels:SemanticReviewItemViewModel">
+                        <Border Classes="nut-card" Padding="12" Margin="0,0,0,8">
+                          <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Operation}" Classes="nut-metadata" />
+                            <TextBlock Text="{Binding Section}" Classes="nut-metadata" IsVisible="{Binding Section, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding PreviousValue}" TextWrapping="Wrap" IsVisible="{Binding PreviousValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding NewValue}" TextWrapping="Wrap" IsVisible="{Binding NewValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding Activation}" Classes="nut-metadata" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="8" IsVisible="{Binding HasValidationIssues}">
+                  <TextBlock Text="{Binding ValidationTitle}" Classes="nut-card-title" />
+                  <ItemsControl ItemsSource="{Binding ValidationIssues}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="viewModels:SemanticValidationIssueViewModel">
+                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Classes="nut-warning-text" Margin="0,0,0,6" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="8" IsVisible="{Binding HasCustomParameters}">
+                  <TextBlock Text="{Binding CustomParametersTitle}" Classes="nut-card-title" />
+                  <ItemsControl ItemsSource="{Binding CustomParameters}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="viewModels:SemanticCustomParameterViewModel">
+                        <Border Classes="nut-card" Padding="12" Margin="0,0,0,8">
+                          <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding SafeValue}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Warning}" TextWrapping="Wrap" Classes="nut-warning-text" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="8" IsVisible="{Binding HasPreviewLines}">
+                  <TextBlock Text="{Binding PreviewTitle}" Classes="nut-card-title" />
+                  <ItemsControl ItemsSource="{Binding PreviewLines}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="viewModels:GeneratedPreviewLineViewModel">
+                        <Border Classes="nut-card" Padding="10" Margin="0,0,0,6">
+                          <StackPanel Spacing="2">
+                            <TextBlock Text="{Binding OriginalText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding CandidateText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </StackPanel>
+            </DataTemplate>
+          </ContentControl.DataTemplates>
+        </ContentControl>
+      </ScrollViewer>
     </Grid>
   </Border>
 </UserControl>

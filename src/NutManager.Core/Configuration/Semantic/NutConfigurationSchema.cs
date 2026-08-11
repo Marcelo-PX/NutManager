@@ -1,0 +1,203 @@
+using System.Globalization;
+using NutManager.Core.Validation;
+
+namespace NutManager.Core.Configuration.Semantic;
+
+public enum NutConfigurationFieldKind { Text, Integer, Decimal, Boolean, Choice, Path, Host, Port, SecretChange, RepeatedRow, CustomParameter }
+public enum NutConfigurationFieldScope { Global, Section, Repeated }
+public enum NutConfigurationEntryKind { Assignment, Directive }
+public enum NutConfigurationAutomaticPolicy { OmitDirective, ExplicitAutoToken, DetectedAndPersisted, NotSupported }
+public enum NutConfigurationSemanticState { Explicit, AutomaticByOmission, ExplicitAutoToken, MissingRequired, Unsupported, CustomUnknown }
+public enum NutConfigurationApplicability { Applicable, Unsupported }
+public enum NutConfigurationActivation { None, Reload, ServiceRestart, SeparateExplicitAction }
+public enum NutSensitiveFieldState { NotConfigured, Configured, ReplacementPending, RemovalPending }
+
+public sealed record NutConfigurationSemanticContext(
+    string? SelectedDriver = null,
+    IReadOnlyDictionary<string, string>? Values = null)
+{
+    public string? GetValue(string key) => Values is not null && Values.TryGetValue(key, out var value) ? value : null;
+}
+
+public interface INutConfigurationValueCodec
+{
+    FieldValidationResult<object> Parse(string value, string semanticId);
+    FieldValidationResult<string> Serialize(object value, string semanticId);
+}
+
+public sealed class NutConfigurationValueCodec : INutConfigurationValueCodec
+{
+    private readonly Func<string, string, FieldValidationResult<object>> _parse;
+    private readonly Func<object, string, FieldValidationResult<string>> _serialize;
+
+    private NutConfigurationValueCodec(
+        Func<string, string, FieldValidationResult<object>> parse,
+        Func<object, string, FieldValidationResult<string>> serialize)
+    {
+        _parse = parse;
+        _serialize = serialize;
+    }
+
+    public FieldValidationResult<object> Parse(string value, string semanticId) => _parse(value, semanticId);
+    public FieldValidationResult<string> Serialize(object value, string semanticId) => _serialize(value, semanticId);
+
+    public static INutConfigurationValueCodec Text { get; } = new NutConfigurationValueCodec(
+        (value, _) => new(value, []),
+        (value, field) => value is string text
+            ? new(text, [])
+            : Invalid<string>(field, "Semantic.Value.Text", "Semantic.Validation.Text"));
+
+    public static INutConfigurationValueCodec Integer { get; } = new NutConfigurationValueCodec(
+        (value, field) => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? new(parsed, [])
+            : Invalid<object>(field, "Semantic.Value.Integer", "Semantic.Validation.Integer"),
+        (value, field) => value is int integer
+            ? new(integer.ToString(CultureInfo.InvariantCulture), [])
+            : Invalid<string>(field, "Semantic.Value.Integer", "Semantic.Validation.Integer"));
+
+    public static INutConfigurationValueCodec Decimal { get; } = new NutConfigurationValueCodec(
+        (value, field) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            ? new(parsed, [])
+            : Invalid<object>(field, "Semantic.Value.Decimal", "Semantic.Validation.Decimal"),
+        (value, field) => value is decimal number
+            ? new(number.ToString(CultureInfo.InvariantCulture), [])
+            : Invalid<string>(field, "Semantic.Value.Decimal", "Semantic.Validation.Decimal"));
+
+    public static INutConfigurationValueCodec Choice(params string[] values)
+    {
+        var allowed = values.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return new NutConfigurationValueCodec(
+            (value, field) => allowed.Contains(value)
+                ? new(value, [])
+                : Invalid<object>(field, "Semantic.Value.Choice", "Semantic.Validation.Choice"),
+            (value, field) => value is string text && allowed.Contains(text)
+                ? new(values.First(item => string.Equals(item, text, StringComparison.OrdinalIgnoreCase)), [])
+                : Invalid<string>(field, "Semantic.Value.Choice", "Semantic.Validation.Choice"));
+    }
+
+    private static FieldValidationResult<T> Invalid<T>(string field, string code, string resourceKey) =>
+        new(default, [new FieldValidationIssue(field, code, ValidationSeverity.Error, resourceKey)]);
+}
+
+public sealed record NutConfigurationChoice(string TechnicalValue, string ResourceKey);
+
+public sealed class NutConfigurationFieldDescriptor
+{
+    public NutConfigurationFieldDescriptor(
+        NutConfigurationFileKind fileKind,
+        string semanticId,
+        NutConfigurationEntryKind entryKind,
+        string name,
+        NutConfigurationFieldScope scope,
+        string labelResourceKey,
+        string helpResourceKey,
+        NutConfigurationFieldKind fieldKind = NutConfigurationFieldKind.Text,
+        bool required = false,
+        bool sensitive = false,
+        NutConfigurationAutomaticPolicy automaticPolicy = NutConfigurationAutomaticPolicy.NotSupported,
+        string? explicitAutoToken = null,
+        int insertionOrder = 0,
+        NutConfigurationActivation activation = NutConfigurationActivation.None,
+        INutConfigurationValueCodec? codec = null,
+        Func<NutConfigurationSemanticContext, NutConfigurationApplicability>? applicability = null,
+        IReadOnlyList<NutConfigurationChoice>? choices = null)
+    {
+        if (string.IsNullOrWhiteSpace(semanticId)) throw new ArgumentException("A semantic ID is required.", nameof(semanticId));
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("A configuration entry name is required.", nameof(name));
+        if (string.IsNullOrWhiteSpace(labelResourceKey)) throw new ArgumentException("A label resource key is required.", nameof(labelResourceKey));
+        if (string.IsNullOrWhiteSpace(helpResourceKey)) throw new ArgumentException("A help resource key is required.", nameof(helpResourceKey));
+        if (automaticPolicy == NutConfigurationAutomaticPolicy.ExplicitAutoToken && string.IsNullOrWhiteSpace(explicitAutoToken))
+            throw new ArgumentException("Explicit-auto fields require a technical auto token.", nameof(explicitAutoToken));
+        if (sensitive && fieldKind != NutConfigurationFieldKind.SecretChange)
+            throw new ArgumentException("Sensitive fields must use the change-only field kind.", nameof(fieldKind));
+
+        FileKind = fileKind;
+        SemanticId = semanticId;
+        EntryKind = entryKind;
+        Name = name;
+        Scope = scope;
+        LabelResourceKey = labelResourceKey;
+        HelpResourceKey = helpResourceKey;
+        FieldKind = fieldKind;
+        Required = required;
+        Sensitive = sensitive;
+        AutomaticPolicy = automaticPolicy;
+        ExplicitAutoToken = explicitAutoToken;
+        InsertionOrder = insertionOrder;
+        Activation = activation;
+        Codec = codec ?? NutConfigurationValueCodec.Text;
+        Applicability = applicability ?? (_ => NutConfigurationApplicability.Applicable);
+        Choices = choices?.ToArray() ?? [];
+    }
+
+    public NutConfigurationFileKind FileKind { get; }
+    public string SemanticId { get; }
+    public NutConfigurationEntryKind EntryKind { get; }
+    public string Name { get; }
+    public NutConfigurationFieldScope Scope { get; }
+    public string LabelResourceKey { get; }
+    public string HelpResourceKey { get; }
+    public NutConfigurationFieldKind FieldKind { get; }
+    public bool Required { get; }
+    public bool Sensitive { get; }
+    public NutConfigurationAutomaticPolicy AutomaticPolicy { get; }
+    public string? ExplicitAutoToken { get; }
+    public int InsertionOrder { get; }
+    public NutConfigurationActivation Activation { get; }
+    public INutConfigurationValueCodec Codec { get; }
+    public Func<NutConfigurationSemanticContext, NutConfigurationApplicability> Applicability { get; }
+    public IReadOnlyList<NutConfigurationChoice> Choices { get; }
+}
+
+public sealed record NutConfigurationSectionSchema(string SemanticId, string LabelResourceKey, bool UniqueNames = true);
+
+public sealed class NutConfigurationFileSchema
+{
+    public NutConfigurationFileSchema(
+        NutConfigurationFileKind fileKind,
+        IEnumerable<NutConfigurationFieldDescriptor> fields,
+        NutConfigurationSectionSchema? sections = null)
+    {
+        FileKind = fileKind;
+        Fields = fields?.OrderBy(field => field.InsertionOrder).ThenBy(field => field.SemanticId, StringComparer.Ordinal).ToArray()
+            ?? throw new ArgumentNullException(nameof(fields));
+        if (Fields.Any(field => field.FileKind != fileKind)) throw new ArgumentException("Every field must belong to the schema file kind.", nameof(fields));
+        if (Fields.GroupBy(field => field.SemanticId, StringComparer.Ordinal).Any(group => group.Count() > 1))
+            throw new ArgumentException("Semantic IDs must be unique within a file schema.", nameof(fields));
+        if (Fields.GroupBy(field => (field.EntryKind, Name: field.Name.ToUpperInvariant(), field.Scope)).Any(group => group.Count() > 1))
+            throw new ArgumentException("Conflicting descriptors cannot manage the same entry and scope.", nameof(fields));
+        Sections = sections;
+    }
+
+    public NutConfigurationFileKind FileKind { get; }
+    public IReadOnlyList<NutConfigurationFieldDescriptor> Fields { get; }
+    public NutConfigurationSectionSchema? Sections { get; }
+    public NutConfigurationFieldDescriptor? FindField(string semanticId) =>
+        Fields.SingleOrDefault(field => string.Equals(field.SemanticId, semanticId, StringComparison.Ordinal));
+}
+
+public sealed class NutDriverConfigurationSchema
+{
+    public NutDriverConfigurationSchema(
+        string driverId,
+        string helpResourceKey,
+        string connectionType,
+        IEnumerable<NutConfigurationFieldDescriptor> fields,
+        IEnumerable<string>? supportedProtocols = null)
+    {
+        if (string.IsNullOrWhiteSpace(driverId)) throw new ArgumentException("A driver ID is required.", nameof(driverId));
+        if (string.IsNullOrWhiteSpace(helpResourceKey)) throw new ArgumentException("A help resource key is required.", nameof(helpResourceKey));
+        if (string.IsNullOrWhiteSpace(connectionType)) throw new ArgumentException("A connection type is required.", nameof(connectionType));
+        DriverId = driverId;
+        HelpResourceKey = helpResourceKey;
+        ConnectionType = connectionType;
+        Fields = fields?.ToArray() ?? throw new ArgumentNullException(nameof(fields));
+        SupportedProtocols = supportedProtocols?.ToArray() ?? [];
+    }
+
+    public string DriverId { get; }
+    public string HelpResourceKey { get; }
+    public string ConnectionType { get; }
+    public IReadOnlyList<NutConfigurationFieldDescriptor> Fields { get; }
+    public IReadOnlyList<string> SupportedProtocols { get; }
+}

@@ -471,4 +471,61 @@
   <data name="Diagnostics.Report.ErrorState" xml:space="preserve"><value>Error state</value></data>
   <data name="Diagnostics.Report.None" xml:space="preserve"><value>None</value></data>
   <data name="Diagnostics.Report.PresentRedacted" xml:space="preserve"><value>Present (details redacted)</value></data>
+  <data name="Semantic.Review.PendingCount" xml:space="preserve"><value>Pending changes ({0})</value></data>
+  <data name="Shell.CloseReview" xml:space="preserve"><value>Close review</value></data>
+  <data name="Semantic.Review.Changes" xml:space="preserve"><value>Semantic changes</value></data>
+  <data name="Semantic.Validation.Title" xml:space="preserve"><value>Semantic validation</value></data>
+  <data name="Semantic.Preview.Title" xml:space="preserve"><value>Generated preview (read only)</value></data>
+  <data name="Semantic.Custom.Title" xml:space="preserve"><value>Custom parameters</value></data>
+  <data name="Semantic.CustomParameter.Label" xml:space="preserve"><value>Custom parameter</value></data>
+  <data name="Semantic.Section.Label" xml:space="preserve"><value>Section</value></data>
+  <data name="Semantic.Custom.LimitedValidation" xml:space="preserve"><value>This parameter is not recognized by NutManager. It will receive limited semantic validation.</value></data>
+  <data name="Semantic.Custom.Validation.Name" xml:space="preserve"><value>Enter a valid parameter name without spaces or control characters.</value></data>
+  <data name="Semantic.Custom.Validation.Value" xml:space="preserve"><value>The value cannot insert new lines or control characters.</value></data>
+  <data name="Semantic.Custom.Validation.Section" xml:space="preserve"><value>The parameter section is invalid.</value></data>
+  <data name="Semantic.Validation.Required" xml:space="preserve"><value>This required field is not configured.</value></data>
+  <data name="Semantic.Validation.DuplicateSingleton" xml:space="preserve"><value>Duplicate definitions exist and the change requires explicit resolution.</value></data>
+  <data name="Semantic.Validation.Text" xml:space="preserve"><value>The text value is invalid.</value></data>
+  <data name="Semantic.Validation.Integer" xml:space="preserve"><value>Enter a valid integer.</value></data>
+  <data name="Semantic.Validation.Decimal" xml:space="preserve"><value>Enter a valid decimal number.</value></data>
+  <data name="Semantic.Validation.Choice" xml:space="preserve"><value>Select a valid technical option.</value></data>
+  <data name="Semantic.Sensitive.Configured" xml:space="preserve"><value>Configured</value></data>
+  <data name="Semantic.Sensitive.ReplacementPending" xml:space="preserve"><value>The protected value will be changed</value></data>
+  <data name="Semantic.Sensitive.RemovalPending" xml:space="preserve"><value>The protected value will be removed</value></data>
+  <data name="Semantic.State.Explicit" xml:space="preserve"><value>Explicit</value></data>
+  <data name="Semantic.State.AutomaticByOmission" xml:space="preserve"><value>Automatic by omission</value></data>
+  <data name="Semantic.State.ExplicitAutoToken" xml:space="preserve"><value>Explicit automatic token</value></data>
+  <data name="Semantic.State.MissingRequired" xml:space="preserve"><value>Required value missing</value></data>
+  <data name="Semantic.State.Unsupported" xml:space="preserve"><value>Not applicable</value></data>
+  <data name="Semantic.State.CustomUnknown" xml:space="preserve"><value>Unrecognized custom value</value></data>
+  <data name="Semantic.Operation.Set" xml:space="preserve"><value>Change</value></data>
+  <data name="Semantic.Operation.Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Semantic.Operation.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Semantic.Operation.SetAutomatic" xml:space="preserve"><value>Set automatic</value></data>
+  <data name="Semantic.Operation.AddRepeatedRow" xml:space="preserve"><value>Add row</value></data>
+  <data name="Semantic.Operation.RemoveRepeatedRow" xml:space="preserve"><value>Remove row</value></data>
+  <data name="Semantic.Operation.AddSection" xml:space="preserve"><value>Add section</value></data>
+  <data name="Semantic.Operation.RemoveSection" xml:space="preserve"><value>Remove section</value></data>
+  <data name="Semantic.Operation.RenameSection" xml:space="preserve"><value>Rename section</value></data>
+  <data name="Semantic.Operation.AddCustomParameter" xml:space="preserve"><value>Add custom parameter</value></data>
+  <data name="Semantic.Operation.EditCustomParameter" xml:space="preserve"><value>Change custom parameter</value></data>
+  <data name="Semantic.Operation.RemoveCustomParameter" xml:space="preserve"><value>Remove custom parameter</value></data>
+  <data name="Semantic.Activation.None" xml:space="preserve"><value>No known additional activation</value></data>
+  <data name="Semantic.Activation.Reload" xml:space="preserve"><value>Requires an explicit reload</value></data>
+  <data name="Semantic.Activation.ServiceRestart" xml:space="preserve"><value>May require an explicit service restart</value></data>
+  <data name="Semantic.Activation.SeparateExplicitAction" xml:space="preserve"><value>Requires a separate activation action</value></data>
+  <data name="Semantic.Field.Nut.Mode.Label" xml:space="preserve"><value>NUT mode</value></data>
+  <data name="Semantic.Field.Nut.Mode.Help" xml:space="preserve"><value>Technical mode configured in nut.conf.</value></data>
+  <data name="Semantic.Field.Ups.Driver.Label" xml:space="preserve"><value>Driver</value></data>
+  <data name="Semantic.Field.Ups.Driver.Help" xml:space="preserve"><value>NUT driver explicitly configured for this section.</value></data>
+  <data name="Semantic.Field.Ups.Port.Label" xml:space="preserve"><value>Port</value></data>
+  <data name="Semantic.Field.Ups.Port.Help" xml:space="preserve"><value>Technical port value configured for the driver.</value></data>
+  <data name="Semantic.Field.Upsd.Listen.Label" xml:space="preserve"><value>Listen address</value></data>
+  <data name="Semantic.Field.Upsd.Listen.Help" xml:space="preserve"><value>Repeatable NUT server LISTEN directive.</value></data>
+  <data name="Semantic.Field.UpsdUsers.Password.Label" xml:space="preserve"><value>Password</value></data>
+  <data name="Semantic.Field.UpsdUsers.Password.Help" xml:space="preserve"><value>Protected value changed only through explicit replacement or removal.</value></data>
+  <data name="Semantic.Field.Upsmon.Monitor.Label" xml:space="preserve"><value>Monitor</value></data>
+  <data name="Semantic.Field.Upsmon.Monitor.Help" xml:space="preserve"><value>Repeatable MONITOR directive with protected presentation.</value></data>
+  <data name="Semantic.Section.Ups" xml:space="preserve"><value>UPS</value></data>
+  <data name="Semantic.Section.User" xml:space="preserve"><value>User</value></data>
 </root>

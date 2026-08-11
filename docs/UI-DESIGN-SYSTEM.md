@@ -44,7 +44,7 @@ The shell has three presentation states:
 
 The left sidebar has Expanded (currently 220 px), Collapsed (72 px), and Overlay states. In Wide, the chevron, header button, or `Ctrl+B` changes the persisted preference. Medium deliberately projects Collapsed and does not mutate a preference that would have no immediate visual effect. Compact projects navigation as an overlay opened by the header button or `Ctrl+B`; closing it or returning to a wider layout does not overwrite the persisted Expanded/Collapsed preference. The selected item uses a subtle product-owned surface, a 3 px accent bar, and accent foreground—never literal selected text. Collapsed items keep tooltips and accessible names. Sidebar preference is non-secret UI preference data.
 
-The review presentation mapper defines Hidden, Collapsed, Expanded, and Overlay states, and `NutReviewDrawerHost` provides the shared 368 px content host. The current shell keeps it Hidden because no generic review-context adapter is connected yet. Semantic old-to-new changes, redaction, validation, generated preview, backup/recovery explanation, and Apply remain T25+ responsibilities and must use the existing safe-write pipeline when implemented.
+The review presentation mapper defines Hidden, Collapsed, Expanded, and Overlay states, and `NutReviewDrawerHost` provides the shared 368 px content host. T25 connects an optional generic semantic-review presentation: deterministic changes, localized validation issues, custom parameters, activation information, and redacted generated-preview lines. With no semantic draft it remains Hidden. The presentation is read-only and has no Apply command; future T26–T28 forms provide the draft actions while persistence continues through the existing safe-write pipeline.
 
 ## Header, theme, and visual tokens
 
@@ -84,7 +84,7 @@ Administration
 └── Remote Access
 ```
 
-T24B preserves the existing-entry editor and reviewed T14 preview inside NUT Configuration. Graphical semantic forms and generated configuration belong to T25+; no second writer was introduced.
+T24B preserves the existing-entry editor and reviewed T14 preview inside NUT Configuration. T25 supplies the generic semantic draft/review/generated-preview foundation without replacing that editor or adding a writer. The final graphical forms belong to T26–T28.
 
 ## Accessibility and terminology
 

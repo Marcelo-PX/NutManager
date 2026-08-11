@@ -10,11 +10,21 @@ public abstract class NutConfigurationNode
 
     public string RawText { get; }
 
-    public string LineEnding { get; }
+    public string LineEnding { get; private set; }
 
     public bool IsModified { get; protected set; }
 
     internal string Serialize() => (IsModified ? RenderModifiedText() : RawText) + LineEnding;
+
+    internal void SetLineEnding(string lineEnding)
+    {
+        ArgumentNullException.ThrowIfNull(lineEnding);
+        if (string.Equals(LineEnding, lineEnding, StringComparison.Ordinal)) return;
+        LineEnding = lineEnding;
+        IsModified = true;
+    }
+
+    internal void MarkInserted() => IsModified = true;
 
     protected virtual string RenderModifiedText() => RawText;
 }
@@ -29,13 +39,27 @@ public sealed class NutRawNode : NutConfigurationNode
 
 public sealed class NutSectionNode : NutConfigurationNode
 {
+    private readonly string _prefix;
+    private readonly string _suffix;
+
     internal NutSectionNode(string rawText, string lineEnding, string name)
         : base(rawText, lineEnding)
     {
         Name = name;
+        var nameOffset = rawText.IndexOf(name, StringComparison.Ordinal);
+        _prefix = nameOffset >= 0 ? rawText[..nameOffset] : "[";
+        _suffix = nameOffset >= 0 ? rawText[(nameOffset + name.Length)..] : "]";
     }
 
-    public string Name { get; }
+    public string Name { get; private set; }
+
+    internal void Rename(string name)
+    {
+        Name = name;
+        IsModified = true;
+    }
+
+    protected override string RenderModifiedText() => _prefix + Name + _suffix;
 }
 
 public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
@@ -80,9 +104,11 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
     /// </summary>
     public string Value { get; private set; }
 
-    public string? SectionName { get; }
+    public string? SectionName { get; private set; }
 
     public bool IsSensitive { get; }
+
+    internal void ReassignSection(string sectionName) => SectionName = sectionName;
 
     /// <summary>
     /// Replaces only this assignment's value in memory. Existing indentation,
@@ -171,9 +197,11 @@ public sealed class NutConfigurationDirectiveNode : NutConfigurationNode
 
     public string Arguments { get; private set; }
 
-    public string? SectionName { get; }
+    public string? SectionName { get; private set; }
 
     public bool IsSensitive { get; }
+
+    internal void ReassignSection(string sectionName) => SectionName = sectionName;
 
     /// <summary>
     /// Replaces only this directive's argument text in memory while retaining its leading spacing.

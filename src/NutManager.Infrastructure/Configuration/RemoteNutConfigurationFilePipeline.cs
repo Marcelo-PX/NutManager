@@ -11,7 +11,6 @@ namespace NutManager.Infrastructure.Configuration;
 /// </summary>
 public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePipeline
 {
-    private const string RedactedText = "<redacted>";
     private readonly IRemoteNutConfigurationSession _session;
     private readonly IRemoteNutConfigurationPathPolicy _pathPolicy;
     private readonly string _configurationDirectory;
@@ -73,22 +72,8 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
         var candidateText = snapshot.Document.Serialize();
         var candidateBytes = NutConfigurationTextCodec.Encode(candidateText, snapshot.Encoding);
         var fingerprint = Fingerprint(candidateBytes);
-        var candidateLines = SplitLines(candidateText);
-        var lines = new List<NutConfigurationPreviewLine>();
-        for (var index = 0; index < snapshot.Document.Nodes.Count; index++)
-        {
-            var node = snapshot.Document.Nodes[index];
-            if (!node.IsModified)
-            {
-                continue;
-            }
-
-            var sensitive = node is NutConfigurationAssignmentNode assignment && assignment.IsSensitive ||
-                node is NutConfigurationDirectiveNode directive && directive.IsSensitive;
-            lines.Add(new NutConfigurationPreviewLine(index + 1, sensitive ? RedactedText : node.RawText, sensitive ? RedactedText : candidateLines[index], sensitive));
-        }
-
-        return new NutConfigurationPreparedChange(snapshot, candidateText, candidateBytes, fingerprint, new NutConfigurationChangePreview(snapshot.TargetPath, fingerprint, lines));
+        return new NutConfigurationPreparedChange(snapshot, candidateText, candidateBytes, fingerprint,
+            NutConfigurationPreviewBuilder.Build(snapshot, candidateText, fingerprint));
     }
 
     public async Task<NutConfigurationApplyResult> ApplyAsync(NutConfigurationPreparedChange change, CancellationToken cancellationToken = default)
@@ -297,19 +282,4 @@ public sealed class RemoteNutConfigurationFilePipeline : INutConfigurationFilePi
 
     private static string Fingerprint(ReadOnlySpan<byte> bytes) => Convert.ToHexString(SHA256.HashData(bytes));
 
-    private static List<string> SplitLines(string text)
-    {
-        var lines = new List<string>();
-        var offset = 0;
-        while (offset < text.Length)
-        {
-            var start = offset;
-            while (offset < text.Length && text[offset] is not '\r' and not '\n') offset++;
-            lines.Add(text[start..offset]);
-            if (offset < text.Length && text[offset] == '\r' && offset + 1 < text.Length && text[offset + 1] == '\n') offset += 2;
-            else if (offset < text.Length) offset++;
-        }
-
-        return lines;
-    }
 }
