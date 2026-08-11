@@ -39,6 +39,12 @@ Only one task should normally be in progress at a time.
 | T21 | READY | Validate full Windows local and remote administration | End-to-end Windows-first validation |
 | T22 | DEFERRED | Future Linux compatibility evaluation | Compatibility may be reconsidered in a future task |
 | T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
+| T24 | READY | Modern responsive shell, design system and localization foundation | Windows-first responsive presentation and pt-BR/en-US foundation |
+| T25 | TODO | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
+| T26 | TODO | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
+| T27 | TODO | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
+| T28 | TODO | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
+| T29 | TODO | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 
 ---
 
@@ -231,6 +237,206 @@ Future Linux compatibility evaluation. Linux is deferred and is not an active CI
 **Status:** TODO
 
 Review mature, reproducible limitations discovered by NutManager. Separate client concerns from NUT concerns, then prepare focused issues or branches in `Marcelo-PX/nut` for potential PRs to `networkupstools/nut`.
+
+## T24 — Modern responsive shell, design system and localization foundation
+
+**Status:** READY
+
+### Objective
+
+Build the Windows-first responsive shell and design tokens, with official `pt-BR` and `en-US` localization infrastructure.
+
+### Allowed scope
+
+- App presentation/resources, shell, settings, localization resources, and focused tests;
+- non-secret UI-preference persistence required for theme, language, or sidebar state;
+- documentation directly required by the implementation.
+
+### Requirements
+
+- connection indicator with text, accessible status, and restrained status colors;
+- sun/moon theme control, with System theme in Appearance & Language;
+- Expanded/Collapsed/Overlay sidebar and Hidden/Collapsed/Expanded/Overlay review-drawer shell;
+- Wide (>=1200), Medium (860–1199), and Compact (<860) layouts without ordinary horizontal scrolling;
+- stable semantic resources for all new user-facing strings in both official cultures;
+- culture-invariant NUT serialization and deterministic resource fallback;
+- accessible icon controls, focus, and tab order.
+
+### Do not
+
+- implement semantic configuration mutations or graphical file forms;
+- add Linux scope, a new writer, or automatic service activation;
+- claim that T25–T29 experiences are implemented.
+
+### Validation
+
+- automated resource/fallback/serialization tests;
+- manual Windows validation in both cultures and all responsive states;
+- standard restore, build, test, vulnerability, format, and diff checks.
+
+### Completion criteria
+
+- both cultures are usable and persisted safely;
+- responsive shell and review-drawer foundation are accessible;
+- no NUT token is localized or culture-serialized.
+
+## T25 — Semantic graphical configuration framework
+
+**Status:** TODO
+
+### Objective
+
+Create the Core semantic schema, projection, validation, and mutation layer that extends T13 for complete graphical configuration while retaining T14/T19/T19B writes.
+
+### Allowed scope
+
+- Core configuration models/contracts and T13 explicit mutation primitives;
+- Infrastructure/App projections and semantic-review support;
+- focused deterministic tests and documentation.
+
+### Requirements
+
+- schema registry, file/section/field/driver descriptors, stable resource keys, validation, applicability, insertion order, and activation metadata;
+- Explicit, AutomaticByOmission, ExplicitAutoToken, MissingRequired, Unsupported, and CustomUnknown states;
+- setting-specific Automatic policies and sensitive change-only model;
+- deterministic add/remove/rename/section/repeated-row mutations preserving comments, raw nodes, ordering, quoting, line endings, encoding, duplicates, and unknown content;
+- graphical custom parameters with limited-validation warning and read-only generated preview.
+
+### Do not
+
+- write directly from views, reformat whole files, guess defaults, or use runtime internet;
+- treat Automatic as universal directive deletion.
+
+### Validation
+
+- deterministic parser/mutation/serialization, culture-invariant, sensitive-redaction, and safe-pipeline integration tests.
+
+### Completion criteria
+
+- semantic mutations project through T13 and exclusively use existing safe transports.
+
+## T26 — Graphical ups.conf configuration
+
+**Status:** TODO
+
+### Objective
+
+Provide a dedicated driver-aware UPS configuration form for `ups.conf`.
+
+### Allowed scope
+
+- T25 semantic framework extensions, local passive driver/COM metadata, App UPS form, and focused tests/documentation.
+
+### Requirements
+
+- add/rename/remove validated UPS sections; identification and `desc`;
+- concrete driver selection/detection, driver-aware port/protocol/parameter controls, and documented battery settings;
+- local passive COM selector where applicable, never fabricated remote COM enumeration;
+- documented `runtimecal` assistant that edits only semantic draft;
+- Basic/Advanced/Custom parameters and semantic review.
+
+### Do not
+
+- open serial ports directly, run driver control/shutdown commands, invent driver defaults, or persist UI metadata as NUT directives.
+
+### Validation
+
+- schema, section, driver/port/protocol applicability, runtimecal, redaction, local/SFTP/SMB safe-pipeline regression, and Windows UI validation.
+
+### Completion criteria
+
+- supported UPS settings are graphical and all writes remain reviewed/recoverable.
+
+## T27 — Graphical server and general configuration
+
+**Status:** TODO
+
+### Objective
+
+Provide dedicated graphical `upsd.conf` and `nut.conf` forms.
+
+### Allowed scope
+
+- T25 semantic schemas/forms, focused tests, and documentation for server/general configuration.
+
+### Requirements
+
+- repeated `LISTEN` address/port rows, server behavior, timeouts, TLS/certificate metadata, and custom parameters;
+- documented NUT MODE and advanced `nut.conf` options respecting that file's own grammar;
+- review, redaction where applicable, and existing safe pipeline.
+
+### Do not
+
+- assume all NUT files use `key = value`, create an unrestricted raw editor, or restart services automatically.
+
+### Validation
+
+- parser/serializer grammar, repeated-row, validation, preservation, and local/SFTP/SMB regression tests.
+
+### Completion criteria
+
+- supported server/general settings are graphical without altering unmanaged syntax.
+
+## T28 — Graphical users and monitoring configuration
+
+**Status:** TODO
+
+### Objective
+
+Provide dedicated graphical `upsd.users` and `upsmon.conf` forms with protected secret handling.
+
+### Allowed scope
+
+- T25 schemas/forms, focused tests, and documentation for users and monitoring.
+
+### Requirements
+
+- user add/rename/remove, roles/actions/instcmd permissions, password state, and change-only replacement;
+- repeated graphical `MONITOR` rows plus MINSUPPLIES, timing, shutdown, notification, advanced, and custom controls;
+- explicit warning for dangerous permissions such as FSD; secret redaction in UI, review, and logs.
+
+### Do not
+
+- reveal existing secrets, execute FSD/shutdown, or conflate permission configuration with command execution.
+
+### Validation
+
+- secret non-exposure, repeated row, user mutation, validation, and transport safe-pipeline regression tests.
+
+### Completion criteria
+
+- users and monitoring are manageable graphically with change-only secrets.
+
+## T29 — Graphical configuration UX hardening
+
+**Status:** TODO
+
+### Objective
+
+Validate and harden the complete graphical configuration experience.
+
+### Allowed scope
+
+- focused App/Core/UI tests, manual Windows validation artifacts, and defect fixes required by that validation.
+
+### Requirements
+
+- Wide/Medium/Compact, sidebar/drawer, keyboard, focus, automation, clipping/overflow, and semantic-error validation;
+- `pt-BR` and `en-US` validation; preference persistence;
+- local, SFTP, and SMB regression of reviewed safe writes and recovery;
+- final graphical configuration Windows validation.
+
+### Do not
+
+- broaden to Linux, remote service control, raw editors, or unreviewed writes.
+
+### Validation
+
+- automated responsive/resource/accessibility tests plus documented manual Windows validation.
+
+### Completion criteria
+
+- graphical forms remain accessible, bilingual, responsive, and safe across local and supported remote transports.
 
 ## Task execution template
 

@@ -88,6 +88,18 @@ read → parse → requested in-memory change → preview/diff → backup
 
 The graphical editor changes existing entries one file at a time and sends writes exclusively through the pipeline. It does not automatically activate, reload, or restart services after an apply.
 
+### Planned semantic graphical configuration (T24–T29)
+
+T15 is the current editor for existing entries. T25 will add a Core semantic schema, projection, validation, and mutation layer above the T13 syntax-preserving document so graphical forms can add, remove, rename, and reorder managed configuration deterministically without disturbing unmanaged syntax. The planned flow is graphical form → semantic draft → semantic schema/validation → T13 document → semantic review/generated preview → the existing T14 safe-write pipeline → Local/SFTP/SMB.
+
+Descriptors will be platform-neutral Core data: stable semantic IDs, file/scope/directive identity, localized label/help keys, parser/serializer, control kind, validation, sensitive/repeated/optional metadata, Automatic policy, applicability, insertion order, and known activation metadata. Driver-aware `ups.conf` schemas use official NUT manpages and driver help only; no runtime internet dependency or guessed default is permitted. See [Semantic configuration architecture](SEMANTIC-CONFIGURATION-ARCHITECTURE.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
+
+## 7.1 Planned presentation and localization architecture
+
+T24 is a presentation foundation, not a change to management boundaries. The Windows-first Fluent-inspired shell gains reusable design tokens, a textual connection indicator, Wide/Medium/Compact layouts, Expanded/Collapsed/Overlay navigation, and Hidden/Collapsed/Expanded/Overlay review drawer states. Current hard-coded presentation is not retroactively described as localized.
+
+`pt-BR` is the default culture and `en-US` is an official culture. New T24–T29 user-facing strings use semantic resource keys. Display values follow UI culture; every NUT parser and serializer remains culture-invariant. NUT filenames, directives, driver names, status tokens, and SFTP stay invariant. See [UI design system](UI-DESIGN-SYSTEM.md) and [Localization](LOCALIZATION.md).
+
 ## 8. Windows local administration
 
 Windows-specific behavior remains in `Infrastructure.Platform.Windows` behind Core contracts:
