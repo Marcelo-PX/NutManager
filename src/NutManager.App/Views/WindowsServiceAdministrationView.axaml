@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             x:Class="NutManager.App.Views.WindowsServiceAdministrationView"
+             x:DataType="viewModels:AdministrationPageViewModel">
+  <StackPanel Spacing="16">
+    <Border Classes="nut-card" IsVisible="{Binding IsRemoteManagementProfile}">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding Strings[Administration.Windows.Unavailable]}" Classes="nut-section-title" />
+        <TextBlock Text="{Binding Strings[Administration.Windows.LocalOnly]}" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <StackPanel Spacing="16" IsVisible="{Binding IsLocalManagementProfile}">
+      <Border Classes="nut-card">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="3">
+              <TextBlock Text="{Binding Strings[Administration.Windows.Service]}" Classes="nut-section-title" />
+              <TextBlock Text="{Binding Strings[Administration.Windows.Service.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="1" Content="{Binding Strings[Common.RefreshState]}" Command="{Binding RefreshWindowsAdministrationCommand}" />
+          </Grid>
+          <TextBlock Text="{Binding Strings[Administration.Windows.NoService]}" IsVisible="{Binding HasNoWindowsServices}" TextWrapping="Wrap" />
+          <ListBox ItemsSource="{Binding WindowsServices}" SelectedItem="{Binding SelectedWindowsService, Mode=TwoWay}" IsVisible="{Binding HasWindowsServices}">
+            <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="6,4"><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" /><TextBlock Text="{Binding ServiceName}" Classes="nut-metadata" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <WrapPanel IsVisible="{Binding HasSelectedWindowsService}">
+            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedWindowsServiceStateText}" /></StackPanel>
+            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Windows.StartMode]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedWindowsServiceStartModeText}" /></StackPanel>
+            <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Windows.Executable]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedWindowsService.BinaryPath}" TextWrapping="Wrap" /></StackPanel>
+          </WrapPanel>
+          <WrapPanel>
+            <Button Classes="nut-success" Content="{Binding Strings[Administration.Windows.Start]}" Click="StartServiceButton_OnClick" IsEnabled="{Binding CanStartWindowsService}" Margin="0,0,8,8" />
+            <Button Content="{Binding Strings[Administration.Windows.Stop]}" Click="StopServiceButton_OnClick" IsEnabled="{Binding CanStopWindowsService}" Margin="0,0,8,8" />
+            <Button Classes="nut-primary" Content="{Binding Strings[Administration.Windows.Restart]}" Click="RestartServiceButton_OnClick" IsEnabled="{Binding CanRestartWindowsService}" Margin="0,0,8,8" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[Administration.Windows.Permissions]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding WindowsPermissionAssessment.Message}" TextWrapping="Wrap" />
+          <Button Content="{Binding Strings[Administration.Windows.PreparePermissions]}" Click="RepairPermissionsButton_OnClick" IsEnabled="{Binding CanPrepareAdministrativeAction}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[Administration.Windows.Processes]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding Strings[Administration.Windows.NoProcesses]}" IsVisible="{Binding HasNoWindowsProcesses}" />
+          <ItemsControl ItemsSource="{Binding WindowsProcesses}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="Auto,12,Auto,12,*" Margin="0,3"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Grid.Column="2" Text="{Binding ProcessId}" /><TextBlock Grid.Column="4" Text="{Binding ExecutablePath}" Classes="nut-metadata" TextWrapping="Wrap" /></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[Administration.Windows.Events]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding WindowsEventLogDiagnosticMessage}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Strings[Administration.Windows.NoEvents]}" IsVisible="{Binding HasNoWindowsEvents}" />
+          <ItemsControl ItemsSource="{Binding WindowsEvents}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,4"><TextBlock Classes="nut-metadata"><Run Text="{Binding Timestamp}" /><Run Text=" · " /><Run Text="{Binding LogName}" /><Run Text=" · " /><Run Text="{Binding Provider}" /><Run Text=" · " /><Run Text="{Binding EventId}" /><Run Text=" · " /><Run Text="{Binding Level}" /></TextBlock><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card-elevated" IsVisible="{Binding HasPendingAdministrativeAction}">
+        <StackPanel Spacing="7">
+          <TextBlock Text="{Binding Strings[Administration.Windows.Review]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding PendingAdministrativeActionText}" />
+          <StackPanel IsVisible="{Binding IsPermissionRepairPending}" Spacing="4">
+            <TextBlock Text="{Binding Strings[Common.User]}" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionIdentity}" TextWrapping="Wrap" />
+            <TextBlock Text="SID" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionSid}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Strings[Common.Directory]}" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionDirectory}" TextWrapping="Wrap" />
+            <TextBlock Text="Modify" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding PendingPermissionTargets}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            <TextBlock Text="{Binding Strings[Administration.Windows.AclNotice]}" TextWrapping="Wrap" />
+          </StackPanel>
+          <CheckBox Content="{Binding Strings[Administration.Windows.Confirm]}" IsChecked="{Binding IsAdministrativeActionConfirmed, Mode=TwoWay}" />
+          <Button Classes="nut-primary" Content="{Binding Strings[Administration.Windows.Execute]}" Command="{Binding ExecuteAdministrativeActionCommand}" IsEnabled="{Binding CanExecuteAdministrativeAction}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+      <TextBlock Text="{Binding AdministrativeCriticalText}" IsVisible="{Binding IsAdministrativeCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding AdministrativeStatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

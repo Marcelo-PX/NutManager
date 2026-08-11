@@ -1,13 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NutManager.App.Localization;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
+using NutManager.Core.Status;
 
 namespace NutManager.App.ViewModels;
 
 public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 {
-    private const string UnavailableText = "Indisponível";
     private readonly INutClient? _nutClient;
     private readonly NutEndpoint? _endpoint;
     private readonly IUpsPollingCoordinator? _polling;
@@ -15,14 +16,20 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
     private int _detailsGeneration;
 
     public DevicesPageViewModel()
-        : base("Dispositivos", "Selecione um UPS para consultar suas variáveis disponíveis.")
+        : this(UiLanguagePreference.PtBr)
     {
+    }
+
+    public DevicesPageViewModel(UiLanguagePreference language)
+        : base(new NutManagerLocalizer(language).Get("Devices.Title"), new NutManagerLocalizer(language).Get("Devices.Description"))
+    {
+        Strings = new NutManagerLocalizer(language);
         _devices = Array.Empty<UpsIdentity>();
         _rawVariables = Array.Empty<RawVariableViewModel>();
     }
 
-    public DevicesPageViewModel(INutClient nutClient, NutEndpoint endpoint, string? preferredUpsName = null)
-        : this()
+    public DevicesPageViewModel(INutClient nutClient, NutEndpoint endpoint, string? preferredUpsName = null, UiLanguagePreference language = UiLanguagePreference.PtBr)
+        : this(language)
     {
         ArgumentNullException.ThrowIfNull(nutClient);
         ArgumentNullException.ThrowIfNull(endpoint);
@@ -32,12 +39,14 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         PreferredUpsName = preferredUpsName;
     }
 
-    public DevicesPageViewModel(INutClient nutClient, NutEndpoint endpoint, IUpsPollingCoordinator polling, string? preferredUpsName = null)
-        : this(nutClient, endpoint, preferredUpsName)
+    public DevicesPageViewModel(INutClient nutClient, NutEndpoint endpoint, IUpsPollingCoordinator polling, string? preferredUpsName = null, UiLanguagePreference language = UiLanguagePreference.PtBr)
+        : this(nutClient, endpoint, preferredUpsName, language)
     {
         _polling = polling;
         polling.StateChanged += ApplyPollingState;
     }
+
+    public NutManagerLocalizer Strings { get; }
 
     [ObservableProperty]
     private IReadOnlyList<UpsIdentity> _devices;
@@ -85,15 +94,21 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     public bool IsSimulated => SelectedSnapshot?.Source == DataSource.Simulated;
 
-    public string SelectedDeviceName => SelectedSnapshot?.Identity.Name ?? SelectedDevice?.Name ?? UnavailableText;
+    public string SelectedDeviceName => SelectedSnapshot?.Identity.Name ?? SelectedDevice?.Name ?? Strings.Get("Status.Unavailable");
 
-    public string SelectedDeviceDescription => SelectedSnapshot?.Identity.Description ?? UnavailableText;
+    public string SelectedDeviceDescription => SelectedSnapshot?.Identity.Description ?? Strings.Get("Status.Unavailable");
 
-    public string SelectedDeviceManufacturer => SelectedSnapshot?.Identity.Manufacturer ?? UnavailableText;
+    public string SelectedDeviceManufacturer => SelectedSnapshot?.Identity.Manufacturer ?? Strings.Get("Status.Unavailable");
 
-    public string SelectedDeviceModel => SelectedSnapshot?.Identity.Model ?? UnavailableText;
+    public string SelectedDeviceModel => SelectedSnapshot?.Identity.Model ?? Strings.Get("Status.Unavailable");
 
-    public string SelectedDeviceSerialNumber => SelectedSnapshot?.Identity.SerialNumber ?? UnavailableText;
+    public string SelectedDeviceSerialNumber => SelectedSnapshot?.Identity.SerialNumber ?? Strings.Get("Status.Unavailable");
+
+    public bool IsDisconnected => _polling?.State.ConnectionState is ConnectionState.Disconnected or ConnectionState.ConnectionFailed;
+
+    public string EmptyStateText => IsDisconnected
+        ? Strings.Get("Devices.Disconnected")
+        : Strings.Get("Devices.NoDevices");
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default) =>
         await RefreshAsync(cancellationToken);
@@ -142,7 +157,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         }
         catch (Exception)
         {
-            DiscoveryError = "Não foi possível descobrir os UPS disponíveis.";
+            DiscoveryError = Strings.Get("Devices.DiscoveryError");
         }
         finally
         {
@@ -202,7 +217,7 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         {
             if (generation == _detailsGeneration && string.Equals(SelectedDevice?.Name, device.Name, StringComparison.Ordinal))
             {
-                DetailsError = "Não foi possível carregar os detalhes do UPS.";
+                DetailsError = Strings.Get("Devices.DetailsError");
             }
         }
         finally
@@ -225,6 +240,8 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     private void ApplyPollingState(PollingState state)
     {
+        OnPropertyChanged(nameof(IsDisconnected));
+        OnPropertyChanged(nameof(EmptyStateText));
         if (!string.Equals(state.UpsName, SelectedDevice?.Name, StringComparison.Ordinal)) return;
         DetailsError = state.LastError;
         if (state.Snapshot is null) return;

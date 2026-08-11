@@ -133,4 +133,342 @@
   <data name="Validation.Smb.UsernameRequired" xml:space="preserve"><value>Informe o usuário para credenciais explícitas.</value></data>
   <data name="Validation.Smb.UsernameInvalid" xml:space="preserve"><value>O usuário SMB é muito longo ou contém caracteres inválidos.</value></data>
   <data name="Validation.Smb.ConfigurationDirectoryOutsideShare" xml:space="preserve"><value>O diretório deve permanecer dentro do compartilhamento configurado.</value></data>
+  <data name="Administration.Title" xml:space="preserve"><value>Administração</value></data>
+  <data name="Administration.Description.Local" xml:space="preserve"><value>Gerencie a configuração e as capacidades administrativas locais do NUT com revisão explícita.</value></data>
+  <data name="Administration.Description.Remote" xml:space="preserve"><value>Gerencie a configuração remota do NUT com transporte seguro e confirmação explícita.</value></data>
+  <data name="Administration.Context.Title" xml:space="preserve"><value>Contexto administrativo</value></data>
+  <data name="Administration.Context.Endpoint" xml:space="preserve"><value>Endpoint de monitoramento</value></data>
+  <data name="Administration.Context.Management" xml:space="preserve"><value>Gerenciamento</value></data>
+  <data name="Administration.Context.Access" xml:space="preserve"><value>Acesso</value></data>
+  <data name="Administration.Context.Transport" xml:space="preserve"><value>Transporte</value></data>
+  <data name="Administration.Context.LocalTransport" xml:space="preserve"><value>Sistema local</value></data>
+  <data name="Administration.Section.Configuration" xml:space="preserve"><value>Configuração NUT</value></data>
+  <data name="Administration.Section.Configuration.Description" xml:space="preserve"><value>Arquivos, edição e revisão</value></data>
+  <data name="Administration.Section.WindowsService" xml:space="preserve"><value>Serviço do Windows</value></data>
+  <data name="Administration.Section.WindowsService.Description" xml:space="preserve"><value>Serviço, permissões e eventos</value></data>
+  <data name="Administration.Section.DevicesDrivers" xml:space="preserve"><value>Dispositivos e drivers</value></data>
+  <data name="Administration.Section.DevicesDrivers.Description" xml:space="preserve"><value>Portas e diagnósticos NUT</value></data>
+  <data name="Administration.Section.RemoteAccess" xml:space="preserve"><value>Acesso remoto</value></data>
+  <data name="Administration.Section.RemoteAccess.Description" xml:space="preserve"><value>SFTP ou SMB do perfil</value></data>
+  <data name="Administration.Availability.Available" xml:space="preserve"><value>Disponível neste perfil</value></data>
+  <data name="Administration.Availability.LocalOnly" xml:space="preserve"><value>Disponível somente para gerenciamento local</value></data>
+  <data name="Administration.Availability.RemoteOnly" xml:space="preserve"><value>Disponível somente para gerenciamento remoto</value></data>
+  <data name="Administration.Availability.Manage" xml:space="preserve"><value>Leitura e gerenciamento permitidos</value></data>
+  <data name="Administration.Availability.ReadOnly" xml:space="preserve"><value>Somente leitura neste perfil</value></data>
+  <data name="Administration.Configuration.LocalInstallation" xml:space="preserve"><value>Instalação local do NUT</value></data>
+  <data name="Administration.Configuration.RemoteContext" xml:space="preserve"><value>Configuração remota</value></data>
+  <data name="Administration.Configuration.RemoteAccessHint" xml:space="preserve"><value>Conecte e valide o diretório na seção Acesso remoto antes de carregar arquivos.</value></data>
+  <data name="Administration.Configuration.Files" xml:space="preserve"><value>Arquivos de configuração</value></data>
+  <data name="Administration.Configuration.NoFiles" xml:space="preserve"><value>Nenhum arquivo de configuração está disponível neste diretório.</value></data>
+  <data name="Administration.Configuration.NoSelection" xml:space="preserve"><value>Nenhum arquivo carregado</value></data>
+  <data name="Administration.Configuration.NoSelection.Help" xml:space="preserve"><value>Selecione um arquivo disponível para visualizar ou editar.</value></data>
+  <data name="Administration.Configuration.Review" xml:space="preserve"><value>Revisão das alterações</value></data>
+  <data name="Administration.Configuration.Review.Help" xml:space="preserve"><value>O preview usa o pipeline seguro; valores sensíveis permanecem redigidos.</value></data>
+  <data name="Administration.Configuration.ConfirmApply" xml:space="preserve"><value>Confirmo que revisei as alterações e desejo aplicá-las.</value></data>
+  <data name="Administration.Configuration.Apply" xml:space="preserve"><value>Aplicar alterações</value></data>
+  <data name="Administration.Configuration.BackupNotice" xml:space="preserve"><value>Um backup será criado antes da substituição. O serviço nunca é reiniciado automaticamente.</value></data>
+  <data name="Administration.Configuration.SelectInstallation" xml:space="preserve"><value>Selecionar instalação local do NUT</value></data>
+  <data name="Administration.Windows.Unavailable" xml:space="preserve"><value>Administração local indisponível</value></data>
+  <data name="Administration.Windows.LocalOnly" xml:space="preserve"><value>Serviço, ACL, processos e Event Log pertencem somente ao contexto local deste computador.</value></data>
+  <data name="Administration.Windows.Service" xml:space="preserve"><value>Serviço NUT do Windows</value></data>
+  <data name="Administration.Windows.Service.Help" xml:space="preserve"><value>Selecione um serviço associado e prepare uma ação explicitamente.</value></data>
+  <data name="Administration.Windows.NoService" xml:space="preserve"><value>Nenhum serviço NUT associado foi encontrado.</value></data>
+  <data name="Administration.Windows.StartMode" xml:space="preserve"><value>Inicialização</value></data>
+  <data name="Administration.Windows.Executable" xml:space="preserve"><value>Executável</value></data>
+  <data name="Administration.Windows.Start" xml:space="preserve"><value>Iniciar</value></data>
+  <data name="Administration.Windows.Stop" xml:space="preserve"><value>Parar</value></data>
+  <data name="Administration.Windows.Restart" xml:space="preserve"><value>Reiniciar</value></data>
+  <data name="Administration.Windows.Permissions" xml:space="preserve"><value>Permissões</value></data>
+  <data name="Administration.Windows.PreparePermissions" xml:space="preserve"><value>Preparar correção de permissões</value></data>
+  <data name="Administration.Windows.Processes" xml:space="preserve"><value>Processos NUT</value></data>
+  <data name="Administration.Windows.NoProcesses" xml:space="preserve"><value>Nenhum processo NUT associado foi detectado.</value></data>
+  <data name="Administration.Windows.Events" xml:space="preserve"><value>Eventos do Windows</value></data>
+  <data name="Administration.Windows.NoEvents" xml:space="preserve"><value>Nenhum evento relacionado foi encontrado.</value></data>
+  <data name="Administration.Windows.Review" xml:space="preserve"><value>Revisão da ação administrativa</value></data>
+  <data name="Administration.Windows.AclNotice" xml:space="preserve"><value>As ACLs existentes serão preservadas; somente Modify será adicionada ao SID indicado.</value></data>
+  <data name="Administration.Windows.Confirm" xml:space="preserve"><value>Confirmo que revisei esta ação administrativa.</value></data>
+  <data name="Administration.Windows.Execute" xml:space="preserve"><value>Executar ação administrativa</value></data>
+  <data name="Administration.Drivers.Unavailable" xml:space="preserve"><value>Diagnósticos locais indisponíveis</value></data>
+  <data name="Administration.Drivers.LocalOnly" xml:space="preserve"><value>Portas COM e ferramentas locais não são projetadas sobre um perfil remoto.</value></data>
+  <data name="Administration.Drivers.Configured" xml:space="preserve"><value>Dispositivos configurados</value></data>
+  <data name="Administration.Drivers.PassiveNotice" xml:space="preserve"><value>A enumeração é passiva; nenhuma porta COM é aberta.</value></data>
+  <data name="Administration.Drivers.NoConfigured" xml:space="preserve"><value>Nenhum driver configurado foi encontrado em ups.conf.</value></data>
+  <data name="Administration.Drivers.Driver" xml:space="preserve"><value>Driver</value></data>
+  <data name="Administration.Drivers.Port" xml:space="preserve"><value>Porta</value></data>
+  <data name="Administration.Drivers.Protocol" xml:space="preserve"><value>Protocolo</value></data>
+  <data name="Administration.Drivers.Executable" xml:space="preserve"><value>Executável resolvido</value></data>
+  <data name="Administration.Drivers.ComPorts" xml:space="preserve"><value>Portas COM detectadas</value></data>
+  <data name="Administration.Drivers.NoComPorts" xml:space="preserve"><value>Nenhuma porta COM foi detectada.</value></data>
+  <data name="Administration.Drivers.Diagnostics" xml:space="preserve"><value>Diagnósticos do NUT</value></data>
+  <data name="Administration.Drivers.UpsdrvctlHelp" xml:space="preserve"><value>Ajuda do upsdrvctl</value></data>
+  <data name="Administration.Drivers.List" xml:space="preserve"><value>Listar drivers</value></data>
+  <data name="Administration.Drivers.Status" xml:space="preserve"><value>Consultar status</value></data>
+  <data name="Administration.Drivers.DryRun" xml:space="preserve"><value>Validar configuração (simulação)</value></data>
+  <data name="Administration.Drivers.DriverHelp" xml:space="preserve"><value>Ajuda do driver</value></data>
+  <data name="Administration.Drivers.DriverVersion" xml:space="preserve"><value>Versão do driver</value></data>
+  <data name="Administration.Drivers.Variables" xml:space="preserve"><value>Listar variáveis</value></data>
+  <data name="Administration.Drivers.DataDump" xml:space="preserve"><value>Coletar diagnóstico do dispositivo</value></data>
+  <data name="Administration.Drivers.DryRunNotice" xml:space="preserve"><value>A validação usa o modo de teste do NUT e não inicia o driver.</value></data>
+  <data name="Administration.Drivers.Review" xml:space="preserve"><value>Revisão do diagnóstico</value></data>
+  <data name="Administration.Drivers.HardwareContact" xml:space="preserve"><value>Contato com hardware</value></data>
+  <data name="Administration.Drivers.HardwareWarning" xml:space="preserve"><value>Este diagnóstico abrirá o dispositivo configurado por meio do driver NUT.</value></data>
+  <data name="Administration.Drivers.Confirm" xml:space="preserve"><value>Confirmo que revisei este diagnóstico.</value></data>
+  <data name="Administration.Drivers.Execute" xml:space="preserve"><value>Executar diagnóstico</value></data>
+  <data name="Administration.Drivers.Result" xml:space="preserve"><value>Resultado do diagnóstico</value></data>
+  <data name="Administration.Remote.Unavailable" xml:space="preserve"><value>Acesso remoto não configurado</value></data>
+  <data name="Administration.Remote.RemoteOnly" xml:space="preserve"><value>O perfil ativo usa gerenciamento local; não há transporte remoto a conectar.</value></data>
+  <data name="Administration.Remote.Connection" xml:space="preserve"><value>Conexão remota</value></data>
+  <data name="Administration.Remote.SshPort" xml:space="preserve"><value>Porta SSH</value></data>
+  <data name="Administration.Remote.TrustedFingerprint" xml:space="preserve"><value>Fingerprint confiado</value></data>
+  <data name="Administration.Remote.Share" xml:space="preserve"><value>Compartilhamento</value></data>
+  <data name="Administration.Remote.SessionPassword" xml:space="preserve"><value>Senha somente desta sessão</value></data>
+  <data name="Administration.Remote.RememberCredential" xml:space="preserve"><value>Proteger esta credencial no Windows</value></data>
+  <data name="Administration.Remote.ConnectPassword" xml:space="preserve"><value>Conectar com senha</value></data>
+  <data name="Administration.Remote.OptionalPassphrase" xml:space="preserve"><value>Passphrase opcional desta sessão</value></data>
+  <data name="Administration.Remote.RememberPassphrase" xml:space="preserve"><value>Proteger esta passphrase no Windows</value></data>
+  <data name="Administration.Remote.ConnectKey" xml:space="preserve"><value>Conectar com chave configurada</value></data>
+  <data name="Administration.Remote.SmbSessionPassword" xml:space="preserve"><value>Senha SMB somente desta sessão</value></data>
+  <data name="Administration.Remote.ConnectSmb" xml:space="preserve"><value>Conectar via SMB</value></data>
+  <data name="Administration.Remote.ConnectCurrentIdentity" xml:space="preserve"><value>Conectar com identidade atual do Windows</value></data>
+  <data name="Administration.Remote.ConnectStored" xml:space="preserve"><value>Conectar com credencial protegida</value></data>
+  <data name="Administration.Remote.ForgetStored" xml:space="preserve"><value>Esquecer credencial protegida</value></data>
+  <data name="Administration.Remote.Disconnect" xml:space="preserve"><value>Desconectar</value></data>
+  <data name="Administration.Remote.HostKeyReview" xml:space="preserve"><value>Revisão da chave do host</value></data>
+  <data name="Administration.Remote.HostKeyNotice" xml:space="preserve"><value>A chave apresentada será salva somente após confirmação explícita.</value></data>
+  <data name="Administration.Remote.TrustHostKey" xml:space="preserve"><value>Confiar nesta chave do host</value></data>
+  <data name="Administration.Remote.Directory" xml:space="preserve"><value>Diretório de configuração remoto</value></data>
+  <data name="Administration.Remote.DirectoryWatermark" xml:space="preserve"><value>Informe ou navegue até um diretório remoto</value></data>
+  <data name="Administration.Remote.Browse" xml:space="preserve"><value>Navegar</value></data>
+  <data name="Administration.Remote.Parent" xml:space="preserve"><value>Diretório pai</value></data>
+  <data name="Administration.Remote.Validate" xml:space="preserve"><value>Validar diretório</value></data>
+  <data name="Administration.Remote.UseDirectory" xml:space="preserve"><value>Usar este diretório</value></data>
+  <data name="Administration.Remote.ProbeWrite" xml:space="preserve"><value>Verificar escrita segura</value></data>
+  <data name="Common.InstallationDirectory" xml:space="preserve"><value>Diretório da instalação</value></data>
+  <data name="Common.ConfigurationDirectory" xml:space="preserve"><value>Diretório de configuração</value></data>
+  <data name="Common.Version" xml:space="preserve"><value>Versão</value></data>
+  <data name="Common.RefreshDetection" xml:space="preserve"><value>Detectar novamente</value></data>
+  <data name="Common.SelectFolder" xml:space="preserve"><value>Selecionar pasta…</value></data>
+  <data name="Common.File" xml:space="preserve"><value>Arquivo</value></data>
+  <data name="Common.State" xml:space="preserve"><value>Estado</value></data>
+  <data name="Common.Encoding" xml:space="preserve"><value>Codificação</value></data>
+  <data name="Common.Line" xml:space="preserve"><value>Linha</value></data>
+  <data name="Common.DiscardChanges" xml:space="preserve"><value>Descartar alterações</value></data>
+  <data name="Common.Reload" xml:space="preserve"><value>Recarregar</value></data>
+  <data name="Common.ReviewChanges" xml:space="preserve"><value>Revisar alterações</value></data>
+  <data name="Common.Result" xml:space="preserve"><value>Resultado</value></data>
+  <data name="Common.Backup" xml:space="preserve"><value>Backup</value></data>
+  <data name="Common.Recovery" xml:space="preserve"><value>Recuperação</value></data>
+  <data name="Common.RemoteTemporary" xml:space="preserve"><value>Temporário remoto</value></data>
+  <data name="Common.RefreshState" xml:space="preserve"><value>Atualizar estado</value></data>
+  <data name="Common.Refresh" xml:space="preserve"><value>Atualizar</value></data>
+  <data name="Common.User" xml:space="preserve"><value>Usuário</value></data>
+  <data name="Common.Directory" xml:space="preserve"><value>Diretório</value></data>
+  <data name="Common.Operation" xml:space="preserve"><value>Operação</value></data>
+  <data name="Common.Tool" xml:space="preserve"><value>Ferramenta</value></data>
+  <data name="Common.Host" xml:space="preserve"><value>Host</value></data>
+  <data name="Common.Authentication" xml:space="preserve"><value>Autenticação</value></data>
+  <data name="ServiceState.Running" xml:space="preserve"><value>Em execução</value></data>
+  <data name="ServiceState.Stopped" xml:space="preserve"><value>Parado</value></data>
+  <data name="ServiceState.StartPending" xml:space="preserve"><value>Iniciando</value></data>
+  <data name="ServiceState.StopPending" xml:space="preserve"><value>Parando</value></data>
+  <data name="ServiceState.Paused" xml:space="preserve"><value>Pausado</value></data>
+  <data name="ServiceState.Failed" xml:space="preserve"><value>Falha</value></data>
+  <data name="StartMode.Automatic" xml:space="preserve"><value>Automática</value></data>
+  <data name="StartMode.Manual" xml:space="preserve"><value>Manual</value></data>
+  <data name="StartMode.Disabled" xml:space="preserve"><value>Desabilitada</value></data>
+  <data name="DriverState.Available" xml:space="preserve"><value>Executável localizado</value></data>
+  <data name="DriverState.Missing" xml:space="preserve"><value>Executável ausente</value></data>
+  <data name="DriverState.Untrusted" xml:space="preserve"><value>Executável não confiável</value></data>
+  <data name="DriverState.InvalidName" xml:space="preserve"><value>Nome inválido</value></data>
+  <data name="DriverState.NotApplicable" xml:space="preserve"><value>Não aplicável</value></data>
+  <data name="Status.Fresh" xml:space="preserve"><value>Atualizado</value></data>
+  <data name="Overview.Title" xml:space="preserve"><value>Visão geral</value></data>
+  <data name="Overview.Description" xml:space="preserve"><value>Acompanhe somente os estados e métricas reais fornecidos pelo NUT.</value></data>
+  <data name="Overview.LoadError" xml:space="preserve"><value>Não foi possível carregar os dados do UPS.</value></data>
+  <data name="Overview.SelectedUps" xml:space="preserve"><value>UPS selecionado</value></data>
+  <data name="Overview.DescriptionLabel" xml:space="preserve"><value>Descrição</value></data>
+  <data name="Overview.Manufacturer" xml:space="preserve"><value>Fabricante</value></data>
+  <data name="Overview.Model" xml:space="preserve"><value>Modelo</value></data>
+  <data name="Overview.NutName" xml:space="preserve"><value>Nome NUT</value></data>
+  <data name="Overview.State" xml:space="preserve"><value>Estado operacional</value></data>
+  <data name="Overview.NoStatus" xml:space="preserve"><value>Nenhum token de estado está disponível.</value></data>
+  <data name="Overview.Connection" xml:space="preserve"><value>Conexão e atualização</value></data>
+  <data name="Overview.Freshness" xml:space="preserve"><value>Atualização</value></data>
+  <data name="Overview.LastReading" xml:space="preserve"><value>Última leitura</value></data>
+  <data name="Overview.Metrics" xml:space="preserve"><value>Métricas disponíveis</value></data>
+  <data name="Overview.Metric.BatteryCharge" xml:space="preserve"><value>Carga da bateria</value></data>
+  <data name="Overview.Metric.Runtime" xml:space="preserve"><value>Autonomia</value></data>
+  <data name="Overview.Metric.Load" xml:space="preserve"><value>Carga do UPS</value></data>
+  <data name="Overview.Metric.InputVoltage" xml:space="preserve"><value>Tensão de entrada</value></data>
+  <data name="Overview.Metric.OutputVoltage" xml:space="preserve"><value>Tensão de saída</value></data>
+  <data name="Overview.Metric.Frequency" xml:space="preserve"><value>Frequência</value></data>
+  <data name="Overview.Metric.Temperature" xml:space="preserve"><value>Temperatura</value></data>
+  <data name="Overview.Metric.BatteryVoltage" xml:space="preserve"><value>Tensão da bateria</value></data>
+  <data name="UpsStatus.Online" xml:space="preserve"><value>Em rede</value></data>
+  <data name="UpsStatus.OnBattery" xml:space="preserve"><value>Em bateria</value></data>
+  <data name="UpsStatus.LowBattery" xml:space="preserve"><value>Bateria baixa</value></data>
+  <data name="UpsStatus.ReplaceBattery" xml:space="preserve"><value>Substituir bateria</value></data>
+  <data name="UpsStatus.Charging" xml:space="preserve"><value>Carregando</value></data>
+  <data name="UpsStatus.Discharging" xml:space="preserve"><value>Descarregando</value></data>
+  <data name="UpsStatus.Bypass" xml:space="preserve"><value>Bypass</value></data>
+  <data name="UpsStatus.OutputOff" xml:space="preserve"><value>Saída desligada</value></data>
+  <data name="UpsStatus.Overloaded" xml:space="preserve"><value>Sobrecarga</value></data>
+  <data name="UpsStatus.Calibration" xml:space="preserve"><value>Calibração</value></data>
+  <data name="Severity.Normal" xml:space="preserve"><value>Normal</value></data>
+  <data name="Severity.Informational" xml:space="preserve"><value>Informativo</value></data>
+  <data name="Severity.Warning" xml:space="preserve"><value>Aviso</value></data>
+  <data name="Severity.Critical" xml:space="preserve"><value>Crítico</value></data>
+  <data name="Devices.Title" xml:space="preserve"><value>Dispositivos</value></data>
+  <data name="Devices.Description" xml:space="preserve"><value>Descubra UPS, selecione um dispositivo e consulte as variáveis NUT preservadas.</value></data>
+  <data name="Devices.Disconnected" xml:space="preserve"><value>O servidor NUT está desconectado; a descoberta não está disponível.</value></data>
+  <data name="Devices.NoDevices" xml:space="preserve"><value>Nenhum UPS foi encontrado no servidor conectado.</value></data>
+  <data name="Devices.DiscoveryError" xml:space="preserve"><value>Não foi possível descobrir os UPS disponíveis.</value></data>
+  <data name="Devices.DetailsError" xml:space="preserve"><value>Não foi possível carregar os detalhes do UPS.</value></data>
+  <data name="Devices.Available" xml:space="preserve"><value>UPS disponíveis</value></data>
+  <data name="Devices.EmptyHelp" xml:space="preserve"><value>Atualize depois de verificar o perfil e o estado da conexão.</value></data>
+  <data name="Devices.NoSelection" xml:space="preserve"><value>Nenhum UPS selecionado</value></data>
+  <data name="Devices.NoSelection.Help" xml:space="preserve"><value>Selecione um UPS na lista para consultar identidade e variáveis.</value></data>
+  <data name="Devices.Identity.Description" xml:space="preserve"><value>Descrição</value></data>
+  <data name="Devices.Identity.Manufacturer" xml:space="preserve"><value>Fabricante</value></data>
+  <data name="Devices.Identity.Model" xml:space="preserve"><value>Modelo</value></data>
+  <data name="Devices.Identity.Serial" xml:space="preserve"><value>Número de série</value></data>
+  <data name="Devices.RawVariables" xml:space="preserve"><value>Variáveis NUT</value></data>
+  <data name="Devices.NoVariables" xml:space="preserve"><value>Nenhuma variável está disponível para o UPS selecionado.</value></data>
+  <data name="Diagnostics.Title" xml:space="preserve"><value>Diagnóstico</value></data>
+  <data name="Diagnostics.Description" xml:space="preserve"><value>Informações somente leitura, agrupadas e sanitizadas sobre o estado atual.</value></data>
+  <data name="Diagnostics.Group.Overview" xml:space="preserve"><value>Visão geral</value></data>
+  <data name="Diagnostics.Group.Connection" xml:space="preserve"><value>Conexão</value></data>
+  <data name="Diagnostics.Group.Polling" xml:space="preserve"><value>Polling</value></data>
+  <data name="Diagnostics.Group.Discovery" xml:space="preserve"><value>Descoberta</value></data>
+  <data name="Diagnostics.Group.Environment" xml:space="preserve"><value>Aplicação e ambiente</value></data>
+  <data name="Diagnostics.Group.Technical" xml:space="preserve"><value>Técnico</value></data>
+  <data name="Diagnostics.Copy" xml:space="preserve"><value>Copiar diagnóstico</value></data>
+  <data name="Diagnostics.Copied" xml:space="preserve"><value>Diagnóstico copiado.</value></data>
+  <data name="Diagnostics.CopyFailed" xml:space="preserve"><value>Não foi possível copiar o diagnóstico.</value></data>
+  <data name="Diagnostics.SelectInstallation" xml:space="preserve"><value>Selecionar instalação local do NUT</value></data>
+  <data name="Diagnostics.Runtime" xml:space="preserve"><value>Runtime</value></data>
+  <data name="Diagnostics.Snapshot" xml:space="preserve"><value>Snapshot</value></data>
+  <data name="Diagnostics.LiveServer" xml:space="preserve"><value>Servidor NUT real</value></data>
+  <data name="Diagnostics.CurrentLocalProfile" xml:space="preserve"><value>Perfil local atual</value></data>
+  <data name="Diagnostics.NoUpsSelected" xml:space="preserve"><value>Nenhum UPS selecionado</value></data>
+  <data name="Diagnostics.SnapshotUnavailable" xml:space="preserve"><value>Sem snapshot disponível</value></data>
+  <data name="Diagnostics.SnapshotAvailable" xml:space="preserve"><value>Snapshot disponível</value></data>
+  <data name="Diagnostics.NoError" xml:space="preserve"><value>Nenhum erro</value></data>
+  <data name="Diagnostics.SanitizedError" xml:space="preserve"><value>Falha registrada; detalhes sensíveis foram omitidos.</value></data>
+  <data name="Diagnostics.InstallationFound" xml:space="preserve"><value>Instalação NUT encontrada</value></data>
+  <data name="Diagnostics.InstallationNotFound" xml:space="preserve"><value>Nenhuma instalação NUT local encontrada</value></data>
+  <data name="Diagnostics.NoExecutables" xml:space="preserve"><value>Nenhum executável encontrado</value></data>
+  <data name="Diagnostics.NoFiles" xml:space="preserve"><value>Nenhum arquivo encontrado</value></data>
+  <data name="Diagnostics.FileAvailable" xml:space="preserve"><value>Disponível</value></data>
+  <data name="Diagnostics.FileUnreadable" xml:space="preserve"><value>Sem acesso de leitura</value></data>
+  <data name="Diagnostics.FileMissing" xml:space="preserve"><value>Ausente</value></data>
+  <data name="Diagnostics.RemoteNoLocalDetection" xml:space="preserve"><value>O perfil ativo usa gerenciamento remoto; a instalação local não será detectada.</value></data>
+  <data name="Diagnostics.DetectionUnavailable" xml:space="preserve"><value>A detecção local não está disponível.</value></data>
+  <data name="Diagnostics.RemoteNoLocalInspection" xml:space="preserve"><value>O perfil ativo usa gerenciamento remoto; a instalação local não será inspecionada.</value></data>
+  <data name="Diagnostics.InspectionFailed" xml:space="preserve"><value>Não foi possível inspecionar a instalação local do NUT.</value></data>
+  <data name="Diagnostics.Application" xml:space="preserve"><value>Aplicação</value></data>
+  <data name="Diagnostics.Architecture" xml:space="preserve"><value>Arquitetura</value></data>
+  <data name="Diagnostics.Profile" xml:space="preserve"><value>Perfil gerenciado</value></data>
+  <data name="Diagnostics.Source" xml:space="preserve"><value>Origem dos dados</value></data>
+  <data name="Diagnostics.DiscoveredUps" xml:space="preserve"><value>UPS descobertos</value></data>
+  <data name="Diagnostics.SelectedUps" xml:space="preserve"><value>UPS selecionado</value></data>
+  <data name="Diagnostics.DetectionSource" xml:space="preserve"><value>Origem da detecção</value></data>
+  <data name="Diagnostics.Executables" xml:space="preserve"><value>Executáveis encontrados</value></data>
+  <data name="Diagnostics.ConfigurationFiles" xml:space="preserve"><value>Arquivos de configuração</value></data>
+  <data name="Common.NotConfigured" xml:space="preserve"><value>Não configurado</value></data>
+  <data name="Diagnostics.VersionSource.Metadata" xml:space="preserve"><value>Metadata do arquivo</value></data>
+  <data name="Diagnostics.VersionSource.Fallback" xml:space="preserve"><value>Consulta local somente leitura</value></data>
+  <data name="Common.Unknown" xml:space="preserve"><value>Desconhecido</value></data>
+  <data name="Diagnostics.AccessManage" xml:space="preserve"><value>Permitir gerenciamento</value></data>
+  <data name="Diagnostics.DataSource.NutServer" xml:space="preserve"><value>Servidor NUT</value></data>
+  <data name="Common.Available" xml:space="preserve"><value>Disponível</value></data>
+  <data name="Common.Unavailable" xml:space="preserve"><value>Indisponível</value></data>
+  <data name="Common.NotApplicable" xml:space="preserve"><value>Não aplicável</value></data>
+  <data name="Common.NotConfigured.Feminine" xml:space="preserve"><value>Não configurada</value></data>
+  <data name="Authentication.Password" xml:space="preserve"><value>Senha</value></data>
+  <data name="Authentication.PrivateKey" xml:space="preserve"><value>Chave privada</value></data>
+  <data name="Authentication.ExplicitSessionCredentials" xml:space="preserve"><value>Credenciais explícitas da sessão</value></data>
+  <data name="Authentication.CurrentWindowsUser" xml:space="preserve"><value>Usuário Windows atual</value></data>
+  <data name="Platform.NonWindows" xml:space="preserve"><value>Não Windows</value></data>
+  <data name="Administration.Context.CurrentLocalProfile" xml:space="preserve"><value>Perfil local atual</value></data>
+  <data name="Administration.Remote.ConnectSftp" xml:space="preserve"><value>Conecte a sessão SSH/SFTP para gerenciar a configuração remota.</value></data>
+  <data name="Administration.Remote.ConnectSmbPrompt" xml:space="preserve"><value>Conecte a sessão SMB para gerenciar os arquivos NUT remotos.</value></data>
+  <data name="Administration.Local.Available" xml:space="preserve"><value>Gerenciamento local disponível conforme as permissões do perfil.</value></data>
+  <data name="Remote.Credential.NotRequired" xml:space="preserve"><value>Nenhuma credencial protegida é necessária.</value></data>
+  <data name="Remote.Credential.Saved.Yes" xml:space="preserve"><value>Credencial salva: Sim</value></data>
+  <data name="Remote.Credential.Saved.No" xml:space="preserve"><value>Credencial salva: Não</value></data>
+  <data name="Remote.Credential.Saved.Unavailable" xml:space="preserve"><value>Credencial salva: Indisponível</value></data>
+  <data name="Remote.Credential.QueryFailed" xml:space="preserve"><value>Não foi possível consultar a credencial protegida.</value></data>
+  <data name="Remote.Connection.Disconnected" xml:space="preserve"><value>Não conectado</value></data>
+  <data name="Remote.Connection.Connecting" xml:space="preserve"><value>Conectando</value></data>
+  <data name="Remote.Connection.HostKeyTrustRequired" xml:space="preserve"><value>Chave do host precisa ser confiada</value></data>
+  <data name="Remote.Connection.Connected" xml:space="preserve"><value>Conectado</value></data>
+  <data name="Remote.Connection.Validating" xml:space="preserve"><value>Validando diretório</value></data>
+  <data name="Remote.Connection.Ready" xml:space="preserve"><value>Diretório validado</value></data>
+  <data name="Remote.Connection.AuthenticationFailed" xml:space="preserve"><value>Falha de autenticação</value></data>
+  <data name="Remote.Connection.HostKeyMismatch" xml:space="preserve"><value>Chave do host não corresponde</value></data>
+  <data name="Remote.Connection.AccessDenied" xml:space="preserve"><value>Acesso negado</value></data>
+  <data name="Remote.Connection.Timeout" xml:space="preserve"><value>Tempo limite excedido</value></data>
+  <data name="Remote.Connection.Failed" xml:space="preserve"><value>Falha de conexão</value></data>
+  <data name="Remote.Capability.ValidateForRead" xml:space="preserve"><value>Valide um diretório remoto para habilitar a leitura.</value></data>
+  <data name="Remote.Capability.SmbVerified" xml:space="preserve"><value>Verificada para este diretório SMB</value></data>
+  <data name="Remote.Capability.SshVerified" xml:space="preserve"><value>Verificada para Windows/OpenSSH</value></data>
+  <data name="Remote.Capability.SmbProbeRequired" xml:space="preserve"><value>A escrita SMB requer verificação explícita de File.Replace neste diretório.</value></data>
+  <data name="Remote.Capability.SshProbeRequired" xml:space="preserve"><value>A escrita remota requer verificação explícita de capacidade em um servidor Windows/OpenSSH.</value></data>
+  <data name="Remote.Capability.CriticalCleanup" xml:space="preserve"><value>CRÍTICO — o arquivo temporário remoto pode necessitar de limpeza manual antes de tentar novamente.</value></data>
+  <data name="Remote.Message.EnterSmbPassword" xml:space="preserve"><value>Informe a senha da sessão SMB.</value></data>
+  <data name="Remote.Message.RequiresPrivateKey" xml:space="preserve"><value>Este perfil exige autenticação SSH por chave privada.</value></data>
+  <data name="Remote.Message.EnterSessionCredential" xml:space="preserve"><value>Informe uma credencial de sessão para conectar.</value></data>
+  <data name="Remote.Message.RequiresPassword" xml:space="preserve"><value>Este perfil exige autenticação SSH por senha.</value></data>
+  <data name="Remote.Message.SelectPrivateKey" xml:space="preserve"><value>Selecione uma chave privada para conectar.</value></data>
+  <data name="Remote.Message.ProtectedCredentialUnavailable" xml:space="preserve"><value>A credencial protegida não está disponível.</value></data>
+  <data name="Remote.Message.ConfigurePrivateKeyFirst" xml:space="preserve"><value>Configure a chave privada no perfil antes de usar a passphrase salva.</value></data>
+  <data name="Remote.Message.CredentialRemoved" xml:space="preserve"><value>A credencial protegida foi removida.</value></data>
+  <data name="Remote.Message.CredentialRemoveFailed" xml:space="preserve"><value>Não foi possível remover a credencial protegida.</value></data>
+  <data name="Remote.Message.HostKeyProfileChanged" xml:space="preserve"><value>A chave não foi salva porque os metadados do perfil foram alterados. Revise o perfil e conecte novamente.</value></data>
+  <data name="Remote.Message.HostKeyTrusted" xml:space="preserve"><value>A chave do host foi confiada. Conecte novamente para iniciar a sessão SSH.</value></data>
+  <data name="Remote.Message.HostKeyTrustCancelled" xml:space="preserve"><value>A confiança da chave do host foi cancelada.</value></data>
+  <data name="Remote.Message.HostKeySaveFailed" xml:space="preserve"><value>Não foi possível salvar a chave confiável do host.</value></data>
+  <data name="Remote.Message.BrowseCancelled" xml:space="preserve"><value>A navegação remota foi cancelada.</value></data>
+  <data name="Remote.Message.BrowseFailed" xml:space="preserve"><value>Não foi possível listar o diretório remoto selecionado.</value></data>
+  <data name="Remote.Message.ValidationCancelled" xml:space="preserve"><value>A validação do diretório remoto foi cancelada.</value></data>
+  <data name="Remote.Message.ValidationFailed" xml:space="preserve"><value>Não foi possível validar o diretório remoto.</value></data>
+  <data name="Remote.Message.DirectoryProfileChanged" xml:space="preserve"><value>O diretório não foi salvo porque os metadados do perfil foram alterados.</value></data>
+  <data name="Remote.Message.DirectorySaved" xml:space="preserve"><value>O diretório remoto foi salvo no perfil. A conexão de monitoring não foi alterada.</value></data>
+  <data name="Remote.Message.DirectorySaveCancelled" xml:space="preserve"><value>O salvamento do diretório remoto foi cancelado.</value></data>
+  <data name="Remote.Message.DirectorySaveFailed" xml:space="preserve"><value>Não foi possível salvar o diretório remoto no perfil.</value></data>
+  <data name="Remote.Message.WriteProbeCancelled" xml:space="preserve"><value>A verificação de capacidade de gravação foi cancelada.</value></data>
+  <data name="Remote.Message.WriteProbeFailed" xml:space="preserve"><value>Não foi possível verificar a capacidade de gravação remota.</value></data>
+  <data name="Remote.Message.Disconnected" xml:space="preserve"><value>Sessão remota desconectada.</value></data>
+  <data name="Remote.Message.OutcomeUnknown" xml:space="preserve"><value>A operação remota teve resultado indeterminado. Desconecte, conecte novamente e refaça a validação de capacidade antes de gravar.</value></data>
+  <data name="Remote.Message.ConfigureSshUser" xml:space="preserve"><value>Configure um usuário SSH antes de conectar.</value></data>
+  <data name="Remote.Message.ConnectionCancelled" xml:space="preserve"><value>A conexão remota foi cancelada.</value></data>
+  <data name="Remote.Message.ConnectionFailed" xml:space="preserve"><value>Não foi possível estabelecer a conexão remota.</value></data>
+  <data name="Remote.Message.SmbConnectionCancelled" xml:space="preserve"><value>A conexão SMB foi cancelada.</value></data>
+  <data name="Remote.Message.SmbConnectionFailed" xml:space="preserve"><value>Não foi possível estabelecer a conexão SMB.</value></data>
+  <data name="Remote.Message.CredentialStoreUnavailable" xml:space="preserve"><value>Conectado, mas o armazenamento protegido de credenciais não está disponível.</value></data>
+  <data name="Remote.Message.CredentialSaved" xml:space="preserve"><value>Conectado. A credencial foi salva no Windows.</value></data>
+  <data name="Remote.Message.CredentialSaveFailed" xml:space="preserve"><value>Conectado, mas a credencial não pôde ser salva.</value></data>
+  <data name="Diagnostics.Report.Title" xml:space="preserve"><value>Diagnóstico do NutManager</value></data>
+  <data name="Diagnostics.Report.ApplicationVersion" xml:space="preserve"><value>Versão da aplicação</value></data>
+  <data name="Diagnostics.Report.Runtime" xml:space="preserve"><value>Runtime</value></data>
+  <data name="Diagnostics.Report.OperatingSystem" xml:space="preserve"><value>Sistema operacional</value></data>
+  <data name="Diagnostics.Report.Architecture" xml:space="preserve"><value>Arquitetura</value></data>
+  <data name="Diagnostics.Report.Mode" xml:space="preserve"><value>Modo</value></data>
+  <data name="Diagnostics.Report.Profile" xml:space="preserve"><value>Perfil</value></data>
+  <data name="Diagnostics.Report.MonitoringEndpoint" xml:space="preserve"><value>Endpoint de monitoramento</value></data>
+  <data name="Diagnostics.Report.ManagementMode" xml:space="preserve"><value>Modo de gerenciamento</value></data>
+  <data name="Diagnostics.Report.Access" xml:space="preserve"><value>Acesso</value></data>
+  <data name="Diagnostics.Report.Connection" xml:space="preserve"><value>Conexão</value></data>
+  <data name="Diagnostics.Report.Freshness" xml:space="preserve"><value>Atualidade dos dados</value></data>
+  <data name="Diagnostics.Report.Snapshot" xml:space="preserve"><value>Snapshot</value></data>
+  <data name="Diagnostics.Report.Source" xml:space="preserve"><value>Origem</value></data>
+  <data name="Diagnostics.Report.DiscoveredUps" xml:space="preserve"><value>UPS descobertos</value></data>
+  <data name="Diagnostics.Report.SelectedUps" xml:space="preserve"><value>UPS selecionado</value></data>
+  <data name="Diagnostics.Report.LocalInstallation" xml:space="preserve"><value>Instalação local</value></data>
+  <data name="Diagnostics.Report.NutVersion" xml:space="preserve"><value>Versão do NUT</value></data>
+  <data name="Diagnostics.Report.DetectionSource" xml:space="preserve"><value>Origem da detecção</value></data>
+  <data name="Diagnostics.Report.ErrorState" xml:space="preserve"><value>Estado de erro</value></data>
+  <data name="Diagnostics.Report.None" xml:space="preserve"><value>Nenhum</value></data>
+  <data name="Diagnostics.Report.PresentRedacted" xml:space="preserve"><value>Presente (detalhes omitidos)</value></data>
 </root>

@@ -2,7 +2,7 @@
 
 ## Status and purpose
 
-The shared Windows-first presentation foundation is implemented. It modernizes the Avalonia shell without changing NUT, safe-write, remote-transport, credential, driver, or privilege boundaries. T24A now applies that foundation to managed-server profiles; page decomposition in T24B and semantic configuration work in T25+ remain future work.
+The shared Windows-first presentation foundation is implemented. It modernizes the Avalonia shell without changing NUT, safe-write, remote-transport, credential, driver, or privilege boundaries. T24A applies that foundation to managed-server profiles and T24B applies it to current operational pages; semantic configuration work remains T25+.
 
 ## Implemented shared presentation layer
 
@@ -30,7 +30,7 @@ Presentation
 
 `00_overview_reference.png` and `00_ups_conf_reference.png` are the primary fidelity targets at 1536×1024. They define shell proportions, surface hierarchy, spacing, typography, icon scale, selection treatment, semantic colors, and the future review-drawer proportions. `01_configuracoes.png` through `09_sobre.png` are secondary storyboards for information architecture and reusable component patterns; they are not evidence that unsupported commands or backends exist.
 
-Phase A validates the shared shell against those primary references. T24B owns page-level fidelity for Overview, Devices, Diagnostics, Administration, Settings, and any approved About surface. T25+ owns the graphical configuration and populated review-drawer fidelity.
+Phase A validates the shared shell against those primary references. T24B supplies responsive current-page composition for Overview, Devices, Diagnostics, and Administration without inventing unsupported health, history, test, or service capabilities. T25+ owns graphical configuration and populated review-drawer fidelity.
 
 ## Shell and responsive states
 
@@ -61,9 +61,9 @@ The header uses a compact PathIcon sun/moon toggle. System theme remains availab
 
 The resource dictionaries define spacing 4/8/12/16/20/24/32; radii 6/8/12/16; a 38 px standard control height; shell/page/card measurements; and 140/180/220 ms motion tokens. Typography uses Segoe UI Variable with Segoe UI and Arial fallbacks: product title 21, page title 27, section title 18, body 14, and metadata 12. Reusable PathIcon geometries replace text glyphs in shell navigation and theme controls.
 
-`NutAccentBrush`, `NutAccentBrightBrush`, and `NutSelectionBrush` are product-owned tokens. `NutColors.axaml` supplies intentional Light and Dark surface/text palettes plus invariant accent, cyan, healthy, warning, critical, purple, focus, and unavailable semantics. Shell navigation and selected `ListBoxItem` presentation use these resources rather than the Windows accent, so red is never normal selection. Compatibility aliases keep existing page surfaces on the same themed palette while T24B remains pending. Option controls introduced by later tasks use localized presentation objects, not raw `Enum.ToString()` values.
+`NutAccentBrush`, `NutAccentBrightBrush`, and `NutSelectionBrush` are product-owned tokens. `NutColors.axaml` supplies intentional Light and Dark surface/text palettes plus invariant accent, cyan, healthy, warning, critical, purple, focus, and unavailable semantics. Shell navigation, Administration selectors, and selected `ListBoxItem` presentation use these resources rather than the Windows accent, so red is never normal selection. Localized presentation properties replace raw enum text on touched summaries. Option controls introduced by later tasks continue to use localized presentation objects, not `Enum.ToString()` values.
 
-The shell follows the one-scroll-owner rule: `MainWindow` contains no page-level `ScrollViewer`; its content host gives the selected page the available space, and each page remains responsible for its own vertical scrolling. Medium and Compact modes reduce shell content padding; Medium projects collapsed navigation and Compact uses overlay navigation rather than horizontal scrolling. T24B remains responsible for replacing rigid internal page layouts where needed.
+The shell follows the one-scroll-owner rule: `MainWindow` contains no page-level `ScrollViewer`; its content host gives the selected page the available space, and each page owns one vertical scroll surface. Medium and Compact modes reduce shell content padding; Medium projects collapsed navigation and Compact uses overlay navigation. T24B replaces rigid master/detail grids with responsive projection and wrap-based cards without ordinary horizontal scrolling.
 
 ## Managed-server Settings surface
 
@@ -84,7 +84,7 @@ Administration
 └── Remote Access
 ```
 
-Graphical forms are the primary configuration experience. Generated configuration is read-only Preview, Generated configuration, or Advanced inspection—not an embedded Notepad.
+T24B preserves the existing-entry editor and reviewed T14 preview inside NUT Configuration. Graphical semantic forms and generated configuration belong to T25+; no second writer was introduced.
 
 ## Accessibility and terminology
 

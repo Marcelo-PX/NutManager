@@ -41,7 +41,7 @@ Only one task should normally be in progress at a time.
 | T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
 | T24 | DONE | Modern responsive shell, design system and localization foundation | Windows-first responsive presentation and pt-BR/en-US foundation |
 | T24A | DONE | Managed server profile UX and typed validation | Reversible profiles, typed validation, deterministic migration, and explicit connection testing |
-| T24B | TODO | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
+| T24B | DONE | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
 | T25 | TODO | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
 | T26 | TODO | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
 | T27 | TODO | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
@@ -324,7 +324,7 @@ Redesign managed-server profiles and introduce reusable typed validation before 
 
 ## T24B — Current page and administration presentation decomposition
 
-**Status:** TODO
+**Status:** DONE
 
 **Dependency:** T24A
 

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NutManager.App.Localization;
 using NutManager.App.Services;
 using NutManager.Core.Administration;
 using NutManager.Core.Configuration;
@@ -28,7 +29,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private int _installationContextVersion;
 
     public AdministrationPageViewModel()
-        : this(null, null, null, null, null, null)
+        : this(null, null, null, null, null, null, UiLanguagePreference.PtBr)
     {
     }
 
@@ -38,12 +39,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ILocalNutWindowsAdministration? windowsAdministration = null,
         ILocalNutDriverDiagnostics? driverDiagnostics = null,
         ManagedNutServerRuntimeContext? profileContext = null,
-        RemoteManagementSessionViewModel? remoteManagement = null)
+        RemoteManagementSessionViewModel? remoteManagement = null,
+        UiLanguagePreference language = UiLanguagePreference.PtBr)
         : base(
-            "Administração",
+            new NutManagerLocalizer(language).Get("Administration.Title"),
             profileContext?.Profile.Management.Mode == NutManagementMode.Remote
-                ? "Gerencie a configuração remota do NUT com revisão, confirmação explícita e transporte SSH/SFTP seguro."
-                : "Edite entradas existentes da configuração local do NUT com revisão e confirmação explícita.")
+                ? new NutManagerLocalizer(language).Get("Administration.Description.Remote")
+                : new NutManagerLocalizer(language).Get("Administration.Description.Local"))
     {
         _installationDetector = installationDetector;
         _configurationPipeline = configurationPipeline;
@@ -51,6 +53,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _driverDiagnostics = driverDiagnostics;
         _profileContext = profileContext;
         _remoteManagement = remoteManagement;
+        Strings = new NutManagerLocalizer(language);
         if (_remoteManagement is not null)
         {
             _remoteManagement.ConfigurationContextChanged += OnRemoteConfigurationContextChanged;
@@ -59,9 +62,44 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ConfigurationFiles = new ObservableCollection<NutConfigurationFileItemViewModel>(CreateFileItems());
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         PreviewLines = Array.Empty<NutConfigurationPreviewLineViewModel>();
+        AdministrationSections = AdministrationPresentation.CreateSections(
+            Strings,
+            IsRemoteManagementProfile,
+            _profileContext?.Profile.AccessMode != ManagedNutServerAccessMode.ReadOnly);
+        _selectedAdministrationSection = AdministrationSections[0];
     }
 
+    public NutManagerLocalizer Strings { get; }
+
+    public IReadOnlyList<AdministrationSectionItemViewModel> AdministrationSections { get; }
+
+    [ObservableProperty]
+    private AdministrationSectionItemViewModel _selectedAdministrationSection;
+
+    public bool IsNutConfigurationSectionSelected => SelectedAdministrationSection.Section == AdministrationSection.NutConfiguration;
+    public bool IsWindowsServiceSectionSelected => SelectedAdministrationSection.Section == AdministrationSection.WindowsService;
+    public bool IsDevicesDriversSectionSelected => SelectedAdministrationSection.Section == AdministrationSection.DevicesAndDrivers;
+    public bool IsRemoteAccessSectionSelected => SelectedAdministrationSection.Section == AdministrationSection.RemoteAccess;
+
+    public string ManagementModeDisplayText => IsRemoteManagementProfile
+        ? Strings.Get("Management.Remote")
+        : Strings.Get("Management.Local");
+
+    public string AccessModeDisplayText => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly
+        ? Strings.Get("Access.ReadOnly")
+        : Strings.Get("Access.Manage");
+
+    public string TransportDisplayText => !IsRemoteManagementProfile
+        ? Strings.Get("Administration.Context.LocalTransport")
+        : _profileContext?.Profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
+            ? Strings.Get("Transport.Smb")
+            : Strings.Get("Transport.Sftp");
+
+    public string AdministrationAvailabilityText => SelectedAdministrationSection.AvailabilityText;
+
     public ObservableCollection<NutConfigurationFileItemViewModel> ConfigurationFiles { get; }
+
+    public bool IsConfigurationFileListEmpty => ConfigurationFiles.All(file => !file.CanLoad);
 
     [ObservableProperty]
     private IReadOnlyList<NutConfigurationSectionViewModel> _sections;
@@ -187,15 +225,15 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     private ManagedServerCapabilities Capabilities => _profileContext?.Capabilities ?? new ManagedServerCapabilities(true, true, true, true, true, false);
 
-    public string ManagedProfileName => _profileContext?.Profile.Name ?? "Perfil local atual";
+    public string ManagedProfileName => _profileContext?.Profile.Name ?? Strings.Get("Administration.Context.CurrentLocalProfile");
 
     public string ManagedProfileMonitoringEndpoint => _profileContext is null
         ? "localhost:3493"
         : $"{_profileContext.Endpoint.Host}:{_profileContext.Endpoint.Port}";
 
-    public string ManagedProfileManagementMode => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote ? "Remoto" : "Local";
+    public string ManagedProfileManagementMode => IsRemoteManagementProfile ? Strings.Get("Management.Remote") : Strings.Get("Management.Local");
 
-    public string ManagedProfileAccessMode => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? "Somente leitura" : "Permitir gerenciamento";
+    public string ManagedProfileAccessMode => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? Strings.Get("Access.ReadOnly") : Strings.Get("Access.Manage");
 
     public bool IsRemoteManagementProfile => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote;
 
@@ -204,14 +242,14 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public string RemoteManagementHost => _profileContext?.Profile.Management.ManagementHost ?? UnavailableText;
 
     public string RemoteConfigurationDirectory => _profileContext?.Profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
-        ? _profileContext.Profile.Management.SmbConfigurationDirectory ?? _profileContext.Profile.Management.SmbSharePath ?? "Não configurado"
-        : _profileContext?.Profile.Management.RemoteConfigurationDirectory ?? "Não configurado";
+        ? _profileContext.Profile.Management.SmbConfigurationDirectory ?? _profileContext.Profile.Management.SmbSharePath ?? Strings.Get("Common.NotConfigured")
+        : _profileContext?.Profile.Management.RemoteConfigurationDirectory ?? Strings.Get("Common.NotConfigured");
 
     public string ManagementAvailabilityText => IsRemoteManagementProfile
         ? _remoteManagement?.StatusMessage ?? (_remoteManagement?.IsSmb == true
-            ? "Conecte a sessão SMB para gerenciar os arquivos NUT remotos."
-            : "Conecte a sessão SSH/SFTP para gerenciar a configuração remota.")
-        : "Gerenciamento local disponível conforme as permissões do perfil.";
+            ? Strings.Get("Administration.Remote.ConnectSmbPrompt")
+            : Strings.Get("Administration.Remote.ConnectSftp"))
+        : Strings.Get("Administration.Local.Available");
 
     public RemoteManagementSessionViewModel? RemoteManagement => _remoteManagement;
 
@@ -269,7 +307,46 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool IsWindowsAdministrationAvailable => _windowsAdministration is not null && WindowsPermissionAssessment.State != NutPermissionState.Unknown;
 
+    public bool HasWindowsServices => WindowsServices.Count > 0;
+    public bool HasNoWindowsServices => !HasWindowsServices;
+    public bool HasSelectedWindowsService => SelectedWindowsService is not null;
+    public bool HasNoWindowsProcesses => WindowsProcesses.Count == 0;
+    public bool HasNoWindowsEvents => WindowsEvents.Count == 0;
+
+    public string SelectedWindowsServiceStateText => SelectedWindowsService?.State switch
+    {
+        NutServiceState.Running => Strings.Get("ServiceState.Running"),
+        NutServiceState.Stopped => Strings.Get("ServiceState.Stopped"),
+        NutServiceState.StartPending => Strings.Get("ServiceState.StartPending"),
+        NutServiceState.StopPending => Strings.Get("ServiceState.StopPending"),
+        NutServiceState.Paused => Strings.Get("ServiceState.Paused"),
+        NutServiceState.Failed => Strings.Get("ServiceState.Failed"),
+        _ => Strings.Get("Status.Unavailable")
+    };
+
+    public string SelectedWindowsServiceStartModeText => SelectedWindowsService?.StartMode switch
+    {
+        NutServiceStartMode.Automatic => Strings.Get("StartMode.Automatic"),
+        NutServiceStartMode.Manual => Strings.Get("StartMode.Manual"),
+        NutServiceStartMode.Disabled => Strings.Get("StartMode.Disabled"),
+        _ => Strings.Get("Status.Unavailable")
+    };
+
     public bool IsDriverDiagnosticsAvailable => _driverDiagnostics is not null;
+    public bool HasConfiguredDrivers => ConfiguredDrivers.Count > 0;
+    public bool HasNoConfiguredDrivers => !HasConfiguredDrivers;
+    public bool HasSelectedConfiguredDriver => SelectedConfiguredDriver is not null;
+    public bool HasNoComPorts => ComPorts.Count == 0;
+
+    public string SelectedConfiguredDriverStateText => SelectedConfiguredDriver?.Executable.State switch
+    {
+        NutDriverExecutableState.Available => Strings.Get("DriverState.Available"),
+        NutDriverExecutableState.Missing => Strings.Get("DriverState.Missing"),
+        NutDriverExecutableState.Untrusted => Strings.Get("DriverState.Untrusted"),
+        NutDriverExecutableState.InvalidName => Strings.Get("DriverState.InvalidName"),
+        NutDriverExecutableState.NotApplicable => Strings.Get("DriverState.NotApplicable"),
+        _ => Strings.Get("Status.Unavailable")
+    };
 
     public bool HasPendingDriverDiagnostic => PendingDriverDiagnostic is not null;
 
@@ -963,6 +1040,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             filesByName.TryGetValue(file.FileName, out var info);
             file.ApplyInstallationInfo(info);
         }
+
+        OnPropertyChanged(nameof(IsConfigurationFileListEmpty));
     }
 
     private async Task LoadWindowsAdministrationAsync(CancellationToken cancellationToken)
@@ -1396,9 +1475,47 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     partial void OnIsAdministrativeActionConfirmedChanged(bool value) => OnPropertyChanged(nameof(CanExecuteAdministrativeAction));
 
-    partial void OnSelectedWindowsServiceChanged(NutServiceInfo? value) => InvalidateAdministrativeAction();
+    partial void OnSelectedWindowsServiceChanged(NutServiceInfo? value)
+    {
+        InvalidateAdministrativeAction();
+        OnPropertyChanged(nameof(HasSelectedWindowsService));
+        OnPropertyChanged(nameof(SelectedWindowsServiceStateText));
+        OnPropertyChanged(nameof(SelectedWindowsServiceStartModeText));
+    }
 
-    partial void OnSelectedConfiguredDriverChanged(NutConfiguredDriver? value) => InvalidateDriverDiagnostic();
+    partial void OnWindowsServicesChanged(IReadOnlyList<NutServiceInfo> value)
+    {
+        OnPropertyChanged(nameof(HasWindowsServices));
+        OnPropertyChanged(nameof(HasNoWindowsServices));
+    }
+
+    partial void OnWindowsProcessesChanged(IReadOnlyList<NutProcessInfo> value) => OnPropertyChanged(nameof(HasNoWindowsProcesses));
+
+    partial void OnWindowsEventsChanged(IReadOnlyList<NutEventLogEntry> value) => OnPropertyChanged(nameof(HasNoWindowsEvents));
+
+    partial void OnSelectedConfiguredDriverChanged(NutConfiguredDriver? value)
+    {
+        InvalidateDriverDiagnostic();
+        OnPropertyChanged(nameof(HasSelectedConfiguredDriver));
+        OnPropertyChanged(nameof(SelectedConfiguredDriverStateText));
+    }
+
+    partial void OnConfiguredDriversChanged(IReadOnlyList<NutConfiguredDriver> value)
+    {
+        OnPropertyChanged(nameof(HasConfiguredDrivers));
+        OnPropertyChanged(nameof(HasNoConfiguredDrivers));
+    }
+
+    partial void OnComPortsChanged(IReadOnlyList<NutComPortInfo> value) => OnPropertyChanged(nameof(HasNoComPorts));
+
+    partial void OnSelectedAdministrationSectionChanged(AdministrationSectionItemViewModel value)
+    {
+        OnPropertyChanged(nameof(IsNutConfigurationSectionSelected));
+        OnPropertyChanged(nameof(IsWindowsServiceSectionSelected));
+        OnPropertyChanged(nameof(IsDevicesDriversSectionSelected));
+        OnPropertyChanged(nameof(IsRemoteAccessSectionSelected));
+        OnPropertyChanged(nameof(AdministrationAvailabilityText));
+    }
 
     partial void OnIsDriverDiagnosticConfirmedChanged(bool value) => OnPropertyChanged(nameof(CanExecuteDriverDiagnostic));
 
@@ -1438,6 +1555,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
                 validation?.IsValid == true ? GetRemoteFilePath(validation.Directory, file.FileName) : null,
                 present);
         }
+
+        OnPropertyChanged(nameof(IsConfigurationFileListEmpty));
 
         NotifyWorkflowPropertiesChanged();
     }
