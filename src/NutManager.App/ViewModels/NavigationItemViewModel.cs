@@ -5,11 +5,10 @@ namespace NutManager.App.ViewModels;
 
 public sealed partial class NavigationItemViewModel : ObservableObject
 {
-    public NavigationItemViewModel(AppPage page, string title, string symbol, ICommand navigateCommand)
+    public NavigationItemViewModel(AppPage page, string title, ICommand navigateCommand)
     {
         Page = page;
         _title = title;
-        Symbol = symbol;
         NavigateCommand = navigateCommand;
     }
 
@@ -18,7 +17,11 @@ public sealed partial class NavigationItemViewModel : ObservableObject
     [ObservableProperty]
     private string _title;
 
-    public string Symbol { get; }
+    public bool IsOverview => Page == AppPage.Overview;
+    public bool IsDevices => Page == AppPage.Devices;
+    public bool IsAdministration => Page == AppPage.Administration;
+    public bool IsDiagnostics => Page == AppPage.Diagnostics;
+    public bool IsSettings => Page == AppPage.Settings;
 
     public ICommand NavigateCommand { get; }
 

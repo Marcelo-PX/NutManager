@@ -7,15 +7,19 @@ T24 establishes the official UI cultures:
 - `pt-BR` — Português (Brasil), the initial/default culture;
 - `en-US` — English (United States).
 
-Settings gains **Appearance & Language** with System, Light, Dark, Português (Brasil), and English (United States). The language preference is non-secret per-user UI data. Runtime switching is preferred; a clearly communicated restart may be the initial implementation only when deterministic runtime resource replacement is not safe. The design must not prevent future runtime switching.
+Settings includes **Appearance & Language** with System, Light, Dark, Português (Brasil), and English (United States). The language preference is non-secret per-user UI data. The current implementation persists the selected culture and clearly requires an application restart for a complete switch; it does not attempt a partial live resource replacement. The design does not prevent a future deterministic runtime switch.
 
 ## Resource boundary
 
-All new user-facing T24–T29 strings use stable semantic keys rather than hard-coded text. Examples: `Nav.Overview`, `Status.Connected`, `Config.Ups.Driver`, `Config.Ups.Port`, `Config.Ups.Protocol`, `Config.Ups.RuntimeCalibration`, `Config.Review.Apply`, and `Config.Review.Discard`. Keys are not Portuguese text.
+The localization boundary is `NutManager.App/Localization`: `Strings.resx` is the neutral fallback, and `Strings.pt-BR.resx` and `Strings.en-US.resx` are the explicit official-culture resources. `NutManagerLocalizer` resolves the requested culture, falls back deterministically to `pt-BR`, and finally returns the semantic key when no resource exists, so a missing key does not crash the view.
 
-Validation follows the same convention: `Validation.Host.Required`, `Validation.Host.Invalid`, `Validation.Host.NoScheme`, `Validation.Port.Range`, `Validation.Profile.NameDuplicate`, `Validation.Remote.ManagementHostRequired`, and `Validation.Smb.ShareRootRequired`. Option labels and contextual help are localized resource values, never final enum names.
+Implemented shared groups are `App.*`, `Nav.*`, `Shell.*`, `Management.*`, `Access.*`, `Status.*`, `Appearance.*`, `Theme.*`, `Language.*`, and `Sidebar.*`. They cover the shell, navigation, connection/status presentation, active-profile summary, theme/language settings, simulation indicator, tooltips, and shell accessibility names. Tests require all declared keys in both cultures and exact key-set parity between `pt-BR` and `en-US`.
 
-Localize navigation, headings, labels, buttons, menus, tooltips, contextual help, validation, warnings, errors, semantic-review content, and accessibility names/descriptions. Resource fallback is deterministic: a missing resource cannot crash a page, alter a NUT value, or translate a technical token incorrectly. Tests must verify required keys and fallback in both cultures.
+New user-facing T24–T29 strings continue to use stable semantic keys rather than hard-coded text. Planned examples include `Config.Ups.Driver`, `Config.Ups.Port`, `Config.Ups.Protocol`, `Config.Ups.RuntimeCalibration`, `Config.Review.Apply`, and `Config.Review.Discard`. Keys are not Portuguese text. Existing pages awaiting T24A/T24B redesign are not claimed to be fully localized by the shared foundation.
+
+Future typed validation follows the same convention: `Validation.Host.Required`, `Validation.Host.Invalid`, `Validation.Host.NoScheme`, `Validation.Port.Range`, `Validation.Profile.NameDuplicate`, `Validation.Remote.ManagementHostRequired`, and `Validation.Smb.ShareRootRequired`. These T24A resources are not described as implemented by the current shell. Option labels and contextual help introduced by those tasks are localized resource values, never final enum names.
+
+Navigation and every new shared-shell label, tooltip, status, and accessibility name are localized. Future page work must also localize headings, fields, buttons, menus, contextual help, validation, warnings, errors, and semantic-review content. Resource fallback cannot alter a NUT value or translate a technical token incorrectly.
 
 ## Invariant NUT language
 
@@ -25,4 +29,4 @@ Display formatting follows the selected UI culture. NUT parsing and serializatio
 
 ## Acceptance for T24–T29
 
-Both cultures require responsive Wide/Medium/Compact validation without clipping, overlap, or broken sidebar/drawer behavior. Keyboard navigation, focus, accessibility labels, semantic review, validation, and redaction must remain equivalent. Tests cover resource completeness, deterministic fallback, selection-dependent display, and invariant NUT serialization.
+Both cultures require responsive Wide/Medium/Compact validation without clipping, overlap, or broken sidebar/drawer behavior. Keyboard navigation, focus, accessibility labels, semantic review, validation, and redaction must remain equivalent. The shared foundation tests resource completeness, exact official-culture key parity, deterministic fallback, selection-dependent display, and invariant NUT tokens. T24A/T24B and T25+ remain responsible for equivalent coverage of the surfaces and semantic forms they introduce.

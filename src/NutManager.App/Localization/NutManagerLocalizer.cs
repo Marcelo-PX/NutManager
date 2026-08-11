@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Resources;
+using System.Collections;
 using NutManager.Core.Models;
 
 namespace NutManager.App.Localization;
@@ -12,6 +13,8 @@ public sealed class NutManagerLocalizer
     [
         "App.Name", "Nav.Overview", "Nav.Devices", "Nav.Administration", "Nav.Diagnostics", "Nav.Settings",
         "Shell.ToggleNavigation", "Shell.ToggleTheme", "Shell.SimulationActive", "Shell.ReviewChanges",
+        "Shell.ExpandNavigation", "Shell.CollapseNavigation", "Shell.ActiveProfile", "Shell.ProfileActive", "Shell.NoActiveProfile", "Shell.AdministrationConfirmation",
+        "Management.Local", "Management.Remote", "Access.ReadOnly", "Access.Manage",
         "Status.Connected", "Status.Connecting", "Status.Reconnecting", "Status.Disconnected", "Status.ConnectionFailed", "Status.Stale", "Status.Unavailable",
         "Appearance.Title", "Appearance.Theme", "Appearance.Language", "Appearance.Sidebar", "Appearance.RestartRequired", "Appearance.SaveError",
         "Theme.System", "Theme.Light", "Theme.Dark", "Language.PtBr", "Language.EnUs", "Sidebar.Expanded", "Sidebar.Collapsed"
@@ -30,6 +33,16 @@ public sealed class NutManagerLocalizer
     {
         var culture = CultureFor(language);
         return RequiredKeys.All(key => ResourceManager.GetString(key, culture) is not null);
+    }
+
+    public static IReadOnlySet<string> GetAvailableKeys(UiLanguagePreference language)
+    {
+        var resources = ResourceManager.GetResourceSet(CultureFor(language), true, false);
+        return resources is null
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : resources.Cast<DictionaryEntry>()
+                .Select(entry => (string)entry.Key)
+                .ToHashSet(StringComparer.Ordinal);
     }
 
     private CultureInfo Culture => CultureFor(Language);

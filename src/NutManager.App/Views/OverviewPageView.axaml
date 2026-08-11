@@ -7,7 +7,7 @@
     <StackPanel Spacing="24">
     <StackPanel Spacing="8">
       <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" />
-      <TextBlock Text="{Binding Description}" MaxWidth="720" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding Description}" MaxWidth="720" HorizontalAlignment="Left" TextWrapping="Wrap" />
       <Border IsVisible="{Binding IsSimulated}"
               HorizontalAlignment="Left"
               Padding="10,5"
