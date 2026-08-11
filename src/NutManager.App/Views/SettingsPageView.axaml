@@ -13,6 +13,25 @@
 
       <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
         <StackPanel Spacing="12">
+          <TextBlock Text="{Binding AppearanceTitle}" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding AppearanceThemeLabel}" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}">
+            <ComboBox.ItemTemplate><DataTemplate x:DataType="viewModels:ThemeOption"><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="{Binding AppearanceLanguageLabel}" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}">
+            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="{Binding AppearanceSidebarLabel}" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}">
+            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="{Binding RestartLanguageMessage}" IsVisible="{Binding IsLanguageRestartRequired}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Padding="20" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1" CornerRadius="8">
+        <StackPanel Spacing="12">
           <TextBlock Text="Servidores NUT gerenciados" FontSize="20" FontWeight="SemiBold" />
           <TextBlock TextWrapping="Wrap"><Run Text="Perfil ativo: " /><Run Text="{Binding ActiveProfileName}" /></TextBlock>
           <TextBlock Text="O perfil ativo será aplicado ao reiniciar o aplicativo." TextWrapping="Wrap" />
@@ -112,10 +131,6 @@
           <TextBox PlaceholderText="Timeout em segundos" Text="{Binding ConnectionTimeoutSeconds}" />
           <TextBox PlaceholderText="Intervalo de polling em segundos" Text="{Binding PollingIntervalSeconds}" />
           <CheckBox Content="Usar dados simulados (modo mock)" IsChecked="{Binding MockMode}" />
-          <TextBlock Text="Tema" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}">
-            <ComboBox.ItemTemplate><DataTemplate x:DataType="viewModels:ThemeOption"><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
-          </ComboBox>
           <Button Content="Salvar configurações" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
           <TextBlock Text="Salvando..." IsVisible="{Binding IsSaving}" />
           <TextBlock Text="Configurações salvas." IsVisible="{Binding IsSaved}" />

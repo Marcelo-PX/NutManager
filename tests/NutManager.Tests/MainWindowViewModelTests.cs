@@ -1,4 +1,5 @@
 using NutManager.App.ViewModels;
+using NutManager.Core.Models;
 using Xunit;
 
 namespace NutManager.Tests;
@@ -42,4 +43,44 @@ public sealed class MainWindowViewModelTests
             [AppPage.Overview, AppPage.Devices, AppPage.Administration, AppPage.Diagnostics, AppPage.Settings],
             viewModel.NavigationItems.Select(item => item.Page));
     }
+
+    [Fact]
+    public void NavigationTogglePersistsCollapsedPreferenceOutsideCompactLayout()
+    {
+        var viewModel = CreateShell(sidebarPreference: SidebarPreference.Expanded);
+
+        viewModel.ToggleNavigationCommand.Execute(null);
+
+        Assert.Equal(SidebarPreference.Collapsed, viewModel.SidebarPreference);
+        Assert.Equal(SidebarDisplayState.Collapsed, viewModel.SidebarDisplay);
+    }
+
+    [Fact]
+    public void CompactOverlayDoesNotReplaceTheSavedSidebarPreference()
+    {
+        var viewModel = CreateShell(sidebarPreference: SidebarPreference.Expanded);
+        viewModel.UpdateLayoutWidth(859);
+
+        viewModel.ToggleNavigationCommand.Execute(null);
+
+        Assert.Equal(SidebarPreference.Expanded, viewModel.SidebarPreference);
+        Assert.True(viewModel.IsOverlayOpen);
+        Assert.Equal(SidebarDisplayState.Overlay, viewModel.SidebarDisplay);
+    }
+
+    [Fact]
+    public void HeaderThemeToggleMakesSystemPreferenceExplicitUsingEffectiveTheme()
+    {
+        var viewModel = new MainWindowViewModel(ThemePreference.System);
+
+        viewModel.ToggleThemeCommand.Execute(true);
+
+        Assert.Equal(ThemePreference.Light, viewModel.SelectedTheme);
+    }
+
+    private static MainWindowViewModel CreateShell(SidebarPreference sidebarPreference) => new(
+        ThemePreference.System,
+        new OverviewPageViewModel(),
+        new DevicesPageViewModel(),
+        sidebarPreference: sidebarPreference);
 }

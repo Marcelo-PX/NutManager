@@ -2,7 +2,7 @@ namespace NutManager.Core.Models;
 
 public sealed record ApplicationSettings
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public ApplicationSettings(
         int schemaVersion = CurrentSchemaVersion,
@@ -12,7 +12,9 @@ public sealed record ApplicationSettings
         TimeSpan? pollingInterval = null,
         TimeSpan? connectionTimeout = null,
         ThemePreference theme = ThemePreference.System,
-        bool mockMode = true)
+        bool mockMode = true,
+        UiLanguagePreference language = UiLanguagePreference.PtBr,
+        SidebarPreference sidebarPreference = SidebarPreference.Expanded)
     {
         if (schemaVersion != CurrentSchemaVersion)
         {
@@ -42,12 +44,24 @@ public sealed record ApplicationSettings
             throw new ArgumentOutOfRangeException(nameof(theme), "The theme preference is invalid.");
         }
 
+        if (!Enum.IsDefined(language))
+        {
+            throw new ArgumentOutOfRangeException(nameof(language), "The language preference is invalid.");
+        }
+
+        if (!Enum.IsDefined(sidebarPreference))
+        {
+            throw new ArgumentOutOfRangeException(nameof(sidebarPreference), "The sidebar preference is invalid.");
+        }
+
         SchemaVersion = schemaVersion;
         Host = host;
         Port = port;
         PreferredUpsName = string.IsNullOrWhiteSpace(preferredUpsName) ? null : preferredUpsName;
         Theme = theme;
         MockMode = mockMode;
+        Language = language;
+        SidebarPreference = sidebarPreference;
     }
 
     public int SchemaVersion { get; }
@@ -58,4 +72,18 @@ public sealed record ApplicationSettings
     public TimeSpan ConnectionTimeout { get; }
     public ThemePreference Theme { get; }
     public bool MockMode { get; }
+    public UiLanguagePreference Language { get; }
+    public SidebarPreference SidebarPreference { get; }
+}
+
+public enum UiLanguagePreference
+{
+    PtBr,
+    EnUs
+}
+
+public enum SidebarPreference
+{
+    Expanded,
+    Collapsed
 }

@@ -39,7 +39,7 @@ Only one task should normally be in progress at a time.
 | T21 | IN PROGRESS | Validate full Windows local and remote administration | End-to-end Windows-first validation; current findings recorded separately |
 | T22 | DEFERRED | Future Linux compatibility evaluation | Compatibility may be reconsidered in a future task |
 | T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
-| T24 | READY | Modern responsive shell, design system and localization foundation | Windows-first responsive presentation and pt-BR/en-US foundation |
+| T24 | DONE | Modern responsive shell, design system and localization foundation | Windows-first responsive presentation and pt-BR/en-US foundation |
 | T24A | TODO | Managed server profile UX and typed validation | Reversible profiles, typed validation, and migration planning |
 | T24B | TODO | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
 | T25 | TODO | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
@@ -242,7 +242,7 @@ Review mature, reproducible limitations discovered by NutManager. Separate clien
 
 ## T24 — Modern responsive shell, design system and localization foundation
 
-**Status:** READY
+**Status:** DONE
 
 ### Objective
 

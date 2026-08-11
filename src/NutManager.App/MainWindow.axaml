@@ -3,11 +3,13 @@
         xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
         x:Class="NutManager.App.MainWindow"
         x:DataType="viewModels:MainWindowViewModel"
-        Title="NUT Manager"
+        Title="NutManager"
         Width="1120"
         Height="720"
         MinWidth="680"
-        MinHeight="440">
+        MinHeight="440"
+        SizeChanged="Window_OnSizeChanged"
+        KeyDown="Window_OnKeyDown">
   <Window.Styles>
     <Style Selector="Button.navigation-item">
       <Setter Property="Background" Value="Transparent" />
@@ -18,64 +20,64 @@
       <Setter Property="Margin" Value="0,2" />
     </Style>
     <Style Selector="Button.navigation-item:pointerover">
-      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}" />
+      <Setter Property="Background" Value="{DynamicResource NutSelectionBrush}" />
     </Style>
     <Style Selector="Button.navigation-item.selected">
-      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListAccentLowBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAltAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource NutSelectionBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
   </Window.Styles>
 
   <Grid RowDefinitions="Auto,*">
-    <Border Padding="28,18"
+    <Border Padding="20,14"
             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
             BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
             BorderThickness="0,0,0,1">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="24">
-        <StackPanel Spacing="2">
-          <TextBlock Text="NUT Manager" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding CurrentPage.Title}"
-                     Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-        </StackPanel>
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+        <Button Grid.Column="0" Content="☰" Command="{Binding ToggleNavigationCommand}"
+                ToolTip.Tip="{Binding NavigationToggleName}"
+                AutomationProperties.Name="{Binding NavigationToggleName}" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <TextBlock Text="Tema" VerticalAlignment="Center" />
-          <ComboBox Width="178"
-                    ItemsSource="{Binding ThemeOptions}"
-                    SelectedItem="{Binding SelectedThemeOption}">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="viewModels:ThemeOption">
-                <TextBlock Text="{Binding Title}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
+          <Grid Width="20" Height="20" ToolTip.Tip="{Binding ConnectionTooltip}" AutomationProperties.Name="{Binding ConnectionTooltip}">
+            <Ellipse Width="20" Height="20" Fill="{DynamicResource NutHealthyBrush}" Opacity="0.18" IsVisible="{Binding IsConnectionHealthy}" />
+            <Ellipse Width="20" Height="20" Fill="{DynamicResource NutWarningBrush}" Opacity="0.18" IsVisible="{Binding IsConnectionPending}" />
+            <Ellipse Width="20" Height="20" Fill="{DynamicResource NutCriticalBrush}" Opacity="0.18" IsVisible="{Binding IsConnectionCritical}" />
+            <Ellipse Width="20" Height="20" Fill="{DynamicResource NutUnavailableBrush}" Opacity="0.18" IsVisible="{Binding IsConnectionUnavailable}" />
+            <Ellipse Width="11" Height="11" Fill="{DynamicResource NutHealthyBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsConnectionHealthy}" />
+            <Ellipse Width="11" Height="11" Fill="{DynamicResource NutWarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsConnectionPending}" />
+            <Ellipse Width="11" Height="11" Fill="{DynamicResource NutCriticalBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsConnectionCritical}" />
+            <Ellipse Width="11" Height="11" Fill="{DynamicResource NutUnavailableBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsConnectionUnavailable}" />
+          </Grid>
+          <StackPanel Spacing="1">
+            <TextBlock Text="{Binding ApplicationName}" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding ConnectionStatusText}" FontSize="12" Opacity="0.78" />
+            <TextBlock Text="{Binding ActiveEndpoint}" IsVisible="{Binding HasActiveEndpoint}" FontSize="12" Opacity="0.62" />
+          </StackPanel>
+          <Border IsVisible="{Binding IsMockMode}" Padding="8,3" CornerRadius="6" Background="{DynamicResource NutWarningBrush}">
+            <TextBlock Text="{Binding SimulationText}" Foreground="White" FontSize="12" />
+          </Border>
         </StackPanel>
+        <Button Grid.Column="2" Content="{Binding ThemeToggleSymbol}" Click="ThemeToggleButton_OnClick"
+                ToolTip.Tip="{Binding ThemeToggleName}" AutomationProperties.Name="{Binding ThemeToggleName}" />
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="220,*">
-      <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+      <Border Grid.Column="0" Width="{Binding SidebarWidth}"
+              Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
               BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-              BorderThickness="0,0,1,0"
-              Padding="14">
+              BorderThickness="0,0,1,0" Padding="8" ClipToBounds="True">
         <StackPanel Spacing="8">
-          <TextBlock Text="Navegação" FontSize="13" FontWeight="SemiBold" Margin="12,4,12,8" />
           <ItemsControl ItemsSource="{Binding NavigationItems}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="viewModels:NavigationItemViewModel">
-                <Button Classes.navigation-item="True"
-                        Classes.selected="{Binding IsSelected}"
-                        AutomationProperties.Name="{Binding Title}"
-                        Command="{Binding NavigateCommand}">
-                  <Grid ColumnDefinitions="26,*,Auto" ColumnSpacing="8">
-                    <TextBlock Text="{Binding Symbol}" FontSize="16" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="2"
-                               Text="Selecionado"
-                               FontSize="12"
-                               IsVisible="{Binding IsSelected}"
-                               VerticalAlignment="Center" />
-                  </Grid>
+                <Button Classes.navigation-item="True" Classes.selected="{Binding IsSelected}"
+                        AutomationProperties.Name="{Binding Title}" ToolTip.Tip="{Binding Title}" Command="{Binding NavigateCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="{Binding Symbol}" FontSize="16" Width="22" />
+                    <TextBlock Text="{Binding Title}" IsVisible="{Binding $parent[Window].DataContext.IsSidebarExpanded}" VerticalAlignment="Center" />
+                  </StackPanel>
                 </Button>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -83,9 +85,24 @@
         </StackPanel>
       </Border>
 
-      <ScrollViewer Grid.Column="1" Padding="32">
+      <Border Grid.Column="1" Padding="32" ClipToBounds="True">
         <ContentControl Content="{Binding CurrentPage}" />
-      </ScrollViewer>
+      </Border>
+
+      <Border Grid.ColumnSpan="2" Width="280" HorizontalAlignment="Left" IsVisible="{Binding IsOverlayOpen}"
+              Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              BorderBrush="{DynamicResource NutAccentBrush}" BorderThickness="0,0,1,0" Padding="12" ZIndex="10">
+        <ItemsControl ItemsSource="{Binding NavigationItems}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:NavigationItemViewModel">
+              <Button Classes.navigation-item="True" Classes.selected="{Binding IsSelected}"
+                      AutomationProperties.Name="{Binding Title}" ToolTip.Tip="{Binding Title}" Command="{Binding NavigateCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="{Binding Symbol}" FontSize="16" Width="22" /><TextBlock Text="{Binding Title}" /></StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
     </Grid>
   </Grid>
 </Window>

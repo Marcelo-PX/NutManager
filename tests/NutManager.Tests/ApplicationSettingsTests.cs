@@ -15,6 +15,8 @@ public sealed class ApplicationSettingsTests
         Assert.Equal(TimeSpan.FromSeconds(5), settings.PollingInterval);
         Assert.Equal(ThemePreference.System, settings.Theme);
         Assert.True(settings.MockMode);
+        Assert.Equal(UiLanguagePreference.PtBr, settings.Language);
+        Assert.Equal(SidebarPreference.Expanded, settings.SidebarPreference);
     }
 
     [Theory]
@@ -34,7 +36,7 @@ public sealed class ApplicationSettingsTests
     [Fact]
     public void InvalidSchemaThemeAndNegativeIntervalsAreRejected()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(schemaVersion: 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(schemaVersion: 3));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(theme: (ThemePreference)99));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(pollingInterval: TimeSpan.FromSeconds(-1)));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(connectionTimeout: TimeSpan.FromSeconds(-1)));
@@ -64,7 +66,7 @@ public sealed class ApplicationSettingsTests
         await store.SaveAsync(expected, CancellationToken.None);
         var json = await File.ReadAllTextAsync(store.SettingsPath);
         var actual = await store.LoadAsync(CancellationToken.None);
-        Assert.Contains("\"schemaVersion\": 1", json);
+        Assert.Contains("\"schemaVersion\": 2", json);
         Assert.Contains("\"theme\": \"Dark\"", json);
         Assert.Equal(expected, actual);
         Assert.Empty(Directory.GetFiles(directory.Path, "*.tmp"));
@@ -107,8 +109,10 @@ public sealed class ApplicationSettingsTests
     }
 
     [Theory]
-    [InlineData("{\"schemaVersion\":2,\"host\":\"localhost\",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true}")]
+    [InlineData("{\"schemaVersion\":3,\"host\":\"localhost\",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true}")]
     [InlineData("{\"schemaVersion\":1,\"host\":\" \",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true}")]
+    [InlineData("{\"schemaVersion\":2,\"host\":\"localhost\",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true,\"language\":\"de-DE\",\"sidebarPreference\":\"Expanded\"}")]
+    [InlineData("{\"schemaVersion\":2,\"host\":\"localhost\",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true,\"language\":\"PtBr\",\"sidebarPreference\":\"Overlay\"}")]
     public async Task UnsupportedOrInvalidJsonIsReportedAndPreserved(string json)
     {
         using var directory = new TemporaryDirectory();
@@ -117,6 +121,41 @@ public sealed class ApplicationSettingsTests
         await File.WriteAllTextAsync(store.SettingsPath, json);
         await Assert.ThrowsAsync<ApplicationSettingsPersistenceException>(() => store.LoadAsync(CancellationToken.None));
         Assert.Equal(json, await File.ReadAllTextAsync(store.SettingsPath));
+    }
+
+    [Fact]
+    public async Task VersionOneSettingsMigrateWithVisualDefaultsAndPreserveLegacyValues()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new JsonApplicationSettingsStore(directory.Path);
+        Directory.CreateDirectory(directory.Path);
+        await File.WriteAllTextAsync(store.SettingsPath, "{\"schemaVersion\":1,\"host\":\"nut.local\",\"port\":1234,\"preferredUpsName\":\"ups-a\",\"pollingIntervalSeconds\":9,\"connectionTimeoutSeconds\":3,\"theme\":\"Dark\",\"mockMode\":false}");
+
+        var settings = await store.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(ApplicationSettings.CurrentSchemaVersion, settings.SchemaVersion);
+        Assert.Equal("nut.local", settings.Host);
+        Assert.Equal(1234, settings.Port);
+        Assert.Equal("ups-a", settings.PreferredUpsName);
+        Assert.Equal(TimeSpan.FromSeconds(9), settings.PollingInterval);
+        Assert.Equal(TimeSpan.FromSeconds(3), settings.ConnectionTimeout);
+        Assert.Equal(ThemePreference.Dark, settings.Theme);
+        Assert.False(settings.MockMode);
+        Assert.Equal(UiLanguagePreference.PtBr, settings.Language);
+        Assert.Equal(SidebarPreference.Expanded, settings.SidebarPreference);
+    }
+
+    [Fact]
+    public async Task StoreRoundTripsVisualPreferences()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new JsonApplicationSettingsStore(directory.Path);
+        var expected = new ApplicationSettings(language: UiLanguagePreference.EnUs, sidebarPreference: SidebarPreference.Collapsed);
+        await store.SaveAsync(expected, CancellationToken.None);
+
+        var actual = await store.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(expected, actual);
     }
 
     [Fact]
