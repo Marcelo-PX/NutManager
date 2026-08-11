@@ -33,6 +33,10 @@ T24 replaces the header theme ComboBox with a compact sun/moon toggle (roughly 1
 
 Reusable App resources will define spacing 4/8/12/16/20/24/32, radii 6/8/12, surface/border/accent/status brushes, standard control height, and motion durations. Typography prefers Segoe UI Variable on Windows with a safe system fallback: page title 26–28, section title 18–20, body 14–15, metadata 12–13. Hover motion is 120–160 ms; sidebar/drawer 200–260 ms; page transition 160–220 ms.
 
+`NutAccent` and `NutSelection` are product-owned tokens. Normal selection must not inherit a Windows system accent as critical meaning: red is never normal selection. Option controls use localized presentation objects (value, resource key, title, optional help), not raw `Enum.ToString()` values. Forms apply error/warning/info visuals with explicit text and reflow validation content in every responsive state.
+
+Each page surface has one scroll owner. Nested scroll viewers and rigid fixed-column layouts are replaced by responsive page primitives; inner lists scroll only when their content model requires it.
+
 ## Administration information architecture
 
 ```text
@@ -53,5 +57,7 @@ Graphical forms are the primary configuration experience. Generated configuratio
 ## Accessibility and terminology
 
 Icon-only controls require `AutomationProperties.Name` and a tooltip. Focus is visible, tab order remains logical after a responsive transition, and critical warnings always include explicit text. The product displays **SFTP**; internal contracts may retain `SshSftp`.
+
+Mock/demo state is an unambiguous persistent badge, never merely an incidental checkbox value.
 
 All T24–T29 layouts are validated in both official cultures. See [Localization](LOCALIZATION.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).

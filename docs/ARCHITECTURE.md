@@ -100,6 +100,12 @@ T24 is a presentation foundation, not a change to management boundaries. The Win
 
 `pt-BR` is the default culture and `en-US` is an official culture. New T24–T29 user-facing strings use semantic resource keys. Display values follow UI culture; every NUT parser and serializer remains culture-invariant. NUT filenames, directives, driver names, status tokens, and SFTP stay invariant. See [UI design system](UI-DESIGN-SYSTEM.md) and [Localization](LOCALIZATION.md).
 
+### Planned profile-validation and presentation boundary (T24A/T24B)
+
+T24A separates pure typed syntactic validation in Core from semantic/cross-field draft validation and explicit operational I/O. A managed-profile UI draft is not persistence: host/port/UNC rules are deterministic and do not resolve DNS, while Test Connection is an explicit staged operation. Planned migration makes managed profiles the source of monitoring endpoint, preferred UPS, and management metadata; application settings retain UI/runtime preferences and legacy endpoint fields only for migration compatibility. See [Profile validation architecture](PROFILE-VALIDATION-ARCHITECTURE.md).
+
+T24B only decomposes App presentation into focused Administration areas and responsive current pages. It does not alter Core/Infrastructure safe-write, privilege, driver, remote, credential, or secret-input boundaries. Existing live observations are tracked in [Live validation findings](LIVE-VALIDATION-FINDINGS.md), not asserted as completed T21 acceptance.
+
 ## 8. Windows local administration
 
 Windows-specific behavior remains in `Infrastructure.Platform.Windows` behind Core contracts:

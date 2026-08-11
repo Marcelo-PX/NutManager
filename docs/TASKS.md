@@ -36,10 +36,12 @@ Only one task should normally be in progress at a time.
 | T19 | DONE | Add remote SSH/SFTP management | Manual remote directory browse, validation, and secure management transport |
 | T19B | DONE | Add SMB remote configuration transport | Manual UNC SMB configuration access and verified safe replacement |
 | T20 | DONE | Add secure credential storage | Protected SSH and SMB remote-management credentials |
-| T21 | READY | Validate full Windows local and remote administration | End-to-end Windows-first validation |
+| T21 | IN PROGRESS | Validate full Windows local and remote administration | End-to-end Windows-first validation; current findings recorded separately |
 | T22 | DEFERRED | Future Linux compatibility evaluation | Compatibility may be reconsidered in a future task |
 | T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
 | T24 | READY | Modern responsive shell, design system and localization foundation | Windows-first responsive presentation and pt-BR/en-US foundation |
+| T24A | TODO | Managed server profile UX and typed validation | Reversible profiles, typed validation, and migration planning |
+| T24B | TODO | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
 | T25 | TODO | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
 | T26 | TODO | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
 | T27 | TODO | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
@@ -222,9 +224,9 @@ Store opt-in SSH and SMB remote-management secrets in Windows Credential Manager
 
 ## T21 — Validate full Windows local and remote administration
 
-**Status:** READY
+**Status:** IN PROGRESS
 
-Validate Windows-first local and remote administration, including recovery paths, without unsafe UPS operations.
+Validate Windows-first local and remote administration, including recovery paths, without unsafe UPS operations. Current live findings are recorded in [LIVE-VALIDATION-FINDINGS.md](LIVE-VALIDATION-FINDINGS.md); they are not completed acceptance or authorization for redesign work in this validation stream.
 
 ## T22 — Evaluate Linux administrative compatibility
 
@@ -261,6 +263,7 @@ Build the Windows-first responsive shell and design tokens, with official `pt-BR
 - stable semantic resources for all new user-facing strings in both official cultures;
 - culture-invariant NUT serialization and deterministic resource fallback;
 - accessible icon controls, focus, and tab order.
+- product-owned accent/selection colors, one-scroll-owner rule, localized option presentation, persistent mock/demo indication, and responsive validation-field layout.
 
 ### Do not
 
@@ -279,6 +282,79 @@ Build the Windows-first responsive shell and design tokens, with official `pt-BR
 - both cultures are usable and persisted safely;
 - responsive shell and review-drawer foundation are accessible;
 - no NUT token is localized or culture-serialized.
+
+## T24A — Managed server profile UX and typed validation
+
+**Status:** TODO
+
+**Dependency:** T24
+
+### Objective
+
+Redesign managed-server profiles and introduce reusable typed validation before semantic configuration work.
+
+### Allowed scope
+
+- Core host/port and reusable validation contracts;
+- profile draft/settings/persistence migration required by the new source-of-truth boundary;
+- Settings profile UX, localization resources, focused test fakes, and documentation.
+
+### Requirements
+
+- one **New server** flow with reversible Local/Remote, ReadOnly/Manage, and SFTP/SMB choices;
+- typed host, TCP/SSH port, UNC, field, and cross-field validation with localized inline errors and Save disabled on Error;
+- explicit operational Test Connection, separate from syntax, with no secrets in diagnostics;
+- Save/Discard/Continue editing decision for dirty drafts and a first-class restart-required active-profile state;
+- future schema migration separating application preferences from managed-profile endpoints/metadata;
+- mock/demo target policy: disabled for new normal installs, preserved for existing persisted settings, and visibly indicated when active.
+
+### Do not
+
+- implement semantic `.conf` mutations or configuration writes;
+- change T14, T19, T19B, or T20 safety boundaries;
+- perform DNS during syntactic validation or persist a resolved IP in place of a hostname.
+
+### Validation
+
+- deterministic host/port/cross-field tests; Local↔Remote and SFTP↔SMB transitions; dirty drafts; settings migration; connection-tester fakes; and pt-BR/en-US validation-resource completeness.
+
+### Completion criteria
+
+- profiles are reversible while drafting, invalid input cannot be saved, and endpoint source-of-truth migration is deterministic without secret migration.
+
+## T24B — Current page and administration presentation decomposition
+
+**Status:** TODO
+
+**Dependency:** T24A
+
+### Objective
+
+Decompose current responsive presentation surfaces before adding T25–T28 graphical forms.
+
+### Allowed scope
+
+- App presentation/view-model decomposition, localized UI resources, focused tests, and documentation;
+- existing capability composition only, without new administrative behavior.
+
+### Requirements
+
+- Administration sections for NUT Configuration, Windows Service, Devices & Drivers, and Remote Access;
+- neutral selection cards, grouped commands, useful empty states, and responsive Overview/Devices/Diagnostics improvements including copy diagnostics;
+- reduce ordinary non-secret code-behind when useful while preserving password/passphrase input at the View boundary;
+- bounded read-only NUT-version fallback when file-version metadata is unavailable.
+
+### Do not
+
+- alter safe-write behavior; create remote service control; reduce hardware/admin confirmation; or move passwords/passphrases into ordinary ViewModel state.
+
+### Validation
+
+- responsive/empty-state/command-grouping tests and manual Windows review, with existing local/SFTP/SMB and privileged-boundary regressions.
+
+### Completion criteria
+
+- current pages are focused and responsive while all existing safety boundaries retain their behavior.
 
 ## T25 — Semantic graphical configuration framework
 
@@ -423,6 +499,7 @@ Validate and harden the complete graphical configuration experience.
 
 - Wide/Medium/Compact, sidebar/drawer, keyboard, focus, automation, clipping/overflow, and semantic-error validation;
 - `pt-BR` and `en-US` validation; preference persistence;
+- 100/125/150% Windows scaling, invalid-field states, and non-blue Windows system-accent regression;
 - local, SFTP, and SMB regression of reviewed safe writes and recovery;
 - final graphical configuration Windows validation.
 
