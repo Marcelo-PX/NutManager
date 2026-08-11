@@ -1,0 +1,6 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:TimeSpan x:Key="NutMotionHover">0:0:0.14</x:TimeSpan>
+  <x:TimeSpan x:Key="NutMotionPage">0:0:0.18</x:TimeSpan>
+  <x:TimeSpan x:Key="NutMotionShell">0:0:0.22</x:TimeSpan>
+</ResourceDictionary>

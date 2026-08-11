@@ -15,6 +15,16 @@ public sealed class ShellPresentationTests
     }
 
     [Fact]
+    public void OfficialCulturesExposeExactlyTheSameSemanticKeys()
+    {
+        var portuguese = NutManagerLocalizer.GetAvailableKeys(UiLanguagePreference.PtBr);
+        var english = NutManagerLocalizer.GetAvailableKeys(UiLanguagePreference.EnUs);
+
+        Assert.Equal(portuguese.OrderBy(key => key), english.OrderBy(key => key));
+        Assert.All(NutManagerLocalizer.RequiredKeys, key => Assert.Contains(key, portuguese));
+    }
+
+    [Fact]
     public void MissingResourceFallsBackDeterministicallyToItsKey() =>
         Assert.Equal("Missing.Key", new NutManagerLocalizer(UiLanguagePreference.EnUs).Get("Missing.Key"));
 
@@ -39,6 +49,7 @@ public sealed class ShellPresentationTests
 
     [Theory]
     [InlineData(1200, ShellLayoutState.Wide)]
+    [InlineData(1199, ShellLayoutState.Medium)]
     [InlineData(860, ShellLayoutState.Medium)]
     [InlineData(859, ShellLayoutState.Compact)]
     public void LayoutBreakpointsAreDeterministic(double width, ShellLayoutState expected) =>
@@ -55,10 +66,12 @@ public sealed class ShellPresentationTests
     [InlineData(ConnectionState.Connected, DataFreshness.Fresh, ConnectionPresentationState.Healthy)]
     [InlineData(ConnectionState.Connecting, DataFreshness.Fresh, ConnectionPresentationState.Pending)]
     [InlineData(ConnectionState.Reconnecting, DataFreshness.Fresh, ConnectionPresentationState.Pending)]
+    [InlineData(ConnectionState.Reconnecting, DataFreshness.Unavailable, ConnectionPresentationState.Pending)]
     [InlineData(ConnectionState.Connected, DataFreshness.Stale, ConnectionPresentationState.Warning)]
     [InlineData(ConnectionState.Disconnected, DataFreshness.Fresh, ConnectionPresentationState.Critical)]
     [InlineData(ConnectionState.ConnectionFailed, DataFreshness.Fresh, ConnectionPresentationState.Critical)]
-    [InlineData(ConnectionState.Disconnected, DataFreshness.Unavailable, ConnectionPresentationState.Unavailable)]
+    [InlineData(ConnectionState.ConnectionFailed, DataFreshness.Unavailable, ConnectionPresentationState.Critical)]
+    [InlineData(ConnectionState.Disconnected, DataFreshness.Unavailable, ConnectionPresentationState.Critical)]
     public void ConnectionStateMapsToSemanticPresentation(ConnectionState state, DataFreshness freshness, ConnectionPresentationState expected) =>
         Assert.Equal(expected, ShellPresentationMapper.ConnectionFor(state, freshness, true));
 
@@ -74,6 +87,8 @@ public sealed class ShellPresentationTests
     public void ReviewDrawerUsesWideSpaceOrOverlayAccordingToLayout()
     {
         Assert.Equal(ReviewDrawerDisplayState.Expanded, ShellPresentationMapper.ReviewFor(ShellLayoutState.Wide, true, true));
+        Assert.Equal(ReviewDrawerDisplayState.Collapsed, ShellPresentationMapper.ReviewFor(ShellLayoutState.Wide, true, false));
+        Assert.Equal(ReviewDrawerDisplayState.Overlay, ShellPresentationMapper.ReviewFor(ShellLayoutState.Medium, true, false));
         Assert.Equal(ReviewDrawerDisplayState.Overlay, ShellPresentationMapper.ReviewFor(ShellLayoutState.Compact, true, true));
     }
 }

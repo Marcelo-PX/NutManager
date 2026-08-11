@@ -53,9 +53,10 @@ public static class ShellPresentationMapper
         layout == ShellLayoutState.Wide ? ReviewDrawerDisplayState.Collapsed : ReviewDrawerDisplayState.Overlay;
 
     public static ConnectionPresentationState ConnectionFor(ConnectionState state, DataFreshness freshness, bool hasContext) =>
-        !hasContext || freshness == DataFreshness.Unavailable ? ConnectionPresentationState.Unavailable :
+        !hasContext ? ConnectionPresentationState.Unavailable :
         state is ConnectionState.Connecting or ConnectionState.Reconnecting ? ConnectionPresentationState.Pending :
         state is ConnectionState.Disconnected or ConnectionState.ConnectionFailed ? ConnectionPresentationState.Critical :
+        freshness == DataFreshness.Unavailable ? ConnectionPresentationState.Unavailable :
         freshness == DataFreshness.Stale ? ConnectionPresentationState.Warning :
         state == ConnectionState.Connected && freshness == DataFreshness.Fresh ? ConnectionPresentationState.Healthy :
         ConnectionPresentationState.Unavailable;

@@ -1,0 +1,58 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.nut-card">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="18" />
+  </Style>
+  <Style Selector="Border.nut-card-elevated">
+    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="18" />
+  </Style>
+  <Style Selector="Button">
+    <Setter Property="MinHeight" Value="38" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="Button:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutFocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button.nut-primary">
+    <Setter Property="Background" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.nut-success">
+    <Setter Property="Background" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="Foreground" Value="#08160B" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.nut-danger">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutCriticalBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="Button.nut-icon">
+    <Setter Property="Width" Value="38" />
+    <Setter Property="Height" Value="38" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+  </Style>
+  <Style Selector="TextBox, ComboBox">
+    <Setter Property="MinHeight" Value="38" />
+  </Style>
+  <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSelectionBrush}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+</Styles>

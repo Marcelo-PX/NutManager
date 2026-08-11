@@ -78,6 +78,161 @@ public sealed class MainWindowViewModelTests
         Assert.Equal(ThemePreference.Light, viewModel.SelectedTheme);
     }
 
+    [Fact]
+    public void SystemThemeAdvertisesTheActionForTheEffectiveTheme()
+    {
+        var viewModel = new MainWindowViewModel(ThemePreference.System);
+
+        viewModel.UpdateEffectiveTheme(true);
+        Assert.True(viewModel.ShowLightThemeAction);
+        Assert.False(viewModel.ShowDarkThemeAction);
+
+        viewModel.UpdateEffectiveTheme(false);
+        Assert.False(viewModel.ShowLightThemeAction);
+        Assert.True(viewModel.ShowDarkThemeAction);
+    }
+
+    [Fact]
+    public void HeaderThemeToggleMakesLightAndDarkPreferencesExplicit()
+    {
+        var light = new MainWindowViewModel(ThemePreference.Light);
+        light.ToggleThemeCommand.Execute(false);
+        Assert.Equal(ThemePreference.Dark, light.SelectedTheme);
+
+        var dark = new MainWindowViewModel(ThemePreference.Dark);
+        dark.ToggleThemeCommand.Execute(true);
+        Assert.Equal(ThemePreference.Light, dark.SelectedTheme);
+    }
+
+    [Fact]
+    public void ClosingCompactOverlayPreservesTheSidebarPreference()
+    {
+        var viewModel = CreateShell(SidebarPreference.Collapsed);
+        viewModel.UpdateLayoutWidth(700);
+        viewModel.ToggleNavigationCommand.Execute(null);
+
+        viewModel.CloseNavigationOverlay();
+
+        Assert.False(viewModel.IsOverlayOpen);
+        Assert.Equal(SidebarPreference.Collapsed, viewModel.SidebarPreference);
+    }
+
+    [Fact]
+    public void CompactOverlayUsesCloseSemanticsAndDisablesBackgroundInteraction()
+    {
+        var viewModel = CreateShell(SidebarPreference.Expanded);
+        viewModel.UpdateLayoutWidth(700);
+
+        viewModel.ToggleNavigationCommand.Execute(null);
+
+        Assert.Equal("Recolher navegação", viewModel.NavigationToggleName);
+        Assert.False(viewModel.IsBackgroundInteractionEnabled);
+
+        viewModel.CloseNavigationOverlay();
+
+        Assert.Equal("Expandir navegação", viewModel.NavigationToggleName);
+        Assert.True(viewModel.IsBackgroundInteractionEnabled);
+    }
+
+    [Fact]
+    public void NavigatingFromCompactOverlayReenablesTheShell()
+    {
+        var viewModel = CreateShell(SidebarPreference.Expanded);
+        viewModel.UpdateLayoutWidth(700);
+        viewModel.ToggleNavigationCommand.Execute(null);
+
+        viewModel.NavigateCommand.Execute(AppPage.Diagnostics);
+
+        Assert.False(viewModel.IsOverlayOpen);
+        Assert.True(viewModel.IsBackgroundInteractionEnabled);
+        Assert.Equal("Expandir navegação", viewModel.NavigationToggleName);
+        Assert.Equal(AppPage.Diagnostics, viewModel.SelectedPage);
+    }
+
+    [Fact]
+    public void MediumLayoutDoesNotExposeAVisuallyIneffectivePreferenceToggle()
+    {
+        var viewModel = CreateShell(SidebarPreference.Expanded);
+        viewModel.UpdateLayoutWidth(1000);
+
+        viewModel.ToggleNavigationCommand.Execute(null);
+
+        Assert.False(viewModel.IsNavigationToggleVisible);
+        Assert.Equal(SidebarPreference.Expanded, viewModel.SidebarPreference);
+        Assert.Equal(SidebarDisplayState.Collapsed, viewModel.SidebarDisplay);
+    }
+
+    [Fact]
+    public void ActiveProfileSummaryUsesLocalizedPresentationInsteadOfRawEnums()
+    {
+        var viewModel = new MainWindowViewModel(
+            ThemePreference.Dark,
+            new OverviewPageViewModel(),
+            new DevicesPageViewModel(),
+            language: UiLanguagePreference.EnUs,
+            activeProfileName: "Remote UPS",
+            managementMode: NutManagementMode.Remote,
+            accessMode: ManagedNutServerAccessMode.ReadOnly);
+
+        Assert.Equal("Remote UPS", viewModel.ActiveProfileName);
+        Assert.Equal("Remote · Read only", viewModel.ActiveProfileModeText);
+    }
+
+    [Fact]
+    public void ShellMirrorsExistingConnectionStateWithoutStartingAnotherOperation()
+    {
+        var overview = new OverviewPageViewModel();
+        var viewModel = new MainWindowViewModel(
+            ThemePreference.System,
+            overview,
+            new DevicesPageViewModel(),
+            activeEndpoint: "127.0.0.1:3493");
+
+        overview.ConnectionState = ConnectionState.Reconnecting;
+        overview.DataFreshness = DataFreshness.Stale;
+
+        Assert.Equal(ConnectionPresentationState.Pending, viewModel.ConnectionPresentation);
+        Assert.True(viewModel.IsConnectionPending);
+    }
+
+    [Fact]
+    public void HeaderUsesTheActuallyMonitoredUpsWhenASnapshotArrives()
+    {
+        var overview = new OverviewPageViewModel();
+        var viewModel = new MainWindowViewModel(
+            ThemePreference.Dark,
+            overview,
+            new DevicesPageViewModel(),
+            activeEndpoint: "nut.example:3493",
+            preferredUpsName: "CONFIGURED");
+
+        Assert.Contains("CONFIGURED@nut.example:3493", viewModel.ConnectionSummaryText, StringComparison.Ordinal);
+
+        overview.Snapshot = new UpsSnapshot(
+            new UpsIdentity("LIVE"),
+            [],
+            new Dictionary<string, UpsVariable>(),
+            DateTimeOffset.UtcNow,
+            DataSource.Live);
+
+        Assert.Contains("LIVE@nut.example:3493", viewModel.ConnectionSummaryText, StringComparison.Ordinal);
+        Assert.DoesNotContain("CONFIGURED@", viewModel.ConnectionSummaryText, StringComparison.Ordinal);
+        Assert.Equal(viewModel.ConnectionSummaryText, viewModel.ConnectionTooltip);
+    }
+
+    [Fact]
+    public void ConnectedStateWithoutAnEndpointOrSnapshotIsUnavailable()
+    {
+        var overview = new OverviewPageViewModel
+        {
+            ConnectionState = ConnectionState.Connected,
+            DataFreshness = DataFreshness.Fresh
+        };
+        var viewModel = new MainWindowViewModel(ThemePreference.Dark, overview);
+
+        Assert.Equal(ConnectionPresentationState.Unavailable, viewModel.ConnectionPresentation);
+    }
+
     private static MainWindowViewModel CreateShell(SidebarPreference sidebarPreference) => new(
         ThemePreference.System,
         new OverviewPageViewModel(),

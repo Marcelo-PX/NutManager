@@ -1,0 +1,31 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Window">
+    <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI, Arial" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.nut-product-title">
+    <Setter Property="FontSize" Value="21" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.nut-page-title">
+    <Setter Property="FontSize" Value="27" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.nut-section-title">
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.nut-body">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.nut-metadata">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+  </Style>
+</Styles>

@@ -94,11 +94,15 @@ T15 is the current editor for existing entries. T25 will add a Core semantic sch
 
 Descriptors will be platform-neutral Core data: stable semantic IDs, file/scope/directive identity, localized label/help keys, parser/serializer, control kind, validation, sensitive/repeated/optional metadata, Automatic policy, applicability, insertion order, and known activation metadata. Driver-aware `ups.conf` schemas use official NUT manpages and driver help only; no runtime internet dependency or guessed default is permitted. See [Semantic configuration architecture](SEMANTIC-CONFIGURATION-ARCHITECTURE.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
 
-## 7.1 Planned presentation and localization architecture
+## 7.1 Presentation and localization architecture
 
-T24 is a presentation foundation, not a change to management boundaries. The Windows-first Fluent-inspired shell gains reusable design tokens, a textual connection indicator, Wide/Medium/Compact layouts, Expanded/Collapsed/Overlay navigation, and Hidden/Collapsed/Expanded/Overlay review drawer states. Current hard-coded presentation is not retroactively described as localized.
+T24 is an implemented presentation foundation, not a change to management boundaries. `NutManager.App/Presentation/Themes` contains the Light/Dark color dictionaries, metrics, motion, typography, reusable control styles, shell styles, and PathIcon geometries. `App.axaml` composes those resources and page data templates instead of owning the whole design system. `NutManager.App/Presentation/Controls` currently contains reusable connection-indicator, status-badge, and review-drawer-host controls.
 
-`pt-BR` is the default culture and `en-US` is an official culture. New T24–T29 user-facing strings use semantic resource keys. Display values follow UI culture; every NUT parser and serializer remains culture-invariant. NUT filenames, directives, driver names, status tokens, and SFTP stay invariant. See [UI design system](UI-DESIGN-SYSTEM.md) and [Localization](LOCALIZATION.md).
+Presentation state remains in App view models. The shell maps Wide/Medium/Compact widths, Expanded/Collapsed/Overlay navigation, and Hidden/Collapsed/Expanded/Overlay review states without adding Core or Infrastructure dependencies. The connection indicator observes the existing `OverviewPageViewModel` state, so shell decoration creates no second NUT client, timer, or polling state machine. The shell itself is not a scroll owner around page content; the selected page owns its scroll surface.
+
+The review-drawer host is a presentation boundary only and is Hidden in the current shell because a generic semantic review context has not been implemented. It does not construct candidate bytes or write configuration. T25+ must connect it to semantic drafts and the existing T14/T15 preview/apply boundary rather than introduce another write path.
+
+`pt-BR` is the default culture and `en-US` is an official culture. The shell and Appearance & Language surface resolve semantic keys through `NutManagerLocalizer`; the two culture resource sets are tested for exact key parity and deterministic fallback. The language preference is persisted, with full application after restart rather than a partial live switch. Display values follow UI culture; every NUT parser and serializer remains culture-invariant. NUT filenames, directives, driver names, status tokens, and SFTP stay invariant. Existing pages not yet redesigned are not retroactively described as localized. See [UI design system](UI-DESIGN-SYSTEM.md) and [Localization](LOCALIZATION.md).
 
 ### Planned profile-validation and presentation boundary (T24A/T24B)
 

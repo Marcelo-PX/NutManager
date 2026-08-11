@@ -111,7 +111,11 @@ public partial class App : Application
             settings.Language,
             settings.SidebarPreference,
             settings.MockMode,
-            $"{endpoint.Host}:{endpoint.Port}");
+            $"{endpoint.Host}:{endpoint.Port}",
+            runtimeProfile.Profile.Name,
+            runtimeProfile.Profile.Management.Mode,
+            runtimeProfile.Profile.AccessMode,
+            runtimeProfile.Profile.Monitoring.PreferredUpsName);
         viewModel.ThemeChanged += async preference =>
         {
             ApplyTheme(preference);

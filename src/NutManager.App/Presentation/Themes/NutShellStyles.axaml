@@ -1,0 +1,40 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Button.nut-navigation-item">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="3,0,0,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="13,11" />
+    <Setter Property="Margin" Value="0,3" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item.selected">
+    <Setter Property="Background" Value="{DynamicResource NutSelectionBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.nut-shell-header">
+    <Setter Property="Background" Value="{DynamicResource NutHeaderBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.nut-shell-sidebar">
+    <Setter Property="Background" Value="{DynamicResource NutSidebarBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+  </Style>
+  <Style Selector="Border.nut-profile-card">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="12" />
+  </Style>
+</Styles>

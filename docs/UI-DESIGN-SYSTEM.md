@@ -2,7 +2,35 @@
 
 ## Status and purpose
 
-This is the implementation target for T24–T29, not a description of the current shell. It modernizes the Windows-first Avalonia presentation without changing NUT, safe-write, remote-transport, or privilege boundaries.
+The shared Windows-first presentation foundation is implemented. It modernizes the Avalonia shell without changing NUT, safe-write, remote-transport, credential, driver, or privilege boundaries. The screen-specific profile work in T24A, page decomposition in T24B, and semantic configuration work in T25+ remain future work; this document describes both the implemented foundation and the visual contract those tasks must reuse.
+
+## Implemented shared presentation layer
+
+`NutManager.App/Presentation` owns the reusable App-only presentation resources:
+
+```text
+Presentation
+├── Themes
+│   ├── NutColors.axaml
+│   ├── NutMetrics.axaml
+│   ├── NutMotion.axaml
+│   ├── NutTypography.axaml
+│   ├── NutControlStyles.axaml
+│   ├── NutShellStyles.axaml
+│   └── NutIcons.axaml
+└── Controls
+    ├── NutConnectionIndicator
+    ├── NutStatusBadge
+    └── NutReviewDrawerHost
+```
+
+`App.axaml` composes these dictionaries and retains the page data templates. Theme resources, component styles, and icon geometries are not duplicated in the window or page views. The shared controls contain presentation only: they do not poll, execute administrative operations, inspect files, or write configuration.
+
+## Approved design references
+
+`00_overview_reference.png` and `00_ups_conf_reference.png` are the primary fidelity targets at 1536×1024. They define shell proportions, surface hierarchy, spacing, typography, icon scale, selection treatment, semantic colors, and the future review-drawer proportions. `01_configuracoes.png` through `09_sobre.png` are secondary storyboards for information architecture and reusable component patterns; they are not evidence that unsupported commands or backends exist.
+
+Phase A validates the shared shell against those primary references. T24B owns page-level fidelity for Overview, Devices, Diagnostics, Administration, Settings, and any approved About surface. T25+ owns the graphical configuration and populated review-drawer fidelity.
 
 ## Shell and responsive states
 
@@ -14,28 +42,28 @@ The shell has three presentation states:
 | Medium | 860–1199 px | One or two form columns; sidebar may collapse and review may overlay. |
 | Compact | < 860 px | Overlay navigation, single-column forms, overlay review, and no ordinary horizontal scrolling. |
 
-The left sidebar has Expanded (200–220 px), Collapsed (64–72 px), and Overlay states. A chevron on its divider changes the state; `Ctrl+B` is the planned shortcut. The selected item uses a subtle surface, a 2–3 px accent bar, and an accent icon—never literal selected text. Collapsed items keep tooltips and accessible labels. Sidebar preference is non-secret UI preference data.
+The left sidebar has Expanded (currently 220 px), Collapsed (72 px), and Overlay states. In Wide, the chevron, header button, or `Ctrl+B` changes the persisted preference. Medium deliberately projects Collapsed and does not mutate a preference that would have no immediate visual effect. Compact projects navigation as an overlay opened by the header button or `Ctrl+B`; closing it or returning to a wider layout does not overwrite the persisted Expanded/Collapsed preference. The selected item uses a subtle product-owned surface, a 3 px accent bar, and accent foreground—never literal selected text. Collapsed items keep tooltips and accessible names. Sidebar preference is non-secret UI preference data.
 
-The right review drawer has Hidden, Collapsed, Expanded, and Overlay states. It is hidden with no draft; otherwise its collapsed tab states the pending-change count. Collapsing restores form space. The drawer contains semantic old-to-new changes, additions/removals, redacted sensitive values, validation, generated-file preview when requested, backup/recovery explanation, and explicit Apply.
+The review presentation mapper defines Hidden, Collapsed, Expanded, and Overlay states, and `NutReviewDrawerHost` provides the shared 368 px content host. The current shell keeps it Hidden because no generic review-context adapter is connected yet. Semantic old-to-new changes, redaction, validation, generated preview, backup/recovery explanation, and Apply remain T25+ responsibilities and must use the existing safe-write pipeline when implemented.
 
 ## Header, theme, and visual tokens
 
-The header shows an active-profile/UPS endpoint and a 10–12 px connection core with an 18–24 px soft halo. Status is always accompanied by text or a tooltip:
+The header shows the active runtime profile/UPS endpoint and a 12 px connection core with a 24 px soft halo through `NutConnectionIndicator`. It observes the existing Overview/polling state; it does not create another client, timer, or polling loop. Status is always accompanied by localized visible detail text rather than color alone:
 
 - green: Connected and Fresh;
 - yellow/orange: Connecting, Reconnecting, Stale, or pending;
 - red: Disconnected, failure, or critical condition;
 - gray: no active profile or unavailable context.
 
-The halo may pulse slowly; no aggressive flashing is allowed. Blue/cyan is the normal application accent. Green is reserved for healthy/success, while yellow/orange and red retain warning and error meaning. Color never carries the only meaning.
+The halo is currently static. A future restrained transition may be added, but aggressive flashing is prohibited. Blue/cyan is the normal application accent. Green is reserved for healthy/success, while yellow/orange and red retain warning and error meaning. Color never carries the only meaning. Mock mode is displayed persistently through the warning-toned `NutStatusBadge`.
 
-T24 replaces the header theme ComboBox with a compact sun/moon toggle (roughly 180–240 ms transition). System theme remains available in **Settings → Appearance & Language**.
+The header uses a compact PathIcon sun/moon toggle. System theme remains available in **Settings → Appearance & Language**; clicking the header control from System makes the next Light/Dark preference explicit from the effective theme.
 
-Reusable App resources will define spacing 4/8/12/16/20/24/32, radii 6/8/12, surface/border/accent/status brushes, standard control height, and motion durations. Typography prefers Segoe UI Variable on Windows with a safe system fallback: page title 26–28, section title 18–20, body 14–15, metadata 12–13. Hover motion is 120–160 ms; sidebar/drawer 200–260 ms; page transition 160–220 ms.
+The resource dictionaries define spacing 4/8/12/16/20/24/32; radii 6/8/12/16; a 38 px standard control height; shell/page/card measurements; and 140/180/220 ms motion tokens. Typography uses Segoe UI Variable with Segoe UI and Arial fallbacks: product title 21, page title 27, section title 18, body 14, and metadata 12. Reusable PathIcon geometries replace text glyphs in shell navigation and theme controls.
 
-`NutAccent` and `NutSelection` are product-owned tokens. Normal selection must not inherit a Windows system accent as critical meaning: red is never normal selection. Option controls use localized presentation objects (value, resource key, title, optional help), not raw `Enum.ToString()` values. Forms apply error/warning/info visuals with explicit text and reflow validation content in every responsive state.
+`NutAccentBrush`, `NutAccentBrightBrush`, and `NutSelectionBrush` are product-owned tokens. `NutColors.axaml` supplies intentional Light and Dark surface/text palettes plus invariant accent, cyan, healthy, warning, critical, purple, focus, and unavailable semantics. Shell navigation and selected `ListBoxItem` presentation use these resources rather than the Windows accent, so red is never normal selection. Compatibility aliases keep existing page surfaces on the same themed palette while T24B remains pending. Option controls introduced by later tasks use localized presentation objects, not raw `Enum.ToString()` values.
 
-Each page surface has one scroll owner. Nested scroll viewers and rigid fixed-column layouts are replaced by responsive page primitives; inner lists scroll only when their content model requires it.
+The shell follows the one-scroll-owner rule: `MainWindow` contains no page-level `ScrollViewer`; its content host gives the selected page the available space, and each page remains responsible for its own vertical scrolling. Medium and Compact modes reduce shell content padding; Medium projects collapsed navigation and Compact uses overlay navigation rather than horizontal scrolling. T24B remains responsible for replacing rigid internal page layouts where needed.
 
 ## Administration information architecture
 
@@ -56,8 +84,8 @@ Graphical forms are the primary configuration experience. Generated configuratio
 
 ## Accessibility and terminology
 
-Icon-only controls require `AutomationProperties.Name` and a tooltip. Focus is visible, tab order remains logical after a responsive transition, and critical warnings always include explicit text. The product displays **SFTP**; internal contracts may retain `SshSftp`.
+Icon-only shell controls have `AutomationProperties.Name`, tooltips, and the shared focus-visible border. Connection state includes text as well as color. Opening Compact navigation transfers focus to its localized close button, cycles keyboard navigation inside the overlay, and disables the shell controls behind the scrim. The overlay can be closed without changing the saved navigation preference, and `Ctrl+B` remains available in applicable states. Critical warnings must always include explicit text. The product displays **SFTP**; internal contracts may retain `SshSftp`.
 
 Mock/demo state is an unambiguous persistent badge, never merely an incidental checkbox value.
 
-All T24–T29 layouts are validated in both official cultures. See [Localization](LOCALIZATION.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
+All layouts introduced by T24A–T29 must be validated in both official cultures as those tasks are implemented. See [Localization](LOCALIZATION.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).

@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NutManager.App.Presentation.Controls.NutReviewDrawerHost"
+             x:Name="Root"
+             IsVisible="{Binding IsOpen, ElementName=Root}">
+  <Border Width="{DynamicResource NutReviewDrawerWidth}"
+          Background="{DynamicResource NutSurface1Brush}"
+          BorderBrush="{DynamicResource NutBorderBrush}"
+          BorderThickness="1,0,0,0"
+          Padding="20">
+    <Grid RowDefinitions="Auto,*" RowSpacing="16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding Title, ElementName=Root}" Classes="nut-section-title" />
+        <TextBlock Text="{Binding PendingText, ElementName=Root}" Classes="nut-metadata" />
+      </StackPanel>
+      <ContentControl Grid.Row="1" Content="{Binding DrawerContent, ElementName=Root}" />
+    </Grid>
+  </Border>
+</UserControl>

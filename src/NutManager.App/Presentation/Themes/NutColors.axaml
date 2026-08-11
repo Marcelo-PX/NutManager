@@ -1,0 +1,60 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="NutWindowBrush" Color="#0B1624" />
+      <SolidColorBrush x:Key="NutHeaderBrush" Color="#0D1826" />
+      <SolidColorBrush x:Key="NutSidebarBrush" Color="#0C1725" />
+      <SolidColorBrush x:Key="NutSurface1Brush" Color="#101B29" />
+      <SolidColorBrush x:Key="NutSurface2Brush" Color="#142131" />
+      <SolidColorBrush x:Key="NutSurface3Brush" Color="#182638" />
+      <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#1B2B40" />
+      <SolidColorBrush x:Key="NutBorderBrush" Color="#26384D" />
+      <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#1F3043" />
+      <SolidColorBrush x:Key="NutTextPrimaryBrush" Color="#F2F5F8" />
+      <SolidColorBrush x:Key="NutTextSecondaryBrush" Color="#B0BAC7" />
+      <SolidColorBrush x:Key="NutTextMutedBrush" Color="#7F8C9E" />
+      <SolidColorBrush x:Key="NutSelectionBrush" Color="#21395D" />
+      <SolidColorBrush x:Key="NutCodeSurfaceBrush" Color="#091421" />
+      <SolidColorBrush x:Key="NutOverlayScrimBrush" Color="#99050B12" />
+      <!-- Compatibility aliases keep legacy T24B page surfaces on the NutManager palette. -->
+      <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#101B29" />
+      <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#182638" />
+      <SolidColorBrush x:Key="SystemControlForegroundBaseMediumBrush" Color="#B0BAC7" />
+      <SolidColorBrush x:Key="SystemControlForegroundBaseMediumLowBrush" Color="#26384D" />
+      <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#21395D" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="NutWindowBrush" Color="#F3F6FA" />
+      <SolidColorBrush x:Key="NutHeaderBrush" Color="#FBFCFE" />
+      <SolidColorBrush x:Key="NutSidebarBrush" Color="#F8FAFD" />
+      <SolidColorBrush x:Key="NutSurface1Brush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="NutSurface2Brush" Color="#F6F8FC" />
+      <SolidColorBrush x:Key="NutSurface3Brush" Color="#EEF2F8" />
+      <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#E7EEF9" />
+      <SolidColorBrush x:Key="NutBorderBrush" Color="#C8D2E0" />
+      <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#DFE6EF" />
+      <SolidColorBrush x:Key="NutTextPrimaryBrush" Color="#172235" />
+      <SolidColorBrush x:Key="NutTextSecondaryBrush" Color="#4C5A6D" />
+      <SolidColorBrush x:Key="NutTextMutedBrush" Color="#6E7C8F" />
+      <SolidColorBrush x:Key="NutSelectionBrush" Color="#DDE9FF" />
+      <SolidColorBrush x:Key="NutCodeSurfaceBrush" Color="#EFF4FA" />
+      <SolidColorBrush x:Key="NutOverlayScrimBrush" Color="#66081524" />
+      <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#EEF2F8" />
+      <SolidColorBrush x:Key="SystemControlForegroundBaseMediumBrush" Color="#4C5A6D" />
+      <SolidColorBrush x:Key="SystemControlForegroundBaseMediumLowBrush" Color="#C8D2E0" />
+      <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#DDE9FF" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <SolidColorBrush x:Key="NutAccentBrush" Color="#4D83FF" />
+  <SolidColorBrush x:Key="NutAccentBrightBrush" Color="#62A2FF" />
+  <SolidColorBrush x:Key="NutCyanBrush" Color="#39B8F2" />
+  <SolidColorBrush x:Key="NutHealthyBrush" Color="#55D86A" />
+  <SolidColorBrush x:Key="NutWarningBrush" Color="#F2B62D" />
+  <SolidColorBrush x:Key="NutCriticalBrush" Color="#F16060" />
+  <SolidColorBrush x:Key="NutPurpleBrush" Color="#A77BFF" />
+  <SolidColorBrush x:Key="NutFocusBrush" Color="#79A8FF" />
+  <SolidColorBrush x:Key="NutUnavailableBrush" Color="#7F8C9E" />
+</ResourceDictionary>
