@@ -100,6 +100,12 @@ The planned UX includes driver-aware UPS controls, setting-specific Automatic se
 
 T24 also establishes `pt-BR` (default) and `en-US` UI localization. User-facing presentation is localized through stable semantic resource keys, while NUT filenames, directives, drivers, status/configuration tokens, and serialization stay invariant. Display formatting follows culture; NUT serialization is culture-invariant. Both cultures and responsive/accessibility states are planned T29 validation requirements.
 
+## 9. Planned profile validation and focused administration UX (T24A/T24B)
+
+T24A and T24B are planned, not implemented. Structured profile fields validate before Save: monitoring and management host input means only an IP address or hostname, ports remain in range, and remote/local transport requirements are checked across fields. Local/Remote and SFTP/SMB choices are reversible during a draft. Operational Test Connection is separate from syntactic validity and does not disclose secrets.
+
+New normal installations target real data rather than silently enabling simulated mode; existing persisted preference is preserved by a future migration. Active simulation is visibly identified. The current live-validation findings are known observations, not completed T21 acceptance. Before T25 expansion, administration surfaces become focused and responsive while retaining all existing reviewed configuration, service, driver, remote, credential, and privilege boundaries.
+
 ## 8. MVP package acceptance
 
 The MVP package was accepted after the Windows x64 archive was manually validated against a real NUT server using the read-only checklist in [MVP-VALIDATION.md](MVP-VALIDATION.md). T11 is done; the checklist remains as a regression record.
