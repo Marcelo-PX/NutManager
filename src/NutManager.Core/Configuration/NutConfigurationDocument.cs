@@ -2,6 +2,9 @@ namespace NutManager.Core.Configuration;
 
 public sealed class NutConfigurationDocument
 {
+    private readonly List<NutConfigurationNode> _nodes;
+    private bool _hasStructuralChanges;
+
     internal NutConfigurationDocument(
         NutConfigurationFileKind fileKind,
         string originalText,
@@ -10,7 +13,7 @@ public sealed class NutConfigurationDocument
     {
         FileKind = fileKind;
         OriginalText = originalText;
-        Nodes = nodes;
+        _nodes = nodes.ToList();
         Diagnostics = diagnostics;
     }
 
@@ -18,11 +21,11 @@ public sealed class NutConfigurationDocument
 
     public string OriginalText { get; }
 
-    public IReadOnlyList<NutConfigurationNode> Nodes { get; }
+    public IReadOnlyList<NutConfigurationNode> Nodes => _nodes;
 
     public IReadOnlyList<NutConfigurationParseDiagnostic> Diagnostics { get; }
 
-    public bool IsModified => Nodes.Any(node => node.IsModified);
+    public bool IsModified => _hasStructuralChanges || Nodes.Any(node => node.IsModified);
 
     public IEnumerable<NutSectionNode> Sections => Nodes.OfType<NutSectionNode>();
 
@@ -59,6 +62,29 @@ public sealed class NutConfigurationDocument
     }
 
     public string Serialize() => string.Concat(Nodes.Select(node => node.Serialize()));
+
+    internal int IndexOf(NutConfigurationNode node) => _nodes.IndexOf(node);
+
+    internal void Insert(int index, NutConfigurationNode node)
+    {
+        _nodes.Insert(index, node);
+        node.MarkInserted();
+        _hasStructuralChanges = true;
+    }
+
+    internal void RemoveAt(int index)
+    {
+        _nodes.RemoveAt(index);
+        _hasStructuralChanges = true;
+    }
+
+    internal void RemoveRange(int index, int count)
+    {
+        _nodes.RemoveRange(index, count);
+        _hasStructuralChanges = true;
+    }
+
+    internal void MarkStructuralChange() => _hasStructuralChanges = true;
 }
 
 public sealed record NutConfigurationParseDiagnostic(int LineNumber, string Message);

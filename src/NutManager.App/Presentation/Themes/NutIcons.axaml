@@ -11,4 +11,5 @@
   <StreamGeometry x:Key="NutIconMoon">M19,15 A8,8 0 1 1 10,3 A7,7 0 0 0 19,15 Z</StreamGeometry>
   <StreamGeometry x:Key="NutIconChevronLeft">M16,4 L8,12 L16,20 L16,16 L12,12 L16,8 Z</StreamGeometry>
   <StreamGeometry x:Key="NutIconChevronRight">M8,4 L16,12 L8,20 L8,16 L12,12 L8,8 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconClose">M5,4 L12,11 L19,4 L20,5 L13,12 L20,19 L19,20 L12,13 L5,20 L4,19 L11,12 L4,5 Z</StreamGeometry>
 </ResourceDictionary>

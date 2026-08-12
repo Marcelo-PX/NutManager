@@ -133,9 +133,26 @@
       </Border>
 
       <controls:NutReviewDrawerHost Grid.Column="2"
-                                    IsEnabled="{Binding IsBackgroundInteractionEnabled}"
-                                    IsOpen="{Binding IsReviewDrawerVisible}"
-                                    Title="{Binding ReviewDrawerTitle}" />
+                                    IsOpen="{Binding IsReviewDrawerInline}"
+                                    Title="{Binding ReviewDrawerTitle}"
+                                    PendingText="{Binding ReviewDrawerPendingText}"
+                                    DrawerContent="{Binding ReviewDrawerContent}"
+                                    CloseCommand="{Binding CloseReviewDrawerCommand}"
+                                    CloseText="{Binding ReviewDrawerCloseText}" />
+
+      <Grid Grid.ColumnSpan="3"
+            IsVisible="{Binding IsReviewDrawerOverlay}"
+            KeyboardNavigation.TabNavigation="Cycle"
+            ZIndex="15">
+        <Border Background="{DynamicResource NutOverlayScrimBrush}" />
+        <controls:NutReviewDrawerHost HorizontalAlignment="Right"
+                                      IsOpen="True"
+                                      Title="{Binding ReviewDrawerTitle}"
+                                      PendingText="{Binding ReviewDrawerPendingText}"
+                                      DrawerContent="{Binding ReviewDrawerContent}"
+                                      CloseCommand="{Binding CloseReviewDrawerCommand}"
+                                      CloseText="{Binding ReviewDrawerCloseText}" />
+      </Grid>
 
       <Grid Grid.ColumnSpan="3"
             IsVisible="{Binding IsOverlayOpen}"

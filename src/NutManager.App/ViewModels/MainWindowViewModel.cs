@@ -17,6 +17,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly ManagedNutServerAccessMode? _accessMode;
     private readonly string? _preferredUpsName;
     private bool _isOverlayOpen;
+    private SemanticConfigurationReviewViewModel? _semanticReview;
 
     public MainWindowViewModel(ThemePreference themePreference = ThemePreference.System)
         : this(themePreference, new OverviewPageViewModel(), new DevicesPageViewModel(), new SettingsPageViewModel())
@@ -117,14 +118,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ThemePreference SelectedTheme => SelectedThemeOption?.Preference ?? ThemePreference.System;
     public SidebarDisplayState SidebarDisplay => ShellPresentationMapper.SidebarFor(ShellLayout, SidebarPreference);
-    public ReviewDrawerDisplayState ReviewDrawerDisplay => ReviewDrawerDisplayState.Hidden;
+    public ReviewDrawerDisplayState ReviewDrawerDisplay => ShellPresentationMapper.ReviewFor(ShellLayout, _semanticReview?.HasChanges == true, true);
     public bool IsSidebarExpanded => SidebarDisplay == SidebarDisplayState.Expanded;
     public bool IsSidebarCollapsed => SidebarDisplay == SidebarDisplayState.Collapsed;
     public bool IsSidebarOverlay => SidebarDisplay == SidebarDisplayState.Overlay;
     public bool IsWideLayout => ShellLayout == ShellLayoutState.Wide;
     public bool IsCompactLayout => ShellLayout == ShellLayoutState.Compact;
     public bool IsOverlayOpen => IsSidebarOverlay && _isOverlayOpen;
-    public bool IsBackgroundInteractionEnabled => !IsOverlayOpen;
+    public bool IsBackgroundInteractionEnabled => !IsOverlayOpen && !IsReviewDrawerOverlay;
     public bool IsNavigationToggleVisible => ShellLayout != ShellLayoutState.Medium;
     public double SidebarWidth => IsSidebarExpanded ? 220 : IsSidebarCollapsed ? 72 : 0;
     public Thickness ContentPadding => ShellLayout switch
@@ -184,6 +185,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         : Localizer.Get("Shell.ExpandNavigation");
     public string SimulationText => Localizer.Get("Shell.SimulationActive");
     public string ReviewDrawerTitle => Localizer.Get("Shell.ReviewChanges");
+    public string ReviewDrawerCloseText => Localizer.Get("Shell.CloseReview");
+    public string? ReviewDrawerPendingText => _semanticReview?.PendingText;
+    public object? ReviewDrawerContent => _semanticReview;
+    public bool IsReviewDrawerInline => ReviewDrawerDisplay == ReviewDrawerDisplayState.Expanded;
+    public bool IsReviewDrawerOverlay => ReviewDrawerDisplay == ReviewDrawerDisplayState.Overlay;
     public bool IsReviewDrawerVisible => ReviewDrawerDisplay != ReviewDrawerDisplayState.Hidden;
 
     public event Action<ThemePreference>? ThemeChanged;
@@ -198,6 +204,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public void UpdateLayoutWidth(double width) => ShellLayout = ShellPresentationMapper.LayoutFor(width);
 
     public void UpdateEffectiveTheme(bool isDark) => IsEffectiveDark = isDark;
+
+    public void SetSemanticReview(SemanticConfigurationReviewViewModel? review)
+    {
+        _semanticReview = review;
+        OnPropertyChanged(nameof(ReviewDrawerDisplay));
+        OnPropertyChanged(nameof(IsReviewDrawerVisible));
+        OnPropertyChanged(nameof(ReviewDrawerPendingText));
+        OnPropertyChanged(nameof(ReviewDrawerContent));
+        OnPropertyChanged(nameof(IsReviewDrawerInline));
+        OnPropertyChanged(nameof(IsReviewDrawerOverlay));
+        OnPropertyChanged(nameof(IsBackgroundInteractionEnabled));
+    }
+
+    [RelayCommand]
+    private void CloseReviewDrawer() => SetSemanticReview(null);
 
     [RelayCommand]
     private void Navigate(AppPage page)
@@ -289,6 +310,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(ContentPadding));
         OnPropertyChanged(nameof(NavigationToggleName));
         OnPropertyChanged(nameof(IsReviewDrawerVisible));
+        OnPropertyChanged(nameof(IsReviewDrawerInline));
+        OnPropertyChanged(nameof(IsReviewDrawerOverlay));
     }
 
     public void CloseNavigationOverlay()

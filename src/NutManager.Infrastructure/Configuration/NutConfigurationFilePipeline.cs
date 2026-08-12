@@ -6,8 +6,6 @@ namespace NutManager.Infrastructure.Configuration;
 
 public sealed class NutConfigurationFilePipeline : INutConfigurationFilePipeline
 {
-    private const string RedactedText = "<redacted>";
-
     private readonly INutConfigurationFileSystem _fileSystem;
     private readonly NutConfigurationParser _parser;
     private readonly INutConfigurationCandidateValidator _candidateValidator;
@@ -80,7 +78,7 @@ public sealed class NutConfigurationFilePipeline : INutConfigurationFilePipeline
         var candidateText = snapshot.Document.Serialize();
         var candidateBytes = NutConfigurationTextCodec.Encode(candidateText, snapshot.Encoding);
         var candidateFingerprint = Fingerprint(candidateBytes);
-        var preview = BuildPreview(snapshot, candidateText, candidateFingerprint);
+        var preview = NutConfigurationPreviewBuilder.Build(snapshot, candidateText, candidateFingerprint);
         return new NutConfigurationPreparedChange(snapshot, candidateText, candidateBytes, candidateFingerprint, preview);
     }
 
@@ -330,63 +328,6 @@ public sealed class NutConfigurationFilePipeline : INutConfigurationFilePipeline
         {
             await DeleteBestEffortAsync(rollbackTempPath);
         }
-    }
-
-    private NutConfigurationChangePreview BuildPreview(
-        NutConfigurationFileSnapshot snapshot,
-        string candidateText,
-        string candidateFingerprint)
-    {
-        var candidateLines = SplitLines(candidateText);
-        var lines = new List<NutConfigurationPreviewLine>();
-        for (var index = 0; index < snapshot.Document.Nodes.Count; index++)
-        {
-            var node = snapshot.Document.Nodes[index];
-            if (!node.IsModified)
-            {
-                continue;
-            }
-
-            var sensitive = node switch
-            {
-                NutConfigurationAssignmentNode assignment => assignment.IsSensitive,
-                NutConfigurationDirectiveNode directive => directive.IsSensitive,
-                _ => false
-            };
-            lines.Add(new NutConfigurationPreviewLine(
-                index + 1,
-                sensitive ? RedactedText : node.RawText,
-                sensitive ? RedactedText : candidateLines[index],
-                sensitive));
-        }
-
-        return new NutConfigurationChangePreview(snapshot.TargetPath, candidateFingerprint, lines);
-    }
-
-    private static List<string> SplitLines(string text)
-    {
-        var lines = new List<string>();
-        var offset = 0;
-        while (offset < text.Length)
-        {
-            var start = offset;
-            while (offset < text.Length && text[offset] is not '\r' and not '\n')
-            {
-                offset++;
-            }
-
-            lines.Add(text[start..offset]);
-            if (offset < text.Length && text[offset] == '\r' && offset + 1 < text.Length && text[offset + 1] == '\n')
-            {
-                offset += 2;
-            }
-            else if (offset < text.Length)
-            {
-                offset++;
-            }
-        }
-
-        return lines;
     }
 
     private static bool MatchesOriginal(NutConfigurationFileSnapshot snapshot, ReadOnlySpan<byte> bytes) =>

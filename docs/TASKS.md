@@ -42,7 +42,7 @@ Only one task should normally be in progress at a time.
 | T24 | DONE | Modern responsive shell, design system and localization foundation | Windows-first responsive presentation and pt-BR/en-US foundation |
 | T24A | DONE | Managed server profile UX and typed validation | Reversible profiles, typed validation, deterministic migration, and explicit connection testing |
 | T24B | DONE | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
-| T25 | TODO | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
+| T25 | DONE | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
 | T26 | TODO | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
 | T27 | TODO | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
 | T28 | TODO | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
@@ -358,7 +358,7 @@ Decompose current responsive presentation surfaces before adding T25–T28 graph
 
 ## T25 — Semantic graphical configuration framework
 
-**Status:** TODO
+**Status:** DONE
 
 ### Objective
 
