@@ -22,9 +22,13 @@ Primary references used for the production descriptors are the official NUT `ups
 
 ## Server and general files
 
-**Server (`upsd.conf`)** groups repeated `LISTEN` address/port rows, server behavior, timeouts, TLS/certificates, advanced settings, and custom parameters. Address and port validation applies to every row.
+**Server (`upsd.conf`)** groups repeated `LISTEN` address/optional-port rows, server behavior, timeouts, TLS/certificates, advanced settings, and custom parameters. Each occurrence is edited directly through stable draft identity; other listeners, comments, and unknown directives remain in place. IPv4, IPv6, hostnames, and the documented wildcard are validated syntactically without DNS resolution, socket bind, or fabricated default listeners. Wildcards produce a non-blocking exposure warning. `LISTEN` review records restart-required activation but Apply never restarts `upsd`.
 
-**General (`nut.conf`)** exposes a primary NUT MODE selector from supported documented modes and advanced documented options. Its serializer respects `nut.conf` grammar; it is not assumed to be generic `key = value` syntax.
+The server schema covers `MAXAGE`, `TRACKINGDELAY`, `ALLOW_NO_DEVICE`, `ALLOW_NOT_ALL_LISTENERS`, `STATEPATH`, `MAXCONN`, `CERTFILE`, `CERTPATH`, `CERTIDENT`, `CERTREQUEST`, `DISABLE_WEAK_SSL`, and `DEBUG_MIN` as documented for NUT 2.8.5. It does not infer the compiled TLS backend or inspect certificate files. `CERTIDENT` is a protected NSS composite: existing passwords are never projected; replacement requires an explicit identity and new transient password.
+
+**General (`nut.conf`)** exposes required `MODE` (`none`, `standalone`, `netserver`, `netclient`) plus the documented 2.8.5 Advanced service/integration/debug settings. A missing mode remains `MissingRequired`; the documented default is not written on page open. New assignments use the mandatory `KEY=value` grammar with no spaces around `=`, while existing formatting remains untouched. Package-dependent options remain explicitly advanced and NutManager does not execute their contents.
+
+The production source is the official historic NUT 2.8.5 `nut.conf(5)` and `upsd.conf(5)` documentation. These settings can be package-, platform-, or TLS-backend-dependent on Windows, so the UI explains scope without claiming runtime activation. Generated configuration is read-only and all explicit Apply operations continue through the existing reviewed local/SFTP/SMB pipeline.
 
 ## Users and monitoring
 

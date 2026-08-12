@@ -210,7 +210,7 @@ public sealed class SemanticConfigurationFrameworkTests
         using var draft = new NutConfigurationSemanticDraft(_parser.Parse(NutConfigurationFileKind.NutConf, string.Empty), Schema(NutConfigurationFileKind.NutConf, field));
         Assert.Equal(NutConfigurationMutationStatus.ValidationFailed, draft.SetAutomatic("Detected").Status);
         Assert.True(draft.SetAutomatic("Detected", "detected-value").Succeeded);
-        Assert.Equal("VALUE = detected-value", draft.Materialize().Serialize());
+        Assert.Equal("VALUE=detected-value", draft.Materialize().Serialize());
     }
 
     [Fact]

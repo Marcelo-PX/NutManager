@@ -659,4 +659,100 @@
   <data name="Ups.Validation.Runtimecal.RuntimePositive" xml:space="preserve"><value>Runtime values must be greater than zero.</value></data>
   <data name="Ups.Validation.Runtimecal.LoadRange" xml:space="preserve"><value>Load values must be between zero and 100%.</value></data>
   <data name="Ups.Validation.Runtimecal.LoadOrder" xml:space="preserve"><value>High load must be greater than low load.</value></data>
+  <data name="Config.General.Title" xml:space="preserve"><value>General NUT configuration</value></data>
+  <data name="Config.General.Description" xml:space="preserve"><value>Configure nut.conf graphically. Saving does not start or restart the service.</value></data>
+  <data name="Config.General.Advanced" xml:space="preserve"><value>General behavior and integration</value></data>
+  <data name="Config.Server.Title" xml:space="preserve"><value>NUT server</value></data>
+  <data name="Config.Server.Description" xml:space="preserve"><value>Configure upsd.conf graphically without testing network, sockets, or certificates.</value></data>
+  <data name="Config.Server.Behavior" xml:space="preserve"><value>Server behavior</value></data>
+  <data name="Config.Listen.Title" xml:space="preserve"><value>Listen addresses</value></data>
+  <data name="Config.Listen.SecurityHelp" xml:space="preserve"><value>LISTEN limits interfaces but does not replace firewall and access controls. Changes require an explicit upsd restart.</value></data>
+  <data name="Config.Listen.Empty" xml:space="preserve"><value>No explicit listeners. NUT will use its documented default behavior without adding lines to the file.</value></data>
+  <data name="Config.Listen.Address" xml:space="preserve"><value>Address, hostname, or *</value></data>
+  <data name="Config.Listen.OptionalPort" xml:space="preserve"><value>Optional port</value></data>
+  <data name="Config.Listen.Add" xml:space="preserve"><value>Add listener</value></data>
+  <data name="Config.Listen.Save" xml:space="preserve"><value>Save listener</value></data>
+  <data name="Config.Listen.Remove" xml:space="preserve"><value>Remove listener</value></data>
+  <data name="Config.Tls.Title" xml:space="preserve"><value>TLS and certificates</value></data>
+  <data name="Config.Tls.BackendHelp" xml:space="preserve"><value>CERTFILE applies to OpenSSL; CERTPATH, CERTIDENT, and CERTREQUEST to NSS. NutManager preserves existing values and does not assume the installation backend.</value></data>
+  <data name="Config.Tls.CertificateIdentity" xml:space="preserve"><value>Certificate identity</value></data>
+  <data name="Config.Tls.Password" xml:space="preserve"><value>New private-key password</value></data>
+  <data name="Config.Tls.ReplaceIdentity" xml:space="preserve"><value>Replace CERTIDENT</value></data>
+  <data name="Config.Tls.RemoveIdentity" xml:space="preserve"><value>Remove CERTIDENT</value></data>
+  <data name="Config.Tls.CertificateIdentity.ChangeOnly" xml:space="preserve"><value>The existing password is never shown. Enter identity and a new password to replace the complete directive.</value></data>
+  <data name="Config.Custom.Save" xml:space="preserve"><value>Save parameter</value></data>
+  <data name="Config.Field.Risky" xml:space="preserve"><value>Advanced option: review its documentation and operational effects before applying.</value></data>
+  <data name="Config.Field.UseAutomatic" xml:space="preserve"><value>Remove explicit configuration</value></data>
+  <data name="Config.Field.ConfigureExplicitly" xml:space="preserve"><value>Configure value explicitly</value></data>
+  <data name="Config.Unit.Seconds" xml:space="preserve"><value>seconds</value></data>
+  <data name="Config.Validation.ResolveBeforeReview" xml:space="preserve"><value>Fix semantic configuration errors before reviewing.</value></data>
+  <data name="Config.Validation.MutationFailed" xml:space="preserve"><value>The change could not be applied without ambiguity.</value></data>
+  <data name="Config.Validation.Listen.Invalid" xml:space="preserve"><value>Enter a valid IPv4, IPv6, hostname, or * wildcard without DNS resolution.</value></data>
+  <data name="Config.Validation.Listen.Port" xml:space="preserve"><value>An explicit port must be between 1 and 65535.</value></data>
+  <data name="Config.Validation.Listen.Wildcard" xml:space="preserve"><value>This listener exposes the server broadly. Review firewall and access controls.</value></data>
+  <data name="Config.Validation.Argument.Invalid" xml:space="preserve"><value>Enter one valid technical argument; values containing spaces are quoted deterministically.</value></data>
+  <data name="Config.Validation.CustomKnown" xml:space="preserve"><value>This name already has a dedicated graphical field. Change it in the corresponding section.</value></data>
+  <data name="Semantic.Validation.Boolean" xml:space="preserve"><value>Use a boolean value documented by NUT.</value></data>
+  <data name="Config.Choice.none" xml:space="preserve"><value>Do not start automatically</value></data>
+  <data name="Config.Choice.standalone" xml:space="preserve"><value>Standalone local server</value></data>
+  <data name="Config.Choice.netserver" xml:space="preserve"><value>Network server</value></data>
+  <data name="Config.Choice.netclient" xml:space="preserve"><value>Network client</value></data>
+  <data name="Config.Choice.stderr" xml:space="preserve"><value>stderr only</value></data>
+  <data name="Config.Choice.default" xml:space="preserve"><value>Default behavior</value></data>
+  <data name="Config.Choice.0" xml:space="preserve"><value>Do not request a certificate</value></data>
+  <data name="Config.Choice.1" xml:space="preserve"><value>Request a certificate</value></data>
+  <data name="Config.Choice.2" xml:space="preserve"><value>Require a valid certificate</value></data>
+  <data name="Config.Field.Nut.Mode.Label" xml:space="preserve"><value>NUT mode</value></data>
+  <data name="Config.Field.Nut.Mode.Help" xml:space="preserve"><value>MODE is required and determines which components the wrapper starts. It is activated only by a separate service action.</value></data>
+  <data name="Config.Field.Nut.AllowNoDevice.Label" xml:space="preserve"><value>Allow server without devices</value></data>
+  <data name="Config.Field.Nut.AllowNoDevice.Help" xml:space="preserve"><value>ALLOW_NO_DEVICE permits upsd startup without UPS sections and can override its upsd.conf counterpart.</value></data>
+  <data name="Config.Field.Nut.AllowNotAllListeners.Label" xml:space="preserve"><value>Allow unavailable listeners</value></data>
+  <data name="Config.Field.Nut.AllowNotAllListeners.Help" xml:space="preserve"><value>ALLOW_NOT_ALL_LISTENERS permits startup when not every LISTEN can be honored.</value></data>
+  <data name="Config.Field.Nut.UpsdOptions.Label" xml:space="preserve"><value>Additional upsd options</value></data>
+  <data name="Config.Field.Nut.UpsdOptions.Help" xml:space="preserve"><value>UPSD_OPTIONS is a technical package-integration string; NutManager does not execute it.</value></data>
+  <data name="Config.Field.Nut.UpsmonOptions.Label" xml:space="preserve"><value>Additional upsmon options</value></data>
+  <data name="Config.Field.Nut.UpsmonOptions.Help" xml:space="preserve"><value>UPSMON_OPTIONS is a technical package-integration string; NutManager does not execute it.</value></data>
+  <data name="Config.Field.Nut.PoweroffWait.Label" xml:space="preserve"><value>Emergency power-off wait</value></data>
+  <data name="Config.Field.Nut.PoweroffWait.Help" xml:space="preserve"><value>POWEROFF_WAIT accepts package-dependent duration syntax and can be dangerous. Configuring it does not perform shutdown.</value></data>
+  <data name="Config.Field.Nut.PoweroffQuiet.Label" xml:space="preserve"><value>Silence power-off integration</value></data>
+  <data name="Config.Field.Nut.PoweroffQuiet.Help" xml:space="preserve"><value>POWEROFF_QUIET reduces power-off integration messages.</value></data>
+  <data name="Config.Field.Nut.DebugLevel.Label" xml:space="preserve"><value>Default debug level</value></data>
+  <data name="Config.Field.Nut.DebugLevel.Help" xml:space="preserve"><value>NUT_DEBUG_LEVEL controls default daemon verbosity and can generate substantial logs.</value></data>
+  <data name="Config.Field.Nut.DebugPid.Label" xml:space="preserve"><value>Include PID in debug</value></data>
+  <data name="Config.Field.Nut.DebugPid.Help" xml:space="preserve"><value>NUT_DEBUG_PID includes the process identifier in debug messages.</value></data>
+  <data name="Config.Field.Nut.DebugProcessName.Label" xml:space="preserve"><value>Include process name in debug</value></data>
+  <data name="Config.Field.Nut.DebugProcessName.Help" xml:space="preserve"><value>NUT_DEBUG_PROCNAME identifies the process in messages.</value></data>
+  <data name="Config.Field.Nut.DebugSyslog.Label" xml:space="preserve"><value>System debug destination</value></data>
+  <data name="Config.Field.Nut.DebugSyslog.Help" xml:space="preserve"><value>NUT_DEBUG_SYSLOG controls syslog/Event Log usage or attached stderr.</value></data>
+  <data name="Config.Field.Nut.IgnoreProcessNameCheck.Label" xml:space="preserve"><value>Ignore process-name verification</value></data>
+  <data name="Config.Field.Nut.IgnoreProcessNameCheck.Help" xml:space="preserve"><value>NUT_IGNORE_CHECKPROCNAME disables a PID/process safety verification.</value></data>
+  <data name="Config.Field.Nut.QuietInitUpsNotify.Label" xml:space="preserve"><value>Silence service-integration warning</value></data>
+  <data name="Config.Field.Nut.QuietInitUpsNotify.Help" xml:space="preserve"><value>NUT_QUIET_INIT_UPSNOTIFY reduces warnings when lifecycle notification is unavailable.</value></data>
+  <data name="Config.Field.Upsd.Listen.Label" xml:space="preserve"><value>Server listener</value></data>
+  <data name="Config.Field.Upsd.Listen.Help" xml:space="preserve"><value>LISTEN binds an address or hostname and an optional TCP port.</value></data>
+  <data name="Config.Field.Upsd.MaxAge.Label" xml:space="preserve"><value>Maximum data age</value></data>
+  <data name="Config.Field.Upsd.MaxAge.Help" xml:space="preserve"><value>MAXAGE is the number of seconds a driver may stop responding before data is stale.</value></data>
+  <data name="Config.Field.Upsd.TrackingDelay.Label" xml:space="preserve"><value>Tracking retention</value></data>
+  <data name="Config.Field.Upsd.TrackingDelay.Help" xml:space="preserve"><value>TRACKINGDELAY is how long tracked command results are retained.</value></data>
+  <data name="Config.Field.Upsd.AllowNoDevice.Label" xml:space="preserve"><value>Allow server without devices</value></data>
+  <data name="Config.Field.Upsd.AllowNoDevice.Help" xml:space="preserve"><value>ALLOW_NO_DEVICE controls the default behavior in upsd.conf itself.</value></data>
+  <data name="Config.Field.Upsd.AllowNotAllListeners.Label" xml:space="preserve"><value>Allow unavailable listeners</value></data>
+  <data name="Config.Field.Upsd.AllowNotAllListeners.Help" xml:space="preserve"><value>ALLOW_NOT_ALL_LISTENERS permits startup when at least one listener can be honored.</value></data>
+  <data name="Config.Field.Upsd.StatePath.Label" xml:space="preserve"><value>State directory</value></data>
+  <data name="Config.Field.Upsd.StatePath.Help" xml:space="preserve"><value>STATEPATH points to driver sockets; the ups.conf global value or environment may take precedence.</value></data>
+  <data name="Config.Field.Upsd.MaxConnections.Label" xml:space="preserve"><value>Maximum connections</value></data>
+  <data name="Config.Field.Upsd.MaxConnections.Help" xml:space="preserve"><value>MAXCONN limits connections and should be changed only with an understanding of system limits.</value></data>
+  <data name="Config.Field.Upsd.CertificateFile.Label" xml:space="preserve"><value>OpenSSL certificate file</value></data>
+  <data name="Config.Field.Upsd.CertificateFile.Help" xml:space="preserve"><value>CERTFILE points to the PEM file used by OpenSSL builds.</value></data>
+  <data name="Config.Field.Upsd.CertificatePath.Label" xml:space="preserve"><value>NSS certificate database</value></data>
+  <data name="Config.Field.Upsd.CertificatePath.Help" xml:space="preserve"><value>CERTPATH points to the NSS database directory.</value></data>
+  <data name="Config.Field.Upsd.CertificateIdentity.Label" xml:space="preserve"><value>Certificate identity and password</value></data>
+  <data name="Config.Field.Upsd.CertificateIdentity.Help" xml:space="preserve"><value>CERTIDENT is a protected NSS composite; changes require a new identity and password.</value></data>
+  <data name="Config.Field.Upsd.CertificateRequest.Label" xml:space="preserve"><value>Client certificate request</value></data>
+  <data name="Config.Field.Upsd.CertificateRequest.Help" xml:space="preserve"><value>CERTREQUEST controls requesting or requiring certificates when NSS client validation is available.</value></data>
+  <data name="Config.Field.Upsd.DisableWeakSsl.Label" xml:space="preserve"><value>Disable weak SSL/TLS</value></data>
+  <data name="Config.Field.Upsd.DisableWeakSsl.Help" xml:space="preserve"><value>DISABLE_WEAK_SSL restricts older protocols and ciphers when supported by the backend.</value></data>
+  <data name="Config.Field.Upsd.DebugMinimum.Label" xml:space="preserve"><value>Minimum debug level</value></data>
+  <data name="Config.Field.Upsd.DebugMinimum.Help" xml:space="preserve"><value>DEBUG_MIN sets minimum upsd verbosity and can be applied by runtime reload.</value></data>
+  <data name="Semantic.Operation.EditRepeatedRow" xml:space="preserve"><value>Edit repeated row</value></data>
 </root>

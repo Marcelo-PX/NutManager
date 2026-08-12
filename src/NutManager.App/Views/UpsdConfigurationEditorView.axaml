@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             xmlns:views="clr-namespace:NutManager.App.Views"
+             x:Class="NutManager.App.Views.UpsdConfigurationEditorView"
+             x:DataType="viewModels:UpsdConfigurationEditorViewModel">
+  <StackPanel Spacing="14">
+    <Border Classes="nut-card">
+      <StackPanel Spacing="10">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+          <StackPanel Spacing="3"><TextBlock Text="{Binding Strings[Config.Server.Title]}" Classes="nut-section-title" /><TextBlock Text="{Binding Strings[Config.Server.Description]}" Classes="nut-metadata" TextWrapping="Wrap" /></StackPanel>
+          <ToggleSwitch Grid.Column="1" Content="{Binding Strings[Ups.Editor.AdvancedMode]}" IsChecked="{Binding ShowAdvanced, Mode=TwoWay}" />
+        </Grid>
+        <TextBlock Text="{Binding Strings[Config.Listen.Title]}" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Strings[Config.Listen.SecurityHelp]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Strings[Config.Listen.Empty]}" IsVisible="{Binding HasNoListeners}" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding Listeners}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:UpsdListenRowViewModel">
+              <Border Classes="nut-card-elevated" Margin="0,0,0,8">
+                <WrapPanel>
+                  <TextBox Width="260" Margin="0,0,8,8" Text="{Binding Address, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}" AutomationProperties.Name="{Binding Strings[Config.Listen.Address]}" />
+                  <TextBox Width="140" Margin="0,0,8,8" Text="{Binding PortText, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}" AutomationProperties.Name="{Binding Strings[Config.Listen.OptionalPort]}" />
+                  <Button Margin="0,0,8,8" Content="{Binding Strings[Config.Listen.Save]}" Command="{Binding SaveCommand}" IsEnabled="{Binding CanEdit}" />
+                  <Button Margin="0,0,8,8" Classes="nut-danger" Content="{Binding Strings[Config.Listen.Remove]}" Command="{Binding RemoveCommand}" IsEnabled="{Binding CanEdit}" />
+                </WrapPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <WrapPanel IsVisible="{Binding CanEdit}">
+          <TextBox Width="260" Margin="0,0,8,8" Text="{Binding NewListenAddress, Mode=TwoWay}" PlaceholderText="{Binding Strings[Config.Listen.Address]}" />
+          <TextBox Width="140" Margin="0,0,8,8" Text="{Binding NewListenPort, Mode=TwoWay}" PlaceholderText="{Binding Strings[Config.Listen.OptionalPort]}" />
+          <Button Margin="0,0,8,8" Content="{Binding Strings[Config.Listen.Add]}" Command="{Binding AddListenerCommand}" />
+        </WrapPanel>
+        <ItemsControl ItemsSource="{Binding BasicFields}">
+          <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ItemsControl ItemsSource="{Binding AdvancedFields}" IsVisible="{Binding ShowAdvanced}">
+          <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+    <Border Classes="nut-card" IsVisible="{Binding HasTlsFields}">
+      <StackPanel Spacing="10">
+        <TextBlock Text="{Binding Strings[Config.Tls.Title]}" Classes="nut-section-title" />
+        <TextBlock Text="{Binding Strings[Config.Tls.BackendHelp]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding TlsFields}">
+          <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <WrapPanel IsVisible="{Binding CanEdit}">
+          <TextBox x:Name="CertificateIdentityBox" Width="260" Margin="0,0,8,8" PlaceholderText="{Binding Strings[Config.Tls.CertificateIdentity]}" AutomationProperties.Name="{Binding Strings[Config.Tls.CertificateIdentity]}" />
+          <TextBox x:Name="CertificatePasswordBox" Width="260" Margin="0,0,8,8" PasswordChar="●" PlaceholderText="{Binding Strings[Config.Tls.Password]}" AutomationProperties.Name="{Binding Strings[Config.Tls.Password]}" />
+          <Button Margin="0,0,8,8" Content="{Binding Strings[Config.Tls.ReplaceIdentity]}" Click="ReplaceCertificateIdentity_OnClick" />
+          <Button Margin="0,0,8,8" Classes="nut-danger" Content="{Binding Strings[Config.Tls.RemoveIdentity]}" Click="RemoveCertificateIdentity_OnClick" />
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+    <views:ServerCustomParametersView DataContext="{Binding}" />
+    <Border Classes="nut-card" IsVisible="{Binding HasValidationIssues}"><StackPanel Spacing="8"><TextBlock Text="{Binding Strings[Semantic.Validation.Title]}" Classes="nut-section-title" /><ItemsControl ItemsSource="{Binding ValidationIssues}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:UpsValidationIssueViewModel"><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
+    <TextBlock Text="{Binding OperationMessage}" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

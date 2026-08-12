@@ -55,7 +55,7 @@ public sealed class AdministrationPageViewModelTests
     }
 
     [Fact]
-    public async Task LoadsSectionsAndRepeatedEntriesInOriginalOrderWithoutMakingRawContentEditable()
+    public async Task UpsdConfUsesDedicatedSemanticEditorAndPreservesUnknownContent()
     {
         const string text = "# keep this\nLISTEN 127.0.0.1\nLISTEN ::1\nunknown future value\n";
         var pipeline = new TestPipeline();
@@ -64,19 +64,19 @@ public sealed class AdministrationPageViewModelTests
 
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "upsd.conf"));
 
-        var entries = viewModel.Sections.Single().Entries;
-        Assert.Equal(["LISTEN", "LISTEN", "unknown"], entries.Select(entry => entry.Name));
-        Assert.Equal([2, 3, 4], entries.Select(entry => entry.LineNumber));
-        Assert.Contains("preservad", viewModel.Sections.Single().RawContentSummary, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal("127.0.0.1", entries[0].DraftValue);
+        var editor = viewModel.UpsdConfigurationEditor!;
+        Assert.NotNull(editor);
+        Assert.Empty(viewModel.Sections);
+        Assert.False(viewModel.IsLegacyConfigurationEditorVisible);
+        Assert.Equal(["127.0.0.1", "::1"], editor.Listeners.Select(listener => listener.Address));
+        Assert.Contains(editor.CustomParameters, parameter => parameter.Name == "unknown" && parameter.DraftValue == "future value");
         Assert.False(viewModel.HasDraftChanges);
 
-        entries[0].DraftValue = "127.0.0.2";
+        editor.Listeners[0].Address = "127.0.0.2";
+        editor.Listeners[0].SaveCommand.Execute(null);
 
         Assert.True(viewModel.HasDraftChanges);
-        entries[0].DraftValue = "127.0.0.1";
-        Assert.False(viewModel.HasDraftChanges);
-        entries[0].DraftValue = "127.0.0.2";
+        Assert.Equal("# keep this\nLISTEN 127.0.0.2\nLISTEN ::1\nunknown future value\n", editor.Draft.Materialize().Serialize());
         Assert.Equal(text, pipeline.LastLoadedDocument!.Serialize());
     }
 
@@ -118,7 +118,7 @@ public sealed class AdministrationPageViewModelTests
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         var viewModel = await CreateInitializedViewModelAsync(pipeline, "nut.conf");
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
-        var mode = GetEntry(viewModel, "MODE");
+        var mode = GetModeField(viewModel);
 
         mode.DraftValue = "netserver";
 
@@ -143,7 +143,7 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal("/session/backup.bak", viewModel.BackupPath);
         Assert.False(viewModel.HasPreview);
         Assert.False(viewModel.HasDraftChanges);
-        Assert.Equal("netserver", GetEntry(viewModel, "MODE").DraftValue);
+        Assert.Equal("netserver", GetModeField(viewModel).DraftValue);
     }
 
     [Fact]
@@ -152,7 +152,7 @@ public sealed class AdministrationPageViewModelTests
         var pipeline = new TestPipeline();
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         var viewModel = await CreateLoadedNutConfAsync(pipeline);
-        var mode = GetEntry(viewModel, "MODE");
+        var mode = GetModeField(viewModel);
         mode.DraftValue = "netserver";
         await viewModel.ReviewChangesAsync();
         viewModel.IsPreviewConfirmed = true;
@@ -170,7 +170,7 @@ public sealed class AdministrationPageViewModelTests
         var pipeline = new TestPipeline();
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         var viewModel = await CreateLoadedNutConfAsync(pipeline);
-        var mode = GetEntry(viewModel, "MODE");
+        var mode = GetModeField(viewModel);
         mode.DraftValue = "netserver";
         var reviewLoadCompletion = new TaskCompletionSource<NutConfigurationLoadResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         var reviewLoadStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -204,7 +204,7 @@ public sealed class AdministrationPageViewModelTests
         var pipeline = new TestPipeline();
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         var viewModel = await CreateLoadedNutConfAsync(pipeline);
-        var mode = GetEntry(viewModel, "MODE");
+        var mode = GetModeField(viewModel);
         mode.DraftValue = "netserver";
         await viewModel.ReviewChangesAsync();
         viewModel.IsPreviewConfirmed = true;
@@ -232,7 +232,7 @@ public sealed class AdministrationPageViewModelTests
 
         Assert.False(viewModel.HasDraftChanges);
         Assert.False(viewModel.HasPreview);
-        Assert.Equal("netserver", GetEntry(viewModel, "MODE").DraftValue);
+        Assert.Equal("netserver", GetModeField(viewModel).DraftValue);
         Assert.True(viewModel.CanEditEntries);
     }
 
@@ -249,7 +249,7 @@ public sealed class AdministrationPageViewModelTests
         var viewModel = new AdministrationPageViewModel(detector, pipeline);
         await viewModel.InitializeAsync();
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
-        var mode = GetEntry(viewModel, "MODE");
+        var mode = GetModeField(viewModel);
         var operationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var operationCompletion = new TaskCompletionSource<NutInstallationInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
         if (inspectDirectory)
@@ -331,11 +331,29 @@ public sealed class AdministrationPageViewModelTests
             "MONITOR ups@localhost 1 user fictional-monitor-secret master");
 
     [Fact]
-    public Task CertidentDirectiveUsesAnEmptyReplacementFieldAndRedactedPreview() =>
-        AssertSensitiveDirectiveUsesAnEmptyReplacementFieldAndRedactedPreview(
-            NutConfigurationFileKind.UpsdConf,
-            "upsd.conf",
-            "CERTIDENT \"server cert\" fictional-private-key-password");
+    public async Task CertidentUsesDedicatedChangeOnlyEditorAndRedactedPreview()
+    {
+        const string originalSecret = "fictional-private-key-password";
+        const string replacement = "T27_CERTIDENT_REPLACEMENT";
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/upsd.conf", NutConfigurationFileKind.UpsdConf,
+            $"CERTIDENT \"server cert\" {originalSecret}\n");
+        var viewModel = await CreateInitializedViewModelAsync(pipeline, "upsd.conf");
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "upsd.conf"));
+
+        Assert.Empty(viewModel.Sections);
+        Assert.NotNull(viewModel.UpsdConfigurationEditor);
+        Assert.DoesNotContain(originalSecret, GetPublicStringValues(viewModel.UpsdConfigurationEditor!));
+
+        viewModel.UpsdConfigurationEditor!.ReplaceCertificateIdentity("new certificate", replacement.AsSpan());
+        await viewModel.ReviewChangesAsync();
+
+        Assert.Single(viewModel.PreviewLines);
+        Assert.True(viewModel.PreviewLines.Single().IsRedacted);
+        Assert.Equal("<redacted>", viewModel.PreviewLines.Single().CandidateText);
+        Assert.DoesNotContain(originalSecret, GetPublicStringValues(viewModel));
+        Assert.DoesNotContain(replacement, GetPublicStringValues(viewModel));
+    }
 
     private static async Task AssertSensitiveDirectiveUsesAnEmptyReplacementFieldAndRedactedPreview(
         NutConfigurationFileKind kind,
@@ -365,7 +383,7 @@ public sealed class AdministrationPageViewModelTests
         var pipeline = new TestPipeline();
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         var viewModel = await CreateLoadedNutConfAsync(pipeline);
-        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        GetModeField(viewModel).DraftValue = "netserver";
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=external\n");
 
         await viewModel.ReviewChangesAsync();
@@ -386,7 +404,7 @@ public sealed class AdministrationPageViewModelTests
         };
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         var viewModel = await CreateLoadedNutConfAsync(pipeline);
-        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        GetModeField(viewModel).DraftValue = "netserver";
         await viewModel.ReviewChangesAsync();
         viewModel.IsPreviewConfirmed = true;
 
@@ -407,7 +425,7 @@ public sealed class AdministrationPageViewModelTests
         pipeline.SetFile("/session/nut/etc/upsd.conf", NutConfigurationFileKind.UpsdConf, "LISTEN 127.0.0.1\n");
         var viewModel = await CreateInitializedViewModelAsync(pipeline, "nut.conf", "upsd.conf");
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
-        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        GetModeField(viewModel).DraftValue = "netserver";
 
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "upsd.conf"));
         Assert.Equal("nut.conf", viewModel.SelectedFile!.FileName);
@@ -419,7 +437,7 @@ public sealed class AdministrationPageViewModelTests
         await viewModel.DiscardChangesAsync();
 
         Assert.False(viewModel.HasDraftChanges);
-        Assert.Equal("standalone", GetEntry(viewModel, "MODE").DraftValue);
+        Assert.Equal("standalone", GetModeField(viewModel).DraftValue);
     }
 
     [Fact]
@@ -433,7 +451,7 @@ public sealed class AdministrationPageViewModelTests
         var viewModel = new AdministrationPageViewModel(detector, pipeline);
         await viewModel.InitializeAsync();
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
-        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        GetModeField(viewModel).DraftValue = "netserver";
 
         await viewModel.InspectInstallationDirectoryAsync("/context-b/nut");
 
@@ -441,7 +459,7 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal("Descarte ou aplique as alterações antes de trocar a instalação.", viewModel.StatusMessage);
         Assert.Equal("/context-a/nut/etc", viewModel.ConfigurationDirectoryText);
         Assert.Equal("/context-a/nut/etc/nut.conf", viewModel.SelectedFile!.FullPath);
-        Assert.Equal("netserver", GetEntry(viewModel, "MODE").DraftValue);
+        Assert.Equal("netserver", GetModeField(viewModel).DraftValue);
         Assert.True(viewModel.HasLoadedFile);
     }
 
@@ -456,7 +474,7 @@ public sealed class AdministrationPageViewModelTests
         var viewModel = new AdministrationPageViewModel(detector, pipeline);
         await viewModel.InitializeAsync();
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
-        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        GetModeField(viewModel).DraftValue = "netserver";
         await viewModel.ReviewChangesAsync();
         detector.DetectResult = installationB;
         var detectCallsBeforeRefresh = detector.DetectCalls;
@@ -575,7 +593,7 @@ public sealed class AdministrationPageViewModelTests
         };
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         var viewModel = await CreateLoadedNutConfAsync(pipeline);
-        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        GetModeField(viewModel).DraftValue = "netserver";
         await viewModel.ReviewChangesAsync();
         viewModel.IsPreviewConfirmed = true;
 
@@ -603,7 +621,7 @@ public sealed class AdministrationPageViewModelTests
         };
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         var viewModel = await CreateLoadedNutConfAsync(pipeline);
-        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        GetModeField(viewModel).DraftValue = "netserver";
         await viewModel.ReviewChangesAsync();
         viewModel.IsPreviewConfirmed = true;
 
@@ -642,7 +660,7 @@ public sealed class AdministrationPageViewModelTests
             pipeline);
         await viewModel.InitializeAsync();
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "nut.conf"));
-        GetEntry(viewModel, "MODE").DraftValue = "netserver";
+        GetModeField(viewModel).DraftValue = "netserver";
         await viewModel.ReviewChangesAsync();
         viewModel.IsPreviewConfirmed = true;
 
@@ -921,6 +939,9 @@ public sealed class AdministrationPageViewModelTests
 
     private static NutConfigurationEntryViewModel GetEntry(AdministrationPageViewModel viewModel, string name) =>
         viewModel.Sections.SelectMany(section => section.Entries).Single(entry => entry.Name == name);
+
+    private static ServerConfigurationFieldViewModel GetModeField(AdministrationPageViewModel viewModel) =>
+        viewModel.NutGeneralConfigurationEditor!.BasicFields.Single(field => field.Descriptor.SemanticId == "Nut.Mode");
 
     private static string GetPublicStringValues(object value) => string.Join(
         "\n",

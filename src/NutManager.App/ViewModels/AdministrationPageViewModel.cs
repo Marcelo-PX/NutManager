@@ -115,6 +115,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private UpsConfigurationEditorViewModel? _upsConfigurationEditor;
 
     [ObservableProperty]
+    private NutGeneralConfigurationEditorViewModel? _nutGeneralConfigurationEditor;
+
+    [ObservableProperty]
+    private UpsdConfigurationEditorViewModel? _upsdConfigurationEditor;
+
+    [ObservableProperty]
     private SemanticConfigurationReviewViewModel? _semanticReview;
 
     [ObservableProperty]
@@ -215,8 +221,6 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     [ObservableProperty]
     private string? _driverDiagnosticStatusMessage;
 
-    public string EditingScopeText => "Esta versão edita entradas existentes. Criação e remoção de entradas serão tratadas separadamente.";
-
     public string SelectedFileName => SelectedFile?.FileName ?? UnavailableText;
 
     public string SelectedFileStatusText => SelectedFile?.StatusText ?? "Nenhum arquivo selecionado";
@@ -227,11 +231,18 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool HasNoLoadedFile => !HasLoadedFile;
 
-    public bool HasDraftChanges => _entries.Any(entry => entry.IsChanged) || UpsConfigurationEditor?.HasChanges == true;
+    private ISemanticConfigurationEditor? ActiveSemanticEditor =>
+        UpsConfigurationEditor ?? (ISemanticConfigurationEditor?)NutGeneralConfigurationEditor ?? UpsdConfigurationEditor;
+
+    public bool HasDraftChanges => _entries.Any(entry => entry.IsChanged) || ActiveSemanticEditor?.HasChanges == true;
 
     public bool IsUpsConfigurationEditorVisible => UpsConfigurationEditor is not null;
 
-    public bool IsLegacyConfigurationEditorVisible => HasLoadedFile && UpsConfigurationEditor is null;
+    public bool IsNutGeneralConfigurationEditorVisible => NutGeneralConfigurationEditor is not null;
+
+    public bool IsUpsdConfigurationEditorVisible => UpsdConfigurationEditor is not null;
+
+    public bool IsLegacyConfigurationEditorVisible => HasLoadedFile && ActiveSemanticEditor is null;
 
     public bool HasPreview => _preparedChange is not null;
 
@@ -306,7 +317,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool CanEditEntries => CanEditConfiguration && HasLoadedFile && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
 
     public bool CanReview => CanEditConfiguration && HasLoadedFile && HasDraftChanges &&
-        (UpsConfigurationEditor is null || !UpsConfigurationEditor.HasChanges || UpsConfigurationEditor.CanReview) &&
+        (ActiveSemanticEditor is null || !ActiveSemanticEditor.HasChanges || ActiveSemanticEditor.CanReview) &&
         !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
 
     public bool CanApply => CanEditConfiguration && HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
@@ -611,16 +622,16 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             }
 
             NutConfigurationPreparedChange prepared;
-            if (UpsConfigurationEditor?.HasChanges == true)
+            if (ActiveSemanticEditor?.HasChanges == true)
             {
-                if (!UpsConfigurationEditor.CanReview)
+                if (!ActiveSemanticEditor.CanReview)
                 {
-                    SetStatus(Strings.Get("Ups.Validation.ResolveBeforeReview"));
+                    SetStatus(Strings.Get("Config.Validation.ResolveBeforeReview"));
                     return;
                 }
-                var generated = UpsConfigurationEditor.Prepare(_configurationPipeline);
+                var generated = ActiveSemanticEditor.Prepare(_configurationPipeline);
                 prepared = generated.PreparedChange;
-                SemanticReview = new SemanticConfigurationReviewViewModel(generated, UpsConfigurationEditor.Draft.Projection, Strings);
+                SemanticReview = new SemanticConfigurationReviewViewModel(generated, ActiveSemanticEditor.Draft.Projection, Strings);
                 SemanticReviewChanged?.Invoke(SemanticReview);
             }
             else if (!TryApplyDrafts(reloaded.Snapshot.Document))
@@ -744,7 +755,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             entry.ResetDraft();
         }
 
-        UpsConfigurationEditor?.Reset();
+        ActiveSemanticEditor?.Reset();
 
         await LoadSelectedFileAsync(cancellationToken);
     }
@@ -1243,8 +1254,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     private async Task BuildEditorsAsync(NutConfigurationFileSnapshot snapshot, CancellationToken cancellationToken)
     {
-        UpsConfigurationEditor?.Dispose();
-        UpsConfigurationEditor = null;
+        DisposeSemanticEditors();
         if (snapshot.FileKind == NutConfigurationFileKind.UpsConf)
         {
             BuildEntries(snapshot.Document);
@@ -1254,6 +1264,28 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             var editor = new UpsConfigurationEditorViewModel(snapshot, installed, IsLocalManagementProfile ? ComPorts : [], Strings);
             editor.Changed += OnUpsConfigurationChanged;
             UpsConfigurationEditor = editor;
+            _draftVersion++;
+            NotifyWorkflowPropertiesChanged();
+            return;
+        }
+        if (snapshot.FileKind == NutConfigurationFileKind.NutConf)
+        {
+            _entries = [];
+            Sections = [];
+            var editor = new NutGeneralConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration);
+            editor.Changed += OnSemanticConfigurationChanged;
+            NutGeneralConfigurationEditor = editor;
+            _draftVersion++;
+            NotifyWorkflowPropertiesChanged();
+            return;
+        }
+        if (snapshot.FileKind == NutConfigurationFileKind.UpsdConf)
+        {
+            _entries = [];
+            Sections = [];
+            var editor = new UpsdConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration);
+            editor.Changed += OnSemanticConfigurationChanged;
+            UpsdConfigurationEditor = editor;
             _draftVersion++;
             NotifyWorkflowPropertiesChanged();
             return;
@@ -1279,12 +1311,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
 
         _loadedSnapshot = null;
-        if (UpsConfigurationEditor is not null)
-        {
-            UpsConfigurationEditor.Changed -= OnUpsConfigurationChanged;
-            UpsConfigurationEditor.Dispose();
-            UpsConfigurationEditor = null;
-        }
+        DisposeSemanticEditors();
         _entries = Array.Empty<NutConfigurationEntryViewModel>();
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         InvalidatePreview();
@@ -1331,6 +1358,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     }
 
     private void OnUpsConfigurationChanged()
+        => OnSemanticConfigurationChanged();
+
+    private void OnSemanticConfigurationChanged()
     {
         _draftVersion++;
         InvalidateAdministrativeAction();
@@ -1454,6 +1484,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(IsRemoteConfigurationReady));
         OnPropertyChanged(nameof(IsConfigurationEditorVisible));
         OnPropertyChanged(nameof(IsUpsConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsNutGeneralConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsUpsdConfigurationEditorVisible));
         OnPropertyChanged(nameof(IsLegacyConfigurationEditorVisible));
         OnPropertyChanged(nameof(CanChangeRemoteSessionContext));
         OnPropertyChanged(nameof(CanConnectRemote));
@@ -1608,6 +1640,42 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(IsUpsConfigurationEditorVisible));
         OnPropertyChanged(nameof(IsLegacyConfigurationEditorVisible));
         NotifyWorkflowPropertiesChanged();
+    }
+
+    partial void OnNutGeneralConfigurationEditorChanged(NutGeneralConfigurationEditorViewModel? value)
+    {
+        OnPropertyChanged(nameof(IsNutGeneralConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsLegacyConfigurationEditorVisible));
+        NotifyWorkflowPropertiesChanged();
+    }
+
+    partial void OnUpsdConfigurationEditorChanged(UpsdConfigurationEditorViewModel? value)
+    {
+        OnPropertyChanged(nameof(IsUpsdConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsLegacyConfigurationEditorVisible));
+        NotifyWorkflowPropertiesChanged();
+    }
+
+    private void DisposeSemanticEditors()
+    {
+        if (UpsConfigurationEditor is not null)
+        {
+            UpsConfigurationEditor.Changed -= OnUpsConfigurationChanged;
+            UpsConfigurationEditor.Dispose();
+            UpsConfigurationEditor = null;
+        }
+        if (NutGeneralConfigurationEditor is not null)
+        {
+            NutGeneralConfigurationEditor.Changed -= OnSemanticConfigurationChanged;
+            NutGeneralConfigurationEditor.Dispose();
+            NutGeneralConfigurationEditor = null;
+        }
+        if (UpsdConfigurationEditor is not null)
+        {
+            UpsdConfigurationEditor.Changed -= OnSemanticConfigurationChanged;
+            UpsdConfigurationEditor.Dispose();
+            UpsdConfigurationEditor = null;
+        }
     }
 
     private void OnRemoteConfigurationContextChanged(

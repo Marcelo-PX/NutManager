@@ -35,15 +35,9 @@ public sealed class NutConfigurationSchemaRegistry
 
     public static NutConfigurationSchemaRegistry CreateBuiltIn() => new(
     [
-        new(NutConfigurationFileKind.NutConf,
-        [
-            Field(NutConfigurationFileKind.NutConf, "Nut.Mode", NutConfigurationEntryKind.Assignment, "MODE", NutConfigurationFieldScope.Global)
-        ]),
+        NutServerConfigurationCatalog.CreateNutConfSchema(),
         NutUpsConfigurationCatalog.CreateFileSchema(),
-        new(NutConfigurationFileKind.UpsdConf,
-        [
-            Field(NutConfigurationFileKind.UpsdConf, "Upsd.Listen", NutConfigurationEntryKind.Directive, "LISTEN", NutConfigurationFieldScope.Repeated)
-        ]),
+        NutServerConfigurationCatalog.CreateUpsdConfSchema(),
         new(NutConfigurationFileKind.UpsdUsers,
         [
             Field(NutConfigurationFileKind.UpsdUsers, "UpsdUsers.Password", NutConfigurationEntryKind.Assignment, "password", NutConfigurationFieldScope.Section,

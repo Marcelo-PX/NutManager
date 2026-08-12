@@ -37,15 +37,19 @@ public sealed class NutConfigurationDocumentMutator
         string value,
         string? section = null,
         int insertionOrder = 0,
-        IReadOnlyDictionary<string, int>? preferredOrder = null)
+        IReadOnlyDictionary<string, int>? preferredOrder = null,
+        string? semanticIdentity = null)
     {
         if (!AllowsAssignments() || !ValidToken(name) || !ValidValue(value) || !ValidSectionReference(section)) return Invalid();
         var lineEnding = PreferredLineEnding(section);
         var insertionIndex = FindInsertionIndex(section, name, insertionOrder, preferredOrder);
         var insertedLineEnding = insertionIndex == _document.Nodes.Count && !HasFinalNewline() ? string.Empty : lineEnding;
+        var separator = AssignmentSeparator();
+        var renderedValue = RenderInsertedValue(value);
         var node = new NutConfigurationAssignmentNode(
-            $"{name} = {RenderInsertedValue(value)}", insertedLineEnding, name, RenderInsertedValue(value), $"{name} = ", string.Empty,
+            $"{name}{separator}{renderedValue}", insertedLineEnding, name, renderedValue, $"{name}{separator}", string.Empty,
             NeedsQuotes(value) ? '"' : null, section, IsSensitiveAssignment(name));
+        if (semanticIdentity is not null) node.AssignSemanticIdentity(semanticIdentity);
         InsertAt(insertionIndex, node, lineEnding);
         return NutConfigurationMutationResult.Success();
     }
@@ -63,7 +67,8 @@ public sealed class NutConfigurationDocumentMutator
         string arguments,
         string? section = null,
         int insertionOrder = 0,
-        IReadOnlyDictionary<string, int>? preferredOrder = null)
+        IReadOnlyDictionary<string, int>? preferredOrder = null,
+        string? semanticIdentity = null)
     {
         if (!AllowsDirectives() || !ValidToken(name) || !ValidValue(arguments) || !ValidSectionReference(section)) return Invalid();
         var lineEnding = PreferredLineEnding(section);
@@ -72,6 +77,7 @@ public sealed class NutConfigurationDocumentMutator
         var raw = arguments.Length == 0 ? name : $"{name} {arguments}";
         var node = new NutConfigurationDirectiveNode(raw, insertedLineEnding, name, arguments, string.Empty,
             arguments.Length == 0 ? string.Empty : " ", string.Empty, section, IsSensitiveDirective(name));
+        if (semanticIdentity is not null) node.AssignSemanticIdentity(semanticIdentity);
         InsertAt(insertionIndex, node, lineEnding);
         return NutConfigurationMutationResult.Success();
     }
@@ -253,6 +259,7 @@ public sealed class NutConfigurationDocumentMutator
     private bool AllowsSections() => _document.FileKind is NutConfigurationFileKind.UpsConf or NutConfigurationFileKind.UpsdUsers;
     private bool AllowsAssignments() => _document.FileKind is NutConfigurationFileKind.NutConf or NutConfigurationFileKind.UpsConf or NutConfigurationFileKind.UpsdUsers;
     private bool AllowsDirectives() => _document.FileKind is NutConfigurationFileKind.UpsConf or NutConfigurationFileKind.UpsdConf or NutConfigurationFileKind.UpsdUsers or NutConfigurationFileKind.UpsmonConf;
+    private string AssignmentSeparator() => _document.FileKind == NutConfigurationFileKind.NutConf ? "=" : " = ";
     private bool IsSensitiveAssignment(string name) =>
         _document.FileKind == NutConfigurationFileKind.UpsdUsers && Equal(name, "password") ||
         _document.FileKind == NutConfigurationFileKind.UpsConf &&
