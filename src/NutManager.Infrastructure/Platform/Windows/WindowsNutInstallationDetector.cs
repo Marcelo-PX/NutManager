@@ -5,7 +5,21 @@ namespace NutManager.Infrastructure.Platform.Windows;
 
 public sealed class WindowsNutInstallationDetector : ILocalNutInstallationDetector
 {
-    private static readonly string[] KnownExecutableNames = ["upsd.exe", "upsc.exe", "upsdrvctl.exe", "upsmon.exe"];
+    /// <summary>
+    /// Executables that identify a NUT installation on Windows.
+    /// <para>
+    /// <c>nut.exe</c> is the Windows service host: it is the binary the "Network UPS Tools" service
+    /// registers as its <c>PathName</c>. It was missing here, so an installation whose bin folder
+    /// contains it was inspected without ever reporting it, and the diagnostics executable list
+    /// omitted the one binary the service actually runs.
+    /// </para>
+    /// <para>
+    /// Order matters for version resolution: <see cref="GetVersion"/> returns the first readable
+    /// file version, so the daemon and client binaries stay ahead of the service host and existing
+    /// version detection is unchanged.
+    /// </para>
+    /// </summary>
+    private static readonly string[] KnownExecutableNames = ["upsd.exe", "upsc.exe", "upsdrvctl.exe", "upsmon.exe", "nut.exe"];
     private static readonly string[] KnownConfigurationFileNames = ["nut.conf", "ups.conf", "upsd.conf", "upsd.users", "upsmon.conf"];
     private static readonly string[] ConfigurationDirectoryNames = ["etc", "config", "conf"];
 

@@ -21,4 +21,15 @@ public partial class UpsdConfigurationEditorView : UserControl
     {
         if (DataContext is UpsdConfigurationEditorViewModel editor) editor.RemoveCertificateIdentity();
     }
+
+    // Basic/Advanced is a view-only filter over the same semantic draft.
+    private void ShowBasicButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is ServerGeneralConfigurationEditorViewModel editor) editor.ShowAdvanced = false;
+    }
+
+    private void ShowAdvancedButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (DataContext is ServerGeneralConfigurationEditorViewModel editor) editor.ShowAdvanced = true;
+    }
 }

@@ -31,8 +31,11 @@ public partial class NutLoadGauge : UserControl
 
     public bool HasValue => Percent is not null;
 
-    /// <summary>Half the diameter plus room for the centred readout under the arc.</summary>
-    public double GaugeHeight => Diameter / 2 + 44;
+    /// <summary>
+    /// Semicircular arcs occupy half the diameter. The readout sits inside the arc rather than
+    /// below it, which keeps the card compact and matches the approved composition.
+    /// </summary>
+    public double GaugeHeight => Diameter / 2 + 10;
 
     public double SweepAngle => Percent is not { } percent ? 0d : Math.Clamp(percent, 0d, 100d) * 1.8d;
 

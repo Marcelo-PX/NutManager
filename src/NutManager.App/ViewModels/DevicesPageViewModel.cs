@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NutManager.App.Localization;
@@ -78,6 +79,9 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     public bool HasNoDevices => !HasDevices;
 
+    /// <summary>Drives the compact device picker, which is pointless with a single UPS.</summary>
+    public bool HasMultipleDevices => Devices.Count > 1;
+
     public bool HasSelectedDevice => SelectedDevice is not null;
 
     public bool HasNoSelectedDevice => !HasSelectedDevice;
@@ -98,11 +102,163 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
 
     public string SelectedDeviceDescription => SelectedSnapshot?.Identity.Description ?? Strings.Get("Status.Unavailable");
 
+    /// <summary>
+    /// True only when NUT actually reported a description. The card subtitle uses this so an
+    /// absent description is simply omitted instead of printing "unavailable" next to a status
+    /// badge that says the device is online, which reads as a contradiction.
+    /// </summary>
+    public bool HasSelectedDeviceDescription => !string.IsNullOrWhiteSpace(SelectedSnapshot?.Identity.Description);
+
     public string SelectedDeviceManufacturer => SelectedSnapshot?.Identity.Manufacturer ?? Strings.Get("Status.Unavailable");
 
     public string SelectedDeviceModel => SelectedSnapshot?.Identity.Model ?? Strings.Get("Status.Unavailable");
 
     public string SelectedDeviceSerialNumber => SelectedSnapshot?.Identity.SerialNumber ?? Strings.Get("Status.Unavailable");
+
+    // ==================== Selected-device technical summary (T27A) ====================
+    // Projected from the loaded snapshot only. Discovery returns identities, so driver, port and
+    // protocol are known for the device actually read; they are never guessed for the others.
+
+    private string? Variable(params string[] names)
+    {
+        if (SelectedSnapshot is null) return null;
+        foreach (var name in names)
+            if (SelectedSnapshot.Variables.TryGetValue(name, out var variable) && !string.IsNullOrWhiteSpace(variable.Value))
+                return variable.Value;
+        return null;
+    }
+
+    public string SelectedDeviceDriver => Variable("driver.name") ?? Strings.Get("Status.Unavailable");
+
+    public string SelectedDevicePort => Variable("driver.parameter.port", "port") is { } port
+        ? NutPortPresentation.Friendly(port)
+        : Strings.Get("Status.Unavailable");
+
+    public string SelectedDeviceProtocol => Variable("driver.parameter.protocol", "ups.firmware") ?? Strings.Get("Status.Unavailable");
+
+    public string? SelectedDevicePower => Variable("ups.realpower.nominal", "ups.power.nominal");
+
+    public bool HasSelectedDevicePower => SelectedDevicePower is not null;
+
+    public string SelectedDeviceLastUpdate => SelectedSnapshot is null
+        ? Strings.Get("Status.Unavailable")
+        : NutTimestampPresentation.Local(SelectedSnapshot.LastSuccessfulUpdate, "T");
+
+    private StatusSeverity? SelectedSeverity => SelectedSnapshot?.StatusTokens.Count > 0
+        ? SelectedSnapshot.StatusTokens.Max(token => token.Severity)
+        : null;
+
+    public string SelectedDeviceStatusText => SelectedSnapshot?.StatusTokens.Count > 0
+        ? SelectedSnapshot.StatusTokens.OrderByDescending(token => token.Severity).First().State switch
+        {
+            StatusSemanticState.Online => Strings.Get("UpsStatus.Online"),
+            StatusSemanticState.OnBattery => Strings.Get("UpsStatus.OnBattery"),
+            StatusSemanticState.LowBattery => Strings.Get("UpsStatus.LowBattery"),
+            StatusSemanticState.ReplaceBattery => Strings.Get("UpsStatus.ReplaceBattery"),
+            StatusSemanticState.Charging => Strings.Get("UpsStatus.Charging"),
+            StatusSemanticState.Discharging => Strings.Get("UpsStatus.Discharging"),
+            StatusSemanticState.Bypass => Strings.Get("UpsStatus.Bypass"),
+            StatusSemanticState.OutputOff => Strings.Get("UpsStatus.OutputOff"),
+            StatusSemanticState.Overloaded => Strings.Get("UpsStatus.Overloaded"),
+            StatusSemanticState.Calibration => Strings.Get("UpsStatus.Calibration"),
+            _ => SelectedSnapshot.StatusTokens[0].OriginalToken
+        }
+        : Strings.Get("Status.Unavailable");
+
+    public bool IsSelectedDeviceHealthy => SelectedSeverity is StatusSeverity.Normal or StatusSeverity.Informational;
+
+    public bool IsSelectedDeviceWarning => SelectedSeverity == StatusSeverity.Warning;
+
+    public bool IsSelectedDeviceCritical => SelectedSeverity == StatusSeverity.Critical;
+
+    public bool IsSelectedDeviceUnknown => SelectedSeverity is null;
+
+    // ==================== Adaptive identification (T27A Devices V2) ====================
+    // device.* is preferred and ups.* is the compatibility fallback; the same concept is never
+    // rendered twice. When a driver publishes none of these, the section collapses into one line
+    // instead of printing a column of "unavailable" values.
+
+    private string? Identity(string deviceKey, string upsKey) => Variable(deviceKey, upsKey);
+
+    public string? ManufacturerValue => Identity("device.mfr", "ups.mfr") ?? SelectedSnapshot?.Identity.Manufacturer;
+    public string? ModelValue => Identity("device.model", "ups.model") ?? SelectedSnapshot?.Identity.Model;
+    public string? SerialValue => Identity("device.serial", "ups.serial") ?? SelectedSnapshot?.Identity.SerialNumber;
+    public string? FirmwareValue => Variable("ups.firmware");
+    public string? DeviceTypeValue => Variable("device.type", "ups.type");
+
+    public bool HasManufacturer => !string.IsNullOrWhiteSpace(ManufacturerValue);
+    public bool HasModel => !string.IsNullOrWhiteSpace(ModelValue);
+    public bool HasSerial => !string.IsNullOrWhiteSpace(SerialValue);
+    public bool HasFirmware => !string.IsNullOrWhiteSpace(FirmwareValue);
+    public bool HasDeviceType => !string.IsNullOrWhiteSpace(DeviceTypeValue);
+
+    public bool HasAnyIdentification => HasManufacturer || HasModel || HasSerial || HasFirmware || HasDeviceType;
+
+    // ==================== Communication ====================
+    public string? DriverVersionValue => Variable("driver.version.internal", "driver.version");
+    public bool HasDriverVersionValue => !string.IsNullOrWhiteSpace(DriverVersionValue);
+    public string? PollIntervalValue => Variable("driver.parameter.pollinterval") is { } interval ? $"{interval} s" : null;
+    public bool HasPollInterval => PollIntervalValue is not null;
+
+    // ==================== Current readings ====================
+    // Each reading is rendered only when the snapshot actually carries it.
+    private string? Measure(decimal? value, string unit) => value is { } reading ? $"{Number(reading)} {unit}" : null;
+    private static string Number(decimal value) => value.ToString("0.##", CultureInfo.CurrentCulture);
+
+    public string? BatteryChargeValue => SelectedSnapshot?.BatteryChargePercentage is { } charge ? $"{Number(charge)}%" : null;
+    public string? LoadValue => SelectedSnapshot?.LoadPercentage is { } load ? $"{Number(load)}%" : null;
+    public string? InputVoltageValue => Measure(SelectedSnapshot?.InputVoltage, "V");
+    public string? OutputVoltageValue => Measure(SelectedSnapshot?.OutputVoltage, "V");
+    public string? FrequencyValue => Measure(SelectedSnapshot?.Frequency, "Hz");
+    public string? TemperatureValue => Measure(SelectedSnapshot?.Temperature, "°C");
+    public string? BatteryVoltageValue => Measure(SelectedSnapshot?.BatteryVoltage, "V");
+    public string? RuntimeValue => SelectedSnapshot?.Runtime is { } runtime
+        ? runtime.TotalHours >= 1
+            ? $"{(int)runtime.TotalHours} h {runtime.Minutes:D2} min"
+            : $"{Math.Max(0, (int)runtime.TotalMinutes)} min"
+        : null;
+    public string? AlarmValue => Variable("ups.alarm");
+
+    public bool HasBatteryCharge => BatteryChargeValue is not null;
+    public bool HasLoad => LoadValue is not null;
+    public bool HasInputVoltage => InputVoltageValue is not null;
+    public bool HasOutputVoltage => OutputVoltageValue is not null;
+    public bool HasFrequencyValue => FrequencyValue is not null;
+    public bool HasTemperatureValue => TemperatureValue is not null;
+    public bool HasBatteryVoltageValue => BatteryVoltageValue is not null;
+    public bool HasRuntimeValue => RuntimeValue is not null;
+    public bool HasAlarm => !string.IsNullOrWhiteSpace(AlarmValue);
+
+    public bool HasAnyReading => HasBatteryCharge || HasLoad || HasInputVoltage || HasOutputVoltage ||
+        HasFrequencyValue || HasTemperatureValue || HasBatteryVoltageValue || HasRuntimeValue;
+
+    /// <summary>Raw ups.status tokens, preserved verbatim and shown alongside the localized state.</summary>
+    public string? StatusTokensValue => SelectedSnapshot?.StatusTokens.Count > 0
+        ? string.Join(' ', SelectedSnapshot.StatusTokens.Select(token => token.OriginalToken))
+        : null;
+
+    public bool HasStatusTokens => StatusTokensValue is not null;
+
+    private static readonly string[] AdaptiveProperties =
+    [
+        nameof(ManufacturerValue), nameof(ModelValue), nameof(SerialValue), nameof(FirmwareValue), nameof(DeviceTypeValue),
+        nameof(HasManufacturer), nameof(HasModel), nameof(HasSerial), nameof(HasFirmware), nameof(HasDeviceType),
+        nameof(HasAnyIdentification), nameof(DriverVersionValue), nameof(HasDriverVersionValue),
+        nameof(PollIntervalValue), nameof(HasPollInterval),
+        nameof(BatteryChargeValue), nameof(LoadValue), nameof(InputVoltageValue), nameof(OutputVoltageValue),
+        nameof(FrequencyValue), nameof(TemperatureValue), nameof(BatteryVoltageValue), nameof(RuntimeValue), nameof(AlarmValue),
+        nameof(HasBatteryCharge), nameof(HasLoad), nameof(HasInputVoltage), nameof(HasOutputVoltage),
+        nameof(HasFrequencyValue), nameof(HasTemperatureValue), nameof(HasBatteryVoltageValue), nameof(HasRuntimeValue),
+        nameof(HasAlarm), nameof(HasAnyReading), nameof(StatusTokensValue), nameof(HasStatusTokens)
+    ];
+
+    private static readonly string[] SelectedDeviceProperties =
+    [
+        nameof(SelectedDeviceDriver), nameof(SelectedDevicePort), nameof(SelectedDeviceProtocol),
+        nameof(SelectedDevicePower), nameof(HasSelectedDevicePower), nameof(SelectedDeviceLastUpdate),
+        nameof(SelectedDeviceStatusText), nameof(IsSelectedDeviceHealthy), nameof(IsSelectedDeviceWarning),
+        nameof(IsSelectedDeviceCritical), nameof(IsSelectedDeviceUnknown)
+    ];
 
     public bool IsDisconnected => _polling?.State.ConnectionState is ConnectionState.Disconnected or ConnectionState.ConnectionFailed;
 
@@ -250,10 +406,24 @@ public sealed partial class DevicesPageViewModel : PageViewModel, IDisposable
         OnSelectionStateChanged();
     }
 
+    partial void OnSelectedSnapshotChanged(UpsSnapshot? value)
+    {
+        OnPropertyChanged(nameof(SelectedDeviceName));
+        OnPropertyChanged(nameof(SelectedDeviceDescription));
+        OnPropertyChanged(nameof(SelectedDeviceManufacturer));
+        OnPropertyChanged(nameof(SelectedDeviceModel));
+        OnPropertyChanged(nameof(SelectedDeviceSerialNumber));
+        OnPropertyChanged(nameof(IsSimulated));
+        OnPropertyChanged(nameof(HasSelectedDeviceDescription));
+        foreach (var property in SelectedDeviceProperties) OnPropertyChanged(property);
+        foreach (var property in AdaptiveProperties) OnPropertyChanged(property);
+    }
+
     partial void OnDevicesChanged(IReadOnlyList<UpsIdentity> value)
     {
         OnPropertyChanged(nameof(HasDevices));
         OnPropertyChanged(nameof(HasNoDevices));
+        OnPropertyChanged(nameof(HasMultipleDevices));
     }
 
     partial void OnRawVariablesChanged(IReadOnlyList<RawVariableViewModel> value)

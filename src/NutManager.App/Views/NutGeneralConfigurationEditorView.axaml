@@ -4,28 +4,61 @@
              xmlns:views="clr-namespace:NutManager.App.Views"
              x:Class="NutManager.App.Views.NutGeneralConfigurationEditorView"
              x:DataType="viewModels:NutGeneralConfigurationEditorViewModel">
-  <StackPanel Spacing="14">
-    <Border Classes="nut-card">
-      <StackPanel Spacing="10">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-          <StackPanel Spacing="3">
-            <TextBlock Text="{Binding Strings[Config.General.Title]}" Classes="nut-section-title" />
-            <TextBlock Text="{Binding Strings[Config.General.Description]}" Classes="nut-metadata" TextWrapping="Wrap" />
-          </StackPanel>
-          <ToggleSwitch Grid.Column="1" Content="{Binding Strings[Ups.Editor.AdvancedMode]}" IsChecked="{Binding ShowAdvanced, Mode=TwoWay}" />
-        </Grid>
-        <ItemsControl ItemsSource="{Binding BasicFields}">
-          <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate></ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <ItemsControl ItemsSource="{Binding AdvancedFields}" IsVisible="{Binding ShowAdvanced}">
-          <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate></ItemsControl.ItemTemplate>
+  <!-- Shares the ups.conf composition language: tabbed Basic/Advanced over sectioned field columns. -->
+  <StackPanel Spacing="18">
+    <StackPanel Spacing="3">
+      <TextBlock Text="{Binding Strings[Config.General.Title]}" Classes="nut-card-title" />
+      <TextBlock Text="{Binding Strings[Config.General.Description]}" Classes="nut-metadata" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <StackPanel Spacing="0">
+      <StackPanel Orientation="Horizontal">
+        <Button Classes="nut-tab"
+                Classes.selected="{Binding !ShowAdvanced}"
+                Click="ShowBasicButton_OnClick"
+                Content="{Binding Strings[Ups.Editor.Basic]}"
+                AutomationProperties.Name="{Binding Strings[Ups.Editor.Basic]}" />
+        <Button Classes="nut-tab"
+                Classes.selected="{Binding ShowAdvanced}"
+                Click="ShowAdvancedButton_OnClick"
+                Content="{Binding Strings[Ups.Editor.AdvancedMode]}"
+                AutomationProperties.Name="{Binding Strings[Ups.Editor.AdvancedMode]}" />
+      </StackPanel>
+      <Border Classes="nut-divider" />
+    </StackPanel>
+
+    <ItemsControl ItemsSource="{Binding BasicFields}" IsVisible="{Binding !ShowAdvanced}">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <ItemsControl ItemsSource="{Binding AdvancedFields}" IsVisible="{Binding ShowAdvanced}">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <views:ServerCustomParametersView DataContext="{Binding}" />
+
+    <Border Classes="nut-card" IsVisible="{Binding HasValidationIssues}" BorderBrush="{DynamicResource NutWarningBrush}">
+      <StackPanel Spacing="7">
+        <StackPanel Orientation="Horizontal" Spacing="9">
+          <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" />
+          <TextBlock Text="{Binding Strings[Semantic.Validation.Title]}" Classes="nut-card-title" VerticalAlignment="Center" />
+        </StackPanel>
+        <ItemsControl ItemsSource="{Binding ValidationIssues}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:UpsValidationIssueViewModel">
+              <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Classes="warning" FontSize="12.5" Margin="0,2" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>
     </Border>
-    <views:ServerCustomParametersView DataContext="{Binding}" />
-    <Border Classes="nut-card" IsVisible="{Binding HasValidationIssues}">
-      <StackPanel Spacing="8"><TextBlock Text="{Binding Strings[Semantic.Validation.Title]}" Classes="nut-section-title" /><ItemsControl ItemsSource="{Binding ValidationIssues}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:UpsValidationIssueViewModel"><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
-    </Border>
-    <TextBlock Text="{Binding OperationMessage}" TextWrapping="Wrap" />
+
+    <TextBlock Text="{Binding OperationMessage}" Classes="nut-metadata" TextWrapping="Wrap" />
   </StackPanel>
 </UserControl>

@@ -326,7 +326,36 @@ public sealed partial class UpsConfigurationEditorViewModel : ObservableObject, 
         OnPropertyChanged(nameof(HasUnsupportedFields));
         OnPropertyChanged(nameof(HasCustomParameters));
         OnPropertyChanged(nameof(HasGlobalFields));
+        BasicFieldGroups = UpsFieldGroupViewModel.From(BasicFields);
+        AdvancedFieldGroups = UpsFieldGroupViewModel.From(AdvancedFields);
     }
+
+    // Basic/Advanced is a presentation filter over the same draft; it changes no configuration.
+    [RelayCommand]
+    private void ShowBasicTab() => ShowAdvanced = false;
+
+    [RelayCommand]
+    private void ShowAdvancedTab() => ShowAdvanced = true;
+
+    public bool IsBasicSelected => !ShowAdvanced;
+
+    /// <summary>Validation state of the current draft, shown as a status chip in the header.</summary>
+    public bool IsConfigurationValid => !Validation.HasErrors;
+
+    public string ConfigurationStateText =>
+        _strings.Get(IsConfigurationValid ? "Ups.Editor.StateValid" : "Ups.Editor.StateInvalid");
+
+    /// <summary>Basic fields projected into the documented presentation sections of the form.</summary>
+    [ObservableProperty]
+    private IReadOnlyList<UpsFieldGroupViewModel> _basicFieldGroups = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<UpsFieldGroupViewModel> _advancedFieldGroups = [];
+
+    public bool HasAdvancedFieldGroups => AdvancedFieldGroups.Count > 0;
+
+    partial void OnAdvancedFieldGroupsChanged(IReadOnlyList<UpsFieldGroupViewModel> value) =>
+        OnPropertyChanged(nameof(HasAdvancedFieldGroups));
 
     private IReadOnlyList<UpsFieldChoiceViewModel>? PortChoices(string? driver)
     {
@@ -355,7 +384,11 @@ public sealed partial class UpsConfigurationEditorViewModel : ObservableObject, 
         OnPropertyChanged(nameof(ValidationIssues));
         OnPropertyChanged(nameof(HasValidationIssues));
         OnPropertyChanged(nameof(HasInputErrors));
+        OnPropertyChanged(nameof(IsConfigurationValid));
+        OnPropertyChanged(nameof(ConfigurationStateText));
     }
+
+    partial void OnShowAdvancedChanged(bool value) => OnPropertyChanged(nameof(IsBasicSelected));
 
     private string Localize(string key, string fallback)
     {
@@ -384,7 +417,8 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
         Strings = strings;
         Label = Localize(strings, Descriptor.LabelResourceKey, Descriptor.Name);
         Help = Localize(strings, Descriptor.HelpResourceKey, strings.Get("Ups.Editor.DocumentedOptionHelp"));
-        Group = strings.Get(Descriptor.Presentation?.GroupResourceKey ?? "Ups.Group.Advanced");
+        GroupKey = Descriptor.Presentation?.GroupResourceKey ?? "Ups.Group.Advanced";
+        Group = strings.Get(GroupKey);
         Unit = Descriptor.Presentation?.UnitResourceKey is { } unit ? strings.Get(unit) : null;
         IsAdvanced = Descriptor.Presentation?.IsAdvanced == true;
         IsRisky = Descriptor.Presentation?.IsRisky == true;
@@ -419,6 +453,9 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
     public string Label { get; }
     public string Help { get; }
     public string Group { get; }
+
+    /// <summary>Untranslated group resource key, used to pick the section glyph.</summary>
+    public string GroupKey { get; }
     public string? Unit { get; }
     public string StateText { get; }
     public string AutomaticText { get; }

@@ -3,84 +3,292 @@
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.WindowsServiceAdministrationView"
              x:DataType="viewModels:AdministrationPageViewModel">
+  <!--
+    Windows service administration (T16). Every mutating action stays explicit: the buttons only
+    prepare an action, which is then confirmed and executed in the review panel below. Nothing is
+    started, stopped or repaired automatically, and controls disable when the real capability says so.
+  -->
   <StackPanel Spacing="16">
     <Border Classes="nut-card" IsVisible="{Binding IsRemoteManagementProfile}">
-      <StackPanel Spacing="6">
-        <TextBlock Text="{Binding Strings[Administration.Windows.Unavailable]}" Classes="nut-section-title" />
-        <TextBlock Text="{Binding Strings[Administration.Windows.LocalOnly]}" TextWrapping="Wrap" />
+      <StackPanel Orientation="Horizontal" Spacing="11">
+        <PathIcon Data="{DynamicResource NutIconInfo}" Classes="muted" Width="18" Height="18" VerticalAlignment="Top" />
+        <StackPanel Spacing="3">
+          <TextBlock Text="{Binding Strings[Administration.Windows.Unavailable]}" Classes="nut-card-title" />
+          <TextBlock Text="{Binding Strings[Administration.Windows.LocalOnly]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        </StackPanel>
       </StackPanel>
     </Border>
 
-    <StackPanel Spacing="16" IsVisible="{Binding IsLocalManagementProfile}">
-      <Border Classes="nut-card">
-        <StackPanel Spacing="12">
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Spacing="3">
-              <TextBlock Text="{Binding Strings[Administration.Windows.Service]}" Classes="nut-section-title" />
-              <TextBlock Text="{Binding Strings[Administration.Windows.Service.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
+    <StackPanel Spacing="14" IsVisible="{Binding IsLocalManagementProfile}">
+
+      <!-- ==================== Service + actions ==================== -->
+      <Grid ColumnDefinitions="2*,1*" ColumnSpacing="14">
+        <Border Classes="nut-card-elevated">
+          <StackPanel Spacing="13">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+              <Border Width="38" Height="38" CornerRadius="10"
+                      Background="{DynamicResource NutSurface3Brush}"
+                      BorderBrush="{DynamicResource NutBorderSubtleBrush}"
+                      BorderThickness="1">
+                <PathIcon Data="{DynamicResource NutIconService}" Classes="accent" Width="18" Height="18" />
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Strings[Administration.Windows.Service]}" Classes="nut-card-title" />
+                <TextBlock Text="{Binding SelectedWindowsService.ServiceName}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <Border Grid.Column="2"
+                      Classes="nut-pill"
+                      Classes.healthy="{Binding IsWindowsServiceRunning}"
+                      Classes.warning="{Binding IsWindowsServiceTransitioning}"
+                      Classes.critical="{Binding IsWindowsServiceFailed}"
+                      Padding="11,4">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <PathIcon Data="{DynamicResource NutIconSuccess}" Classes="healthy" Width="13" Height="13" VerticalAlignment="Center" IsVisible="{Binding IsWindowsServiceRunning}" />
+                  <TextBlock Text="{Binding SelectedWindowsServiceStateText}" FontSize="12" FontWeight="SemiBold" />
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <!-- Service picker: only shown when more than one candidate service was detected. -->
+            <StackPanel Spacing="7" IsVisible="{Binding HasWindowsServices}">
+              <ListBox ItemsSource="{Binding WindowsServices}"
+                       SelectedItem="{Binding SelectedWindowsService, Mode=TwoWay}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       Padding="0"
+                       MaxHeight="132"
+                       AutomationProperties.Name="{Binding Strings[Administration.Windows.Service]}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding ServiceName}" Classes="nut-metadata" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
             </StackPanel>
-            <Button Grid.Column="1" Content="{Binding Strings[Common.RefreshState]}" Command="{Binding RefreshWindowsAdministrationCommand}" />
-          </Grid>
-          <TextBlock Text="{Binding Strings[Administration.Windows.NoService]}" IsVisible="{Binding HasNoWindowsServices}" TextWrapping="Wrap" />
-          <ListBox ItemsSource="{Binding WindowsServices}" SelectedItem="{Binding SelectedWindowsService, Mode=TwoWay}" IsVisible="{Binding HasWindowsServices}">
-            <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="6,4"><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" /><TextBlock Text="{Binding ServiceName}" Classes="nut-metadata" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
-          </ListBox>
-          <WrapPanel IsVisible="{Binding HasSelectedWindowsService}">
-            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedWindowsServiceStateText}" /></StackPanel>
-            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Windows.StartMode]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedWindowsServiceStartModeText}" /></StackPanel>
-            <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Windows.Executable]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedWindowsService.BinaryPath}" TextWrapping="Wrap" /></StackPanel>
-          </WrapPanel>
-          <WrapPanel>
-            <Button Classes="nut-success" Content="{Binding Strings[Administration.Windows.Start]}" Click="StartServiceButton_OnClick" IsEnabled="{Binding CanStartWindowsService}" Margin="0,0,8,8" />
-            <Button Content="{Binding Strings[Administration.Windows.Stop]}" Click="StopServiceButton_OnClick" IsEnabled="{Binding CanStopWindowsService}" Margin="0,0,8,8" />
-            <Button Classes="nut-primary" Content="{Binding Strings[Administration.Windows.Restart]}" Click="RestartServiceButton_OnClick" IsEnabled="{Binding CanRestartWindowsService}" Margin="0,0,8,8" />
-          </WrapPanel>
-        </StackPanel>
-      </Border>
 
-      <Border Classes="nut-card">
+            <!-- Discovery outcome: not-found, access-denied and query-failed stay distinct. -->
+            <StackPanel Orientation="Horizontal" Spacing="11" IsVisible="{Binding HasNoWindowsServices}">
+              <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="16" Height="16" VerticalAlignment="Top" IsVisible="{Binding IsWindowsServiceDiscoveryProblem}" />
+              <PathIcon Data="{DynamicResource NutIconInfo}" Classes="muted" Width="16" Height="16" VerticalAlignment="Top" IsVisible="{Binding !IsWindowsServiceDiscoveryProblem}" />
+              <TextBlock Text="{Binding WindowsServiceDiscoveryText}"
+                         Classes="nut-metadata"
+                         Classes.warning="{Binding IsWindowsServiceDiscoveryProblem}"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- Sanitized discovery trace, shown only while no service could be associated. -->
+            <Border Classes="nut-inset" IsVisible="{Binding HasWindowsServiceDiagnostic}">
+              <TextBlock Text="{Binding WindowsServiceDiagnosticText}" Classes="nut-mono" TextWrapping="Wrap" />
+            </Border>
+
+            <!-- Discovered by identity, but the binary could not be verified: actions stay off. -->
+            <StackPanel Orientation="Horizontal" Spacing="11" IsVisible="{Binding IsSelectedWindowsServiceUnverified}">
+              <PathIcon Data="{DynamicResource NutIconInfo}" Classes="warning" Width="16" Height="16" VerticalAlignment="Top" />
+              <TextBlock Text="{Binding Strings[Administration.Windows.Unverified]}" Classes="nut-metadata" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- Each button prepares an explicit, separately confirmed administrative action. -->
+            <WrapPanel>
+              <Button Classes="nut-success" Click="StartServiceButton_OnClick" IsEnabled="{Binding CanStartWindowsService}" Margin="0,0,8,8">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <PathIcon Data="{DynamicResource NutIconStart}" Width="14" Height="14" />
+                  <TextBlock Text="{Binding Strings[Administration.Windows.Start]}" />
+                </StackPanel>
+              </Button>
+              <Button Classes="nut-danger" Click="StopServiceButton_OnClick" IsEnabled="{Binding CanStopWindowsService}" Margin="0,0,8,8">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <PathIcon Data="{DynamicResource NutIconStop}" Width="14" Height="14" />
+                  <TextBlock Text="{Binding Strings[Administration.Windows.Stop]}" />
+                </StackPanel>
+              </Button>
+              <Button Click="RestartServiceButton_OnClick" IsEnabled="{Binding CanRestartWindowsService}" Margin="0,0,8,8">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <PathIcon Data="{DynamicResource NutIconRestart}" Width="14" Height="14" />
+                  <TextBlock Text="{Binding Strings[Administration.Windows.Restart]}" />
+                </StackPanel>
+              </Button>
+            </WrapPanel>
+
+            <Border Classes="nut-divider" />
+
+            <WrapPanel>
+              <StackPanel Width="180" Margin="0,0,16,9" Spacing="2">
+                <TextBlock Text="{Binding Strings[Administration.Windows.StartMode]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding SelectedWindowsServiceStartModeText}" FontSize="13" />
+              </StackPanel>
+              <StackPanel Width="180" Margin="0,0,16,9" Spacing="2">
+                <TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding SelectedWindowsServiceStateText}" FontSize="13"
+                           Classes.healthy="{Binding IsWindowsServiceRunning}"
+                           Classes.critical="{Binding IsWindowsServiceFailed}" />
+              </StackPanel>
+              <StackPanel Width="330" Margin="0,0,0,9" Spacing="2">
+                <TextBlock Text="{Binding Strings[Administration.Windows.Executable]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding SelectedWindowsService.BinaryPath}" Classes="nut-mono" TextWrapping="Wrap" />
+              </StackPanel>
+            </WrapPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Secondary panel: state refresh and the reviewed permission workflow. -->
+        <Border Grid.Column="1" Classes="nut-card">
+          <StackPanel Spacing="11">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{DynamicResource NutIconAdministration}" Classes="accent" Width="17" Height="17" />
+              <TextBlock Text="{Binding Strings[Common.Operation]}" Classes="nut-card-title" VerticalAlignment="Center" />
+            </StackPanel>
+            <Border Classes="nut-divider" />
+
+            <Button Classes="nut-ghost"
+                    Command="{Binding RefreshWindowsAdministrationCommand}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="10,9">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
+                <PathIcon Data="{DynamicResource NutIconRefresh}" Classes="cyan nut-icon-refresh" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Strings[Common.RefreshState]}" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource NutTextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <PathIcon Grid.Column="2" Data="{DynamicResource NutIconChevronRight}" Classes="muted nut-icon-forward" Width="12" Height="12" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+
+            <Button Classes="nut-ghost"
+                    Click="RepairPermissionsButton_OnClick"
+                    IsEnabled="{Binding CanPrepareAdministrativeAction}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="10,9">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
+                <PathIcon Data="{DynamicResource NutIconShield}" Classes="warning" Width="16" Height="16" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Spacing="1">
+                  <TextBlock Text="{Binding Strings[Administration.Windows.PreparePermissions]}" FontSize="13" FontWeight="SemiBold"
+                             Foreground="{DynamicResource NutTextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Strings[Administration.Windows.Permissions]}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <PathIcon Grid.Column="2" Data="{DynamicResource NutIconChevronRight}" Classes="muted nut-icon-forward" Width="12" Height="12" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+
+            <Border Classes="nut-divider" />
+            <TextBlock Text="{Binding WindowsPermissionAssessment.Message}" Classes="nut-metadata" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- ==================== Reviewed administrative action ==================== -->
+      <Border Classes="nut-card-elevated" IsVisible="{Binding HasPendingAdministrativeAction}" BorderBrush="{DynamicResource NutWarningBrush}">
         <StackPanel Spacing="10">
-          <TextBlock Text="{Binding Strings[Administration.Windows.Permissions]}" Classes="nut-section-title" />
-          <TextBlock Text="{Binding WindowsPermissionAssessment.Message}" TextWrapping="Wrap" />
-          <Button Content="{Binding Strings[Administration.Windows.PreparePermissions]}" Click="RepairPermissionsButton_OnClick" IsEnabled="{Binding CanPrepareAdministrativeAction}" HorizontalAlignment="Left" />
-        </StackPanel>
-      </Border>
-
-      <Border Classes="nut-card">
-        <StackPanel Spacing="10">
-          <TextBlock Text="{Binding Strings[Administration.Windows.Processes]}" Classes="nut-section-title" />
-          <TextBlock Text="{Binding Strings[Administration.Windows.NoProcesses]}" IsVisible="{Binding HasNoWindowsProcesses}" />
-          <ItemsControl ItemsSource="{Binding WindowsProcesses}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="Auto,12,Auto,12,*" Margin="0,3"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Grid.Column="2" Text="{Binding ProcessId}" /><TextBlock Grid.Column="4" Text="{Binding ExecutablePath}" Classes="nut-metadata" TextWrapping="Wrap" /></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-        </StackPanel>
-      </Border>
-
-      <Border Classes="nut-card">
-        <StackPanel Spacing="10">
-          <TextBlock Text="{Binding Strings[Administration.Windows.Events]}" Classes="nut-section-title" />
-          <TextBlock Text="{Binding WindowsEventLogDiagnosticMessage}" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding Strings[Administration.Windows.NoEvents]}" IsVisible="{Binding HasNoWindowsEvents}" />
-          <ItemsControl ItemsSource="{Binding WindowsEvents}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,4"><TextBlock Classes="nut-metadata"><Run Text="{Binding Timestamp}" /><Run Text=" · " /><Run Text="{Binding LogName}" /><Run Text=" · " /><Run Text="{Binding Provider}" /><Run Text=" · " /><Run Text="{Binding EventId}" /><Run Text=" · " /><Run Text="{Binding Level}" /></TextBlock><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-        </StackPanel>
-      </Border>
-
-      <Border Classes="nut-card-elevated" IsVisible="{Binding HasPendingAdministrativeAction}">
-        <StackPanel Spacing="7">
-          <TextBlock Text="{Binding Strings[Administration.Windows.Review]}" Classes="nut-section-title" />
-          <TextBlock Text="{Binding PendingAdministrativeActionText}" />
-          <StackPanel IsVisible="{Binding IsPermissionRepairPending}" Spacing="4">
-            <TextBlock Text="{Binding Strings[Common.User]}" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionIdentity}" TextWrapping="Wrap" />
-            <TextBlock Text="SID" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionSid}" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding Strings[Common.Directory]}" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingPermissionDirectory}" TextWrapping="Wrap" />
-            <TextBlock Text="Modify" FontWeight="SemiBold" />
-            <ItemsControl ItemsSource="{Binding PendingPermissionTargets}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-            <TextBlock Text="{Binding Strings[Administration.Windows.AclNotice]}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <PathIcon Data="{DynamicResource NutIconReview}" Classes="warning" Width="17" Height="17" />
+            <TextBlock Text="{Binding Strings[Administration.Windows.Review]}" Classes="nut-card-title" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding PendingAdministrativeActionText}" FontSize="13" TextWrapping="Wrap" />
+          <StackPanel IsVisible="{Binding IsPermissionRepairPending}" Spacing="7">
+            <Border Classes="nut-divider" />
+            <WrapPanel>
+              <StackPanel Width="240" Margin="0,0,16,8" Spacing="2">
+                <TextBlock Text="{Binding Strings[Common.User]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding PendingPermissionIdentity}" FontSize="13" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Width="240" Margin="0,0,16,8" Spacing="2">
+                <TextBlock Text="SID" Classes="nut-metadata" />
+                <TextBlock Text="{Binding PendingPermissionSid}" Classes="nut-mono" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Width="300" Margin="0,0,0,8" Spacing="2">
+                <TextBlock Text="{Binding Strings[Common.Directory]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding PendingPermissionDirectory}" Classes="nut-mono" TextWrapping="Wrap" />
+              </StackPanel>
+            </WrapPanel>
+            <Border Classes="nut-inset">
+              <ItemsControl ItemsSource="{Binding PendingPermissionTargets}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate><TextBlock Text="{Binding}" Classes="nut-mono" TextWrapping="Wrap" /></DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+            <TextBlock Text="{Binding Strings[Administration.Windows.AclNotice]}" Classes="nut-metadata" TextWrapping="Wrap" />
           </StackPanel>
           <CheckBox Content="{Binding Strings[Administration.Windows.Confirm]}" IsChecked="{Binding IsAdministrativeActionConfirmed, Mode=TwoWay}" />
-          <Button Classes="nut-primary" Content="{Binding Strings[Administration.Windows.Execute]}" Command="{Binding ExecuteAdministrativeActionCommand}" IsEnabled="{Binding CanExecuteAdministrativeAction}" HorizontalAlignment="Left" />
+          <Button Classes="nut-primary" Command="{Binding ExecuteAdministrativeActionCommand}" IsEnabled="{Binding CanExecuteAdministrativeAction}" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{DynamicResource NutIconCheck}" Width="14" Height="14" />
+              <TextBlock Text="{Binding Strings[Administration.Windows.Execute]}" />
+            </StackPanel>
+          </Button>
         </StackPanel>
       </Border>
-      <TextBlock Text="{Binding AdministrativeCriticalText}" IsVisible="{Binding IsAdministrativeCritical}" FontWeight="SemiBold" TextWrapping="Wrap" />
-      <TextBlock Text="{Binding AdministrativeStatusMessage}" TextWrapping="Wrap" />
+
+      <Border Classes="nut-card" Padding="14" IsVisible="{Binding IsAdministrativeCritical}" BorderBrush="{DynamicResource NutCriticalBrush}">
+        <StackPanel Orientation="Horizontal" Spacing="11">
+          <PathIcon Data="{DynamicResource NutIconWarning}" Classes="critical" Width="17" Height="17" VerticalAlignment="Top" />
+          <TextBlock Text="{Binding AdministrativeCriticalText}" Classes="critical" FontSize="13" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="{Binding AdministrativeStatusMessage}" Classes="nut-metadata" TextWrapping="Wrap" />
+
+      <!-- ==================== Information: processes and events ==================== -->
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+        <Border Classes="nut-card">
+          <StackPanel Spacing="11">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{DynamicResource NutIconDriver}" Classes="cyan" Width="17" Height="17" />
+              <TextBlock Text="{Binding Strings[Administration.Windows.Processes]}" Classes="nut-card-title" VerticalAlignment="Center" />
+            </StackPanel>
+            <Border Classes="nut-divider" />
+            <!-- Distinguishes "none running" from "cannot inspect without elevation". -->
+            <StackPanel Orientation="Horizontal" Spacing="9" IsVisible="{Binding HasNoWindowsProcesses}">
+              <PathIcon Data="{DynamicResource NutIconInfo}" Classes="muted" Width="14" Height="14" VerticalAlignment="Top" />
+              <TextBlock Text="{Binding WindowsProcessEmptyText}" Classes="nut-metadata" TextWrapping="Wrap" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding WindowsProcesses}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="0,0,0,6">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding ExecutablePath}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding ProcessId}" Classes="nut-mono" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1" Classes="nut-card">
+          <StackPanel Spacing="11">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{DynamicResource NutIconLogs}" Classes="purple" Width="17" Height="17" />
+              <TextBlock Text="{Binding Strings[Administration.Windows.Events]}" Classes="nut-card-title" VerticalAlignment="Center" />
+            </StackPanel>
+            <Border Classes="nut-divider" />
+            <TextBlock Text="{Binding WindowsEventLogDiagnosticMessage}" Classes="nut-metadata" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Strings[Administration.Windows.NoEvents]}" Classes="nut-metadata" IsVisible="{Binding HasNoWindowsEvents}" />
+            <!-- Bounded height so the newest entries stay visible without pushing the page. -->
+            <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+              <ItemsControl ItemsSource="{Binding WindowsEventRows}" Margin="0,0,8,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="viewModels:WindowsEventRowViewModel">
+                    <StackPanel Spacing="2" Margin="0,0,0,10">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Timestamp}" Classes="nut-mono" />
+                        <TextBlock Text="{Binding Level}" Classes="nut-metadata" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Provider}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding Message}" FontSize="12.5" Classes="nut-body" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </StackPanel>
+        </Border>
+      </Grid>
     </StackPanel>
   </StackPanel>
 </UserControl>

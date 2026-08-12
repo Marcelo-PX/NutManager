@@ -103,12 +103,28 @@ public sealed class WindowsNutServiceStateSource : IWindowsNutServiceStateSource
             return Task.FromResult<IReadOnlyList<NutServiceInfo>>(Array.Empty<NutServiceInfo>());
         }
 
-        return WindowsNutServiceController.DiscoverAsync(installationDirectory, cancellationToken);
+        return DiscoverServicesAsync(installationDirectory, cancellationToken);
     }
+
+    [SupportedOSPlatform("windows")]
+    private static async Task<IReadOnlyList<NutServiceInfo>> DiscoverServicesAsync(string installationDirectory, CancellationToken cancellationToken) =>
+        (await WindowsNutServiceController.DiscoverAsync(installationDirectory, cancellationToken)).Services;
 }
 
 public sealed class WindowsWmiComPortSource : IWindowsComPortSource
 {
+    /// <summary>
+    /// Passive COM port enumeration.
+    /// <para>
+    /// The authoritative list of port names is the SERIALCOMM device map, which is exactly what
+    /// <c>SerialPort.GetPortNames()</c> reads. It is queried here through the registry so no extra
+    /// package is required. Win32_SerialPort used to be the only source and it omits many devices -
+    /// notably USB and composite adapters - so a port Windows clearly exposes could be reported as
+    /// "no COM port detected". WMI now only enriches entries with friendly name, manufacturer, PNP
+    /// id and status when it happens to know them.
+    /// </para>
+    /// <para>No port is ever opened and no byte is transmitted; this stays a read-only enumeration.</para>
+    /// </summary>
     public IReadOnlyList<NutComPortInfo> GetPorts()
     {
         if (!OperatingSystem.IsWindows())
@@ -117,6 +133,24 @@ public sealed class WindowsWmiComPortSource : IWindowsComPortSource
         }
 
         var ports = new Dictionary<string, NutComPortInfo>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            using var serialComm = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DEVICEMAP\SERIALCOMM");
+            foreach (var valueName in serialComm?.GetValueNames() ?? [])
+            {
+                if (serialComm!.GetValue(valueName) is string name &&
+                    WindowsComPortNormalizer.TryNormalize(name, out var normalized))
+                {
+                    ports[normalized] = new NutComPortInfo(normalized, null, null, null, null, null, true);
+                }
+            }
+        }
+        catch
+        {
+            // Enumeration is best effort; WMI below may still contribute entries.
+        }
+
         try
         {
             using var searcher = new ManagementObjectSearcher(
@@ -145,10 +179,14 @@ public sealed class WindowsWmiComPortSource : IWindowsComPortSource
         }
         catch
         {
-            // The snapshot reports an empty passive list when WMI is unavailable. No port is opened as fallback.
+            // WMI metadata is optional: the SERIALCOMM names above already stand on their own.
         }
 
-        return ports.Values.OrderBy(port => port.PortName, StringComparer.OrdinalIgnoreCase).ToArray();
+        // Natural COM ordering so COM4 precedes COM10 instead of sorting as text.
+        return ports.Values
+            .OrderBy(port => WindowsComPortNormalizer.TryGetNumber(port.PortName, out var number) ? number : int.MaxValue)
+            .ThenBy(port => port.PortName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 }
 
@@ -500,6 +538,15 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
 
 public static class WindowsComPortNormalizer
 {
+    /// <summary>Extracts the numeric part of a normalized COM name so ordering is natural.</summary>
+    public static bool TryGetNumber(string? value, out int number)
+    {
+        number = 0;
+        return TryNormalize(value, out var normalized) &&
+            int.TryParse(normalized[3..], System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out number);
+    }
+
     public static bool TryNormalize(string? value, out string normalized)
     {
         normalized = string.Empty;

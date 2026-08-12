@@ -756,6 +756,42 @@
   <data name="Config.Field.Upsd.DebugMinimum.Help" xml:space="preserve"><value>DEBUG_MIN sets minimum upsd verbosity and can be applied by runtime reload.</value></data>
   <data name="Semantic.Operation.EditRepeatedRow" xml:space="preserve"><value>Edit repeated row</value></data>
   <data name="Administration.Configuration.PendingChanges" xml:space="preserve"><value>Unapplied changes</value></data>
+  <data name="UpsStatus.Online.Description" xml:space="preserve"><value>The UPS is powering the load from utility power.</value></data>
+  <data name="UpsStatus.OnBattery.Description" xml:space="preserve"><value>The UPS is powering the load from its battery.</value></data>
+  <data name="UpsStatus.LowBattery.Description" xml:space="preserve"><value>The battery is low and remaining runtime is short.</value></data>
+  <data name="UpsStatus.ReplaceBattery.Description" xml:space="preserve"><value>The UPS reports that the battery needs replacement.</value></data>
+  <data name="UpsStatus.Overloaded.Description" xml:space="preserve"><value>The connected load exceeds the UPS rating.</value></data>
+  <data name="UpsStatus.Bypass.Description" xml:space="preserve"><value>The load is on bypass and is not protected by the battery.</value></data>
+  <data name="UpsStatus.Calibration.Description" xml:space="preserve"><value>The UPS is running a runtime calibration.</value></data>
+  <data name="UpsStatus.OutputOff.Description" xml:space="preserve"><value>The UPS output is switched off.</value></data>
+  <data name="Administration.Windows.CriticalNotice" xml:space="preserve"><value>Critical — the administrative operation needs manual attention.</value></data>
+  <data name="Administration.Windows.Discovery.Found" xml:space="preserve"><value>NUT service detected on this computer.</value></data>
+  <data name="Administration.Windows.Discovery.NotFound" xml:space="preserve"><value>No NUT service was found on this computer.</value></data>
+  <data name="Administration.Windows.Discovery.NotInspected" xml:space="preserve"><value>Local administration has not been inspected yet.</value></data>
+  <data name="Administration.Windows.Processes.InspectionDenied" xml:space="preserve"><value>Running processes could not be inspected from this session. NUT runs as LocalSystem, so reading its process modules requires elevation.</value></data>
+  <data name="Devices.Section.Identification" xml:space="preserve"><value>Identification</value></data>
+  <data name="Devices.Section.Communication" xml:space="preserve"><value>Communication</value></data>
+  <data name="Devices.Section.CurrentState" xml:space="preserve"><value>Current state</value></data>
+  <data name="Devices.Identification.NotProvided" xml:space="preserve"><value>The driver does not provide hardware identification for this device.</value></data>
+  <data name="Devices.Identity.Firmware" xml:space="preserve"><value>Firmware</value></data>
+  <data name="Devices.Column.State" xml:space="preserve"><value>State</value></data>
+  <data name="Devices.PollingInterval" xml:space="preserve"><value>Polling interval</value></data>
+  <data name="Administration.Windows.Discovery.AccessDenied" xml:space="preserve"><value>Insufficient rights to query Windows services.</value></data>
+  <data name="Administration.Windows.Discovery.QueryFailed" xml:space="preserve"><value>Windows services could not be queried.</value></data>
+  <data name="Administration.Windows.Unverified" xml:space="preserve"><value>Service identified by name, but its executable was not confirmed inside the detected NUT installation. Start, stop and restart stay disabled.</value></data>
+  <data name="Administration.Windows.CapabilityUnavailable" xml:space="preserve"><value>Local Windows administration is not available in this session.</value></data>
+  <data name="Administration.Drivers.PortConfiguredAndDetected" xml:space="preserve"><value>Configured · currently detected</value></data>
+  <data name="Administration.Drivers.PortConfiguredNotDetected" xml:space="preserve"><value>Configured · not detected right now</value></data>
+  <data name="Ups.Editor.StateValid" xml:space="preserve"><value>valid</value></data>
+  <data name="Ups.Editor.StateInvalid" xml:space="preserve"><value>has errors</value></data>
+  <data name="Ups.Editor.Basic" xml:space="preserve"><value>Basic</value></data>
+  <data name="Overview.ActiveConfiguration" xml:space="preserve"><value>Active configuration</value></data>
+  <data name="Overview.Administration" xml:space="preserve"><value>Administration</value></data>
+  <data name="Overview.Profile" xml:space="preserve"><value>Profile</value></data>
+  <data name="Overview.MockState" xml:space="preserve"><value>Simulated data (mock)</value></data>
+  <data name="Overview.AutoRefresh" xml:space="preserve"><value>Automatic refresh</value></data>
+  <data name="Common.Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Common.Disabled" xml:space="preserve"><value>Disabled</value></data>
   <data name="Shell.Minimize" xml:space="preserve"><value>Minimize</value></data>
   <data name="Shell.Maximize" xml:space="preserve"><value>Maximize or restore</value></data>
   <data name="Shell.Close" xml:space="preserve"><value>Close</value></data>

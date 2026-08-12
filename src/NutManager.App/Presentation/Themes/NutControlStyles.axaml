@@ -50,13 +50,36 @@
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
   </Style>
 
+  <!--
+    Metric cards share one width and minimum height so the dashboard reads as a single compact
+    band. MinHeight (not Height) keeps a longer localized label from clipping.
+  -->
   <Style Selector="Border.nut-metric-card">
     <Setter Property="Background" Value="{DynamicResource NutCardSheenBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
-    <Setter Property="Padding" Value="16" />
-    <Setter Property="MinHeight" Value="150" />
+    <Setter Property="Padding" Value="15" />
+    <Setter Property="Width" Value="220" />
+    <Setter Property="MinHeight" Value="172" />
+    <Setter Property="Margin" Value="0,0,13,13" />
+  </Style>
+
+  <!-- Metric card header: quiet label so the numeric readout carries the emphasis. -->
+  <Style Selector="TextBlock.nut-metric-label">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- Reduced style for an absent reading: never rendered at metric size. -->
+  <Style Selector="TextBlock.nut-metric-unavailable">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
   <Style Selector="Border.nut-inset">
@@ -175,6 +198,25 @@
   <Style Selector="Button.nut-danger:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutCriticalSoftBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+
+  <!--
+    Disabled overrides for the semantic variants.
+    These must be declared AFTER the variants: Avalonia resolves equally specific setters in
+    declaration order, so the variant's own background was winning over the generic :disabled rule
+    and a disabled primary/success/danger button still rendered fully coloured, reading as enabled.
+  -->
+  <Style Selector="Button.nut-primary:disabled /template/ ContentPresenter,
+                   Button.nut-success:disabled /template/ ContentPresenter,
+                   Button.nut-danger:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+  </Style>
+  <Style Selector="Button.nut-primary:disabled, Button.nut-success:disabled, Button.nut-danger:disabled">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
   </Style>
 
   <!-- Quiet button for secondary actions inside dense surfaces. -->
@@ -400,10 +442,86 @@
   </Style>
 
   <!-- ==================== Icons ==================== -->
+  <!--
+    Icon microinteractions.
+    Avalonia 12 has no transition type for RenderTransform, so rotations and tilts are applied as
+    an immediate state change while the accompanying emphasis (colour, opacity, 1-2 px offset via
+    Margin, size) eases through supported transitions. Nothing here loops, nothing changes a hit
+    target, and every hover cue has a matching focus/selected state elsewhere in the styles.
+  -->
   <Style Selector="PathIcon">
     <Setter Property="Width" Value="18" />
     <Setter Property="Height" Value="18" />
   </Style>
+
+  <Style Selector="Button PathIcon">
+    <Setter Property="Opacity" Value="0.88" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Foreground" Duration="0:0:0.18" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+        <ThicknessTransition Property="Margin" Duration="0:0:0.18" />
+        <DoubleTransition Property="Width" Duration="0:0:0.18" />
+        <DoubleTransition Property="Height" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button:pointerover PathIcon">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Button:disabled PathIcon">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+
+  <!-- Gear: short turn toward the setting, never a full revolution and never a loop. -->
+  <Style Selector="PathIcon.nut-icon-gear">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+  </Style>
+  <Style Selector=":pointerover PathIcon.nut-icon-gear">
+    <Setter Property="RenderTransform" Value="rotate(25deg)" />
+  </Style>
+
+  <!-- Refresh: partial turn in the direction of the reload arrows. -->
+  <Style Selector="PathIcon.nut-icon-refresh">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+  </Style>
+  <Style Selector=":pointerover PathIcon.nut-icon-refresh">
+    <Setter Property="RenderTransform" Value="rotate(75deg)" />
+  </Style>
+
+  <!-- Pencil: slight tilt, as if picked up. -->
+  <Style Selector="PathIcon.nut-icon-edit">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+  </Style>
+  <Style Selector=":pointerover PathIcon.nut-icon-edit">
+    <Setter Property="RenderTransform" Value="rotate(-8deg)" />
+  </Style>
+
+  <!-- Chevron pointing at a destination slides toward it. -->
+  <Style Selector="PathIcon.nut-icon-forward">
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <Style Selector=":pointerover PathIcon.nut-icon-forward">
+    <Setter Property="Margin" Value="2,0,-2,0" />
+  </Style>
+
+  <!-- Plus grows a little; the button keeps its own size so the hit target is unchanged. -->
+  <Style Selector=":pointerover PathIcon.nut-icon-add">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+  </Style>
+
+  <!-- Trash takes on the destructive colour rather than filling the whole control. -->
+  <Style Selector=":pointerover PathIcon.nut-icon-delete">
+    <Setter Property="Foreground" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+
+  <!-- Shield lifts by one pixel and brightens; no glow layer is added. -->
+  <Style Selector=":pointerover PathIcon.nut-icon-shield">
+    <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="Margin" Value="0,-1,0,1" />
+  </Style>
+
   <Style Selector="PathIcon.healthy">
     <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
   </Style>

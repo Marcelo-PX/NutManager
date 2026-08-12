@@ -51,18 +51,52 @@
         </StackPanel>
       </Border>
 
-      <Border x:Name="ConfigurationEditorPanel" Grid.Column="2" Classes="nut-card">
+      <!-- The editor panel is a plain container: the form supplies its own sections, so nesting a
+           card here would stack surfaces without adding hierarchy. -->
+      <Border x:Name="ConfigurationEditorPanel" Grid.Column="2">
         <StackPanel Spacing="14">
-          <StackPanel IsVisible="{Binding HasNoLoadedFile}" Spacing="4">
+          <StackPanel IsVisible="{Binding IsEditorPlaceholderVisible}" Spacing="4">
             <TextBlock Text="{Binding Strings[Administration.Configuration.NoSelection]}" FontWeight="SemiBold" />
             <TextBlock Text="{Binding Strings[Administration.Configuration.NoSelection.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
           </StackPanel>
-          <StackPanel Spacing="12" IsVisible="{Binding HasLoadedFile}">
-            <WrapPanel ItemWidth="220" ItemHeight="48">
-              <StackPanel Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.File]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedFileName}" TextWrapping="Wrap" /></StackPanel>
-              <StackPanel Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedFileStatusText}" TextWrapping="Wrap" /></StackPanel>
-              <StackPanel Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.Encoding]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedFileEncodingText}" /></StackPanel>
-            </WrapPanel>
+          <!-- Shown in place of the editor while a file loads. The file list stays enabled behind
+               it, so another file can be picked without waiting for this one. -->
+          <StackPanel IsVisible="{Binding IsLoadingFile}" Spacing="8" Orientation="Horizontal">
+            <TextBlock Text="{Binding SelectedFileName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Strings[Administration.Configuration.Loading]}" Classes="nut-metadata" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Spacing="16" IsVisible="{Binding HasLoadedFile}">
+            <!-- Breadcrumb and file header -->
+            <StackPanel Spacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding Title}" Classes="nut-metadata" />
+                <PathIcon Data="{DynamicResource NutIconChevronRight}" Classes="muted" Width="10" Height="10" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Strings[Administration.Section.Configuration]}" Classes="nut-metadata" />
+                <PathIcon Data="{DynamicResource NutIconChevronRight}" Classes="muted" Width="10" Height="10" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding SelectedFileName}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource NutTextPrimaryBrush}" />
+              </StackPanel>
+
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="13">
+                <Border Width="40"
+                        Height="40"
+                        CornerRadius="10"
+                        Background="{DynamicResource NutSurface2Brush}"
+                        BorderBrush="{DynamicResource NutBorderSubtleBrush}"
+                        BorderThickness="1">
+                  <PathIcon Data="{DynamicResource NutIconGeneral}" Classes="accent" Width="19" Height="19" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding SelectedFileName}" FontSize="21" FontWeight="Bold" />
+                  <TextBlock Text="{Binding SelectedFileStatusText}" Classes="nut-metadata" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding Strings[Common.Encoding]}" Classes="nut-metadata" />
+                    <TextBlock Text="{Binding SelectedFileEncodingText}" FontSize="12.5" FontWeight="SemiBold" />
+                  </StackPanel>
+                </StackPanel>
+              </Grid>
+            </StackPanel>
             <ContentControl Content="{Binding UpsConfigurationEditor}" IsVisible="{Binding IsUpsConfigurationEditorVisible}" IsEnabled="{Binding CanEditEntries}">
               <ContentControl.DataTemplates>
                 <DataTemplate DataType="viewModels:UpsConfigurationEditorViewModel"><views:UpsConfigurationEditorView /></DataTemplate>
@@ -121,13 +155,13 @@
                 <WrapPanel Grid.Column="2" HorizontalAlignment="Right">
                   <Button Command="{Binding ReloadCommand}" IsEnabled="{Binding CanReload}" Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                      <PathIcon Data="{DynamicResource NutIconRefresh}" Width="15" Height="15" />
+                      <PathIcon Classes="nut-icon-refresh" Data="{DynamicResource NutIconRefresh}" Width="15" Height="15" />
                       <TextBlock Text="{Binding Strings[Common.Reload]}" />
                     </StackPanel>
                   </Button>
                   <Button Classes="nut-danger" Command="{Binding DiscardCommand}" IsEnabled="{Binding CanDiscard}" Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                      <PathIcon Data="{DynamicResource NutIconDelete}" Width="15" Height="15" />
+                      <PathIcon Classes="nut-icon-delete" Data="{DynamicResource NutIconDelete}" Width="15" Height="15" />
                       <TextBlock Text="{Binding Strings[Common.DiscardChanges]}" />
                     </StackPanel>
                   </Button>

@@ -130,19 +130,16 @@
           <ItemsControl Grid.Row="1" ItemsSource="{Binding NavigationItems}" Margin="0,6,0,0">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="viewModels:NavigationItemViewModel">
+                <!-- The tooltip only carries information while the label is hidden (collapsed rail);
+                     with the label visible it would repeat the text and cover the next item. -->
                 <Button Classes.nut-navigation-item="True"
                         Classes.selected="{Binding IsSelected}"
                         AutomationProperties.Name="{Binding Title}"
                         ToolTip.Tip="{Binding Title}"
+                        ToolTip.ServiceEnabled="{Binding $parent[Window].DataContext.IsSidebarCollapsed}"
                         Command="{Binding NavigateCommand}">
                   <StackPanel Orientation="Horizontal" Spacing="13">
-                    <Grid Width="20" Height="20">
-                      <PathIcon Data="{DynamicResource NutIconOverview}" Width="20" Height="20" IsVisible="{Binding IsOverview}" />
-                      <PathIcon Data="{DynamicResource NutIconDevices}" Width="20" Height="20" IsVisible="{Binding IsDevices}" />
-                      <PathIcon Data="{DynamicResource NutIconAdministration}" Width="20" Height="20" IsVisible="{Binding IsAdministration}" />
-                      <PathIcon Data="{DynamicResource NutIconDiagnostics}" Width="20" Height="20" IsVisible="{Binding IsDiagnostics}" />
-                      <PathIcon Data="{DynamicResource NutIconSettings}" Width="20" Height="20" IsVisible="{Binding IsSettings}" />
-                    </Grid>
+                    <controls:NutNavigationIcon Kind="{Binding Page}" />
                     <TextBlock Text="{Binding Title}"
                                IsVisible="{Binding $parent[Window].DataContext.IsSidebarExpanded}"
                                VerticalAlignment="Center" />
@@ -237,13 +234,7 @@
                           ToolTip.Tip="{Binding Title}"
                           Command="{Binding NavigateCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="13">
-                      <Grid Width="20" Height="20">
-                        <PathIcon Data="{DynamicResource NutIconOverview}" Width="20" Height="20" IsVisible="{Binding IsOverview}" />
-                        <PathIcon Data="{DynamicResource NutIconDevices}" Width="20" Height="20" IsVisible="{Binding IsDevices}" />
-                        <PathIcon Data="{DynamicResource NutIconAdministration}" Width="20" Height="20" IsVisible="{Binding IsAdministration}" />
-                        <PathIcon Data="{DynamicResource NutIconDiagnostics}" Width="20" Height="20" IsVisible="{Binding IsDiagnostics}" />
-                        <PathIcon Data="{DynamicResource NutIconSettings}" Width="20" Height="20" IsVisible="{Binding IsSettings}" />
-                      </Grid>
+                      <controls:NutNavigationIcon Kind="{Binding Page}" />
                       <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                     </StackPanel>
                   </Button>

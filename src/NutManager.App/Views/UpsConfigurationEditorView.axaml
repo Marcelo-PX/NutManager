@@ -4,118 +4,294 @@
              xmlns:views="clr-namespace:NutManager.App.Views"
              x:Class="NutManager.App.Views.UpsConfigurationEditorView"
              x:DataType="viewModels:UpsConfigurationEditorViewModel">
-  <StackPanel Spacing="16">
-    <Border Classes="nut-card-elevated">
-      <StackPanel Spacing="10">
-        <TextBlock Text="{Binding Strings[Ups.Editor.Title]}" Classes="nut-section-title" />
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-          <ComboBox ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection, Mode=TwoWay}" MinWidth="220"
-                    AutomationProperties.Name="{Binding Strings[Ups.Editor.SelectedUps]}" />
-          <WrapPanel Grid.Column="1">
-            <TextBox Text="{Binding NewSectionName, Mode=TwoWay}" PlaceholderText="{Binding Strings[Ups.Editor.NewUpsName]}" Width="150" Margin="0,0,8,8"
-                     AutomationProperties.Name="{Binding Strings[Ups.Editor.NewUpsName]}" />
-            <Button Content="{Binding Strings[Ups.Editor.AddUps]}" Command="{Binding AddSectionCommand}" Margin="0,0,8,8" />
-          </WrapPanel>
-        </Grid>
-        <WrapPanel IsVisible="{Binding HasSections}">
-          <TextBox Text="{Binding RenameSectionName, Mode=TwoWay}" Width="180" Margin="0,0,8,8"
-                   AutomationProperties.Name="{Binding Strings[Ups.Editor.RenameUpsName]}" />
-          <Button Content="{Binding Strings[Ups.Editor.Rename]}" Command="{Binding RenameSectionCommand}" Margin="0,0,8,8" />
-          <Button Classes="nut-danger" Content="{Binding Strings[Ups.Editor.RemoveUps]}" Command="{Binding RemoveSectionCommand}" Margin="0,0,8,8" />
-        </WrapPanel>
-      </StackPanel>
-    </Border>
+  <!--
+    Graphical ups.conf form composed against the approved reference: a target bar, Basic/Advanced
+    tabs and documented sections whose fields flow in columns. Every mutation still goes through
+    the T25 semantic draft; this view owns no writer.
+  -->
+  <StackPanel Spacing="18">
 
-    <Border Classes="nut-card" IsVisible="{Binding HasGlobalFields}">
-      <StackPanel Spacing="10">
-        <TextBlock Text="{Binding Strings[Ups.Editor.GlobalOptions]}" Classes="nut-section-title" />
-        <ItemsControl ItemsSource="{Binding GlobalFields}">
-          <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><views:UpsConfigurationFieldView /></DataTemplate></ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </Border>
-
-    <StackPanel Spacing="14" IsVisible="{Binding HasSections}">
-      <StackPanel Spacing="14">
-        <Border Classes="nut-card">
-          <StackPanel Spacing="10">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-              <StackPanel Spacing="3">
-                <TextBlock Text="{Binding Strings[Ups.Editor.DriverAndParameters]}" Classes="nut-section-title" />
-                <TextBlock Text="{Binding SelectedDriverDescription}" Classes="nut-metadata" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding SelectedDriverAvailability}" Classes="nut-metadata" />
-              </StackPanel>
-              <ToggleSwitch Grid.Column="1" Content="{Binding Strings[Ups.Editor.AdvancedMode]}" IsChecked="{Binding ShowAdvanced, Mode=TwoWay}" />
-            </Grid>
-            <ItemsControl ItemsSource="{Binding BasicFields}">
-              <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><views:UpsConfigurationFieldView /></DataTemplate></ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <ItemsControl ItemsSource="{Binding AdvancedFields}" IsVisible="{Binding ShowAdvanced}">
-              <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><views:UpsConfigurationFieldView /></DataTemplate></ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
+    <!-- ==================== Target selector and file status ==================== -->
+    <Border Classes="nut-card-flat" Padding="14,12">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="14">
+        <TextBlock Text="{Binding Strings[Ups.Editor.SelectedUps]}" Classes="nut-label" VerticalAlignment="Center" />
+        <ComboBox Grid.Column="1"
+                  ItemsSource="{Binding Sections}"
+                  SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
+                  MinWidth="180"
+                  AutomationProperties.Name="{Binding Strings[Ups.Editor.SelectedUps]}" />
+        <Border Grid.Column="2" Classes="nut-pill healthy" Padding="10,3" IsVisible="{Binding HasSections}">
+          <TextBlock Text="{Binding Strings[Administration.Availability.Available]}" FontSize="11.5" FontWeight="SemiBold" Classes="healthy" />
         </Border>
 
-        <StackPanel Spacing="14">
-          <Border Classes="nut-card" IsVisible="{Binding IsRuntimeCalibrationAvailable}">
-            <StackPanel Spacing="8">
-              <TextBlock Text="{Binding Strings[Ups.Runtimecal.Title]}" Classes="nut-section-title" />
-              <TextBlock Text="{Binding Strings[Ups.Runtimecal.Explanation]}" TextWrapping="Wrap" />
-              <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="8">
-                <StackPanel><TextBlock Text="{Binding Strings[Ups.Runtimecal.HighRuntime]}" /><NumericUpDown Value="{Binding RuntimeHighSeconds, Mode=TwoWay}" Minimum="1" /></StackPanel>
-                <StackPanel Grid.Column="1"><TextBlock Text="{Binding Strings[Ups.Runtimecal.HighLoad]}" /><NumericUpDown Value="{Binding RuntimeHighLoad, Mode=TwoWay}" Minimum="1" Maximum="100" /></StackPanel>
-                <StackPanel Grid.Row="1"><TextBlock Text="{Binding Strings[Ups.Runtimecal.LowRuntime]}" /><NumericUpDown Value="{Binding RuntimeLowSeconds, Mode=TwoWay}" Minimum="1" /></StackPanel>
-                <StackPanel Grid.Row="1" Grid.Column="1"><TextBlock Text="{Binding Strings[Ups.Runtimecal.LowLoad]}" /><NumericUpDown Value="{Binding RuntimeLowLoad, Mode=TwoWay}" Minimum="1" Maximum="100" /></StackPanel>
-              </Grid>
-              <TextBlock Text="{Binding Strings[Ups.Runtimecal.Safety]}" Classes="nut-metadata" TextWrapping="Wrap" />
-              <Button Classes="nut-primary" Content="{Binding Strings[Ups.Runtimecal.UseDraft]}" Command="{Binding UseRuntimeCalibrationCommand}" HorizontalAlignment="Left" />
-            </StackPanel>
-          </Border>
-
-          <Border Classes="nut-card" IsVisible="{Binding HasUnsupportedFields}">
-            <StackPanel Spacing="8">
-              <TextBlock Text="{Binding Strings[Ups.Editor.UnsupportedTitle]}" Classes="nut-section-title" />
-              <TextBlock Text="{Binding Strings[Ups.Editor.UnsupportedHelp]}" Classes="nut-metadata" TextWrapping="Wrap" />
-              <ItemsControl ItemsSource="{Binding UnsupportedFields}">
-                <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><TextBlock Text="{Binding Label}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon Data="{DynamicResource NutIconFile}" Classes="muted" Width="14" Height="14" VerticalAlignment="Center" />
+            <TextBlock Text="ups.conf" Classes="nut-metadata" VerticalAlignment="Center" />
+          </StackPanel>
+          <Border Width="1" Background="{DynamicResource NutBorderSubtleBrush}" />
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon Data="{DynamicResource NutIconDriver}" Classes="muted" Width="14" Height="14" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding SelectedDriver}" Classes="nut-metadata" VerticalAlignment="Center" />
+          </StackPanel>
+          <Border Width="1" Background="{DynamicResource NutBorderSubtleBrush}" />
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon Data="{DynamicResource NutIconSuccess}"
+                      Classes="healthy"
+                      Width="14"
+                      Height="14"
+                      VerticalAlignment="Center"
+                      IsVisible="{Binding IsConfigurationValid}" />
+            <PathIcon Data="{DynamicResource NutIconWarning}"
+                      Classes="critical"
+                      Width="14"
+                      Height="14"
+                      VerticalAlignment="Center"
+                      IsVisible="{Binding !IsConfigurationValid}" />
+            <TextBlock Text="{Binding ConfigurationStateText}" Classes="nut-metadata" VerticalAlignment="Center" />
+          </StackPanel>
         </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ==================== UPS section actions ==================== -->
+    <Border Classes="nut-card-flat" Padding="14,12">
+      <WrapPanel>
+        <TextBox Text="{Binding NewSectionName, Mode=TwoWay}"
+                 PlaceholderText="{Binding Strings[Ups.Editor.NewUpsName]}"
+                 Width="170"
+                 Margin="0,0,8,0"
+                 AutomationProperties.Name="{Binding Strings[Ups.Editor.NewUpsName]}" />
+        <Button Command="{Binding AddSectionCommand}" Margin="0,0,16,0">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon Classes="nut-icon-add" Data="{DynamicResource NutIconAdd}" Width="14" Height="14" />
+            <TextBlock Text="{Binding Strings[Ups.Editor.AddUps]}" />
+          </StackPanel>
+        </Button>
+        <TextBox Text="{Binding RenameSectionName, Mode=TwoWay}"
+                 Width="170"
+                 Margin="0,0,8,0"
+                 IsVisible="{Binding HasSections}"
+                 AutomationProperties.Name="{Binding Strings[Ups.Editor.RenameUpsName]}" />
+        <Button Command="{Binding RenameSectionCommand}" Margin="0,0,8,0" IsVisible="{Binding HasSections}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon Classes="nut-icon-edit" Data="{DynamicResource NutIconEdit}" Width="14" Height="14" />
+            <TextBlock Text="{Binding Strings[Ups.Editor.Rename]}" />
+          </StackPanel>
+        </Button>
+        <Button Classes="nut-danger" Command="{Binding RemoveSectionCommand}" IsVisible="{Binding HasSections}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon Classes="nut-icon-delete" Data="{DynamicResource NutIconDelete}" Width="14" Height="14" />
+            <TextBlock Text="{Binding Strings[Ups.Editor.RemoveUps]}" />
+          </StackPanel>
+        </Button>
+      </WrapPanel>
+    </Border>
+
+    <!-- Global (non-section) options -->
+    <StackPanel Spacing="10" IsVisible="{Binding HasGlobalFields}">
+      <StackPanel Orientation="Horizontal" Spacing="9">
+        <PathIcon Data="{DynamicResource NutIconSettings}" Classes="accent" Width="16" Height="16" />
+        <TextBlock Text="{Binding Strings[Ups.Editor.GlobalOptions]}" Classes="nut-card-title" VerticalAlignment="Center" />
+      </StackPanel>
+      <Border Classes="nut-divider" />
+      <ItemsControl ItemsSource="{Binding GlobalFields}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><views:UpsConfigurationFieldView /></DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <StackPanel Spacing="18" IsVisible="{Binding HasSections}">
+
+      <!-- ==================== Basic / Advanced tabs ==================== -->
+      <StackPanel Spacing="0">
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="nut-tab"
+                  Classes.selected="{Binding IsBasicSelected}"
+                  Command="{Binding ShowBasicTabCommand}"
+                  Content="{Binding Strings[Ups.Editor.Basic]}"
+                  AutomationProperties.Name="{Binding Strings[Ups.Editor.Basic]}" />
+          <Button Classes="nut-tab"
+                  Classes.selected="{Binding ShowAdvanced}"
+                  Command="{Binding ShowAdvancedTabCommand}"
+                  Content="{Binding Strings[Ups.Editor.AdvancedMode]}"
+                  AutomationProperties.Name="{Binding Strings[Ups.Editor.AdvancedMode]}" />
+        </StackPanel>
+        <Border Classes="nut-divider" />
       </StackPanel>
 
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding SelectedDriverDescription}" Classes="nut-metadata" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding SelectedDriverAvailability}" Classes="nut-metadata" />
+      </StackPanel>
+
+      <!-- ==================== Documented sections ==================== -->
+      <ItemsControl ItemsSource="{Binding BasicFieldGroups}" IsVisible="{Binding IsBasicSelected}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:UpsFieldGroupViewModel">
+            <StackPanel Spacing="10" Margin="0,0,0,20">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <Grid Width="16" Height="16">
+                  <PathIcon Data="{DynamicResource NutIconGeneral}" Classes="accent" Width="16" Height="16" IsVisible="{Binding IsIdentity}" />
+                  <PathIcon Data="{DynamicResource NutIconConnection}" Classes="cyan" Width="16" Height="16" IsVisible="{Binding IsConnection}" />
+                  <PathIcon Data="{DynamicResource NutIconBattery}" Classes="healthy" Width="16" Height="16" IsVisible="{Binding IsBattery}" />
+                  <PathIcon Data="{DynamicResource NutIconRuntime}" Classes="purple" Width="16" Height="16" IsVisible="{Binding IsRuntime}" />
+                  <PathIcon Data="{DynamicResource NutIconSettings}" Classes="accent" Width="16" Height="16" IsVisible="{Binding IsBehavior}" />
+                  <PathIcon Data="{DynamicResource NutIconPort}" Classes="cyan" Width="16" Height="16" IsVisible="{Binding IsDeviceMatch}" />
+                  <PathIcon Data="{DynamicResource NutIconTls}" Classes="warning" Width="16" Height="16" IsVisible="{Binding IsSecurity}" />
+                  <PathIcon Data="{DynamicResource NutIconDriver}" Classes="muted" Width="16" Height="16" IsVisible="{Binding IsGeneric}" />
+                </Grid>
+                <TextBlock Text="{Binding Title}" Classes="nut-card-title" VerticalAlignment="Center" />
+              </StackPanel>
+              <Border Classes="nut-divider" />
+              <ItemsControl ItemsSource="{Binding Fields}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><views:UpsConfigurationFieldView /></DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <ItemsControl ItemsSource="{Binding AdvancedFieldGroups}" IsVisible="{Binding ShowAdvanced}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:UpsFieldGroupViewModel">
+            <StackPanel Spacing="10" Margin="0,0,0,20">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <Grid Width="16" Height="16">
+                  <PathIcon Data="{DynamicResource NutIconGeneral}" Classes="accent" Width="16" Height="16" IsVisible="{Binding IsIdentity}" />
+                  <PathIcon Data="{DynamicResource NutIconConnection}" Classes="cyan" Width="16" Height="16" IsVisible="{Binding IsConnection}" />
+                  <PathIcon Data="{DynamicResource NutIconBattery}" Classes="healthy" Width="16" Height="16" IsVisible="{Binding IsBattery}" />
+                  <PathIcon Data="{DynamicResource NutIconRuntime}" Classes="purple" Width="16" Height="16" IsVisible="{Binding IsRuntime}" />
+                  <PathIcon Data="{DynamicResource NutIconSettings}" Classes="accent" Width="16" Height="16" IsVisible="{Binding IsBehavior}" />
+                  <PathIcon Data="{DynamicResource NutIconPort}" Classes="cyan" Width="16" Height="16" IsVisible="{Binding IsDeviceMatch}" />
+                  <PathIcon Data="{DynamicResource NutIconTls}" Classes="warning" Width="16" Height="16" IsVisible="{Binding IsSecurity}" />
+                  <PathIcon Data="{DynamicResource NutIconDriver}" Classes="muted" Width="16" Height="16" IsVisible="{Binding IsGeneric}" />
+                </Grid>
+                <TextBlock Text="{Binding Title}" Classes="nut-card-title" VerticalAlignment="Center" />
+              </StackPanel>
+              <Border Classes="nut-divider" />
+              <ItemsControl ItemsSource="{Binding Fields}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><views:UpsConfigurationFieldView /></DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- ==================== Runtime calibration assistant ==================== -->
+      <Border Classes="nut-card" IsVisible="{Binding IsRuntimeCalibrationAvailable}">
+        <StackPanel Spacing="11">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <PathIcon Data="{DynamicResource NutIconGauge}" Classes="purple" Width="16" Height="16" />
+            <TextBlock Text="{Binding Strings[Ups.Runtimecal.Title]}" Classes="nut-card-title" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding Strings[Ups.Runtimecal.Explanation]}" Classes="nut-metadata" TextWrapping="Wrap" />
+          <WrapPanel>
+            <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
+              <TextBlock Text="{Binding Strings[Ups.Runtimecal.HighRuntime]}" Classes="nut-label" />
+              <NumericUpDown Value="{Binding RuntimeHighSeconds, Mode=TwoWay}" Minimum="1" />
+            </StackPanel>
+            <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
+              <TextBlock Text="{Binding Strings[Ups.Runtimecal.HighLoad]}" Classes="nut-label" />
+              <NumericUpDown Value="{Binding RuntimeHighLoad, Mode=TwoWay}" Minimum="1" Maximum="100" />
+            </StackPanel>
+            <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
+              <TextBlock Text="{Binding Strings[Ups.Runtimecal.LowRuntime]}" Classes="nut-label" />
+              <NumericUpDown Value="{Binding RuntimeLowSeconds, Mode=TwoWay}" Minimum="1" />
+            </StackPanel>
+            <StackPanel Width="180" Margin="0,0,0,10" Spacing="4">
+              <TextBlock Text="{Binding Strings[Ups.Runtimecal.LowLoad]}" Classes="nut-label" />
+              <NumericUpDown Value="{Binding RuntimeLowLoad, Mode=TwoWay}" Minimum="1" Maximum="100" />
+            </StackPanel>
+          </WrapPanel>
+          <TextBlock Text="{Binding Strings[Ups.Runtimecal.Safety]}" Classes="nut-metadata" TextWrapping="Wrap" />
+          <Button Classes="nut-primary" Command="{Binding UseRuntimeCalibrationCommand}" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{DynamicResource NutIconCheck}" Width="14" Height="14" />
+              <TextBlock Text="{Binding Strings[Ups.Runtimecal.UseDraft]}" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- ==================== Unsupported for the selected driver ==================== -->
+      <Border Classes="nut-card-flat" IsVisible="{Binding HasUnsupportedFields}">
+        <StackPanel Spacing="7">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <PathIcon Data="{DynamicResource NutIconInfo}" Classes="muted" Width="15" Height="15" />
+            <TextBlock Text="{Binding Strings[Ups.Editor.UnsupportedTitle]}" Classes="nut-card-title" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding Strings[Ups.Editor.UnsupportedHelp]}" Classes="nut-metadata" TextWrapping="Wrap" />
+          <ItemsControl ItemsSource="{Binding UnsupportedFields}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel">
+                <Border Classes="nut-pill" Padding="9,3" Margin="0,0,6,6">
+                  <TextBlock Text="{Binding Label}" FontSize="11.5" Classes="nut-metadata" />
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- ==================== Custom parameters ==================== -->
       <Border Classes="nut-card">
-        <StackPanel Spacing="10">
-          <TextBlock Text="{Binding Strings[Semantic.Custom.Title]}" Classes="nut-section-title" />
+        <StackPanel Spacing="11">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <PathIcon Data="{DynamicResource NutIconEdit}" Classes="muted" Width="16" Height="16" />
+            <TextBlock Text="{Binding Strings[Semantic.Custom.Title]}" Classes="nut-card-title" VerticalAlignment="Center" />
+          </StackPanel>
           <TextBlock Text="{Binding Strings[Semantic.Custom.LimitedValidation]}" Classes="nut-metadata" TextWrapping="Wrap" />
           <ItemsControl ItemsSource="{Binding CustomParameters}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="viewModels:UpsCustomParameterViewModel">
-                <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="10" Margin="0,3">
-                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                  <TextBlock Grid.Column="1" Text="{Binding SafeValue}" TextWrapping="Wrap" />
+                <Grid ColumnDefinitions="170,*,Auto" ColumnSpacing="10" Margin="0,0,0,6">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding SafeValue}" Classes="nut-mono" TextWrapping="Wrap" VerticalAlignment="Center" />
                   <Button Grid.Column="2" Classes="nut-danger" Content="{Binding RemoveText}" Click="RemoveCustomButton_OnClick" />
                 </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="10">
+          <Grid ColumnDefinitions="170,*,Auto" ColumnSpacing="10">
             <TextBox Text="{Binding NewCustomName, Mode=TwoWay}" PlaceholderText="{Binding Strings[Ups.Editor.NutKey]}" />
             <TextBox Grid.Column="1" Text="{Binding NewCustomValue, Mode=TwoWay}" PlaceholderText="{Binding Strings[Ups.Editor.Value]}" />
-            <Button Grid.Column="2" Content="{Binding Strings[Semantic.Operation.AddCustomParameter]}" Command="{Binding AddCustomParameterCommand}" />
+            <Button Grid.Column="2" Command="{Binding AddCustomParameterCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Classes="nut-icon-add" Data="{DynamicResource NutIconAdd}" Width="14" Height="14" />
+                <TextBlock Text="{Binding Strings[Semantic.Operation.AddCustomParameter]}" />
+              </StackPanel>
+            </Button>
           </Grid>
         </StackPanel>
       </Border>
 
-      <Border Classes="nut-card" IsVisible="{Binding HasValidationIssues}">
-        <StackPanel Spacing="8">
-          <TextBlock Text="{Binding Strings[Semantic.Validation.Title]}" Classes="nut-section-title" />
+      <Border Classes="nut-card" IsVisible="{Binding HasValidationIssues}" BorderBrush="{DynamicResource NutWarningBrush}">
+        <StackPanel Spacing="7">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" />
+            <TextBlock Text="{Binding Strings[Semantic.Validation.Title]}" Classes="nut-card-title" VerticalAlignment="Center" />
+          </StackPanel>
           <ItemsControl ItemsSource="{Binding ValidationIssues}">
-            <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:UpsValidationIssueViewModel"><TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="0,2" /></DataTemplate></ItemsControl.ItemTemplate>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="viewModels:UpsValidationIssueViewModel">
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Classes="warning" FontSize="12.5" Margin="0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
           </ItemsControl>
         </StackPanel>
       </Border>
-      <TextBlock Text="{Binding OperationMessage}" TextWrapping="Wrap" />
+
+      <TextBlock Text="{Binding OperationMessage}" Classes="nut-metadata" TextWrapping="Wrap" />
     </StackPanel>
   </StackPanel>
 </UserControl>

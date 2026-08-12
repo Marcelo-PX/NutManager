@@ -2,44 +2,48 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
-      <!-- Surface hierarchy: window -> shell -> surface -> elevated -> interactive -> selected. -->
-      <SolidColorBrush x:Key="NutWindowBrush" Color="#0A111B" />
-      <SolidColorBrush x:Key="NutHeaderBrush" Color="#0B1522" />
-      <SolidColorBrush x:Key="NutSidebarBrush" Color="#0B1522" />
-      <SolidColorBrush x:Key="NutSurface1Brush" Color="#111C2B" />
-      <SolidColorBrush x:Key="NutSurface2Brush" Color="#162233" />
-      <SolidColorBrush x:Key="NutSurface3Brush" Color="#1B283B" />
-      <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#1E2C40" />
-      <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#16233A" />
-      <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#16273F" />
-      <SolidColorBrush x:Key="NutBorderBrush" Color="#24374E" />
-      <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#1B2A3C" />
-      <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#33506F" />
+      <!--
+        Surface hierarchy: window -> shell -> surface -> elevated -> interactive -> selected.
+        Surfaces stay near-neutral dark navy and lift only slightly above the window, so colour in
+        the product comes from icons, metrics, status and accents rather than from card fills.
+      -->
+      <SolidColorBrush x:Key="NutWindowBrush" Color="#090E16" />
+      <SolidColorBrush x:Key="NutHeaderBrush" Color="#0B111A" />
+      <SolidColorBrush x:Key="NutSidebarBrush" Color="#0B111A" />
+      <SolidColorBrush x:Key="NutSurface1Brush" Color="#0F1620" />
+      <SolidColorBrush x:Key="NutSurface2Brush" Color="#121A25" />
+      <SolidColorBrush x:Key="NutSurface3Brush" Color="#172029" />
+      <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#1B2531" />
+      <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#131B26" />
+      <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#14202F" />
+      <SolidColorBrush x:Key="NutBorderBrush" Color="#222C3B" />
+      <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#1A2230" />
+      <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#2E3D50" />
       <SolidColorBrush x:Key="NutTextPrimaryBrush" Color="#EDF2F8" />
       <SolidColorBrush x:Key="NutTextSecondaryBrush" Color="#9AACC0" />
       <SolidColorBrush x:Key="NutTextMutedBrush" Color="#687D95" />
-      <SolidColorBrush x:Key="NutSelectionBrush" Color="#16273F" />
-      <SolidColorBrush x:Key="NutCodeSurfaceBrush" Color="#070D16" />
+      <SolidColorBrush x:Key="NutSelectionBrush" Color="#14202F" />
+      <SolidColorBrush x:Key="NutCodeSurfaceBrush" Color="#070B12" />
       <SolidColorBrush x:Key="NutOverlayScrimBrush" Color="#A6040910" />
       <!-- Discreet depth: card sheen and selected-row glow used sparingly by shared styles. -->
       <LinearGradientBrush x:Key="NutCardSheenBrush" StartPoint="0%,0%" EndPoint="0%,100%">
-        <GradientStop Offset="0" Color="#14223A" />
-        <GradientStop Offset="1" Color="#111C2B" />
+        <GradientStop Offset="0" Color="#111823" />
+        <GradientStop Offset="1" Color="#0E141D" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="NutElevatedSheenBrush" StartPoint="0%,0%" EndPoint="0%,100%">
-        <GradientStop Offset="0" Color="#1A2A42" />
-        <GradientStop Offset="1" Color="#152032" />
+        <GradientStop Offset="0" Color="#141C27" />
+        <GradientStop Offset="1" Color="#101720" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="NutSelectedSheenBrush" StartPoint="0%,0%" EndPoint="100%,0%">
-        <GradientStop Offset="0" Color="#1D3355" />
-        <GradientStop Offset="1" Color="#14243C" />
+        <GradientStop Offset="0" Color="#16243A" />
+        <GradientStop Offset="1" Color="#111A26" />
       </LinearGradientBrush>
       <!-- Compatibility aliases keep legacy T24B page surfaces on the NutManager palette. -->
-      <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#111C2B" />
-      <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#1B283B" />
+      <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#0F1620" />
+      <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#172029" />
       <SolidColorBrush x:Key="SystemControlForegroundBaseMediumBrush" Color="#9AACC0" />
-      <SolidColorBrush x:Key="SystemControlForegroundBaseMediumLowBrush" Color="#24374E" />
-      <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#16273F" />
+      <SolidColorBrush x:Key="SystemControlForegroundBaseMediumLowBrush" Color="#222C3B" />
+      <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#14202F" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="NutWindowBrush" Color="#EEF2F8" />
@@ -93,5 +97,6 @@
   <SolidColorBrush x:Key="NutPurpleBrush" Color="#A78BFA" />
   <SolidColorBrush x:Key="NutFocusBrush" Color="#7DA9FF" />
   <SolidColorBrush x:Key="NutUnavailableBrush" Color="#687D95" />
-  <SolidColorBrush x:Key="NutTrackBrush" Color="#33587FA8" />
+  <SolidColorBrush x:Key="NutTrackBrush" Color="#2A3441" />
+  <SolidColorBrush x:Key="NutGaugeTrackBrush" Color="#3A4757" />
 </ResourceDictionary>

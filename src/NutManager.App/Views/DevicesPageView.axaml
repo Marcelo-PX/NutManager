@@ -1,48 +1,305 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             xmlns:models="clr-namespace:NutManager.Core.Models;assembly=NutManager.Core"
              x:Class="NutManager.App.Views.DevicesPageView"
              x:DataType="viewModels:DevicesPageViewModel">
+  <!--
+    Devices is a read-only discovery surface. Rows come from NUT discovery, which returns device
+    identities; driver, port and protocol are only known for the device whose snapshot was actually
+    read, so they appear in the selected-device panel rather than being guessed for every row.
+    No create, edit or delete action exists in the product, so none is offered here.
+  -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="20">
+    <StackPanel Spacing="16">
+
+      <!-- ==================== Header ==================== -->
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-        <StackPanel Spacing="6"><TextBlock Text="{Binding Title}" Classes="nut-page-title" /><TextBlock Text="{Binding Description}" MaxWidth="700" TextWrapping="Wrap" /></StackPanel>
-        <Button Grid.Column="1" Classes="nut-primary" Content="{Binding Strings[Common.Refresh]}" Command="{Binding RefreshCommand}" IsEnabled="{Binding CanRefresh}" VerticalAlignment="Top" />
-      </Grid>
-      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsDiscovering}" Height="4" />
-      <TextBlock Text="{Binding DiscoveryError}" IsVisible="{Binding HasDiscoveryError}" TextWrapping="Wrap" Foreground="{DynamicResource NutCriticalBrush}" />
-
-      <Grid x:Name="DevicesLayout" ColumnDefinitions="260,16,*" RowDefinitions="Auto">
-        <Border x:Name="DeviceListPanel" Grid.Column="0" Classes="nut-card">
-          <StackPanel Spacing="10">
-            <TextBlock Text="{Binding Strings[Devices.Available]}" Classes="nut-section-title" />
-            <StackPanel IsVisible="{Binding HasNoDevices}" Spacing="4"><TextBlock Text="{Binding EmptyStateText}" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="{Binding Strings[Devices.EmptyHelp]}" Classes="nut-metadata" TextWrapping="Wrap" /></StackPanel>
-            <ListBox ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice}" SelectionChanged="OnDeviceSelectionChanged" IsVisible="{Binding HasDevices}">
-              <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="5" Spacing="2"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Text="{Binding Description}" Classes="nut-metadata" TextWrapping="Wrap" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
-            </ListBox>
+        <StackPanel Spacing="2">
+          <StackPanel Orientation="Horizontal" Spacing="11">
+            <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
+            <PathIcon Data="{DynamicResource NutIconDevices}" Width="20" Height="20" Foreground="{DynamicResource NutCyanBrush}" VerticalAlignment="Center" />
           </StackPanel>
-        </Border>
+          <TextBlock Text="{Binding Description}" Classes="nut-page-subtitle" MaxWidth="740" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="1" Command="{Binding RefreshCommand}" IsEnabled="{Binding CanRefresh}" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Classes="nut-icon-refresh" Data="{DynamicResource NutIconRefresh}" Width="15" Height="15" />
+            <TextBlock Text="{Binding Strings[Common.Refresh]}" />
+          </StackPanel>
+        </Button>
+      </Grid>
 
-        <Border x:Name="DeviceDetailsPanel" Grid.Column="2" Classes="nut-card-elevated">
-          <StackPanel Spacing="14">
-            <StackPanel IsVisible="{Binding HasNoSelectedDevice}" Spacing="4"><TextBlock Text="{Binding Strings[Devices.NoSelection]}" FontWeight="SemiBold" /><TextBlock Text="{Binding Strings[Devices.NoSelection.Help]}" Classes="nut-metadata" TextWrapping="Wrap" /></StackPanel>
-            <StackPanel Spacing="12" IsVisible="{Binding HasSelectedDevice}">
-              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding SelectedDeviceName}" Classes="nut-section-title" /><Border Grid.Column="1" IsVisible="{Binding IsSimulated}" Padding="8,4" CornerRadius="8" Background="{DynamicResource NutSelectionBrush}"><TextBlock Text="{Binding Strings[Shell.SimulationActive]}" FontWeight="SemiBold" /></Border></Grid>
-              <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoadingDetails}" Height="4" />
-              <TextBlock Text="{Binding DetailsError}" IsVisible="{Binding HasDetailsError}" TextWrapping="Wrap" Foreground="{DynamicResource NutCriticalBrush}" />
-              <WrapPanel>
-                <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Devices.Identity.Description]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedDeviceDescription}" TextWrapping="Wrap" /></StackPanel>
-                <StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Devices.Identity.Manufacturer]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedDeviceManufacturer}" TextWrapping="Wrap" /></StackPanel>
-                <StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Devices.Identity.Model]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedDeviceModel}" TextWrapping="Wrap" /></StackPanel>
-                <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Devices.Identity.Serial]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedDeviceSerialNumber}" TextWrapping="Wrap" /></StackPanel>
-              </WrapPanel>
-              <TextBlock Text="{Binding Strings[Devices.RawVariables]}" Classes="nut-section-title" />
-              <TextBlock Text="{Binding Strings[Devices.NoVariables]}" IsVisible="{Binding HasNoRawVariables}" Classes="nut-metadata" />
-              <ItemsControl ItemsSource="{Binding RawVariables}" IsVisible="{Binding HasRawVariables}"><ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="220,12,*" Margin="0,3"><TextBlock Text="{Binding Name}" FontFamily="Consolas" FontWeight="SemiBold" /><TextBlock Grid.Column="2" Text="{Binding Value}" FontFamily="Consolas" TextWrapping="Wrap" /></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsDiscovering}" Height="3" />
+
+      <Border Classes="nut-card" Padding="14" IsVisible="{Binding HasDiscoveryError}" BorderBrush="{DynamicResource NutCriticalBrush}">
+        <StackPanel Orientation="Horizontal" Spacing="11">
+          <PathIcon Data="{DynamicResource NutIconWarning}" Classes="critical" Width="18" Height="18" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding DiscoveryError}" TextWrapping="Wrap" Classes="nut-body" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <!-- ==================== Empty state ====================
+           The former "available UPS" table was removed: with a single device it only repeated the
+           details shown immediately below. Selection now lives in the device header and appears
+           only when more than one UPS exists, so multi-UPS support is preserved. -->
+      <Border Classes="nut-card" IsVisible="{Binding HasNoDevices}">
+        <StackPanel Orientation="Horizontal" Spacing="11">
+          <PathIcon Data="{DynamicResource NutIconInfo}" Classes="muted" Width="18" Height="18" VerticalAlignment="Top" />
+          <StackPanel Spacing="3">
+            <TextBlock Text="{Binding EmptyStateText}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Strings[Devices.EmptyHelp]}" Classes="nut-metadata" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- ==================== Selected device ==================== -->
+      <Border Classes="nut-card" IsVisible="{Binding HasNoSelectedDevice}">
+        <StackPanel Spacing="4">
+          <TextBlock Text="{Binding Strings[Devices.NoSelection]}" FontSize="13" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Strings[Devices.NoSelection.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="nut-card-elevated" IsVisible="{Binding HasSelectedDevice}">
+        <StackPanel Spacing="14">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
+            <PathIcon Data="{DynamicResource NutIconUps}" Classes="cyan" Width="18" Height="18" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Spacing="1">
+              <TextBlock Text="{Binding SelectedDeviceName}" Classes="nut-card-title" TextTrimming="CharacterEllipsis" />
+              <!-- Only shown when NUT reported a description; never an "unavailable" placeholder. -->
+              <TextBlock Text="{Binding SelectedDeviceDescription}"
+                         Classes="nut-metadata"
+                         IsVisible="{Binding HasSelectedDeviceDescription}"
+                         TextTrimming="CharacterEllipsis" />
             </StackPanel>
+            <!-- Device picker: only meaningful with more than one discovered UPS. -->
+            <ComboBox Grid.Column="2"
+                      MinWidth="150"
+                      IsVisible="{Binding HasMultipleDevices}"
+                      ItemsSource="{Binding Devices}"
+                      SelectedItem="{Binding SelectedDevice}"
+                      SelectionChanged="OnDeviceSelectionChanged"
+                      VerticalAlignment="Center"
+                      AutomationProperties.Name="{Binding Strings[Devices.Available]}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="models:UpsIdentity">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Border Grid.Column="3" Classes="nut-pill warning" Padding="10,3" IsVisible="{Binding IsSimulated}">
+              <TextBlock Text="{Binding Strings[Shell.SimulationActive]}" FontSize="11.5" FontWeight="SemiBold" Classes="warning" />
+            </Border>
+            <Border Grid.Column="4"
+                    Classes="nut-pill"
+                    Classes.healthy="{Binding IsSelectedDeviceHealthy}"
+                    Classes.warning="{Binding IsSelectedDeviceWarning}"
+                    Classes.critical="{Binding IsSelectedDeviceCritical}"
+                    Padding="11,4">
+              <TextBlock Text="{Binding SelectedDeviceStatusText}" FontSize="12" FontWeight="SemiBold" />
+            </Border>
+          </Grid>
+
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoadingDetails}" Height="3" />
+
+          <Border Classes="nut-card-flat" Padding="13" IsVisible="{Binding HasDetailsError}" BorderBrush="{DynamicResource NutCriticalBrush}">
+            <TextBlock Text="{Binding DetailsError}" TextWrapping="Wrap" Classes="critical" FontSize="12.5" />
+          </Border>
+
+          <TextBlock Text="{Binding StatusTokensValue}"
+                     Classes="nut-mono"
+                     IsVisible="{Binding HasStatusTokens}"
+                     Margin="30,-8,0,0" />
+
+          <Border Classes="nut-divider" />
+
+          <!-- ========== Identificação: adaptive, collapses to one line when the driver
+               publishes no hardware metadata instead of printing a column of placeholders ========== -->
+          <StackPanel Spacing="9">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconUps}" Classes="muted" Width="15" Height="15" />
+              <TextBlock Text="{Binding Strings[Devices.Section.Identification]}" Classes="nut-card-title" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Text="{Binding Strings[Devices.Identification.NotProvided]}"
+                       Classes="nut-metadata"
+                       IsVisible="{Binding !HasAnyIdentification}"
+                       TextWrapping="Wrap" />
+            <WrapPanel IsVisible="{Binding HasAnyIdentification}">
+              <StackPanel Width="170" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasManufacturer}">
+                <TextBlock Text="{Binding Strings[Devices.Identity.Manufacturer]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding ManufacturerValue}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Width="170" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasModel}">
+                <TextBlock Text="{Binding Strings[Devices.Identity.Model]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding ModelValue}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Width="170" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasSerial}">
+                <TextBlock Text="{Binding Strings[Devices.Identity.Serial]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding SerialValue}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Width="150" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasFirmware}">
+                <TextBlock Text="{Binding Strings[Devices.Identity.Firmware]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding FirmwareValue}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Width="150" Margin="0,0,0,9" Spacing="2" IsVisible="{Binding HasDeviceType}">
+                <TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" />
+                <TextBlock Text="{Binding DeviceTypeValue}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </WrapPanel>
           </StackPanel>
-        </Border>
-      </Grid>
+
+          <Border Classes="nut-divider" />
+
+          <!-- ========== Comunicação ========== -->
+          <StackPanel Spacing="9">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconConnection}" Classes="cyan" Width="15" Height="15" />
+              <TextBlock Text="{Binding Strings[Devices.Section.Communication]}" Classes="nut-card-title" VerticalAlignment="Center" />
+            </StackPanel>
+            <WrapPanel>
+              <!-- Fixed cell width with an ellipsis on every label: a long localized label can no
+                   longer bleed into the neighbouring column, and the panel simply wraps to the next
+                   row as the card narrows. -->
+              <StackPanel Width="168" Margin="0,0,14,9" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconDriver}" Classes="muted" Width="12" Height="12" />
+                  <TextBlock Text="Driver" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding SelectedDeviceDriver}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding DriverVersionValue}" Classes="nut-metadata" IsVisible="{Binding HasDriverVersionValue}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Width="168" Margin="0,0,14,9" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconPort}" Classes="muted" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Administration.Drivers.Port]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding SelectedDevicePort}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Width="168" Margin="0,0,14,9" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconConnection}" Classes="muted" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Administration.Drivers.Protocol]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding SelectedDeviceProtocol}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Width="168" Margin="0,0,14,9" Spacing="2" IsVisible="{Binding HasPollInterval}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconRefresh}" Classes="muted" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Devices.PollingInterval]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding PollIntervalValue}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Width="168" Margin="0,0,0,9" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconRuntime}" Classes="muted" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.LastReading]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding SelectedDeviceLastUpdate}" FontSize="13" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </WrapPanel>
+          </StackPanel>
+
+          <Border Classes="nut-divider" IsVisible="{Binding HasAnyReading}" />
+
+          <!-- ========== Estado atual: only readings the snapshot actually carries ========== -->
+          <StackPanel Spacing="9" IsVisible="{Binding HasAnyReading}">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconDiagnostics}" Classes="purple" Width="15" Height="15" />
+              <TextBlock Text="{Binding Strings[Devices.Section.CurrentState]}" Classes="nut-card-title" VerticalAlignment="Center" />
+            </StackPanel>
+            <WrapPanel>
+              <StackPanel Width="140" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasBatteryCharge}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconBattery}" Classes="healthy" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.BatteryCharge]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding BatteryChargeValue}" FontSize="15" FontWeight="SemiBold" Classes="healthy" />
+              </StackPanel>
+              <StackPanel Width="140" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasLoad}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconGauge}" Classes="cyan" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.Load]}" Classes="nut-metadata" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding LoadValue}" FontSize="15" FontWeight="SemiBold" Classes="cyan" />
+              </StackPanel>
+              <StackPanel Width="140" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasRuntimeValue}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconRuntime}" Classes="purple" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.Runtime]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding RuntimeValue}" FontSize="15" FontWeight="SemiBold" Classes="purple" />
+              </StackPanel>
+              <StackPanel Width="140" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasTemperatureValue}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconTemperature}" Classes="muted" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.Temperature]}" Classes="nut-metadata" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding TemperatureValue}" FontSize="15" FontWeight="SemiBold" />
+              </StackPanel>
+              <StackPanel Width="140" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasInputVoltage}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconInput}" Classes="warning" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.InputVoltage]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding InputVoltageValue}" FontSize="15" FontWeight="SemiBold" Classes="warning" />
+              </StackPanel>
+              <StackPanel Width="140" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasOutputVoltage}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconOutput}" Classes="healthy" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.OutputVoltage]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding OutputVoltageValue}" FontSize="15" FontWeight="SemiBold" Classes="healthy" />
+              </StackPanel>
+              <StackPanel Width="140" Margin="0,0,16,9" Spacing="2" IsVisible="{Binding HasFrequencyValue}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconNetwork}" Classes="muted" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.Frequency]}" Classes="nut-metadata" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding FrequencyValue}" FontSize="15" FontWeight="SemiBold" />
+              </StackPanel>
+              <StackPanel Width="140" Margin="0,0,0,9" Spacing="2" IsVisible="{Binding HasBatteryVoltageValue}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{DynamicResource NutIconBattery}" Classes="muted" Width="12" Height="12" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.BatteryVoltage]}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Text="{Binding BatteryVoltageValue}" FontSize="15" FontWeight="SemiBold" />
+              </StackPanel>
+            </WrapPanel>
+            <Border Classes="nut-card-flat" Padding="11" IsVisible="{Binding HasAlarm}" BorderBrush="{DynamicResource NutWarningBrush}">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="14" Height="14" VerticalAlignment="Top" />
+                <TextBlock Text="{Binding AlarmValue}" Classes="warning" FontSize="12.5" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- ==================== Raw NUT variables (secondary technical detail) ==================== -->
+      <Expander IsVisible="{Binding HasSelectedDevice}" IsExpanded="False">
+        <Expander.Header>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <PathIcon Data="{DynamicResource NutIconLogs}" Classes="muted" Width="16" Height="16" />
+            <TextBlock Text="{Binding Strings[Devices.RawVariables]}" Classes="nut-card-title" VerticalAlignment="Center" />
+          </StackPanel>
+        </Expander.Header>
+        <StackPanel Spacing="8" Margin="0,10,0,0">
+          <TextBlock Text="{Binding Strings[Devices.NoVariables]}" IsVisible="{Binding HasNoRawVariables}" Classes="nut-metadata" />
+          <Border Classes="nut-inset" IsVisible="{Binding HasRawVariables}">
+            <ItemsControl ItemsSource="{Binding RawVariables}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:RawVariableViewModel">
+                  <Grid ColumnDefinitions="260,12,*" Margin="0,0,0,3">
+                    <TextBlock Text="{Binding Name}" Classes="nut-mono" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="2" Text="{Binding Value}" Classes="nut-mono cyan" TextWrapping="Wrap" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+        </StackPanel>
+      </Expander>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

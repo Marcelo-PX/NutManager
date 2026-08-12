@@ -29,6 +29,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private int _draftVersion;
     private int _preparedDraftVersion = -1;
     private int _installationContextVersion;
+    private int _navigationGeneration;
+    private CancellationTokenSource? _navigationCancellation;
 
     public AdministrationPageViewModel()
         : this(null, null, null, null, null, null, UiLanguagePreference.PtBr, null)
@@ -132,6 +134,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     [ObservableProperty]
     private bool _isBusy;
 
+    // Navigation between configuration files is the one operation the user is expected to repeat
+    // quickly, so it gets its own flag: the file list must stay usable while a file is loading,
+    // which it cannot do if the only signal available is the shared IsBusy.
+    [ObservableProperty]
+    private bool _isLoadingFile;
+
     [ObservableProperty]
     private bool _isPreviewConfirmed;
 
@@ -168,8 +176,14 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     [ObservableProperty]
     private NutServiceInfo? _selectedWindowsService;
 
+    /// <summary>Last inspection snapshot, kept to report why the service list looks the way it does.</summary>
+    private NutWindowsAdministrationSnapshot? _windowsAdministrationSnapshot;
+
+    // Starts as "not yet determined", never as "unsupported platform": before the first inspection
+    // completes the platform verdict is unknown, and the stale initial value was being rendered as
+    // a false "not available on this platform" message on Windows.
     [ObservableProperty]
-    private NutPermissionAssessment _windowsPermissionAssessment = NutPermissionAssessment.Unsupported();
+    private NutPermissionAssessment _windowsPermissionAssessment = NutPermissionAssessment.NotDetermined(string.Empty);
 
     [ObservableProperty]
     private IReadOnlyList<NutProcessInfo> _windowsProcesses = Array.Empty<NutProcessInfo>();
@@ -230,6 +244,10 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool HasLoadedFile => _loadedSnapshot is not null;
 
     public bool HasNoLoadedFile => !HasLoadedFile;
+
+    // While a file is loading there is deliberately no document: the placeholder that invites the
+    // user to pick a file would be wrong, so the editor area shows the loading state instead.
+    public bool IsEditorPlaceholderVisible => HasNoLoadedFile && !IsLoadingFile;
 
     private ISemanticConfigurationEditor? ActiveSemanticEditor =>
         UpsConfigurationEditor ?? (ISemanticConfigurationEditor?)NutGeneralConfigurationEditor ?? UpsdConfigurationEditor;
@@ -330,7 +348,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanDetectInstallation => CanChangeInstallation;
 
-    public bool CanSelectConfigurationFile => CanInspectConfiguration && !IsDetectingInstallation && !IsBusy && !HasDraftChanges && !HasPreview && !IsRemoteSessionBusy;
+    // A write, a review or an installation change owns the editor and must not be interrupted, so
+    // those still close the list. Loading a file does not: switching files is precisely how the user
+    // recovers from a slow or wrong pick, and disabling the list mid-click is what made it stop
+    // responding. A superseded load is cancelled instead.
+    private bool IsBusyOutsideNavigation => IsBusy && !IsLoadingFile;
+
+    public bool CanSelectConfigurationFile => CanInspectConfiguration && !IsDetectingInstallation && !IsBusyOutsideNavigation && !HasDraftChanges && !HasPreview && !IsRemoteSessionBusy;
 
     public bool IsWindowsAdministrationAvailable => _windowsAdministration is not null && WindowsPermissionAssessment.State != NutPermissionState.Unknown;
 
@@ -339,6 +363,25 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool HasSelectedWindowsService => SelectedWindowsService is not null;
     public bool HasNoWindowsProcesses => WindowsProcesses.Count == 0;
     public bool HasNoWindowsEvents => WindowsEvents.Count == 0;
+
+    /// <summary>Event rows with the Windows "description cannot be found" wrapper removed.</summary>
+    public IReadOnlyList<WindowsEventRowViewModel> WindowsEventRows => WindowsEvents
+        .Select(entry => new WindowsEventRowViewModel(
+            NutTimestampPresentation.Local(entry.Timestamp, "g"),
+            entry.Level,
+            entry.Provider,
+            NutEventMessagePresentation.Friendly(entry.Message)))
+        .ToArray();
+
+    /// <summary>
+    /// Process association needs rights this session may not have: NUT runs as LocalSystem. When
+    /// the modules could not be read, say so rather than claiming no NUT process exists.
+    /// </summary>
+    public bool IsProcessInspectionDenied => _windowsAdministrationSnapshot?.ProcessInspectionDenied == true;
+
+    public string WindowsProcessEmptyText => Strings.Get(IsProcessInspectionDenied
+        ? "Administration.Windows.Processes.InspectionDenied"
+        : "Administration.Windows.NoProcesses");
 
     public string SelectedWindowsServiceStateText => SelectedWindowsService?.State switch
     {
@@ -359,11 +402,124 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _ => Strings.Get("Status.Unavailable")
     };
 
+    /// <summary>
+    /// A service can be discovered by identity while its binary is not verifiably part of the
+    /// detected installation. T16 refuses to mutate such a service, so the commands must reflect
+    /// that instead of offering an action that is guaranteed to fail.
+    /// </summary>
+    public bool IsSelectedWindowsServiceControllable =>
+        SelectedWindowsService?.AssociationConfidence == NutAssociationConfidence.BinaryPath;
+
+    public bool IsSelectedWindowsServiceUnverified =>
+        SelectedWindowsService is not null && !IsSelectedWindowsServiceControllable;
+
+    /// <summary>Localized explanation of why the service list is in its current state.</summary>
+    public string WindowsServiceDiscoveryText => _windowsAdministrationSnapshot switch
+    {
+        // "Not inspected" must never be reported as "not found": they are different states.
+        null => Strings.Get("Administration.Windows.Discovery.NotInspected"),
+        { ServiceDiscoveryStatus: NutServiceDiscoveryStatus.AccessDenied } => Strings.Get("Administration.Windows.Discovery.AccessDenied"),
+        { ServiceDiscoveryStatus: NutServiceDiscoveryStatus.QueryFailed } => Strings.Get("Administration.Windows.Discovery.QueryFailed"),
+        _ when HasWindowsServices => Strings.Get("Administration.Windows.Discovery.Found"),
+        _ => Strings.Get("Administration.Windows.Discovery.NotFound")
+    };
+
+    /// <summary>
+    /// Sanitized technical trace, shown only while no service could be associated so the failing
+    /// stage can be identified from a screenshot. It lists the NUT candidate and paths already
+    /// visible elsewhere in this page; it never enumerates the machine's services or any secret.
+    /// </summary>
+    /// <summary>Why the last inspection attempt was skipped, when it was skipped.</summary>
+    private string? _windowsInspectionSkipReason;
+
+    private string? WindowsInspectionSkipReason
+    {
+        get => _windowsInspectionSkipReason;
+        set
+        {
+            _windowsInspectionSkipReason = value;
+            OnPropertyChanged(nameof(WindowsServiceDiagnosticText));
+            OnPropertyChanged(nameof(HasWindowsServiceDiagnostic));
+            OnPropertyChanged(nameof(WindowsServiceDiscoveryText));
+        }
+    }
+
+    public string? WindowsServiceDiagnosticText
+    {
+        get
+        {
+            if (HasWindowsServices) return null;
+
+            // No snapshot means no inspection ever completed. Saying so is the whole point of this
+            // block: reporting "no service found" for a state that was never inspected hides the
+            // real stage of the failure.
+            if (_windowsAdministrationSnapshot is null)
+            {
+                return string.Join(Environment.NewLine,
+                [
+                    "Inspeção da administração do Windows: não concluída",
+                    $"Motivo: {WindowsInspectionSkipReason ?? "a inspeção ainda não foi executada"}",
+                    $"Perfil local: {Yes(IsLocalManagementProfile)}",
+                    $"Instalação detectada: {Yes(_currentInstallation is { IsDetected: true })}",
+                    $"Raiz da instalação: {_currentInstallation?.InstallationDirectory ?? "—"}"
+                ]);
+            }
+
+            if (_windowsAdministrationSnapshot.Trace is not { } trace)
+            {
+                return $"Descoberta: {_windowsAdministrationSnapshot.ServiceDiscoveryStatus} (sem trace técnico)";
+            }
+
+            var lines = new List<string>
+            {
+                $"Plataforma suportada: {Yes(trace.PlatformSupported)}",
+                $"Enumeração concluída: {Yes(trace.EnumerationSucceeded)} ({trace.EnumeratedServiceCount})",
+                $"Identidade NUT encontrada: {Yes(trace.ExactKnownServiceFound)}",
+                $"Raiz da instalação: {trace.InstallationRoot ?? "—"}",
+                $"Serviço candidato: {trace.CandidateServiceName ?? "—"}",
+                $"Executável: {trace.CandidateExecutable ?? "—"}",
+                $"Containment: {trace.ContainmentResult switch { true => "válido", false => "fora da raiz", _ => "não avaliado" }}",
+                $"Associação: {trace.Association}"
+            };
+            if (trace.FailureReason is { } reason) lines.Add($"Motivo: {reason}");
+            return string.Join(Environment.NewLine, lines);
+        }
+    }
+
+    public bool HasWindowsServiceDiagnostic => WindowsServiceDiagnosticText is not null;
+
+    private static string Yes(bool value) => value ? "sim" : "não";
+
+    public bool IsWindowsServiceDiscoveryProblem =>
+        _windowsAdministrationSnapshot?.ServiceDiscoveryStatus is NutServiceDiscoveryStatus.AccessDenied or NutServiceDiscoveryStatus.QueryFailed;
+
+    // Categorical service state for presentation. Colour is always paired with the state text, and
+    // an undetected service reads as unavailable rather than as a failure.
+    public bool IsWindowsServiceRunning => SelectedWindowsService?.State == NutServiceState.Running;
+    public bool IsWindowsServiceStopped => SelectedWindowsService?.State == NutServiceState.Stopped;
+    public bool IsWindowsServiceFailed => SelectedWindowsService?.State == NutServiceState.Failed;
+    public bool IsWindowsServiceTransitioning => SelectedWindowsService?.State is NutServiceState.StartPending or NutServiceState.StopPending or NutServiceState.Paused;
+    public bool IsWindowsServiceUnknown => SelectedWindowsService is null;
+
     public bool IsDriverDiagnosticsAvailable => _driverDiagnostics is not null;
     public bool HasConfiguredDrivers => ConfiguredDrivers.Count > 0;
     public bool HasNoConfiguredDrivers => !HasConfiguredDrivers;
     public bool HasSelectedConfiguredDriver => SelectedConfiguredDriver is not null;
     public bool HasNoComPorts => ComPorts.Count == 0;
+
+    /// <summary>
+    /// Distinguishes "configured in ups.conf" from "currently enumerated by Windows" so a port that
+    /// exists in configuration but is absent right now reads as a state rather than a contradiction.
+    /// </summary>
+    public bool IsSelectedDriverPortPresent => SelectedConfiguredDriver?.IsConfiguredComPortPresent == true;
+
+    public bool HasSelectedDriverPortState => SelectedConfiguredDriver?.NormalizedComPort is not null;
+
+    public string SelectedDriverPortStateText => SelectedConfiguredDriver?.NormalizedComPort is null
+        ? Strings.Get("Status.Unavailable")
+        : Strings.Get(IsSelectedDriverPortPresent
+            ? "Administration.Drivers.PortConfiguredAndDetected"
+            : "Administration.Drivers.PortConfiguredNotDetected");
 
     public string SelectedConfiguredDriverStateText => SelectedConfiguredDriver?.Executable.State switch
     {
@@ -414,11 +570,14 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanExecuteAdministrativeAction => Capabilities.CanExecuteAdministrativeActions && HasPendingAdministrativeAction && IsAdministrativeActionConfirmed && !HasDraftChanges && !HasPreview && !IsBusy && !IsDetectingInstallation && IsPendingAdministrativeActionCurrent();
 
-    public bool CanStartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { State: NutServiceState.Stopped, StartMode: not NutServiceStartMode.Disabled };
+    // All three gates additionally require a controllable service: T16 refuses to mutate a service
+    // whose binary is not verifiably part of the detected installation, so offering the action
+    // would present a target that cannot actually be acted on.
+    public bool CanStartWindowsService => CanPrepareAdministrativeAction && IsSelectedWindowsServiceControllable && SelectedWindowsService is { State: NutServiceState.Stopped, StartMode: not NutServiceStartMode.Disabled };
 
-    public bool CanStopWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService?.State == NutServiceState.Running;
+    public bool CanStopWindowsService => CanPrepareAdministrativeAction && IsSelectedWindowsServiceControllable && SelectedWindowsService?.State == NutServiceState.Running;
 
-    public bool CanRestartWindowsService => CanPrepareAdministrativeAction && SelectedWindowsService is { StartMode: not NutServiceStartMode.Disabled } service && service.State is (NutServiceState.Running or NutServiceState.Stopped);
+    public bool CanRestartWindowsService => CanPrepareAdministrativeAction && IsSelectedWindowsServiceControllable && SelectedWindowsService is { StartMode: not NutServiceStartMode.Disabled } service && service.State is (NutServiceState.Running or NutServiceState.Stopped);
 
     public bool CanRefreshDriverDiagnostics => Capabilities.CanInspectLocalManagement && _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction;
 
@@ -430,7 +589,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public string DriverDiagnosticCriticalText => "CRÍTICO — o resultado do diagnóstico requer atenção manual.";
 
-    public string AdministrativeCriticalText => "CRÍTICO — a operação administrativa requer atenção manual.";
+    public string AdministrativeCriticalText => Strings.Get("Administration.Windows.CriticalNotice");
 
     public bool IsPermissionRepairPending => PendingAdministrativeAction?.Action == NutAdministrativeAction.RepairConfigurationPermissions;
 
@@ -571,7 +730,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
-        if (IsBusy || IsDetectingInstallation)
+        // Only work that owns the editor blocks a new pick. A load already in flight does not: it is
+        // superseded below.
+        if (IsBusyOutsideNavigation || IsDetectingInstallation)
         {
             SetStatus("Aguarde a operação atual antes de trocar de arquivo.");
             OnPropertyChanged(nameof(SelectedFile));
@@ -586,9 +747,15 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
                 NutConfigurationFileState.AccessDenied => "Permissão insuficiente. A elevação administrativa será tratada pela etapa de administração do Windows.",
                 _ => "O arquivo não está disponível para carregamento."
             });
+            // Reached without touching the pipeline. The list already moved its highlight onto the
+            // unavailable item, so push the real selection back or the highlight would name a file
+            // the editor is not showing.
+            OnPropertyChanged(nameof(SelectedFile));
             return;
         }
 
+        // The highlight follows the click before the load starts, so the file header and the list
+        // always agree on which file is being opened.
         SelectedFile = file;
         await LoadSelectedFileAsync(file, file.FullPath!, file.FileKind, _installationContextVersion, cancellationToken);
     }
@@ -764,18 +931,31 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     {
         if (!Capabilities.CanInspectLocalManagement)
         {
+            WindowsInspectionSkipReason = "capability: CanInspectLocalManagement = false";
             AdministrativeStatusMessage = ManagementAvailabilityText;
             return;
         }
 
         if (_windowsAdministration is null)
         {
-            WindowsPermissionAssessment = NutPermissionAssessment.Unsupported();
-            AdministrativeStatusMessage = "A administração local do Windows não está disponível nesta plataforma.";
+            // The capability was not provided to this session. That is distinct from the host
+            // operating system being unable to support local administration at all.
+            WindowsInspectionSkipReason = "capability: nenhuma implementação de administração Windows nesta sessão";
+            var unavailable = Strings.Get("Administration.Windows.CapabilityUnavailable");
+            WindowsPermissionAssessment = NutPermissionAssessment.NotDetermined(unavailable);
+            AdministrativeStatusMessage = unavailable;
             return;
         }
 
-        if (IsBusy || IsDetectingInstallation) return;
+        // This guard used to return silently, leaving the page reporting "no service found" for a
+        // state where nothing had actually been inspected. Record why so the reason is visible.
+        if (IsBusy || IsDetectingInstallation)
+        {
+            WindowsInspectionSkipReason = $"ocupado: IsBusy={IsBusy}, IsDetectingInstallation={IsDetectingInstallation}";
+            return;
+        }
+
+        WindowsInspectionSkipReason = null;
         IsBusy = true;
         try
         {
@@ -788,8 +968,10 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
         catch
         {
+            // A failed *read* of the local administration state is an unavailable capability, not a
+            // critical administrative condition. Critical stays reserved for an attempted action
+            // that failed or needs manual intervention, so the banner keeps its meaning.
             AdministrativeStatusMessage = "Não foi possível atualizar a administração local do Windows.";
-            IsAdministrativeCritical = true;
         }
         finally { IsBusy = false; }
     }
@@ -1010,7 +1192,18 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
+        // Each selection supersedes the one before it. The generation decides who may publish and
+        // who must stay silent; the token stops the superseded load from doing work nobody wants.
+        var generation = ++_navigationGeneration;
+        _navigationCancellation?.Cancel();
+        var navigation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _navigationCancellation = navigation;
+
+        IsLoadingFile = true;
         IsBusy = true;
+        // The previous editor belongs to the previous file. Leaving it on screen under the new
+        // file's header would present it as the new file's content.
+        ClearLoadedDocument();
         if (!preserveStatus)
         {
             SetStatus(null);
@@ -1021,8 +1214,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
         try
         {
-            var result = await _configurationPipeline.LoadAsync(expectedPath, expectedFileKind, cancellationToken);
-            if (!IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
+            var result = await _configurationPipeline.LoadAsync(expectedPath, expectedFileKind, navigation.Token);
+            if (generation != _navigationGeneration ||
+                !IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
             {
                 return;
             }
@@ -1036,23 +1230,36 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
             _loadedSnapshot = result.Snapshot;
             expectedFile.SetLoaded();
-            await BuildEditorsAsync(result.Snapshot, cancellationToken);
+            await BuildEditorsAsync(result.Snapshot, navigation.Token);
+            if (generation != _navigationGeneration)
+            {
+                // A newer selection landed while the editors were being built; its own load owns the
+                // screen now, so drop what was just built instead of publishing it over the newer file.
+                ClearLoadedDocument();
+                return;
+            }
+
             InvalidatePreview();
             OnPropertyChanged(nameof(SelectedFileEncodingText));
             OnPropertyChanged(nameof(HasLoadedFile));
             OnPropertyChanged(nameof(HasNoLoadedFile));
             NotifyWorkflowPropertiesChanged();
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (navigation.IsCancellationRequested)
         {
-            if (IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
+            // Being superseded is ordinary navigation, not a failure, so it reports nothing. Only a
+            // cancellation the caller actually asked for is worth showing.
+            if (cancellationToken.IsCancellationRequested &&
+                generation == _navigationGeneration &&
+                IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
             {
                 SetStatus("O carregamento do arquivo foi cancelado.");
             }
         }
         catch (Exception)
         {
-            if (IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
+            if (generation == _navigationGeneration &&
+                IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
             {
                 ClearLoadedDocument();
                 SetStatus("Não foi possível carregar o arquivo de configuração.");
@@ -1060,7 +1267,19 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
         finally
         {
-            IsBusy = false;
+            // A superseded load must never clear the busy state of the load that replaced it.
+            if (generation == _navigationGeneration)
+            {
+                IsLoadingFile = false;
+                IsBusy = false;
+            }
+
+            if (ReferenceEquals(_navigationCancellation, navigation))
+            {
+                _navigationCancellation = null;
+            }
+
+            navigation.Dispose();
         }
     }
 
@@ -1094,6 +1313,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     {
         if (_windowsAdministration is null) return;
         var snapshot = await _windowsAdministration.InspectAsync(_currentInstallation ?? NutInstallationInfo.NotDetected(), cancellationToken);
+        _windowsAdministrationSnapshot = snapshot;
+        OnPropertyChanged(nameof(WindowsServiceDiscoveryText));
+        OnPropertyChanged(nameof(IsWindowsServiceDiscoveryProblem));
+        OnPropertyChanged(nameof(WindowsServiceDiagnosticText));
+        OnPropertyChanged(nameof(HasWindowsServiceDiagnostic));
         WindowsServices = snapshot.Services;
         SelectedWindowsService = snapshot.Services.FirstOrDefault();
         WindowsPermissionAssessment = snapshot.Permissions;
@@ -1323,6 +1547,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(SelectedFileEncodingText));
         OnPropertyChanged(nameof(HasLoadedFile));
         OnPropertyChanged(nameof(HasNoLoadedFile));
+        OnPropertyChanged(nameof(IsEditorPlaceholderVisible));
         NotifyWorkflowPropertiesChanged();
     }
 
@@ -1473,6 +1698,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(HasDraftChanges));
         OnPropertyChanged(nameof(HasPreview));
+        OnPropertyChanged(nameof(IsEditorPlaceholderVisible));
         OnPropertyChanged(nameof(CanEditEntries));
         OnPropertyChanged(nameof(CanReview));
         OnPropertyChanged(nameof(CanApply));
@@ -1575,6 +1801,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     partial void OnIsBusyChanged(bool value) => NotifyWorkflowPropertiesChanged();
 
+    partial void OnIsLoadingFileChanged(bool value) => NotifyWorkflowPropertiesChanged();
+
     partial void OnIsDetectingInstallationChanged(bool value) => NotifyWorkflowPropertiesChanged();
 
     partial void OnIsPreviewConfirmedChanged(bool value) => OnPropertyChanged(nameof(CanApply));
@@ -1587,6 +1815,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(HasSelectedWindowsService));
         OnPropertyChanged(nameof(SelectedWindowsServiceStateText));
         OnPropertyChanged(nameof(SelectedWindowsServiceStartModeText));
+        OnPropertyChanged(nameof(IsWindowsServiceRunning));
+        OnPropertyChanged(nameof(IsWindowsServiceStopped));
+        OnPropertyChanged(nameof(IsWindowsServiceFailed));
+        OnPropertyChanged(nameof(IsWindowsServiceTransitioning));
+        OnPropertyChanged(nameof(IsWindowsServiceUnknown));
+        OnPropertyChanged(nameof(IsSelectedWindowsServiceControllable));
+        OnPropertyChanged(nameof(IsSelectedWindowsServiceUnverified));
     }
 
     partial void OnWindowsServicesChanged(IReadOnlyList<NutServiceInfo> value)
@@ -1597,13 +1832,20 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     partial void OnWindowsProcessesChanged(IReadOnlyList<NutProcessInfo> value) => OnPropertyChanged(nameof(HasNoWindowsProcesses));
 
-    partial void OnWindowsEventsChanged(IReadOnlyList<NutEventLogEntry> value) => OnPropertyChanged(nameof(HasNoWindowsEvents));
+    partial void OnWindowsEventsChanged(IReadOnlyList<NutEventLogEntry> value)
+    {
+        OnPropertyChanged(nameof(HasNoWindowsEvents));
+        OnPropertyChanged(nameof(WindowsEventRows));
+    }
 
     partial void OnSelectedConfiguredDriverChanged(NutConfiguredDriver? value)
     {
         InvalidateDriverDiagnostic();
         OnPropertyChanged(nameof(HasSelectedConfiguredDriver));
         OnPropertyChanged(nameof(SelectedConfiguredDriverStateText));
+        OnPropertyChanged(nameof(IsSelectedDriverPortPresent));
+        OnPropertyChanged(nameof(HasSelectedDriverPortState));
+        OnPropertyChanged(nameof(SelectedDriverPortStateText));
     }
 
     partial void OnConfiguredDriversChanged(IReadOnlyList<NutConfiguredDriver> value)

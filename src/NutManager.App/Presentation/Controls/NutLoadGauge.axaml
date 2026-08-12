@@ -14,7 +14,7 @@
                 VerticalAlignment="Top"
                 StartAngle="180"
                 SweepAngle="180"
-                Stroke="{DynamicResource NutTrackBrush}"
+                Stroke="{DynamicResource NutGaugeTrackBrush}"
                 StrokeThickness="{Binding Thickness, ElementName=Root}"
                 StrokeLineCap="Round" />
     <shapes:Arc Width="{Binding Diameter, ElementName=Root}"

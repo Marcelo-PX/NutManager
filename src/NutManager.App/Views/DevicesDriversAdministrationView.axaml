@@ -21,7 +21,16 @@
           <WrapPanel IsVisible="{Binding HasSelectedConfiguredDriver}">
             <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="UPS" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.UpsName}" /></StackPanel>
             <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Driver]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.DriverName}" /></StackPanel>
-            <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Port]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.NormalizedComPort}" /></StackPanel>
+            <StackPanel Width="220" Margin="0,0,12,8">
+              <TextBlock Text="{Binding Strings[Administration.Drivers.Port]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding SelectedConfiguredDriver.NormalizedComPort}" />
+              <TextBlock Text="{Binding SelectedDriverPortStateText}"
+                         Classes="nut-metadata"
+                         Classes.healthy="{Binding IsSelectedDriverPortPresent}"
+                         Classes.warning="{Binding !IsSelectedDriverPortPresent}"
+                         IsVisible="{Binding HasSelectedDriverPortState}"
+                         TextWrapping="Wrap" />
+            </StackPanel>
             <StackPanel Width="220" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Protocol]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.Protocol}" /></StackPanel>
             <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="driverpath" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.DriverPath}" TextWrapping="Wrap" /></StackPanel>
             <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Administration.Drivers.Executable]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.Executable.Path}" TextWrapping="Wrap" /><TextBlock Text="{Binding SelectedConfiguredDriverStateText}" Classes="nut-metadata" /></StackPanel>

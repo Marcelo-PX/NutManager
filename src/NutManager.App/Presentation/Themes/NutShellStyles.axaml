@@ -99,15 +99,21 @@
     <Setter Property="BorderThickness" Value="0,0,1,0" />
   </Style>
 
+  <!--
+    Every navigation item fills the sidebar's inner width, so the hover and selected surfaces all
+    start and end at the same X regardless of how long the label is. Width comes from the layout,
+    never from the content.
+  -->
   <Style Selector="Button.nut-navigation-item">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="BorderThickness" Value="3,0,0,0" />
-    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Padding" Value="12,10" />
-    <Setter Property="Margin" Value="0,2" />
-    <Setter Property="MinHeight" Value="44" />
+    <Setter Property="Padding" Value="11,8" />
+    <Setter Property="Margin" Value="0,1" />
+    <Setter Property="MinHeight" Value="40" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
     <Setter Property="Transitions">
       <Transitions>
@@ -132,6 +138,106 @@
   <Style Selector="Button.nut-navigation-item.selected /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSelectedSheenBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+
+  <!--
+    Navigation icon states. Colour eases through a brush transition and the one-pixel lift through
+    a thickness transition; selection is still carried by the accent bar and the label weight, so
+    the motion is reinforcement rather than the signal itself.
+  -->
+  <!--
+    ==================== Layered navigation glyph states ====================
+    Base silhouette and detail layers animate separately, and each family reacts in a way that
+    suits the object it depicts rather than every icon simply turning accent-coloured. Only
+    opacity, brush and thickness are animated: Avalonia 12 has no RenderTransform transition.
+  -->
+  <Style Selector="Path.nut-nav-base">
+    <Setter Property="Fill" Value="{DynamicResource NutTextMutedBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Fill" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Path.nut-nav-detail">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Fill" Value="{DynamicResource NutTextMutedBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.20" />
+        <BrushTransition Property="Fill" Duration="0:0:0.20" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <!-- Base brightens on hover and takes the accent when the page is selected. It is never
+       replaced or covered: the detail layers only add a few pixels of emphasis on top. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-base">
+    <Setter Property="Fill" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item.selected Path.nut-nav-base">
+    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+
+  <!-- Overview: the inner dashboard bar lights up. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-overview-detail,
+                   Button.nut-navigation-item.selected Path.nut-nav-overview-detail">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+
+  <!-- Devices: the two rack LEDs come alive in different colours. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-led-top,
+                   Button.nut-navigation-item.selected Path.nut-nav-led-top">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Fill" Value="{DynamicResource NutCyanBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-led-bottom,
+                   Button.nut-navigation-item.selected Path.nut-nav-led-bottom">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+
+  <!-- Administration: the hub engages inside the gear. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-hub,
+                   Button.nut-navigation-item.selected Path.nut-nav-hub">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+
+  <!-- Diagnostics: an endpoint reading appears at the end of the trace. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-pulse-dot,
+                   Button.nut-navigation-item.selected Path.nut-nav-pulse-dot">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+
+  <!-- Settings: the two slider knobs light up, each in its own accent. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-knob-top,
+                   Button.nut-navigation-item.selected Path.nut-nav-knob-top">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-knob-bottom,
+                   Button.nut-navigation-item.selected Path.nut-nav-knob-bottom">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Fill" Value="{DynamicResource NutCyanBrush}" />
+  </Style>
+
+  <!-- Disabled items keep their geometry but drop all semantic emphasis. -->
+  <Style Selector="Button.nut-navigation-item:disabled Path.nut-nav-detail">
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+  <Style Selector="Button.nut-navigation-subitem PathIcon">
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Foreground" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-navigation-subitem:pointerover PathIcon">
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
   </Style>
 
   <!-- Second-level administration entries rendered under an expanded navigation group. -->
