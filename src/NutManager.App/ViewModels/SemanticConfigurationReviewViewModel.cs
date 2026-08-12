@@ -53,6 +53,8 @@ public sealed class SemanticConfigurationReviewViewModel
         CustomParameters = projection.CustomParameters.Select(parameter => new SemanticCustomParameterViewModel(
             parameter.Name, parameter.SafeValue, parameter.Section, localizer.Get("Semantic.Custom.LimitedValidation"), parameter.Sensitive)).ToArray();
         PendingText = string.Format(localizer.Get("Semantic.Review.PendingCount"), Items.Count);
+        FileName = Path.GetFileName(generated.PreparedChange.Preview.TargetPath);
+        BackupNotice = localizer.Get("Administration.Configuration.BackupNotice");
         ChangesTitle = localizer.Get("Semantic.Review.Changes");
         ValidationTitle = localizer.Get("Semantic.Validation.Title");
         PreviewTitle = localizer.Get("Semantic.Preview.Title");
@@ -64,6 +66,14 @@ public sealed class SemanticConfigurationReviewViewModel
     public IReadOnlyList<GeneratedPreviewLineViewModel> PreviewLines { get; }
     public IReadOnlyList<SemanticCustomParameterViewModel> CustomParameters { get; }
     public string PendingText { get; }
+
+    /// <summary>Target file name shown next to each pending change; the full path stays in the pipeline.</summary>
+    public string FileName { get; }
+
+    /// <summary>Existing T14 backup/rollback notice reused verbatim; no new safety claim is introduced.</summary>
+    public string BackupNotice { get; }
+
+    public int ChangeCount => Items.Count;
     public string ChangesTitle { get; }
     public string ValidationTitle { get; }
     public string PreviewTitle { get; }

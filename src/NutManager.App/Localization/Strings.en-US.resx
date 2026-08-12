@@ -755,4 +755,8 @@
   <data name="Config.Field.Upsd.DebugMinimum.Label" xml:space="preserve"><value>Minimum debug level</value></data>
   <data name="Config.Field.Upsd.DebugMinimum.Help" xml:space="preserve"><value>DEBUG_MIN sets minimum upsd verbosity and can be applied by runtime reload.</value></data>
   <data name="Semantic.Operation.EditRepeatedRow" xml:space="preserve"><value>Edit repeated row</value></data>
+  <data name="Administration.Configuration.PendingChanges" xml:space="preserve"><value>Unapplied changes</value></data>
+  <data name="Shell.Minimize" xml:space="preserve"><value>Minimize</value></data>
+  <data name="Shell.Maximize" xml:space="preserve"><value>Maximize or restore</value></data>
+  <data name="Shell.Close" xml:space="preserve"><value>Close</value></data>
 </root>

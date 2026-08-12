@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shapes="clr-namespace:Avalonia.Controls.Shapes;assembly=Avalonia.Controls"
+             x:Class="NutManager.App.Presentation.Controls.NutLoadGauge"
+             x:Name="Root">
+  <!--
+    Semicircular load gauge built from the native Arc shape: no charting package is involved.
+    The arc is decorative reinforcement; the reading itself is always printed as text, and an
+    absent value leaves the track empty instead of rendering a fabricated zero.
+  -->
+  <Grid Width="{Binding Diameter, ElementName=Root}" Height="{Binding GaugeHeight, ElementName=Root}">
+    <shapes:Arc Width="{Binding Diameter, ElementName=Root}"
+                Height="{Binding Diameter, ElementName=Root}"
+                VerticalAlignment="Top"
+                StartAngle="180"
+                SweepAngle="180"
+                Stroke="{DynamicResource NutTrackBrush}"
+                StrokeThickness="{Binding Thickness, ElementName=Root}"
+                StrokeLineCap="Round" />
+    <shapes:Arc Width="{Binding Diameter, ElementName=Root}"
+                Height="{Binding Diameter, ElementName=Root}"
+                VerticalAlignment="Top"
+                StartAngle="180"
+                SweepAngle="{Binding SweepAngle, ElementName=Root}"
+                Stroke="{Binding ValueBrush, ElementName=Root}"
+                StrokeThickness="{Binding Thickness, ElementName=Root}"
+                StrokeLineCap="Round"
+                IsVisible="{Binding HasValue, ElementName=Root}">
+      <shapes:Arc.Transitions>
+        <Transitions>
+          <DoubleTransition Property="SweepAngle" Duration="0:0:0.32" Easing="CubicEaseOut" />
+        </Transitions>
+      </shapes:Arc.Transitions>
+    </shapes:Arc>
+    <TextBlock Text="{Binding DisplayText, ElementName=Root}"
+               Classes="nut-metric-value"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Bottom"
+               Foreground="{Binding ValueBrush, ElementName=Root}" />
+  </Grid>
+</UserControl>

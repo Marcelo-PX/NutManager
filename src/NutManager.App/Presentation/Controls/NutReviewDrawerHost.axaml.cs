@@ -18,6 +18,8 @@ public partial class NutReviewDrawerHost : UserControl
         AvaloniaProperty.Register<NutReviewDrawerHost, ICommand?>(nameof(CloseCommand));
     public static readonly StyledProperty<string?> CloseTextProperty =
         AvaloniaProperty.Register<NutReviewDrawerHost, string?>(nameof(CloseText));
+    public static readonly StyledProperty<string?> PendingCountProperty =
+        AvaloniaProperty.Register<NutReviewDrawerHost, string?>(nameof(PendingCount));
 
     public NutReviewDrawerHost() => InitializeComponent();
 
@@ -27,4 +29,18 @@ public partial class NutReviewDrawerHost : UserControl
     public object? DrawerContent { get => GetValue(DrawerContentProperty); set => SetValue(DrawerContentProperty, value); }
     public ICommand? CloseCommand { get => GetValue(CloseCommandProperty); set => SetValue(CloseCommandProperty, value); }
     public string? CloseText { get => GetValue(CloseTextProperty); set => SetValue(CloseTextProperty, value); }
+
+    /// <summary>Pending-change count rendered as a badge next to the drawer title.</summary>
+    public string? PendingCount { get => GetValue(PendingCountProperty); set => SetValue(PendingCountProperty, value); }
+
+    public bool HasPendingCount => !string.IsNullOrWhiteSpace(PendingCount);
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == PendingCountProperty) RaisePropertyChanged(HasPendingCountProperty, default, default);
+    }
+
+    private static readonly DirectProperty<NutReviewDrawerHost, bool> HasPendingCountProperty =
+        AvaloniaProperty.RegisterDirect<NutReviewDrawerHost, bool>(nameof(HasPendingCount), owner => owner.HasPendingCount);
 }

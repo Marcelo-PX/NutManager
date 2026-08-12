@@ -15,7 +15,14 @@ public sealed record AdministrationSectionItemViewModel(
     string Title,
     string Description,
     bool IsApplicable,
-    string AvailabilityText);
+    string AvailabilityText)
+{
+    // Per-section flags let the navigation rail pick a shared vector glyph without a converter.
+    public bool IsNutConfiguration => Section == AdministrationSection.NutConfiguration;
+    public bool IsWindowsService => Section == AdministrationSection.WindowsService;
+    public bool IsDevicesAndDrivers => Section == AdministrationSection.DevicesAndDrivers;
+    public bool IsRemoteAccess => Section == AdministrationSection.RemoteAccess;
+}
 
 public static class AdministrationPresentation
 {

@@ -1,9 +1,12 @@
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using NutManager.App.ViewModels;
+using NutManager.Core.Models;
 
 namespace NutManager.App;
 
@@ -17,7 +20,58 @@ public partial class MainWindow : Window
         DataContextChanged += MainWindow_OnDataContextChanged;
         Opened += (_, _) => SynchronizeEffectiveTheme();
         ActualThemeVariantChanged += (_, _) => SynchronizeEffectiveTheme();
+        SynchronizeWindowStateGlyph();
     }
+
+    /// <summary>
+    /// Window chrome behaviour for the extended client area. Drag, maximise and close remain the
+    /// standard Avalonia window operations; no platform interop is introduced.
+    /// </summary>
+    private void TitleBar_OnPointerPressed(object? sender, PointerPressedEventArgs eventArgs)
+    {
+        if (eventArgs.Source is Visual source && source.FindAncestorOfType<Button>() is not null) return;
+        if (!eventArgs.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        BeginMoveDrag(eventArgs);
+    }
+
+    private void TitleBar_OnDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs eventArgs)
+    {
+        if (eventArgs.Source is Visual source && source.FindAncestorOfType<Button>() is not null) return;
+        ToggleMaximized();
+    }
+
+    private void MinimizeButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs) =>
+        WindowState = WindowState.Minimized;
+
+    private void MaximizeButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs) =>
+        ToggleMaximized();
+
+    private void CloseButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs) => Close();
+
+    private void ToggleMaximized()
+    {
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        SynchronizeWindowStateGlyph();
+    }
+
+    private void SynchronizeWindowStateGlyph()
+    {
+        var maximized = WindowState == WindowState.Maximized;
+        if (MaximizeGlyph is not null) MaximizeGlyph.IsVisible = !maximized;
+        if (RestoreGlyph is not null) RestoreGlyph.IsVisible = maximized;
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == WindowStateProperty) SynchronizeWindowStateGlyph();
+    }
+
+    private void LightThemeButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs) =>
+        (DataContext as MainWindowViewModel)?.SetTheme(ThemePreference.Light);
+
+    private void DarkThemeButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs) =>
+        (DataContext as MainWindowViewModel)?.SetTheme(ThemePreference.Dark);
 
     private void MainWindow_OnDataContextChanged(object? sender, EventArgs eventArgs)
     {
@@ -64,14 +118,6 @@ public partial class MainWindow : Window
         {
             overlayViewModel.CloseNavigationOverlay();
             eventArgs.Handled = true;
-        }
-    }
-
-    private void ThemeToggleButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
-    {
-        if (DataContext is MainWindowViewModel viewModel)
-        {
-            viewModel.ToggleThemeCommand.Execute(ActualThemeVariant == ThemeVariant.Dark);
         }
     }
 

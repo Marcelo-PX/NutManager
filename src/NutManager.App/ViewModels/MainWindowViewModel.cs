@@ -187,6 +187,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string ReviewDrawerTitle => Localizer.Get("Shell.ReviewChanges");
     public string ReviewDrawerCloseText => Localizer.Get("Shell.CloseReview");
     public string? ReviewDrawerPendingText => _semanticReview?.PendingText;
+    public string? ReviewDrawerPendingCount => _semanticReview?.ChangeCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
     public object? ReviewDrawerContent => _semanticReview;
     public bool IsReviewDrawerInline => ReviewDrawerDisplay == ReviewDrawerDisplayState.Expanded;
     public bool IsReviewDrawerOverlay => ReviewDrawerDisplay == ReviewDrawerDisplayState.Overlay;
@@ -211,6 +212,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(ReviewDrawerDisplay));
         OnPropertyChanged(nameof(IsReviewDrawerVisible));
         OnPropertyChanged(nameof(ReviewDrawerPendingText));
+        OnPropertyChanged(nameof(ReviewDrawerPendingCount));
         OnPropertyChanged(nameof(ReviewDrawerContent));
         OnPropertyChanged(nameof(IsReviewDrawerInline));
         OnPropertyChanged(nameof(IsReviewDrawerOverlay));

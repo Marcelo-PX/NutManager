@@ -4,71 +4,117 @@
              x:Class="NutManager.App.Presentation.Controls.NutReviewDrawerHost"
              x:Name="Root"
              IsVisible="{Binding IsOpen, ElementName=Root}">
+  <!--
+    Read-only review surface. It renders the T25 semantic review and the redacted generated preview
+    only; it owns no apply command and never receives the candidate text.
+  -->
   <Border Width="{DynamicResource NutReviewDrawerWidth}"
-          Background="{DynamicResource NutSurface1Brush}"
+          Background="{DynamicResource NutSidebarBrush}"
           BorderBrush="{DynamicResource NutBorderBrush}"
           BorderThickness="1,0,0,0"
-          Padding="20">
-    <Grid RowDefinitions="Auto,*" RowSpacing="16">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-        <StackPanel Spacing="4">
-          <TextBlock Text="{Binding Title, ElementName=Root}" Classes="nut-section-title" />
-          <TextBlock Text="{Binding PendingText, ElementName=Root}" Classes="nut-metadata" />
-        </StackPanel>
-        <Button Grid.Column="1"
-                Classes="nut-icon"
-                Command="{Binding CloseCommand, ElementName=Root}"
-                ToolTip.Tip="{Binding CloseText, ElementName=Root}"
-                AutomationProperties.Name="{Binding CloseText, ElementName=Root}">
-          <PathIcon Data="{DynamicResource NutIconClose}" Width="18" Height="18" />
-        </Button>
-      </Grid>
+          Padding="18">
+    <Grid RowDefinitions="Auto,*" RowSpacing="14">
+      <StackPanel Spacing="4">
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="9">
+          <TextBlock Text="{Binding Title, ElementName=Root}" Classes="nut-section-title" VerticalAlignment="Center" />
+          <Border Grid.Column="1"
+                  Classes="nut-pill accent"
+                  Padding="9,2"
+                  IsVisible="{Binding HasPendingCount, ElementName=Root}">
+            <TextBlock Text="{Binding PendingCount, ElementName=Root}" FontSize="12.5" FontWeight="Bold" Classes="accent" />
+          </Border>
+          <Button Grid.Column="3"
+                  Classes="nut-icon"
+                  Command="{Binding CloseCommand, ElementName=Root}"
+                  ToolTip.Tip="{Binding CloseText, ElementName=Root}"
+                  AutomationProperties.Name="{Binding CloseText, ElementName=Root}">
+            <PathIcon Data="{DynamicResource NutIconClose}" Width="16" Height="16" />
+          </Button>
+        </Grid>
+        <TextBlock Text="{Binding PendingText, ElementName=Root}" Classes="nut-metadata" TextWrapping="Wrap" />
+      </StackPanel>
+
       <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
         <ContentControl Content="{Binding DrawerContent, ElementName=Root}">
           <ContentControl.DataTemplates>
             <DataTemplate DataType="viewModels:SemanticConfigurationReviewViewModel">
-              <StackPanel Spacing="16">
-                <StackPanel Spacing="8" IsVisible="{Binding HasChanges}">
-                  <TextBlock Text="{Binding ChangesTitle}" Classes="nut-card-title" />
-                  <ItemsControl ItemsSource="{Binding Items}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="viewModels:SemanticReviewItemViewModel">
-                        <Border Classes="nut-card" Padding="12" Margin="0,0,0,8">
-                          <StackPanel Spacing="4">
-                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Operation}" Classes="nut-metadata" />
-                            <TextBlock Text="{Binding Section}" Classes="nut-metadata" IsVisible="{Binding Section, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock Text="{Binding PreviousValue}" TextWrapping="Wrap" IsVisible="{Binding PreviousValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock Text="{Binding NewValue}" TextWrapping="Wrap" IsVisible="{Binding NewValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock Text="{Binding Activation}" Classes="nut-metadata" />
-                          </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
+              <StackPanel Spacing="14">
 
+                <!-- Pending changes -->
+                <ItemsControl ItemsSource="{Binding Items}" IsVisible="{Binding HasChanges}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="viewModels:SemanticReviewItemViewModel">
+                      <Border Classes="nut-card" Padding="13" Margin="0,0,0,9">
+                        <StackPanel Spacing="8">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{DynamicResource NutIconEdit}" Classes="muted" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
+                          </StackPanel>
+
+                          <!-- old -> new; sensitive changes render a state label instead of any value -->
+                          <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10">
+                            <TextBlock Text="{Binding PreviousValue}"
+                                       Classes="nut-metadata"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding PreviousValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <PathIcon Grid.Column="1"
+                                      Data="{DynamicResource NutIconForward}"
+                                      Classes="muted"
+                                      Width="13"
+                                      Height="13"
+                                      VerticalAlignment="Center"
+                                      IsVisible="{Binding PreviousValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding NewValue}"
+                                       Classes="healthy"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding NewValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                          </Grid>
+
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding Operation}" Classes="nut-metadata" />
+                            <TextBlock Text="·" Classes="nut-metadata" />
+                            <TextBlock Text="{Binding Activation}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                          <TextBlock Text="{Binding Section}"
+                                     Classes="nut-metadata"
+                                     IsVisible="{Binding Section, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Validation -->
                 <StackPanel Spacing="8" IsVisible="{Binding HasValidationIssues}">
-                  <TextBlock Text="{Binding ValidationTitle}" Classes="nut-card-title" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" />
+                    <TextBlock Text="{Binding ValidationTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
+                  </StackPanel>
                   <ItemsControl ItemsSource="{Binding ValidationIssues}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="viewModels:SemanticValidationIssueViewModel">
-                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Classes="nut-warning-text" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Classes="warning" FontSize="12.5" Margin="0,0,0,6" />
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                 </StackPanel>
 
+                <!-- Custom parameters -->
                 <StackPanel Spacing="8" IsVisible="{Binding HasCustomParameters}">
                   <TextBlock Text="{Binding CustomParametersTitle}" Classes="nut-card-title" />
                   <ItemsControl ItemsSource="{Binding CustomParameters}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="viewModels:SemanticCustomParameterViewModel">
-                        <Border Classes="nut-card" Padding="12" Margin="0,0,0,8">
-                          <StackPanel Spacing="4">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding SafeValue}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding Warning}" TextWrapping="Wrap" Classes="nut-warning-text" />
+                        <Border Classes="nut-card-flat" Padding="11" Margin="0,0,0,7">
+                          <StackPanel Spacing="3">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" />
+                            <TextBlock Text="{Binding SafeValue}" TextWrapping="Wrap" Classes="nut-mono" />
+                            <TextBlock Text="{Binding Warning}" TextWrapping="Wrap" Classes="nut-metadata" />
                           </StackPanel>
                         </Border>
                       </DataTemplate>
@@ -76,20 +122,37 @@
                   </ItemsControl>
                 </StackPanel>
 
+                <!-- Generated preview: read-only and already redacted upstream -->
                 <StackPanel Spacing="8" IsVisible="{Binding HasPreviewLines}">
-                  <TextBlock Text="{Binding PreviewTitle}" Classes="nut-card-title" />
-                  <ItemsControl ItemsSource="{Binding PreviewLines}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="viewModels:GeneratedPreviewLineViewModel">
-                        <Border Classes="nut-card" Padding="10" Margin="0,0,0,6">
-                          <StackPanel Spacing="2">
-                            <TextBlock Text="{Binding OriginalText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding CandidateText}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{DynamicResource NutIconPreview}" Classes="muted" Width="15" Height="15" />
+                    <TextBlock Text="{Binding PreviewTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding FileName}" Classes="nut-metadata" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <Border Classes="nut-inset">
+                    <ItemsControl ItemsSource="{Binding PreviewLines}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="viewModels:GeneratedPreviewLineViewModel">
+                          <StackPanel Spacing="1" Margin="0,0,0,4">
+                            <TextBlock Text="{Binding OriginalText}"
+                                       Classes="nut-mono muted"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding OriginalText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding CandidateText}"
+                                       Classes="nut-mono cyan"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding CandidateText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                           </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Border>
+                </StackPanel>
+
+                <!-- Existing T14 backup/rollback notice -->
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <PathIcon Data="{DynamicResource NutIconShield}" Classes="muted" Width="15" Height="15" VerticalAlignment="Top" />
+                  <TextBlock Text="{Binding BackupNotice}" Classes="nut-metadata" TextWrapping="Wrap" />
                 </StackPanel>
               </StackPanel>
             </DataTemplate>

@@ -2,7 +2,9 @@
 
 ## Status
 
-These are current findings from the ongoing Windows/NUT validation stream (T21). They do not mean that T21 acceptance is complete, and they do not change the safety boundaries already implemented for configuration, privileged administration, driver diagnostics, SSH/SFTP, SMB, or protected credentials.
+This is the historical record of the Windows/NUT live validation run performed for T21, which is now `DONE`. The findings below are kept verbatim as the record of what that run observed; each one names the task that owns its response. They do not change the safety boundaries already implemented for configuration, privileged administration, driver diagnostics, SSH/SFTP, SMB, or protected credentials.
+
+Surfaces introduced after this run are validated by the task that introduces them, and final graphical accessibility, responsive and transport hardening remains T29.
 
 | ID | Finding | Planned response |
 | --- | --- | --- |

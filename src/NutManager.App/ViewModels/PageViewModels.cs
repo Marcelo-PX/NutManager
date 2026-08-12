@@ -187,10 +187,14 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         OnPropertyChanged(nameof(SourceLabel));
         OnPropertyChanged(nameof(IsSimulated));
         OnPropertyChanged(nameof(LastSuccessfulUpdateText));
+        NotifyDashboardChanged();
     }
 
-    partial void OnConnectionStateChanged(ConnectionState value) =>
+    partial void OnConnectionStateChanged(ConnectionState value)
+    {
         OnPropertyChanged(nameof(ConnectionStateText));
+        OnPropertyChanged(nameof(IsConnected));
+    }
 
     partial void OnDataFreshnessChanged(DataFreshness value) =>
         OnPropertyChanged(nameof(DataFreshnessText));
@@ -198,8 +202,166 @@ public sealed partial class OverviewPageViewModel : PageViewModel
     partial void OnLoadErrorChanged(string? value) =>
         OnPropertyChanged(nameof(HasLoadError));
 
-    partial void OnStatusItemsChanged(IReadOnlyList<OverviewStatusItemViewModel> value) =>
+    partial void OnStatusItemsChanged(IReadOnlyList<OverviewStatusItemViewModel> value)
+    {
         OnPropertyChanged(nameof(HasNoStatusItems));
+        NotifyDashboardChanged();
+    }
+
+    // ==================== Dashboard presentation (T27A) ====================
+    // Every reading below is projected straight from the current snapshot. A missing NUT variable
+    // stays missing: the card keeps its composition and shows the unavailable label instead of a
+    // substituted or remembered value.
+
+    private string? Variable(string name) =>
+        Snapshot?.Variables.TryGetValue(name, out var variable) == true && !string.IsNullOrWhiteSpace(variable.Value)
+            ? variable.Value
+            : null;
+
+    private string UnavailableText => Strings.Get("Status.Unavailable");
+
+    private static string Number(decimal value) => value.ToString("0.##", CultureInfo.CurrentCulture);
+
+    public double? BatteryPercent => Snapshot?.BatteryChargePercentage is { } value ? (double)value : null;
+
+    public bool HasBatteryPercent => BatteryPercent is not null;
+
+    public double BatteryBarValue => BatteryPercent ?? 0d;
+
+    public string BatteryValueText => Snapshot?.BatteryChargePercentage is { } value ? $"{Number(value)}%" : UnavailableText;
+
+    public string BatterySeverityClass => BatteryPercent switch
+    {
+        null => "unavailable",
+        < 20 => "critical",
+        < 50 => "warning",
+        _ => "healthy"
+    };
+
+    public string? BatteryVoltageText => Snapshot?.BatteryVoltage is { } value ? $"{Number(value)} V" : null;
+
+    public bool HasBatteryVoltage => Snapshot?.BatteryVoltage is not null;
+
+    public string BatteryStateText => StatusTokens(StatusSemanticState.Charging) is { } charging
+        ? charging
+        : StatusTokens(StatusSemanticState.Discharging) is { } discharging
+            ? discharging
+            : StatusTokens(StatusSemanticState.LowBattery) is { } low
+                ? low
+                : StatusTokens(StatusSemanticState.ReplaceBattery) ?? UnavailableText;
+
+    private string? StatusTokens(StatusSemanticState state) => Snapshot?.StatusTokens
+        .Where(token => token.State == state)
+        .Select(token => token.State switch
+        {
+            StatusSemanticState.Charging => Strings.Get("UpsStatus.Charging"),
+            StatusSemanticState.Discharging => Strings.Get("UpsStatus.Discharging"),
+            StatusSemanticState.LowBattery => Strings.Get("UpsStatus.LowBattery"),
+            StatusSemanticState.ReplaceBattery => Strings.Get("UpsStatus.ReplaceBattery"),
+            _ => token.OriginalToken
+        })
+        .FirstOrDefault();
+
+    public double? LoadPercent => Snapshot?.LoadPercentage is { } value ? (double)value : null;
+
+    public string LoadValueText => Snapshot?.LoadPercentage is { } value ? $"{Number(value)}%" : UnavailableText;
+
+    /// <summary>Real and apparent power are optional NUT variables; they are shown only when reported.</summary>
+    public string? LoadPowerText
+    {
+        get
+        {
+            var watts = Variable("ups.realpower");
+            var voltAmps = Variable("ups.power");
+            return (watts, voltAmps) switch
+            {
+                (not null, not null) => $"{watts} W / {voltAmps} VA",
+                (not null, null) => $"{watts} W",
+                (null, not null) => $"{voltAmps} VA",
+                _ => null
+            };
+        }
+    }
+
+    public bool HasLoadPowerText => LoadPowerText is not null;
+
+    public string RuntimeValueText => Snapshot?.Runtime is { } runtime ? FormatDuration(runtime) : UnavailableText;
+
+    public bool HasRuntime => Snapshot?.Runtime is not null;
+
+    /// <summary>Raw NUT reading behind the humanised runtime, shown as technical metadata only.</summary>
+    public string? RuntimeRawText => Variable("battery.runtime") is { } seconds ? $"battery.runtime {seconds} s" : null;
+
+    public bool HasRuntimeRawText => RuntimeRawText is not null;
+
+    public string InputVoltageText => Snapshot?.InputVoltage is { } value ? $"{Number(value)} V" : UnavailableText;
+
+    public string OutputVoltageText => Snapshot?.OutputVoltage is { } value ? $"{Number(value)} V" : UnavailableText;
+
+    public string? FrequencyText => Snapshot?.Frequency is { } value ? $"{Number(value)} Hz" : null;
+
+    public bool HasFrequency => Snapshot?.Frequency is not null;
+
+    public string TemperatureText => Snapshot?.Temperature is { } value ? $"{Number(value)} °C" : UnavailableText;
+
+    public bool HasTemperature => Snapshot?.Temperature is not null;
+
+    public string DriverText => Variable("driver.name") ?? UnavailableText;
+
+    public string? DriverVersionText => Variable("driver.version.internal") ?? Variable("driver.version");
+
+    public bool HasDriverVersion => DriverVersionText is not null;
+
+    public string UpsTypeText => Variable("ups.type") ?? UnavailableText;
+
+    public bool HasUpsType => Variable("ups.type") is not null;
+
+    public OverviewStatusItemViewModel? PrimaryStatus => StatusItems.Count > 0 ? StatusItems[0] : null;
+
+    public bool HasPrimaryStatus => PrimaryStatus is not null;
+
+    public string PrimaryStatusToken => PrimaryStatus?.OriginalToken ?? "—";
+
+    public string PrimaryStatusText => PrimaryStatus?.StateText ?? UnavailableText;
+
+    private StatusSeverity? PrimarySeverity => Snapshot?.StatusTokens.Count > 0
+        ? Snapshot.StatusTokens.Max(token => token.Severity)
+        : null;
+
+    public bool IsStatusHealthy => PrimarySeverity is StatusSeverity.Normal or StatusSeverity.Informational;
+
+    public bool IsStatusWarning => PrimarySeverity == StatusSeverity.Warning;
+
+    public bool IsStatusCritical => PrimarySeverity == StatusSeverity.Critical;
+
+    public bool IsStatusUnavailable => PrimarySeverity is null;
+
+    public bool IsConnected => ConnectionState == ConnectionState.Connected;
+
+    public string EndpointText => _endpoint is not null
+        ? $"{_endpoint.Host}:{_endpoint.Port.ToString(CultureInfo.InvariantCulture)}"
+        : UnavailableText;
+
+    public string SelectedUpsText => Snapshot?.Identity.Name ?? _upsName ?? UnavailableText;
+
+    private void NotifyDashboardChanged()
+    {
+        foreach (var property in DashboardProperties) OnPropertyChanged(property);
+    }
+
+    private static readonly string[] DashboardProperties =
+    [
+        nameof(BatteryPercent), nameof(HasBatteryPercent), nameof(BatteryBarValue), nameof(BatteryValueText),
+        nameof(BatterySeverityClass), nameof(BatteryVoltageText), nameof(HasBatteryVoltage), nameof(BatteryStateText),
+        nameof(LoadPercent), nameof(LoadValueText), nameof(LoadPowerText), nameof(HasLoadPowerText),
+        nameof(RuntimeValueText), nameof(HasRuntime), nameof(RuntimeRawText), nameof(HasRuntimeRawText),
+        nameof(InputVoltageText), nameof(OutputVoltageText), nameof(FrequencyText), nameof(HasFrequency),
+        nameof(TemperatureText), nameof(HasTemperature), nameof(DriverText), nameof(DriverVersionText),
+        nameof(HasDriverVersion), nameof(UpsTypeText), nameof(HasUpsType),
+        nameof(PrimaryStatus), nameof(HasPrimaryStatus), nameof(PrimaryStatusToken), nameof(PrimaryStatusText),
+        nameof(IsStatusHealthy), nameof(IsStatusWarning), nameof(IsStatusCritical), nameof(IsStatusUnavailable),
+        nameof(IsConnected), nameof(EndpointText), nameof(SelectedUpsText)
+    ];
 
     private IReadOnlyList<OverviewMetricViewModel> CreateMetricCards(UpsSnapshot? snapshot) =>
     [

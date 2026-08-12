@@ -107,11 +107,39 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <WrapPanel>
-              <Button Content="{Binding Strings[Common.DiscardChanges]}" Command="{Binding DiscardCommand}" IsEnabled="{Binding CanDiscard}" Margin="0,0,8,8" />
-              <Button Content="{Binding Strings[Common.Reload]}" Command="{Binding ReloadCommand}" IsEnabled="{Binding CanReload}" Margin="0,0,8,8" />
-              <Button Classes="nut-primary" Content="{Binding Strings[Common.ReviewChanges]}" Command="{Binding ReviewCommand}" IsEnabled="{Binding CanReview}" Margin="0,0,8,8" />
-            </WrapPanel>
+            <!-- Action bar: pending state on the left, destructive and primary actions on the right. -->
+            <Border Classes="nut-card-flat" Padding="13,11">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding HasDraftChanges}">
+                  <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" />
+                  <TextBlock Text="{Binding Strings[Administration.Configuration.PendingChanges]}"
+                             Classes="warning"
+                             FontSize="13"
+                             FontWeight="SemiBold"
+                             VerticalAlignment="Center" />
+                </StackPanel>
+                <WrapPanel Grid.Column="2" HorizontalAlignment="Right">
+                  <Button Command="{Binding ReloadCommand}" IsEnabled="{Binding CanReload}" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <PathIcon Data="{DynamicResource NutIconRefresh}" Width="15" Height="15" />
+                      <TextBlock Text="{Binding Strings[Common.Reload]}" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="nut-danger" Command="{Binding DiscardCommand}" IsEnabled="{Binding CanDiscard}" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <PathIcon Data="{DynamicResource NutIconDelete}" Width="15" Height="15" />
+                      <TextBlock Text="{Binding Strings[Common.DiscardChanges]}" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="nut-primary" Command="{Binding ReviewCommand}" IsEnabled="{Binding CanReview}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Strings[Common.ReviewChanges]}" />
+                      <PathIcon Data="{DynamicResource NutIconForward}" Width="15" Height="15" />
+                    </StackPanel>
+                  </Button>
+                </WrapPanel>
+              </Grid>
+            </Border>
           </StackPanel>
         </StackPanel>
       </Border>
@@ -125,8 +153,16 @@
           <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:NutConfigurationPreviewLineViewModel"><Grid ColumnDefinitions="Auto,12,*,12,*" Margin="0,3"><TextBlock Text="{Binding LineNumber}" FontWeight="SemiBold" /><TextBlock Grid.Column="2" Text="{Binding OriginalText}" TextWrapping="Wrap" /><TextBlock Grid.Column="3" Text="→" HorizontalAlignment="Center" /><TextBlock Grid.Column="4" Text="{Binding CandidateText}" TextWrapping="Wrap" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
         </ItemsControl>
         <CheckBox Content="{Binding Strings[Administration.Configuration.ConfirmApply]}" IsChecked="{Binding IsPreviewConfirmed, Mode=TwoWay}" />
-        <Button Classes="nut-success" Content="{Binding Strings[Administration.Configuration.Apply]}" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" HorizontalAlignment="Left" />
-        <TextBlock Text="{Binding Strings[Administration.Configuration.BackupNotice]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        <Button Classes="nut-success" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{DynamicResource NutIconCheck}" Width="15" Height="15" />
+            <TextBlock Text="{Binding Strings[Administration.Configuration.Apply]}" />
+          </StackPanel>
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="9">
+          <PathIcon Data="{DynamicResource NutIconShield}" Classes="muted" Width="14" Height="14" VerticalAlignment="Top" />
+          <TextBlock Text="{Binding Strings[Administration.Configuration.BackupNotice]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        </StackPanel>
       </StackPanel>
     </Border>
 

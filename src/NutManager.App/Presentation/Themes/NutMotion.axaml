@@ -1,6 +1,13 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Motion budget: interaction feedback stays under 250 ms so keyboard and pointer work is never
+    gated on an animation. Only NutMotionAmbient may loop, and it is reserved for the connected
+    halo, which carries no information on its own.
+  -->
   <x:TimeSpan x:Key="NutMotionHover">0:0:0.14</x:TimeSpan>
   <x:TimeSpan x:Key="NutMotionPage">0:0:0.18</x:TimeSpan>
   <x:TimeSpan x:Key="NutMotionShell">0:0:0.22</x:TimeSpan>
+  <x:TimeSpan x:Key="NutMotionValue">0:0:0.32</x:TimeSpan>
+  <x:TimeSpan x:Key="NutMotionAmbient">0:0:2.60</x:TimeSpan>
 </ResourceDictionary>

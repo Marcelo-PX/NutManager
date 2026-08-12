@@ -1,50 +1,306 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             xmlns:controls="clr-namespace:NutManager.App.Presentation.Controls"
              x:Class="NutManager.App.Views.OverviewPageView"
              x:DataType="viewModels:OverviewPageViewModel">
+  <!--
+    UPS dashboard. Every reading comes from the current snapshot; cards keep their composition when
+    a value is missing and fall back to the unavailable label rather than a substituted number.
+  -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="20">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-        <StackPanel Spacing="6">
-          <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
-          <TextBlock Text="{Binding Description}" MaxWidth="720" TextWrapping="Wrap" />
-        </StackPanel>
-        <Border Grid.Column="1" IsVisible="{Binding IsSimulated}" Padding="10,5" CornerRadius="8" Background="{DynamicResource NutSelectionBrush}">
-          <TextBlock Text="{Binding SourceLabel}" FontWeight="SemiBold" />
-        </Border>
-      </Grid>
-      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="4" />
-      <TextBlock IsVisible="{Binding HasLoadError}" Text="{Binding LoadError}" TextWrapping="Wrap" Foreground="{DynamicResource NutCriticalBrush}" />
+    <StackPanel Spacing="18">
 
-      <Border Classes="nut-card-elevated">
-        <StackPanel Spacing="12">
-          <TextBlock Text="{Binding Strings[Overview.SelectedUps]}" Classes="nut-section-title" />
-          <WrapPanel>
-            <StackPanel Width="250" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.DescriptionLabel]}" Classes="nut-metadata" /><TextBlock Text="{Binding Identity.Description}" TextWrapping="Wrap" /></StackPanel>
-            <StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.Manufacturer]}" Classes="nut-metadata" /><TextBlock Text="{Binding Identity.Manufacturer}" TextWrapping="Wrap" /></StackPanel>
-            <StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.Model]}" Classes="nut-metadata" /><TextBlock Text="{Binding Identity.Model}" TextWrapping="Wrap" /></StackPanel>
-            <StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.NutName]}" Classes="nut-metadata" /><TextBlock Text="{Binding Identity.Name}" TextWrapping="Wrap" /></StackPanel>
-          </WrapPanel>
+      <!-- ==================== Page header ==================== -->
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+        <StackPanel Spacing="3">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
+            <PathIcon Data="{DynamicResource NutIconDiagnostics}"
+                      Width="22"
+                      Height="22"
+                      Foreground="{DynamicResource NutAccentBrightBrush}"
+                      VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding Description}" Classes="nut-page-subtitle" MaxWidth="720" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Border Classes="nut-pill" IsVisible="{Binding IsSimulated}" Padding="10,4">
+            <TextBlock Text="{Binding SourceLabel}" FontSize="12" FontWeight="SemiBold" Classes="warning" />
+          </Border>
+          <PathIcon Data="{DynamicResource NutIconRefresh}"
+                    Width="18"
+                    Height="18"
+                    Foreground="{DynamicResource NutCyanBrush}"
+                    VerticalAlignment="Center" />
+          <StackPanel Spacing="1">
+            <TextBlock Text="{Binding Strings[Overview.LastReading]}" Classes="nut-metadata" />
+            <TextBlock Text="{Binding LastSuccessfulUpdateText}" FontSize="12.5" Classes="accent" />
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="4" />
+
+      <!-- Connection failure is presented as part of the dashboard, not as loose red text. -->
+      <Border Classes="nut-card" IsVisible="{Binding HasLoadError}" BorderBrush="{DynamicResource NutCriticalBrush}">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <PathIcon Data="{DynamicResource NutIconWarning}" Classes="critical" Width="20" Height="20" VerticalAlignment="Top" />
+          <TextBlock Text="{Binding LoadError}" TextWrapping="Wrap" Classes="nut-body" VerticalAlignment="Center" />
         </StackPanel>
       </Border>
 
+      <!-- ==================== Primary metrics ==================== -->
       <WrapPanel>
-        <Border Classes="nut-card" Width="420" MinHeight="150" Margin="0,0,16,16">
-          <StackPanel Spacing="10"><TextBlock Text="{Binding Strings[Overview.State]}" Classes="nut-section-title" /><TextBlock Text="{Binding Strings[Overview.NoStatus]}" IsVisible="{Binding HasNoStatusItems}" Classes="nut-metadata" /><ItemsControl ItemsSource="{Binding StatusItems}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:OverviewStatusItemViewModel"><Border Padding="10,6" Margin="0,2" CornerRadius="8" Background="{DynamicResource NutSelectionBrush}"><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding StateText}" /><TextBlock Text=" · " /><TextBlock Text="{Binding SeverityText}" FontWeight="SemiBold" /></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
+        <!-- Battery -->
+        <Border Classes="nut-metric-card" Width="218" Margin="0,0,14,14">
+          <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconBattery}" Classes="healthy" Width="19" Height="19" />
+              <TextBlock Text="{Binding Strings[Overview.Metric.BatteryCharge]}" Classes="nut-card-title" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Text="{Binding BatteryValueText}"
+                       Classes="nut-metric-value"
+                       Foreground="{DynamicResource NutHealthyBrush}"
+                       TextTrimming="CharacterEllipsis" />
+            <ProgressBar Classes="nut-value-bar"
+                         Classes.healthy="{Binding HasBatteryPercent}"
+                         Classes.unavailable="{Binding !HasBatteryPercent}"
+                         Minimum="0"
+                         Maximum="100"
+                         Value="{Binding BatteryBarValue}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{DynamicResource NutIconSuccess}" Classes="healthy" Width="13" Height="13" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding BatteryStateText}" Classes="nut-metadata" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <TextBlock Grid.Column="1"
+                         Text="{Binding BatteryVoltageText}"
+                         Classes="nut-metadata"
+                         IsVisible="{Binding HasBatteryVoltage}"
+                         VerticalAlignment="Center" />
+            </Grid>
+          </StackPanel>
         </Border>
-        <Border Classes="nut-card" Width="420" MinHeight="150" Margin="0,0,16,16">
-          <StackPanel Spacing="10"><TextBlock Text="{Binding Strings[Overview.Connection]}" Classes="nut-section-title" /><WrapPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" /><TextBlock Text="{Binding ConnectionStateText}" /></StackPanel><StackPanel Width="180" Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Overview.Freshness]}" Classes="nut-metadata" /><TextBlock Text="{Binding DataFreshnessText}" /></StackPanel><StackPanel Width="360"><TextBlock Text="{Binding Strings[Overview.LastReading]}" Classes="nut-metadata" /><TextBlock Text="{Binding LastSuccessfulUpdateText}" /></StackPanel></WrapPanel></StackPanel>
+
+        <!-- Load -->
+        <Border Classes="nut-metric-card" Width="218" Margin="0,0,14,14">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconGauge}" Classes="cyan" Width="19" Height="19" />
+              <TextBlock Text="{Binding Strings[Overview.Metric.Load]}" Classes="nut-card-title" VerticalAlignment="Center" />
+            </StackPanel>
+            <controls:NutLoadGauge Percent="{Binding LoadPercent}"
+                                   DisplayText="{Binding LoadValueText}"
+                                   Diameter="126"
+                                   Thickness="11"
+                                   HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding LoadPowerText}"
+                       Classes="nut-metadata"
+                       IsVisible="{Binding HasLoadPowerText}"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Border>
+
+        <!-- Runtime -->
+        <Border Classes="nut-metric-card" Width="218" Margin="0,0,14,14">
+          <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconRuntime}" Classes="purple" Width="19" Height="19" />
+              <TextBlock Text="{Binding Strings[Overview.Metric.Runtime]}" Classes="nut-card-title" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding RuntimeValueText}"
+                       Classes="nut-metric-value purple"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{Binding RuntimeRawText}"
+                       Classes="nut-mono"
+                       IsVisible="{Binding HasRuntimeRawText}"
+                       TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Border>
+
+        <!-- Input -->
+        <Border Classes="nut-metric-card" Width="218" Margin="0,0,14,14">
+          <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconInput}" Classes="warning" Width="19" Height="19" />
+              <TextBlock Text="{Binding Strings[Overview.Metric.InputVoltage]}" Classes="nut-card-title" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding InputVoltageText}"
+                       Classes="nut-metric-value warning"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding FrequencyText}"
+                       Classes="nut-metadata"
+                       IsVisible="{Binding HasFrequency}" />
+          </StackPanel>
+        </Border>
+
+        <!-- Output -->
+        <Border Classes="nut-metric-card" Width="218" Margin="0,0,14,14">
+          <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconOutput}" Classes="healthy" Width="19" Height="19" />
+              <TextBlock Text="{Binding Strings[Overview.Metric.OutputVoltage]}" Classes="nut-card-title" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding OutputVoltageText}"
+                       Classes="nut-metric-value healthy"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding FrequencyText}"
+                       Classes="nut-metadata"
+                       IsVisible="{Binding HasFrequency}" />
+          </StackPanel>
         </Border>
       </WrapPanel>
 
-      <StackPanel Spacing="12">
-        <TextBlock Text="{Binding Strings[Overview.Metrics]}" Classes="nut-section-title" />
-        <ItemsControl ItemsSource="{Binding MetricCards}">
-          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate><DataTemplate x:DataType="viewModels:OverviewMetricViewModel"><Border Classes="nut-card" Width="196" MinHeight="112" Margin="0,0,12,12"><StackPanel Spacing="8"><TextBlock Text="{Binding Title}" Classes="nut-metadata" TextWrapping="Wrap" /><StackPanel Orientation="Horizontal" Spacing="5"><TextBlock Text="{Binding DisplayValue}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="{Binding Unit}" VerticalAlignment="Bottom" Margin="0,0,0,2" /></StackPanel></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
+      <!-- ==================== State and connection ==================== -->
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+        <Border Classes="nut-card-elevated">
+          <StackPanel Spacing="14">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{DynamicResource NutIconShield}" Classes="healthy" Width="19" Height="19" />
+              <TextBlock Text="{Binding Strings[Overview.State]}" Classes="nut-section-title" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="16">
+              <Border Classes="nut-pill"
+                      Classes.healthy="{Binding IsStatusHealthy}"
+                      Classes.warning="{Binding IsStatusWarning}"
+                      Classes.critical="{Binding IsStatusCritical}"
+                      Padding="18,10"
+                      VerticalAlignment="Center">
+                <TextBlock Text="{Binding PrimaryStatusToken}" FontSize="21" FontWeight="Bold" />
+              </Border>
+              <StackPanel Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding PrimaryStatusText}"
+                           FontSize="19"
+                           FontWeight="SemiBold"
+                           Classes.healthy="{Binding IsStatusHealthy}"
+                           Classes.warning="{Binding IsStatusWarning}"
+                           Classes.critical="{Binding IsStatusCritical}"
+                           Classes.muted="{Binding IsStatusUnavailable}" />
+                <TextBlock Text="{Binding Strings[Overview.NoStatus]}"
+                           Classes="nut-metadata"
+                           IsVisible="{Binding HasNoStatusItems}" />
+              </StackPanel>
+            </StackPanel>
+
+            <ItemsControl ItemsSource="{Binding StatusItems}" IsVisible="{Binding !HasNoStatusItems}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:OverviewStatusItemViewModel">
+                  <Border Classes="nut-pill" Margin="0,0,7,7">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <TextBlock Text="{Binding StateText}" FontSize="12" />
+                      <TextBlock Text="{Binding SeverityText}" FontSize="12" Classes="nut-metadata" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Classes="nut-divider" />
+
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+              <StackPanel Spacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <PathIcon Data="{DynamicResource NutIconTemperature}" Classes="muted" Width="14" Height="14" />
+                  <TextBlock Text="{Binding Strings[Overview.Metric.Temperature]}" Classes="nut-metadata" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding TemperatureText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <PathIcon Data="{DynamicResource NutIconDriver}" Classes="muted" Width="14" Height="14" />
+                  <TextBlock Text="Driver" Classes="nut-metadata" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding DriverText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding DriverVersionText}" Classes="nut-metadata" IsVisible="{Binding HasDriverVersion}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="4" IsVisible="{Binding HasUpsType}">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <PathIcon Data="{DynamicResource NutIconUps}" Classes="muted" Width="14" Height="14" />
+                  <TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding UpsTypeText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1" Classes="nut-card-elevated">
+          <StackPanel Spacing="14">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{DynamicResource NutIconConnection}" Classes="accent" Width="19" Height="19" />
+              <TextBlock Text="{Binding Strings[Overview.Connection]}" Classes="nut-section-title" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+              <PathIcon Data="{DynamicResource NutIconServer}" Classes="muted" Width="18" Height="18" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="NUT Server" FontWeight="SemiBold" FontSize="13" />
+                <TextBlock Text="{Binding EndpointText}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <Border Grid.Column="2"
+                      Classes="nut-pill"
+                      Classes.healthy="{Binding IsConnected}"
+                      Classes.critical="{Binding !IsConnected}">
+                <TextBlock Text="{Binding ConnectionStateText}" FontSize="12" FontWeight="SemiBold" />
+              </Border>
+            </Grid>
+
+            <Border Classes="nut-divider" />
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+              <PathIcon Data="{DynamicResource NutIconUps}" Classes="muted" Width="18" Height="18" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="{Binding Strings[Overview.SelectedUps]}" FontWeight="SemiBold" FontSize="13" />
+                <TextBlock Text="{Binding SelectedUpsText}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
+
+            <Border Classes="nut-divider" />
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+              <PathIcon Data="{DynamicResource NutIconRefresh}" Classes="muted" Width="18" Height="18" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="{Binding Strings[Overview.Freshness]}" FontWeight="SemiBold" FontSize="13" />
+                <TextBlock Text="{Binding DataFreshnessText}" Classes="nut-metadata" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- ==================== Identity ==================== -->
+      <Border Classes="nut-card">
+        <StackPanel Spacing="14">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <PathIcon Data="{DynamicResource NutIconDevices}" Classes="cyan" Width="19" Height="19" />
+            <TextBlock Text="{Binding Strings[Overview.SelectedUps]}" Classes="nut-section-title" VerticalAlignment="Center" />
+          </StackPanel>
+          <WrapPanel>
+            <StackPanel Width="260" Margin="0,0,16,10" Spacing="3">
+              <TextBlock Text="{Binding Strings[Overview.DescriptionLabel]}" Classes="nut-label" />
+              <TextBlock Text="{Binding Identity.Description}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Width="190" Margin="0,0,16,10" Spacing="3">
+              <TextBlock Text="{Binding Strings[Overview.Manufacturer]}" Classes="nut-label" />
+              <TextBlock Text="{Binding Identity.Manufacturer}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Width="190" Margin="0,0,16,10" Spacing="3">
+              <TextBlock Text="{Binding Strings[Overview.Model]}" Classes="nut-label" />
+              <TextBlock Text="{Binding Identity.Model}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Width="190" Margin="0,0,0,10" Spacing="3">
+              <TextBlock Text="{Binding Strings[Overview.NutName]}" Classes="nut-label" />
+              <TextBlock Text="{Binding Identity.Name}" TextWrapping="Wrap" />
+            </StackPanel>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

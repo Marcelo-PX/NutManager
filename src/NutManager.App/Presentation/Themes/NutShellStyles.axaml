@@ -1,40 +1,202 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Style Selector="Button.nut-navigation-item">
+  <!--
+    Shell chrome: title bar, sidebar, navigation, profile card and footer.
+    Navigation selection is a restrained accent bar plus a low-contrast surface rather than a
+    saturated block, so the selected row reads as emphasis instead of a filled control.
+  -->
+
+  <Style Selector="Border.nut-titlebar">
+    <Setter Property="Background" Value="{DynamicResource NutHeaderBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+
+  <!-- Window buttons follow the platform hit targets; only close gets a destructive hover. -->
+  <Style Selector="Button.nut-window-button">
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="MinHeight" Value="34" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="3,0,0,0" />
-    <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Padding" Value="13,11" />
-    <Setter Property="Margin" Value="0,3" />
+    <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="Button.nut-navigation-item:pointerover">
+  <Style Selector="Button.nut-window-button /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-window-button:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
   </Style>
-  <Style Selector="Button.nut-navigation-item.selected">
-    <Setter Property="Background" Value="{DynamicResource NutSelectionBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+  <Style Selector="Button.nut-window-button.close:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#E03B4B" />
+    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <!-- Segmented light/dark control. -->
+  <Style Selector="Border.nut-theme-toggle">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="3" />
+  </Style>
+  <Style Selector="Button.nut-theme-option">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.18" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-theme-option /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-theme-option:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-theme-option.selected">
+    <Setter Property="Foreground" Value="{DynamicResource NutWarningBrush}" />
+  </Style>
+  <Style Selector="Button.nut-theme-option.selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutWarningSoftBrush}" />
+  </Style>
+  <Style Selector="Button.nut-theme-option.selected.moon">
     <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector="Button.nut-theme-option.selected.moon /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutAccentSoftBrush}" />
+  </Style>
+
   <Style Selector="Border.nut-shell-header">
     <Setter Property="Background" Value="{DynamicResource NutHeaderBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
   </Style>
+
   <Style Selector="Border.nut-shell-sidebar">
     <Setter Property="Background" Value="{DynamicResource NutSidebarBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="BorderThickness" Value="0,0,1,0" />
   </Style>
+
+  <Style Selector="Button.nut-navigation-item">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="3,0,0,0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Margin" Value="0,2" />
+    <Setter Property="MinHeight" Value="44" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-navigation-item /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item.selected">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item.selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSelectedSheenBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+
+  <!-- Second-level administration entries rendered under an expanded navigation group. -->
+  <Style Selector="Button.nut-navigation-subitem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="2,0,0,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="Margin" Value="0,1" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-navigation-subitem /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-navigation-subitem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-subitem.selected">
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.nut-navigation-subitem.selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceSelectedBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+
   <Style Selector="Border.nut-profile-card">
     <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="Padding" Value="12" />
+    <Setter Property="Padding" Value="10" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.nut-profile-card:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+
+  <Style Selector="Border.nut-profile-avatar">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface3Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="Border.nut-footer">
+    <Setter Property="Background" Value="{DynamicResource NutHeaderBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
   </Style>
 </Styles>
