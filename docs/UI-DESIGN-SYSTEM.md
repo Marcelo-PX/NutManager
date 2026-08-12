@@ -84,7 +84,7 @@ Administration
 └── Remote Access
 ```
 
-T24B preserves the existing-entry editor and reviewed T14 preview inside NUT Configuration. T25 supplies the generic semantic draft/review/generated-preview foundation without replacing that editor or adding a writer. The final graphical forms belong to T26–T28.
+T24B preserves the existing-entry editor and reviewed T14 preview inside NUT Configuration. T25 supplies the generic semantic draft/review/generated-preview foundation without adding a writer. T26 uses that foundation for the graphical `ups.conf` form with Basic/Advanced fields, custom parameters, validated UPS section actions, change-only secrets, and a responsive single-column composition; T27–T28 own the remaining final graphical forms.
 
 ## Accessibility and terminology
 

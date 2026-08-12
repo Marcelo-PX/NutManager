@@ -528,4 +528,135 @@
   <data name="Semantic.Field.Upsmon.Monitor.Help" xml:space="preserve"><value>Repeatable MONITOR directive with protected presentation.</value></data>
   <data name="Semantic.Section.Ups" xml:space="preserve"><value>UPS</value></data>
   <data name="Semantic.Section.User" xml:space="preserve"><value>User</value></data>
+  <data name="Ups.Editor.Title" xml:space="preserve"><value>Graphical UPS configuration</value></data>
+  <data name="Ups.Editor.NewUpsName" xml:space="preserve"><value>New name</value></data>
+  <data name="Ups.Editor.SelectedUps" xml:space="preserve"><value>Selected UPS</value></data>
+  <data name="Ups.Editor.RenameUpsName" xml:space="preserve"><value>New name for the selected UPS</value></data>
+  <data name="Ups.Editor.AddUps" xml:space="preserve"><value>Add UPS</value></data>
+  <data name="Ups.Editor.Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Ups.Editor.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Ups.Editor.RemoveUps" xml:space="preserve"><value>Remove UPS</value></data>
+  <data name="Ups.Editor.GlobalOptions" xml:space="preserve"><value>Global options</value></data>
+  <data name="Ups.Editor.DriverAndParameters" xml:space="preserve"><value>Driver and parameters</value></data>
+  <data name="Ups.Editor.AdvancedMode" xml:space="preserve"><value>Advanced mode</value></data>
+  <data name="Ups.Editor.UnsupportedTitle" xml:space="preserve"><value>Preserved options not applicable to this driver</value></data>
+  <data name="Ups.Editor.UnsupportedHelp" xml:space="preserve"><value>These values remain in the file and are removed only by an explicit action.</value></data>
+  <data name="Ups.Editor.NutKey" xml:space="preserve"><value>NUT key</value></data>
+  <data name="Ups.Editor.Value" xml:space="preserve"><value>Value</value></data>
+  <data name="Ups.Editor.Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Ups.Editor.SetAutomatic" xml:space="preserve"><value>Use automatic behavior</value></data>
+  <data name="Ups.Editor.SecretReplacement" xml:space="preserve"><value>New protected value</value></data>
+  <data name="Ups.Editor.ReplaceSecret" xml:space="preserve"><value>Replace protected value</value></data>
+  <data name="Ups.Editor.SensitiveNotConfigured" xml:space="preserve"><value>Not configured</value></data>
+  <data name="Ups.Editor.DriverDetected" xml:space="preserve"><value>Executable passively detected in the local installation.</value></data>
+  <data name="Ups.Editor.DriverNotDetected" xml:space="preserve"><value>Executable not detected; verify the installation before applying.</value></data>
+  <data name="Ups.Editor.DriverDetectionUnavailable" xml:space="preserve"><value>Passive local detection does not apply to this remote context.</value></data>
+  <data name="Ups.Editor.DocumentedOptionHelp" xml:space="preserve"><value>Technical option documented by the official driver or ups.conf manual.</value></data>
+  <data name="Ups.Runtimecal.Title" xml:space="preserve"><value>Runtime estimate calibration (runtimecal)</value></data>
+  <data name="Ups.Runtimecal.Explanation" xml:space="preserve"><value>Enter two observed runtimes at different loads. The assistant changes only the ups.conf draft; it does not discharge the battery or run commands against the UPS.</value></data>
+  <data name="Ups.Runtimecal.HighRuntime" xml:space="preserve"><value>Runtime at high load (seconds)</value></data>
+  <data name="Ups.Runtimecal.HighLoad" xml:space="preserve"><value>High load (%)</value></data>
+  <data name="Ups.Runtimecal.LowRuntime" xml:space="preserve"><value>Runtime at low load (seconds)</value></data>
+  <data name="Ups.Runtimecal.LowLoad" xml:space="preserve"><value>Low load (%)</value></data>
+  <data name="Ups.Runtimecal.Safety" xml:space="preserve"><value>High load must be greater than low load. Use manufacturer-documented or safely obtained measurements; do not deep-discharge a battery to fill these fields.</value></data>
+  <data name="Ups.Runtimecal.UseDraft" xml:space="preserve"><value>Use calibration in draft</value></data>
+  <data name="Ups.Runtimecal.DraftUpdated" xml:space="preserve"><value>The runtimecal configuration was added to the draft. No command was run.</value></data>
+  <data name="Ups.Field.RuntimeCalibration.Label" xml:space="preserve"><value>Runtime calibration</value></data>
+  <data name="Ups.Field.RuntimeCalibration.Help" xml:space="preserve"><value>Four technical values: runtime at high load, high load, runtime at low load, and low load.</value></data>
+  <data name="Ups.Field.DriverPath.Label" xml:space="preserve"><value>Driver directory</value></data><data name="Ups.Field.DriverPath.Help" xml:space="preserve"><value>Global driverpath directory used by NUT to locate driver executables.</value></data>
+  <data name="Ups.Field.MaxRetry.Label" xml:space="preserve"><value>Maximum retries</value></data><data name="Ups.Field.MaxRetry.Help" xml:space="preserve"><value>Global maxretry count for driver startup attempts.</value></data>
+  <data name="Ups.Field.RetryDelay.Label" xml:space="preserve"><value>Retry delay</value></data><data name="Ups.Field.RetryDelay.Help" xml:space="preserve"><value>Global retrydelay interval between startup attempts.</value></data>
+  <data name="Ups.Field.Driver.Label" xml:space="preserve"><value>Driver</value></data><data name="Ups.Field.Driver.Help" xml:space="preserve"><value>Technical NUT driver name configured for this section.</value></data>
+  <data name="Ups.Field.Port.Label" xml:space="preserve"><value>Port or device</value></data><data name="Ups.Field.Port.Help" xml:space="preserve"><value>Technical port value interpreted by the selected driver.</value></data>
+  <data name="Ups.Field.Description.Label" xml:space="preserve"><value>Description</value></data><data name="Ups.Field.Description.Help" xml:space="preserve"><value>Optional administrative description for this UPS.</value></data>
+  <data name="Ups.Field.VendorId.Label" xml:space="preserve"><value>Vendor ID</value></data><data name="Ups.Field.VendorId.Help" xml:space="preserve"><value>Hexadecimal vendorid filter for documented USB device matching.</value></data>
+  <data name="Ups.Field.ProductId.Label" xml:space="preserve"><value>Product ID</value></data><data name="Ups.Field.ProductId.Help" xml:space="preserve"><value>Hexadecimal productid filter for documented USB device matching.</value></data>
+  <data name="Ups.Field.Vendor.Label" xml:space="preserve"><value>Reported vendor</value></data><data name="Ups.Field.Vendor.Help" xml:space="preserve"><value>Vendor matching expression documented by the driver.</value></data>
+  <data name="Ups.Field.Product.Label" xml:space="preserve"><value>Reported product</value></data><data name="Ups.Field.Product.Help" xml:space="preserve"><value>Product matching expression documented by the driver.</value></data>
+  <data name="Ups.Field.Serial.Label" xml:space="preserve"><value>Serial number</value></data><data name="Ups.Field.Serial.Help" xml:space="preserve"><value>Serial filter used to distinguish compatible devices.</value></data>
+  <data name="Ups.Field.PollInterval.Label" xml:space="preserve"><value>Polling interval</value></data><data name="Ups.Field.PollInterval.Help" xml:space="preserve"><value>Common pollinterval between driver updates.</value></data>
+  <data name="Ups.Field.MaxStartDelay.Label" xml:space="preserve"><value>Maximum startup wait</value></data><data name="Ups.Field.MaxStartDelay.Help" xml:space="preserve"><value>Maximum maxstartdelay wait used by the driver controller.</value></data>
+  <data name="Ups.Field.PollFrequency.Label" xml:space="preserve"><value>Full poll frequency</value></data><data name="Ups.Field.PollFrequency.Help" xml:space="preserve"><value>Documented pollfreq interval for full device queries.</value></data>
+  <data name="Ups.Field.Synchronous.Label" xml:space="preserve"><value>Synchronous communication</value></data><data name="Ups.Field.Synchronous.Help" xml:space="preserve"><value>Technical yes/no token for synchronous driver mode.</value></data>
+  <data name="Ups.Field.IgnoreLowBattery.Label" xml:space="preserve"><value>Ignore native low-battery status</value></data><data name="Ups.Field.IgnoreLowBattery.Help" xml:space="preserve"><value>ignorelb presence flag; requires reliable replacement thresholds.</value></data>
+  <data name="Ups.Field.OverrideBatteryChargeLow.Label" xml:space="preserve"><value>Low-charge threshold</value></data><data name="Ups.Field.OverrideBatteryChargeLow.Help" xml:space="preserve"><value>Explicit battery.charge.low override in percent.</value></data>
+  <data name="Ups.Field.OverrideBatteryRuntimeLow.Label" xml:space="preserve"><value>Low-runtime threshold</value></data><data name="Ups.Field.OverrideBatteryRuntimeLow.Help" xml:space="preserve"><value>Explicit battery.runtime.low override in seconds.</value></data>
+  <data name="Ups.Field.Protocol.Label" xml:space="preserve"><value>Protocol</value></data><data name="Ups.Field.Protocol.Help" xml:space="preserve"><value>Technical subdriver/protocol documented by nutdrv_qx.</value></data>
+  <data name="Ups.Field.OnDelay.Label" xml:space="preserve"><value>Power-on delay</value></data><data name="Ups.Field.OnDelay.Help" xml:space="preserve"><value>ondelay value sent when the corresponding driver operation is requested separately.</value></data>
+  <data name="Ups.Field.OffDelay.Label" xml:space="preserve"><value>Power-off delay</value></data><data name="Ups.Field.OffDelay.Help" xml:space="preserve"><value>offdelay value sent when the corresponding driver operation is requested separately.</value></data>
+  <data name="Ups.Field.DefaultBatteryVoltageHigh.Label" xml:space="preserve"><value>Default high battery voltage</value></data><data name="Ups.Field.DefaultBatteryVoltageHigh.Help" xml:space="preserve"><value>default.battery.voltage.high used when the device does not report it.</value></data>
+  <data name="Ups.Field.DefaultBatteryVoltageLow.Label" xml:space="preserve"><value>Default low battery voltage</value></data><data name="Ups.Field.DefaultBatteryVoltageLow.Help" xml:space="preserve"><value>default.battery.voltage.low used when the device does not report it.</value></data>
+  <data name="Ups.Field.DefaultBatteryVoltageNominal.Label" xml:space="preserve"><value>Default nominal voltage</value></data><data name="Ups.Field.DefaultBatteryVoltageNominal.Help" xml:space="preserve"><value>default.battery.voltage.nominal used when missing from the device.</value></data>
+  <data name="Ups.Field.OverrideBatteryVoltageNominal.Label" xml:space="preserve"><value>Nominal-voltage override</value></data><data name="Ups.Field.OverrideBatteryVoltageNominal.Help" xml:space="preserve"><value>Explicitly overrides battery.voltage.nominal; verify the hardware specification.</value></data>
+  <data name="Ups.Field.OverrideBatteryPacks.Label" xml:space="preserve"><value>Battery pack count</value></data><data name="Ups.Field.OverrideBatteryPacks.Help" xml:space="preserve"><value>Explicit battery.packs override for hardware with a known topology.</value></data>
+  <data name="Ups.Field.BatteryVoltageReportsOnePack.Label" xml:space="preserve"><value>Voltage reports one pack</value></data><data name="Ups.Field.BatteryVoltageReportsOnePack.Help" xml:space="preserve"><value>Documented presence flag for devices reporting only one pack voltage.</value></data>
+  <data name="Ups.Field.ChargeTime.Label" xml:space="preserve"><value>Charge time</value></data><data name="Ups.Field.ChargeTime.Help" xml:space="preserve"><value>chargetime used by the runtimecal model when explicitly configured.</value></data>
+  <data name="Ups.Field.IdleLoad.Label" xml:space="preserve"><value>Idle load</value></data><data name="Ups.Field.IdleLoad.Help" xml:space="preserve"><value>idleload threshold for the runtimecal model, in percent.</value></data>
+  <data name="Ups.Field.Bus.Label" xml:space="preserve"><value>USB bus</value></data><data name="Ups.Field.Bus.Help" xml:space="preserve"><value>Transient bus filter which may change after reconnection.</value></data>
+  <data name="Ups.Field.Device.Label" xml:space="preserve"><value>USB device</value></data><data name="Ups.Field.Device.Help" xml:space="preserve"><value>Transient device filter which may change after reconnection.</value></data>
+  <data name="Ups.Field.PollOnly.Label" xml:space="preserve"><value>Polling only</value></data><data name="Ups.Field.PollOnly.Help" xml:space="preserve"><value>pollonly presence flag documented by usbhid-ups.</value></data>
+  <data name="Ups.Field.WaitBeforeReconnect.Label" xml:space="preserve"><value>Wait before reconnect</value></data><data name="Ups.Field.WaitBeforeReconnect.Help" xml:space="preserve"><value>waitbeforereconnect interval before another USB attempt.</value></data>
+  <data name="Ups.Field.WindowsHid.Label" xml:space="preserve"><value>Windows HID backend</value></data><data name="Ups.Field.WindowsHid.Help" xml:space="preserve"><value>winhid presence flag documented for compatible Windows builds.</value></data>
+  <data name="Ups.Field.SnmpMibs.Label" xml:space="preserve"><value>SNMP MIB</value></data><data name="Ups.Field.SnmpMibs.Help" xml:space="preserve"><value>Technical MIB used by snmp-ups; auto is an explicit token.</value></data>
+  <data name="Ups.Field.SnmpVersion.Label" xml:space="preserve"><value>SNMP version</value></data><data name="Ups.Field.SnmpVersion.Help" xml:space="preserve"><value>Technical v1, v2c, or v3 version used by the SNMP session.</value></data>
+  <data name="Ups.Field.SnmpCommunity.Label" xml:space="preserve"><value>SNMP community</value></data><data name="Ups.Field.SnmpCommunity.Help" xml:space="preserve"><value>Protected value for SNMP v1/v2c, changed only through explicit replacement.</value></data>
+  <data name="Ups.Field.SnmpRetries.Label" xml:space="preserve"><value>SNMP retries</value></data><data name="Ups.Field.SnmpRetries.Help" xml:space="preserve"><value>snmp_retries count for communication retries.</value></data>
+  <data name="Ups.Field.SnmpTimeout.Label" xml:space="preserve"><value>SNMP timeout</value></data><data name="Ups.Field.SnmpTimeout.Help" xml:space="preserve"><value>snmp_timeout for SNMP communication.</value></data>
+  <data name="Ups.Field.SnmpSecurityLevel.Label" xml:space="preserve"><value>SNMPv3 security level</value></data><data name="Ups.Field.SnmpSecurityLevel.Help" xml:space="preserve"><value>Technical noAuthNoPriv, authNoPriv, or authPriv level.</value></data>
+  <data name="Ups.Field.SnmpSecurityName.Label" xml:space="preserve"><value>SNMPv3 security name</value></data><data name="Ups.Field.SnmpSecurityName.Help" xml:space="preserve"><value>secName identity used by the SNMPv3 session.</value></data>
+  <data name="Ups.Field.SnmpAuthProtocol.Label" xml:space="preserve"><value>Authentication protocol</value></data><data name="Ups.Field.SnmpAuthProtocol.Help" xml:space="preserve"><value>Technical SNMPv3 authentication protocol supported by the driver.</value></data>
+  <data name="Ups.Field.SnmpAuthPassword.Label" xml:space="preserve"><value>SNMPv3 authentication password</value></data><data name="Ups.Field.SnmpAuthPassword.Help" xml:space="preserve"><value>Protected value changed only through explicit replacement or removal.</value></data>
+  <data name="Ups.Field.SnmpPrivacyProtocol.Label" xml:space="preserve"><value>Privacy protocol</value></data><data name="Ups.Field.SnmpPrivacyProtocol.Help" xml:space="preserve"><value>Technical SNMPv3 privacy protocol supported by the driver.</value></data>
+  <data name="Ups.Field.SnmpPrivacyPassword.Label" xml:space="preserve"><value>SNMPv3 privacy password</value></data><data name="Ups.Field.SnmpPrivacyPassword.Help" xml:space="preserve"><value>Protected value changed only through explicit replacement or removal.</value></data>
+  <data name="Ups.Group.Global" xml:space="preserve"><value>Global</value></data>
+  <data name="Ups.Group.Identity" xml:space="preserve"><value>Identification</value></data>
+  <data name="Ups.Group.Connection" xml:space="preserve"><value>Connection</value></data>
+  <data name="Ups.Group.DeviceMatch" xml:space="preserve"><value>Device matching</value></data>
+  <data name="Ups.Group.Behavior" xml:space="preserve"><value>Behavior</value></data>
+  <data name="Ups.Group.Battery" xml:space="preserve"><value>Battery</value></data>
+  <data name="Ups.Group.Runtime" xml:space="preserve"><value>Runtime</value></data>
+  <data name="Ups.Group.Security" xml:space="preserve"><value>Security</value></data>
+  <data name="Ups.Group.Advanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="Ups.Unit.Seconds" xml:space="preserve"><value>seconds</value></data>
+  <data name="Ups.Unit.Percent" xml:space="preserve"><value>%</value></data>
+  <data name="Ups.Unit.Volts" xml:space="preserve"><value>V</value></data>
+  <data name="Ups.Transport.Serial" xml:space="preserve"><value>Serial</value></data>
+  <data name="Ups.Transport.Usb" xml:space="preserve"><value>USB</value></data>
+  <data name="Ups.Transport.Network" xml:space="preserve"><value>Network</value></data>
+  <data name="Ups.Transport.Snmp" xml:space="preserve"><value>SNMP</value></data>
+  <data name="Ups.Transport.Modbus" xml:space="preserve"><value>Modbus</value></data>
+  <data name="Ups.Transport.Other" xml:space="preserve"><value>Other</value></data>
+  <data name="Ups.Driver.nutdrv_qx.Name" xml:space="preserve"><value>Qx/Megatec and compatible protocols</value></data>
+  <data name="Ups.Driver.nutdrv_qx.Description" xml:space="preserve"><value>NUT driver for documented Qx families, using serial or USB transport according to the subdriver.</value></data>
+  <data name="Ups.Driver.nutdrv_qx.Help" xml:space="preserve"><value>Only options documented by the official nutdrv_qx manual are presented.</value></data>
+  <data name="Ups.Driver.usbhid-ups.Name" xml:space="preserve"><value>USB HID</value></data>
+  <data name="Ups.Driver.usbhid-ups.Description" xml:space="preserve"><value>NUT driver for USB HID Power Device Class devices.</value></data>
+  <data name="Ups.Driver.usbhid-ups.Help" xml:space="preserve"><value>The port is required by NUT syntax and normally uses the technical auto token.</value></data>
+  <data name="Ups.Driver.snmp-ups.Name" xml:space="preserve"><value>SNMP</value></data>
+  <data name="Ups.Driver.snmp-ups.Description" xml:space="preserve"><value>NUT driver for network devices managed through SNMP.</value></data>
+  <data name="Ups.Driver.snmp-ups.Help" xml:space="preserve"><value>SNMP credentials are handled as protected replacements and never as ordinary text.</value></data>
+  <data name="Ups.Driver.Unknown.Name" xml:space="preserve"><value>Detected or configured driver</value></data>
+  <data name="Ups.Driver.Unknown.Description" xml:space="preserve"><value>This driver has no structured NutManager schema; only limited validation is available.</value></data>
+  <data name="Ups.Validation.Section.Invalid" xml:space="preserve"><value>Use a valid UPS name without spaces or control characters. The name default is reserved.</value></data>
+  <data name="Ups.Validation.Section.Duplicate" xml:space="preserve"><value>A UPS section with this name already exists.</value></data>
+  <data name="Ups.Validation.Section.Reserved" xml:space="preserve"><value>The section name default is reserved by NUT.</value></data>
+  <data name="Ups.Validation.Driver.Invalid" xml:space="preserve"><value>The technical driver name contains invalid characters.</value></data>
+  <data name="Ups.Validation.Driver.Unverified" xml:space="preserve"><value>The driver was not detected and has no known schema. Verify its documentation and installation before applying.</value></data>
+  <data name="Ups.Validation.Driver.LimitedSchema" xml:space="preserve"><value>This driver receives limited validation because it has no structured schema yet.</value></data>
+  <data name="Ups.Validation.Driver.NotDetected" xml:space="preserve"><value>The driver executable was not passively detected in the local installation.</value></data>
+  <data name="Ups.Validation.Protocol.Unsupported" xml:space="preserve"><value>The configured protocol is not in the documented list for this driver.</value></data>
+  <data name="Ups.Validation.Runtimecal.Unsupported" xml:space="preserve"><value>runtimecal is shown only for drivers with documented semantics.</value></data>
+  <data name="Ups.Validation.IgnoreLb.ThresholdRequired" xml:space="preserve"><value>ignorelb requires at least one explicit and reliable low-charge or low-runtime threshold.</value></data>
+  <data name="Ups.Validation.Snmp.SecurityNameRequired" xml:space="preserve"><value>SNMPv3 requires a security name.</value></data>
+  <data name="Ups.Validation.Snmp.AuthPasswordRequired" xml:space="preserve"><value>The selected SNMPv3 level requires an authentication password.</value></data>
+  <data name="Ups.Validation.Snmp.PrivPasswordRequired" xml:space="preserve"><value>The SNMPv3 authPriv level requires a privacy password.</value></data>
+  <data name="Ups.Validation.ResolveBeforeReview" xml:space="preserve"><value>Fix semantic configuration errors before reviewing.</value></data>
+  <data name="Ups.Validation.MutationFailed" xml:space="preserve"><value>The change could not be applied to the draft without ambiguity.</value></data>
+  <data name="Ups.Validation.Secret.Required" xml:space="preserve"><value>Enter a new protected value before replacing it.</value></data>
+  <data name="Semantic.Validation.IntegerRange" xml:space="preserve"><value>Enter an integer within the documented range.</value></data>
+  <data name="Semantic.Validation.DecimalRange" xml:space="preserve"><value>Enter a decimal number within the documented range.</value></data>
+  <data name="Ups.Validation.Runtimecal.Format" xml:space="preserve"><value>runtimecal requires exactly: high runtime, high load, low runtime, low load.</value></data>
+  <data name="Ups.Validation.Runtimecal.RuntimePositive" xml:space="preserve"><value>Runtime values must be greater than zero.</value></data>
+  <data name="Ups.Validation.Runtimecal.LoadRange" xml:space="preserve"><value>Load values must be between zero and 100%.</value></data>
+  <data name="Ups.Validation.Runtimecal.LoadOrder" xml:space="preserve"><value>High load must be greater than low load.</value></data>
 </root>

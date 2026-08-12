@@ -252,8 +252,11 @@ public sealed class NutConfigurationDocumentMutator
     private bool HasFinalNewline() => _document.Nodes.Count > 0 && _document.Nodes[^1].LineEnding.Length > 0;
     private bool AllowsSections() => _document.FileKind is NutConfigurationFileKind.UpsConf or NutConfigurationFileKind.UpsdUsers;
     private bool AllowsAssignments() => _document.FileKind is NutConfigurationFileKind.NutConf or NutConfigurationFileKind.UpsConf or NutConfigurationFileKind.UpsdUsers;
-    private bool AllowsDirectives() => _document.FileKind is NutConfigurationFileKind.UpsdConf or NutConfigurationFileKind.UpsdUsers or NutConfigurationFileKind.UpsmonConf;
-    private bool IsSensitiveAssignment(string name) => _document.FileKind == NutConfigurationFileKind.UpsdUsers && Equal(name, "password");
+    private bool AllowsDirectives() => _document.FileKind is NutConfigurationFileKind.UpsConf or NutConfigurationFileKind.UpsdConf or NutConfigurationFileKind.UpsdUsers or NutConfigurationFileKind.UpsmonConf;
+    private bool IsSensitiveAssignment(string name) =>
+        _document.FileKind == NutConfigurationFileKind.UpsdUsers && Equal(name, "password") ||
+        _document.FileKind == NutConfigurationFileKind.UpsConf &&
+        (Equal(name, "community") || Equal(name, "authPassword") || Equal(name, "privPassword") || Equal(name, "password"));
     private bool IsSensitiveDirective(string name) => _document.FileKind == NutConfigurationFileKind.UpsmonConf && Equal(name, "MONITOR") ||
         _document.FileKind == NutConfigurationFileKind.UpsdConf && Equal(name, "CERTIDENT");
     private static bool ValidToken(string value) => !string.IsNullOrWhiteSpace(value) &&

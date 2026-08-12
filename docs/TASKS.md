@@ -43,7 +43,7 @@ Only one task should normally be in progress at a time.
 | T24A | DONE | Managed server profile UX and typed validation | Reversible profiles, typed validation, deterministic migration, and explicit connection testing |
 | T24B | DONE | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
 | T25 | DONE | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
-| T26 | TODO | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
+| T26 | DONE | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
 | T27 | TODO | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
 | T28 | TODO | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | TODO | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
@@ -236,7 +236,7 @@ Future Linux compatibility evaluation. Linux is deferred and is not an active CI
 
 ## T23 — Evaluate upstream NUT improvements
 
-**Status:** TODO
+**Status:** DONE
 
 Review mature, reproducible limitations discovered by NutManager. Separate client concerns from NUT concerns, then prepare focused issues or branches in `Marcelo-PX/nut` for potential PRs to `networkupstools/nut`.
 
@@ -422,6 +422,13 @@ Provide a dedicated driver-aware UPS configuration form for `ups.conf`.
 ### Completion criteria
 
 - supported UPS settings are graphical and all writes remain reviewed/recoverable.
+
+### Implemented
+
+- immutable production catalog for documented `nutdrv_qx`, `usbhid-ups`, and `snmp-ups` options, plus passively detected/configured drivers with limited validation;
+- graphical section, driver, port, protocol, battery, polling, SNMP change-only secret, Basic/Advanced, and custom-parameter editing;
+- documented `runtimecal` four-value assistant that changes only the semantic draft and never performs a battery-discharge operation;
+- semantic validation, read-only review, and generated preview converging exclusively on the existing local/SFTP/SMB pipeline.
 
 ## T27 — Graphical server and general configuration
 

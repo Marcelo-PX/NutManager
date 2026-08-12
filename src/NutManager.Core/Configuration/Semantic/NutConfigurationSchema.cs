@@ -12,6 +12,15 @@ public enum NutConfigurationApplicability { Applicable, Unsupported }
 public enum NutConfigurationActivation { None, Reload, ServiceRestart, SeparateExplicitAction }
 public enum NutSensitiveFieldState { NotConfigured, Configured, ReplacementPending, RemovalPending }
 
+public sealed record NutConfigurationFieldPresentation(
+    string GroupResourceKey,
+    string? UnitResourceKey = null,
+    bool IsAdvanced = false,
+    bool IsRisky = false,
+    decimal? Minimum = null,
+    decimal? Maximum = null,
+    string? DocumentationUri = null);
+
 public sealed record NutConfigurationSemanticContext(
     string? SelectedDriver = null,
     IReadOnlyDictionary<string, string>? Values = null)
@@ -75,6 +84,22 @@ public sealed class NutConfigurationValueCodec : INutConfigurationValueCodec
                 : Invalid<string>(field, "Semantic.Value.Choice", "Semantic.Validation.Choice"));
     }
 
+    public static INutConfigurationValueCodec IntegerRange(int minimum, int maximum) => new NutConfigurationValueCodec(
+        (value, field) => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed >= minimum && parsed <= maximum
+            ? new(parsed, [])
+            : Invalid<object>(field, "Semantic.Value.IntegerRange", "Semantic.Validation.IntegerRange"),
+        (value, field) => value is int integer && integer >= minimum && integer <= maximum
+            ? new(integer.ToString(CultureInfo.InvariantCulture), [])
+            : Invalid<string>(field, "Semantic.Value.IntegerRange", "Semantic.Validation.IntegerRange"));
+
+    public static INutConfigurationValueCodec DecimalRange(decimal minimumExclusive, decimal maximumInclusive) => new NutConfigurationValueCodec(
+        (value, field) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) && parsed > minimumExclusive && parsed <= maximumInclusive
+            ? new(parsed, [])
+            : Invalid<object>(field, "Semantic.Value.DecimalRange", "Semantic.Validation.DecimalRange"),
+        (value, field) => value is decimal number && number > minimumExclusive && number <= maximumInclusive
+            ? new(number.ToString(CultureInfo.InvariantCulture), [])
+            : Invalid<string>(field, "Semantic.Value.DecimalRange", "Semantic.Validation.DecimalRange"));
+
     private static FieldValidationResult<T> Invalid<T>(string field, string code, string resourceKey) =>
         new(default, [new FieldValidationIssue(field, code, ValidationSeverity.Error, resourceKey)]);
 }
@@ -100,7 +125,8 @@ public sealed class NutConfigurationFieldDescriptor
         NutConfigurationActivation activation = NutConfigurationActivation.None,
         INutConfigurationValueCodec? codec = null,
         Func<NutConfigurationSemanticContext, NutConfigurationApplicability>? applicability = null,
-        IReadOnlyList<NutConfigurationChoice>? choices = null)
+        IReadOnlyList<NutConfigurationChoice>? choices = null,
+        NutConfigurationFieldPresentation? presentation = null)
     {
         if (string.IsNullOrWhiteSpace(semanticId)) throw new ArgumentException("A semantic ID is required.", nameof(semanticId));
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("A configuration entry name is required.", nameof(name));
@@ -128,6 +154,7 @@ public sealed class NutConfigurationFieldDescriptor
         Codec = codec ?? NutConfigurationValueCodec.Text;
         Applicability = applicability ?? (_ => NutConfigurationApplicability.Applicable);
         Choices = choices?.ToArray() ?? [];
+        Presentation = presentation;
     }
 
     public NutConfigurationFileKind FileKind { get; }
@@ -147,6 +174,7 @@ public sealed class NutConfigurationFieldDescriptor
     public INutConfigurationValueCodec Codec { get; }
     public Func<NutConfigurationSemanticContext, NutConfigurationApplicability> Applicability { get; }
     public IReadOnlyList<NutConfigurationChoice> Choices { get; }
+    public NutConfigurationFieldPresentation? Presentation { get; }
 }
 
 public sealed record NutConfigurationSectionSchema(string SemanticId, string LabelResourceKey, bool UniqueNames = true);
@@ -183,7 +211,12 @@ public sealed class NutDriverConfigurationSchema
         string helpResourceKey,
         string connectionType,
         IEnumerable<NutConfigurationFieldDescriptor> fields,
-        IEnumerable<string>? supportedProtocols = null)
+        IEnumerable<string>? supportedProtocols = null,
+        string? displayNameResourceKey = null,
+        string? descriptionResourceKey = null,
+        NutDriverCategory category = NutDriverCategory.Ups,
+        IEnumerable<NutDriverTransport>? transports = null,
+        string? documentationUri = null)
     {
         if (string.IsNullOrWhiteSpace(driverId)) throw new ArgumentException("A driver ID is required.", nameof(driverId));
         if (string.IsNullOrWhiteSpace(helpResourceKey)) throw new ArgumentException("A help resource key is required.", nameof(helpResourceKey));
@@ -193,6 +226,11 @@ public sealed class NutDriverConfigurationSchema
         ConnectionType = connectionType;
         Fields = fields?.ToArray() ?? throw new ArgumentNullException(nameof(fields));
         SupportedProtocols = supportedProtocols?.ToArray() ?? [];
+        DisplayNameResourceKey = displayNameResourceKey ?? $"Ups.Driver.{driverId}.Name";
+        DescriptionResourceKey = descriptionResourceKey ?? helpResourceKey;
+        Category = category;
+        Transports = transports?.Distinct().ToArray() ?? [];
+        DocumentationUri = documentationUri;
     }
 
     public string DriverId { get; }
@@ -200,4 +238,12 @@ public sealed class NutDriverConfigurationSchema
     public string ConnectionType { get; }
     public IReadOnlyList<NutConfigurationFieldDescriptor> Fields { get; }
     public IReadOnlyList<string> SupportedProtocols { get; }
+    public string DisplayNameResourceKey { get; }
+    public string DescriptionResourceKey { get; }
+    public NutDriverCategory Category { get; }
+    public IReadOnlyList<NutDriverTransport> Transports { get; }
+    public string? DocumentationUri { get; }
 }
+
+public enum NutDriverCategory { Ups, PowerDistribution, Simulation, Other }
+public enum NutDriverTransport { Serial, Usb, Network, Snmp, Modbus, Other }

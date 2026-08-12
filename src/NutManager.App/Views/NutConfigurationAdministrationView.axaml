@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             xmlns:views="clr-namespace:NutManager.App.Views"
              x:Class="NutManager.App.Views.NutConfigurationAdministrationView"
              x:DataType="viewModels:AdministrationPageViewModel">
   <StackPanel Spacing="16">
@@ -62,7 +63,12 @@
               <StackPanel Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.State]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedFileStatusText}" TextWrapping="Wrap" /></StackPanel>
               <StackPanel Margin="0,0,12,8"><TextBlock Text="{Binding Strings[Common.Encoding]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedFileEncodingText}" /></StackPanel>
             </WrapPanel>
-            <ItemsControl ItemsSource="{Binding Sections}" IsEnabled="{Binding CanEditEntries}">
+            <ContentControl Content="{Binding UpsConfigurationEditor}" IsVisible="{Binding IsUpsConfigurationEditorVisible}" IsEnabled="{Binding CanEditEntries}">
+              <ContentControl.DataTemplates>
+                <DataTemplate DataType="viewModels:UpsConfigurationEditorViewModel"><views:UpsConfigurationEditorView /></DataTemplate>
+              </ContentControl.DataTemplates>
+            </ContentControl>
+            <ItemsControl ItemsSource="{Binding Sections}" IsEnabled="{Binding CanEditEntries}" IsVisible="{Binding IsLegacyConfigurationEditorVisible}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:NutConfigurationSectionViewModel">
                   <Expander Header="{Binding Name}" IsExpanded="True" Margin="0,4">

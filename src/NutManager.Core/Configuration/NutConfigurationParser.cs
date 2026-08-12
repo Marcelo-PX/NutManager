@@ -83,7 +83,7 @@ public sealed class NutConfigurationParser
         fileKind is NutConfigurationFileKind.NutConf or NutConfigurationFileKind.UpsConf or NutConfigurationFileKind.UpsdUsers;
 
     private static bool AllowsDirectives(NutConfigurationFileKind fileKind) =>
-        fileKind is NutConfigurationFileKind.UpsdConf or NutConfigurationFileKind.UpsdUsers or NutConfigurationFileKind.UpsmonConf;
+        fileKind is NutConfigurationFileKind.UpsConf or NutConfigurationFileKind.UpsdConf or NutConfigurationFileKind.UpsdUsers or NutConfigurationFileKind.UpsmonConf;
 
     private static bool TryParseSection(string rawText, out string sectionName)
     {
@@ -143,9 +143,17 @@ public sealed class NutConfigurationParser
             trailingWhitespace,
             quote,
             currentSection,
-            fileKind == NutConfigurationFileKind.UpsdUsers && string.Equals(name, "password", StringComparison.OrdinalIgnoreCase));
+            IsSensitiveAssignment(fileKind, name));
         return true;
     }
+
+    private static bool IsSensitiveAssignment(NutConfigurationFileKind fileKind, string name) =>
+        fileKind == NutConfigurationFileKind.UpsdUsers && string.Equals(name, "password", StringComparison.OrdinalIgnoreCase) ||
+        fileKind == NutConfigurationFileKind.UpsConf && name is not null &&
+        (string.Equals(name, "community", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(name, "authPassword", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(name, "privPassword", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(name, "password", StringComparison.OrdinalIgnoreCase));
 
     private static bool TryParseDirective(
         string rawText,
@@ -182,6 +190,11 @@ public sealed class NutConfigurationParser
         var arguments = remaining.TrimEnd();
         var trailingWhitespace = remaining[arguments.Length..];
         var name = rawText[nameStart..nameEnd];
+        if (fileKind == NutConfigurationFileKind.UpsConf && !IsKnownUpsConfPresenceFlag(name, arguments))
+        {
+            directive = null!;
+            return false;
+        }
         directive = new NutConfigurationDirectiveNode(
             rawText,
             lineEnding,
@@ -195,6 +208,10 @@ public sealed class NutConfigurationParser
             (fileKind == NutConfigurationFileKind.UpsdConf && string.Equals(name, "CERTIDENT", StringComparison.OrdinalIgnoreCase)));
         return true;
     }
+
+    private static bool IsKnownUpsConfPresenceFlag(string name, string arguments) =>
+        arguments.Length == 0 && name.ToLowerInvariant() is
+            "ignorelb" or "battery_voltage_reports_one_pack" or "pollonly" or "winhid";
 
     private static bool IsEscaped(string value, int index)
     {

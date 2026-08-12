@@ -26,6 +26,7 @@ public sealed class NutConfigurationSchemaRegistry
     }
 
     public IReadOnlyList<NutConfigurationFileSchema> FileSchemas => _files.Values.OrderBy(schema => schema.FileKind).ToArray();
+    public IReadOnlyList<NutDriverConfigurationSchema> DriverSchemas => _drivers.Values.OrderBy(schema => schema.DriverId, StringComparer.OrdinalIgnoreCase).ToArray();
     public NutConfigurationFileSchema? GetSchema(NutConfigurationFileKind fileKind) => _files.GetValueOrDefault(fileKind);
     public NutConfigurationFieldDescriptor? GetField(string semanticId) => _fields.GetValueOrDefault(semanticId);
     public IReadOnlyList<NutConfigurationFieldDescriptor> GetFields(NutConfigurationFileKind fileKind, NutConfigurationFieldScope scope) =>
@@ -38,11 +39,7 @@ public sealed class NutConfigurationSchemaRegistry
         [
             Field(NutConfigurationFileKind.NutConf, "Nut.Mode", NutConfigurationEntryKind.Assignment, "MODE", NutConfigurationFieldScope.Global)
         ]),
-        new(NutConfigurationFileKind.UpsConf,
-        [
-            Field(NutConfigurationFileKind.UpsConf, "Ups.Driver", NutConfigurationEntryKind.Assignment, "driver", NutConfigurationFieldScope.Section, required: true),
-            Field(NutConfigurationFileKind.UpsConf, "Ups.Port", NutConfigurationEntryKind.Assignment, "port", NutConfigurationFieldScope.Section)
-        ], new("Ups.Section", "Semantic.Section.Ups")),
+        NutUpsConfigurationCatalog.CreateFileSchema(),
         new(NutConfigurationFileKind.UpsdConf,
         [
             Field(NutConfigurationFileKind.UpsdConf, "Upsd.Listen", NutConfigurationEntryKind.Directive, "LISTEN", NutConfigurationFieldScope.Repeated)
@@ -57,7 +54,7 @@ public sealed class NutConfigurationSchemaRegistry
             Field(NutConfigurationFileKind.UpsmonConf, "Upsmon.Monitor", NutConfigurationEntryKind.Directive, "MONITOR", NutConfigurationFieldScope.Repeated,
                 sensitive: true, fieldKind: NutConfigurationFieldKind.SecretChange)
         ])
-    ]);
+    ], NutUpsConfigurationCatalog.CreateDriverSchemas());
 
     private static NutConfigurationFieldDescriptor Field(
         NutConfigurationFileKind fileKind,
