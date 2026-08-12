@@ -14,6 +14,8 @@ public abstract class NutConfigurationNode
 
     public bool IsModified { get; protected set; }
 
+    internal string? SemanticIdentity { get; private set; }
+
     internal string Serialize() => (IsModified ? RenderModifiedText() : RawText) + LineEnding;
 
     internal void SetLineEnding(string lineEnding)
@@ -25,6 +27,12 @@ public abstract class NutConfigurationNode
     }
 
     internal void MarkInserted() => IsModified = true;
+
+    internal void AssignSemanticIdentity(string identity)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity);
+        SemanticIdentity ??= identity;
+    }
 
     protected virtual string RenderModifiedText() => RawText;
 }
@@ -66,7 +74,7 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
 {
     private readonly string _beforeValue;
     private readonly string _trailingWhitespace;
-    private readonly char? _quoteCharacter;
+    private char? _quoteCharacter;
 
     internal NutConfigurationAssignmentNode(
         string rawText,
@@ -122,6 +130,7 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
             return;
         }
 
+        if (_quoteCharacter is null && RequiresQuotes(value)) _quoteCharacter = '"';
         Value = value;
         RawValue = RenderValue(value);
         IsModified = true;
@@ -164,6 +173,9 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
             .Replace(quote.ToString(), $"\\{quote}", StringComparison.Ordinal);
         return $"{quote}{escaped}{quote}";
     }
+
+    private static bool RequiresQuotes(string value) =>
+        value.Any(char.IsWhiteSpace) || value.Contains('#') || value.Contains('"') || value.Contains('\\');
 }
 
 public sealed class NutConfigurationDirectiveNode : NutConfigurationNode

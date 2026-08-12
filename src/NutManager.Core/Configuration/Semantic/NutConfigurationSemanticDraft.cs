@@ -10,6 +10,7 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
     private readonly NutConfigurationSemanticValidator _validator;
     private readonly List<DraftMutation> _mutations = [];
     private readonly List<NutConfigurationSemanticReviewItem> _review = [];
+    private int _nextRepeatedRowIdentity;
     private bool _disposed;
 
     public NutConfigurationSemanticDraft(
@@ -103,8 +104,11 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
         if (descriptor.Scope != NutConfigurationFieldScope.Repeated || descriptor.Sensitive) return new(NutConfigurationMutationStatus.UnsupportedOperation, "Repeated.NotSupported");
         var serialized = descriptor.Codec.Serialize(value, descriptor.SemanticId);
         if (!serialized.IsValid || serialized.Value is null) return Invalid();
-        return Commit(new(DraftMutationKind.AddRepeated, descriptor, section, null, serialized.Value),
+        var identity = $"added:{_nextRepeatedRowIdentity}";
+        var result = Commit(new(DraftMutationKind.AddRepeated, descriptor, section, null, serialized.Value, RowIdentity: identity),
             ReviewFor(descriptor, NutConfigurationSemanticChangeOperation.AddRepeatedRow, section, null, null, serialized.Value));
+        if (result.Succeeded) _nextRepeatedRowIdentity++;
+        return result;
     }
 
     public NutConfigurationMutationResult RemoveRepeated(string semanticId, int occurrence, string? section = null)
@@ -115,6 +119,35 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
         return Commit(new(DraftMutationKind.Remove, descriptor, section, occurrence),
             ReviewFor(descriptor, NutConfigurationSemanticChangeOperation.RemoveRepeatedRow, section, occurrence,
                 descriptor.Sensitive ? "Semantic.Sensitive.Configured" : SafeCurrentValue(descriptor, section, occurrence), null, descriptor.Sensitive));
+    }
+
+    public NutConfigurationMutationResult EditRepeated(string semanticId, int occurrence, object value, string? section = null)
+    {
+        var descriptor = GetDescriptor(semanticId);
+        if (descriptor is null) return NotFound();
+        if (descriptor.Scope != NutConfigurationFieldScope.Repeated || descriptor.Sensitive)
+            return new(NutConfigurationMutationStatus.UnsupportedOperation, "Repeated.NotSupported");
+        var serialized = descriptor.Codec.Serialize(value, descriptor.SemanticId);
+        if (!serialized.IsValid || serialized.Value is null) return Invalid();
+        return Commit(new(DraftMutationKind.Set, descriptor, section, occurrence, serialized.Value),
+            ReviewFor(descriptor, NutConfigurationSemanticChangeOperation.EditRepeatedRow, section, occurrence,
+                SafeCurrentValue(descriptor, section, occurrence), serialized.Value));
+    }
+
+    public NutConfigurationMutationResult EditRepeated(string semanticId, string rowId, object value)
+    {
+        var target = Projection.Fields.SingleOrDefault(field => field.Descriptor.SemanticId == semanticId && field.StableRowId == rowId);
+        return target?.Occurrence is { } occurrence
+            ? EditRepeated(semanticId, occurrence, value, target.Section)
+            : new(NutConfigurationMutationStatus.TargetNotFound, "Repeated.RowNotFound");
+    }
+
+    public NutConfigurationMutationResult RemoveRepeated(string semanticId, string rowId)
+    {
+        var target = Projection.Fields.SingleOrDefault(field => field.Descriptor.SemanticId == semanticId && field.StableRowId == rowId);
+        return target?.Occurrence is { } occurrence
+            ? RemoveRepeated(semanticId, occurrence, target.Section)
+            : new(NutConfigurationMutationStatus.TargetNotFound, "Repeated.RowNotFound");
     }
 
     public NutConfigurationMutationResult AddSection(string name) => Commit(
@@ -228,7 +261,7 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
                 RemoveAllowMissing(mutator, descriptor, mutation.Section, mutation.Occurrence),
             DraftMutationKind.Automatic => SetOrInsert(mutator, descriptor, mutation.Value!, mutation.Section, mutation.Occurrence),
             DraftMutationKind.Remove => Remove(mutator, descriptor, mutation.Section, mutation.Occurrence),
-            DraftMutationKind.AddRepeated => Insert(mutator, descriptor, mutation.Value!, mutation.Section),
+            DraftMutationKind.AddRepeated => Insert(mutator, descriptor, mutation.Value!, mutation.Section, mutation.RowIdentity),
             _ => new(NutConfigurationMutationStatus.UnsupportedOperation, "Mutation.Unsupported")
         };
     }
@@ -259,10 +292,15 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
             : set;
     }
 
-    private NutConfigurationMutationResult Insert(NutConfigurationDocumentMutator mutator, NutConfigurationFieldDescriptor descriptor, string value, string? section) =>
+    private NutConfigurationMutationResult Insert(
+        NutConfigurationDocumentMutator mutator,
+        NutConfigurationFieldDescriptor descriptor,
+        string value,
+        string? section,
+        string? semanticIdentity = null) =>
         descriptor.EntryKind == NutConfigurationEntryKind.Assignment
-            ? mutator.InsertAssignment(descriptor.Name, value, section, descriptor.InsertionOrder, PreferredOrder(descriptor))
-            : mutator.InsertDirective(descriptor.Name, value, section, descriptor.InsertionOrder, PreferredOrder(descriptor));
+            ? mutator.InsertAssignment(descriptor.Name, value, section, descriptor.InsertionOrder, PreferredOrder(descriptor), semanticIdentity)
+            : mutator.InsertDirective(descriptor.Name, value, section, descriptor.InsertionOrder, PreferredOrder(descriptor), semanticIdentity);
 
     private IReadOnlyDictionary<string, int> PreferredOrder(NutConfigurationFieldDescriptor descriptor) =>
         _schema.Fields.Where(field => field.EntryKind == descriptor.EntryKind && field.Scope == descriptor.Scope)
@@ -371,7 +409,8 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
         string? Value = null,
         string? CustomName = null,
         NutConfigurationEntryKind CustomEntryKind = NutConfigurationEntryKind.Assignment,
-        SensitivePayload? Sensitive = null);
+        SensitivePayload? Sensitive = null,
+        string? RowIdentity = null);
 
     private sealed class SensitivePayload(char[] value) : IDisposable
     {

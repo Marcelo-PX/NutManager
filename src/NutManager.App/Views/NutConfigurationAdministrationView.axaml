@@ -68,6 +68,16 @@
                 <DataTemplate DataType="viewModels:UpsConfigurationEditorViewModel"><views:UpsConfigurationEditorView /></DataTemplate>
               </ContentControl.DataTemplates>
             </ContentControl>
+            <ContentControl Content="{Binding NutGeneralConfigurationEditor}" IsVisible="{Binding IsNutGeneralConfigurationEditorVisible}">
+              <ContentControl.DataTemplates>
+                <DataTemplate DataType="viewModels:NutGeneralConfigurationEditorViewModel"><views:NutGeneralConfigurationEditorView /></DataTemplate>
+              </ContentControl.DataTemplates>
+            </ContentControl>
+            <ContentControl Content="{Binding UpsdConfigurationEditor}" IsVisible="{Binding IsUpsdConfigurationEditorVisible}">
+              <ContentControl.DataTemplates>
+                <DataTemplate DataType="viewModels:UpsdConfigurationEditorViewModel"><views:UpsdConfigurationEditorView /></DataTemplate>
+              </ContentControl.DataTemplates>
+            </ContentControl>
             <ItemsControl ItemsSource="{Binding Sections}" IsEnabled="{Binding CanEditEntries}" IsVisible="{Binding IsLegacyConfigurationEditorVisible}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:NutConfigurationSectionViewModel">

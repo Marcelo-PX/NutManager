@@ -17,7 +17,11 @@ public sealed record NutConfigurationSemanticField(
     string? Section,
     string? RowId,
     int? Occurrence,
-    NutSensitiveFieldState? SensitiveState = null);
+    NutSensitiveFieldState? SensitiveState = null)
+{
+    /// <summary>Draft-lifetime identity that survives occurrence shifts after repeated-row mutations.</summary>
+    public string? StableRowId { get; init; }
+}
 
 public sealed record NutConfigurationCustomParameter(
     string RowId,
@@ -160,11 +164,13 @@ public sealed class NutConfigurationSemanticProjector
                 ? NutConfigurationSemanticState.ExplicitAutoToken
                 : NutConfigurationSemanticState.Explicit;
         if (descriptor.Sensitive)
-            return new(descriptor, state, null, section, RowId(descriptor.SemanticId, section, occurrence), occurrence, NutSensitiveFieldState.Configured);
+            return new(descriptor, state, null, section, RowId(descriptor.SemanticId, section, occurrence), occurrence, NutSensitiveFieldState.Configured)
+            { StableRowId = StableRowId(descriptor.SemanticId, section, node, occurrence) };
         var parsed = descriptor.Codec.Parse(raw, descriptor.SemanticId);
         foreach (var issue in parsed.Issues)
             issues.Add(new(issue.Code, issue.Severity, issue.ResourceKey, descriptor.SemanticId, section, RowId(descriptor.SemanticId, section, occurrence)));
-        return new(descriptor, state, parsed.IsValid ? parsed.Value : raw, section, RowId(descriptor.SemanticId, section, occurrence), occurrence);
+        return new(descriptor, state, parsed.IsValid ? parsed.Value : raw, section, RowId(descriptor.SemanticId, section, occurrence), occurrence)
+        { StableRowId = StableRowId(descriptor.SemanticId, section, node, occurrence) };
     }
 
     private static NutConfigurationSemanticState MissingState(NutConfigurationFieldDescriptor descriptor) => descriptor.Required
@@ -202,6 +208,8 @@ public sealed class NutConfigurationSemanticProjector
     }
 
     private static string RowId(string semanticId, string? section, int occurrence) => $"{semanticId}:{section ?? "global"}:{occurrence}";
+    private static string StableRowId(string semanticId, string? section, NutConfigurationNode node, int occurrence) =>
+        $"{semanticId}:{section ?? "global"}:{node.SemanticIdentity ?? occurrence.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
     private static bool MatchesScope(string? actualSection, NutConfigurationFieldScope scope, string? requestedSection) => scope switch
     {
         NutConfigurationFieldScope.Global => actualSection is null,

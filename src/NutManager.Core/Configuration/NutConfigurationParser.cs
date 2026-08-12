@@ -25,6 +25,7 @@ public sealed class NutConfigurationParser
                 currentSection = section.Name;
             }
 
+            node.AssignSemanticIdentity($"source:{nodes.Count}");
             nodes.Add(node);
         }
 
@@ -119,7 +120,9 @@ public sealed class NutConfigurationParser
             return false;
         }
 
-        if (fileKind == NutConfigurationFileKind.NutConf && rawText[..equalsIndex].Any(char.IsWhiteSpace))
+        if (fileKind == NutConfigurationFileKind.NutConf &&
+            (rawText[..equalsIndex].Any(char.IsWhiteSpace) ||
+             equalsIndex + 1 < rawText.Length && char.IsWhiteSpace(rawText[equalsIndex + 1])))
         {
             assignment = null!;
             return false;

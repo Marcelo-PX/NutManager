@@ -659,4 +659,100 @@
   <data name="Ups.Validation.Runtimecal.RuntimePositive" xml:space="preserve"><value>Os runtimes devem ser maiores que zero.</value></data>
   <data name="Ups.Validation.Runtimecal.LoadRange" xml:space="preserve"><value>As cargas devem estar entre zero e 100%.</value></data>
   <data name="Ups.Validation.Runtimecal.LoadOrder" xml:space="preserve"><value>A carga alta deve ser maior que a carga baixa.</value></data>
+  <data name="Config.General.Title" xml:space="preserve"><value>Configuração geral do NUT</value></data>
+  <data name="Config.General.Description" xml:space="preserve"><value>Configure nut.conf graficamente. Salvar não inicia nem reinicia o serviço.</value></data>
+  <data name="Config.General.Advanced" xml:space="preserve"><value>Comportamento geral e integração</value></data>
+  <data name="Config.Server.Title" xml:space="preserve"><value>Servidor NUT</value></data>
+  <data name="Config.Server.Description" xml:space="preserve"><value>Configure upsd.conf graficamente sem testar rede, sockets ou certificados.</value></data>
+  <data name="Config.Server.Behavior" xml:space="preserve"><value>Comportamento do servidor</value></data>
+  <data name="Config.Listen.Title" xml:space="preserve"><value>Endereços de escuta</value></data>
+  <data name="Config.Listen.SecurityHelp" xml:space="preserve"><value>LISTEN limita interfaces, mas não substitui firewall e controles de acesso. As alterações exigem reinício explícito do upsd.</value></data>
+  <data name="Config.Listen.Empty" xml:space="preserve"><value>Nenhum listener explícito. O NUT usará o comportamento padrão documentado sem adicionar linhas ao arquivo.</value></data>
+  <data name="Config.Listen.Address" xml:space="preserve"><value>Endereço, hostname ou *</value></data>
+  <data name="Config.Listen.OptionalPort" xml:space="preserve"><value>Porta opcional</value></data>
+  <data name="Config.Listen.Add" xml:space="preserve"><value>Adicionar listener</value></data>
+  <data name="Config.Listen.Save" xml:space="preserve"><value>Salvar listener</value></data>
+  <data name="Config.Listen.Remove" xml:space="preserve"><value>Remover listener</value></data>
+  <data name="Config.Tls.Title" xml:space="preserve"><value>TLS e certificados</value></data>
+  <data name="Config.Tls.BackendHelp" xml:space="preserve"><value>CERTFILE aplica-se ao backend OpenSSL; CERTPATH, CERTIDENT e CERTREQUEST ao NSS. O NutManager preserva valores existentes e não presume o backend da instalação.</value></data>
+  <data name="Config.Tls.CertificateIdentity" xml:space="preserve"><value>Identidade do certificado</value></data>
+  <data name="Config.Tls.Password" xml:space="preserve"><value>Nova senha da chave privada</value></data>
+  <data name="Config.Tls.ReplaceIdentity" xml:space="preserve"><value>Substituir CERTIDENT</value></data>
+  <data name="Config.Tls.RemoveIdentity" xml:space="preserve"><value>Remover CERTIDENT</value></data>
+  <data name="Config.Tls.CertificateIdentity.ChangeOnly" xml:space="preserve"><value>A senha existente nunca é exibida. Informe identidade e nova senha para substituir a diretiva completa.</value></data>
+  <data name="Config.Custom.Save" xml:space="preserve"><value>Salvar parâmetro</value></data>
+  <data name="Config.Field.Risky" xml:space="preserve"><value>Opção avançada: revise a documentação e os efeitos operacionais antes de aplicar.</value></data>
+  <data name="Config.Field.UseAutomatic" xml:space="preserve"><value>Remover configuração explícita</value></data>
+  <data name="Config.Field.ConfigureExplicitly" xml:space="preserve"><value>Configurar valor explicitamente</value></data>
+  <data name="Config.Unit.Seconds" xml:space="preserve"><value>segundos</value></data>
+  <data name="Config.Validation.ResolveBeforeReview" xml:space="preserve"><value>Corrija os erros da configuração semântica antes de revisar.</value></data>
+  <data name="Config.Validation.MutationFailed" xml:space="preserve"><value>A alteração não pôde ser aplicada sem ambiguidade.</value></data>
+  <data name="Config.Validation.Listen.Invalid" xml:space="preserve"><value>Informe um IPv4, IPv6, hostname ou wildcard * válido, sem resolver DNS.</value></data>
+  <data name="Config.Validation.Listen.Port" xml:space="preserve"><value>A porta explícita deve estar entre 1 e 65535.</value></data>
+  <data name="Config.Validation.Listen.Wildcard" xml:space="preserve"><value>Este listener expõe o servidor amplamente. Revise firewall e controles de acesso.</value></data>
+  <data name="Config.Validation.Argument.Invalid" xml:space="preserve"><value>Informe um único argumento técnico válido; valores com espaços serão citados de forma determinística.</value></data>
+  <data name="Config.Validation.CustomKnown" xml:space="preserve"><value>Este nome já possui um campo gráfico dedicado. Altere-o na seção correspondente.</value></data>
+  <data name="Semantic.Validation.Boolean" xml:space="preserve"><value>Use um valor booleano documentado pelo NUT.</value></data>
+  <data name="Config.Choice.none" xml:space="preserve"><value>Não iniciar automaticamente</value></data>
+  <data name="Config.Choice.standalone" xml:space="preserve"><value>Servidor local autônomo</value></data>
+  <data name="Config.Choice.netserver" xml:space="preserve"><value>Servidor de rede</value></data>
+  <data name="Config.Choice.netclient" xml:space="preserve"><value>Cliente de rede</value></data>
+  <data name="Config.Choice.stderr" xml:space="preserve"><value>Somente stderr</value></data>
+  <data name="Config.Choice.default" xml:space="preserve"><value>Comportamento padrão</value></data>
+  <data name="Config.Choice.0" xml:space="preserve"><value>Não solicitar certificado</value></data>
+  <data name="Config.Choice.1" xml:space="preserve"><value>Solicitar certificado</value></data>
+  <data name="Config.Choice.2" xml:space="preserve"><value>Exigir certificado válido</value></data>
+  <data name="Config.Field.Nut.Mode.Label" xml:space="preserve"><value>Modo do NUT</value></data>
+  <data name="Config.Field.Nut.Mode.Help" xml:space="preserve"><value>MODE é obrigatório e determina quais componentes o wrapper inicia. A alteração só é ativada por ação de serviço separada.</value></data>
+  <data name="Config.Field.Nut.AllowNoDevice.Label" xml:space="preserve"><value>Permitir servidor sem dispositivos</value></data>
+  <data name="Config.Field.Nut.AllowNoDevice.Help" xml:space="preserve"><value>ALLOW_NO_DEVICE permite iniciar o upsd sem seções de UPS; pode sobrescrever a configuração equivalente de upsd.conf.</value></data>
+  <data name="Config.Field.Nut.AllowNotAllListeners.Label" xml:space="preserve"><value>Permitir listeners indisponíveis</value></data>
+  <data name="Config.Field.Nut.AllowNotAllListeners.Help" xml:space="preserve"><value>ALLOW_NOT_ALL_LISTENERS permite iniciar quando nem todo LISTEN pode ser atendido.</value></data>
+  <data name="Config.Field.Nut.UpsdOptions.Label" xml:space="preserve"><value>Opções adicionais do upsd</value></data>
+  <data name="Config.Field.Nut.UpsdOptions.Help" xml:space="preserve"><value>UPSD_OPTIONS é uma string técnica repassada pela integração do pacote; o NutManager não a executa.</value></data>
+  <data name="Config.Field.Nut.UpsmonOptions.Label" xml:space="preserve"><value>Opções adicionais do upsmon</value></data>
+  <data name="Config.Field.Nut.UpsmonOptions.Help" xml:space="preserve"><value>UPSMON_OPTIONS é uma string técnica repassada pela integração do pacote; o NutManager não a executa.</value></data>
+  <data name="Config.Field.Nut.PoweroffWait.Label" xml:space="preserve"><value>Espera após desligamento emergencial</value></data>
+  <data name="Config.Field.Nut.PoweroffWait.Help" xml:space="preserve"><value>POWEROFF_WAIT aceita sintaxe de duração dependente do pacote e pode ser perigoso. Configurar não executa desligamento.</value></data>
+  <data name="Config.Field.Nut.PoweroffQuiet.Label" xml:space="preserve"><value>Silenciar integração de desligamento</value></data>
+  <data name="Config.Field.Nut.PoweroffQuiet.Help" xml:space="preserve"><value>POWEROFF_QUIET reduz mensagens da integração de desligamento.</value></data>
+  <data name="Config.Field.Nut.DebugLevel.Label" xml:space="preserve"><value>Nível de depuração padrão</value></data>
+  <data name="Config.Field.Nut.DebugLevel.Help" xml:space="preserve"><value>NUT_DEBUG_LEVEL controla a verbosidade padrão dos daemons e pode gerar muitos logs.</value></data>
+  <data name="Config.Field.Nut.DebugPid.Label" xml:space="preserve"><value>Incluir PID no debug</value></data>
+  <data name="Config.Field.Nut.DebugPid.Help" xml:space="preserve"><value>NUT_DEBUG_PID inclui o identificador do processo nas mensagens de debug.</value></data>
+  <data name="Config.Field.Nut.DebugProcessName.Label" xml:space="preserve"><value>Incluir nome do processo no debug</value></data>
+  <data name="Config.Field.Nut.DebugProcessName.Help" xml:space="preserve"><value>NUT_DEBUG_PROCNAME identifica o processo nas mensagens.</value></data>
+  <data name="Config.Field.Nut.DebugSyslog.Label" xml:space="preserve"><value>Destino do debug do sistema</value></data>
+  <data name="Config.Field.Nut.DebugSyslog.Help" xml:space="preserve"><value>NUT_DEBUG_SYSLOG controla se o NUT usa syslog/Event Log ou mantém stderr.</value></data>
+  <data name="Config.Field.Nut.IgnoreProcessNameCheck.Label" xml:space="preserve"><value>Ignorar verificação do nome do processo</value></data>
+  <data name="Config.Field.Nut.IgnoreProcessNameCheck.Help" xml:space="preserve"><value>NUT_IGNORE_CHECKPROCNAME desativa uma verificação de segurança de PID/processo.</value></data>
+  <data name="Config.Field.Nut.QuietInitUpsNotify.Label" xml:space="preserve"><value>Silenciar aviso de integração de serviço</value></data>
+  <data name="Config.Field.Nut.QuietInitUpsNotify.Help" xml:space="preserve"><value>NUT_QUIET_INIT_UPSNOTIFY reduz avisos quando notificações de lifecycle não estão disponíveis.</value></data>
+  <data name="Config.Field.Upsd.Listen.Label" xml:space="preserve"><value>Listener do servidor</value></data>
+  <data name="Config.Field.Upsd.Listen.Help" xml:space="preserve"><value>LISTEN associa um endereço ou hostname e uma porta TCP opcional.</value></data>
+  <data name="Config.Field.Upsd.MaxAge.Label" xml:space="preserve"><value>Idade máxima de dados</value></data>
+  <data name="Config.Field.Upsd.MaxAge.Help" xml:space="preserve"><value>MAXAGE define por quantos segundos um driver pode deixar de responder antes dos dados ficarem stale.</value></data>
+  <data name="Config.Field.Upsd.TrackingDelay.Label" xml:space="preserve"><value>Retenção de rastreamento</value></data>
+  <data name="Config.Field.Upsd.TrackingDelay.Help" xml:space="preserve"><value>TRACKINGDELAY define por quantos segundos resultados de comandos rastreados são mantidos.</value></data>
+  <data name="Config.Field.Upsd.AllowNoDevice.Label" xml:space="preserve"><value>Permitir servidor sem dispositivos</value></data>
+  <data name="Config.Field.Upsd.AllowNoDevice.Help" xml:space="preserve"><value>ALLOW_NO_DEVICE controla o comportamento padrão do próprio upsd.conf.</value></data>
+  <data name="Config.Field.Upsd.AllowNotAllListeners.Label" xml:space="preserve"><value>Permitir listeners indisponíveis</value></data>
+  <data name="Config.Field.Upsd.AllowNotAllListeners.Help" xml:space="preserve"><value>ALLOW_NOT_ALL_LISTENERS permite iniciar quando ao menos um listener pode ser atendido.</value></data>
+  <data name="Config.Field.Upsd.StatePath.Label" xml:space="preserve"><value>Diretório de estado</value></data>
+  <data name="Config.Field.Upsd.StatePath.Help" xml:space="preserve"><value>STATEPATH aponta para sockets de drivers; ups.conf global ou ambiente pode ter precedência.</value></data>
+  <data name="Config.Field.Upsd.MaxConnections.Label" xml:space="preserve"><value>Máximo de conexões</value></data>
+  <data name="Config.Field.Upsd.MaxConnections.Help" xml:space="preserve"><value>MAXCONN limita conexões e deve ser alterado somente com entendimento dos limites do sistema.</value></data>
+  <data name="Config.Field.Upsd.CertificateFile.Label" xml:space="preserve"><value>Arquivo de certificado OpenSSL</value></data>
+  <data name="Config.Field.Upsd.CertificateFile.Help" xml:space="preserve"><value>CERTFILE aponta para o arquivo PEM usado quando o build utiliza OpenSSL.</value></data>
+  <data name="Config.Field.Upsd.CertificatePath.Label" xml:space="preserve"><value>Banco de certificados NSS</value></data>
+  <data name="Config.Field.Upsd.CertificatePath.Help" xml:space="preserve"><value>CERTPATH aponta para o diretório do banco NSS.</value></data>
+  <data name="Config.Field.Upsd.CertificateIdentity.Label" xml:space="preserve"><value>Identidade e senha do certificado</value></data>
+  <data name="Config.Field.Upsd.CertificateIdentity.Help" xml:space="preserve"><value>CERTIDENT é um composite NSS protegido; alterações exigem identidade e senha novas.</value></data>
+  <data name="Config.Field.Upsd.CertificateRequest.Label" xml:space="preserve"><value>Solicitação de certificado de cliente</value></data>
+  <data name="Config.Field.Upsd.CertificateRequest.Help" xml:space="preserve"><value>CERTREQUEST controla solicitação ou exigência de certificados quando o backend NSS oferece validação.</value></data>
+  <data name="Config.Field.Upsd.DisableWeakSsl.Label" xml:space="preserve"><value>Desabilitar TLS/SSL fraco</value></data>
+  <data name="Config.Field.Upsd.DisableWeakSsl.Help" xml:space="preserve"><value>DISABLE_WEAK_SSL restringe protocolos e cifras antigas quando o backend suporta.</value></data>
+  <data name="Config.Field.Upsd.DebugMinimum.Label" xml:space="preserve"><value>Nível mínimo de debug</value></data>
+  <data name="Config.Field.Upsd.DebugMinimum.Help" xml:space="preserve"><value>DEBUG_MIN define a verbosidade mínima do upsd e pode ser aplicado em reload pelo runtime.</value></data>
+  <data name="Semantic.Operation.EditRepeatedRow" xml:space="preserve"><value>Editar linha repetida</value></data>
 </root>

@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             x:Class="NutManager.App.Views.ServerCustomParametersView"
+             x:DataType="viewModels:ServerGeneralConfigurationEditorViewModel">
+  <Border Classes="nut-card">
+    <StackPanel Spacing="10">
+      <TextBlock Text="{Binding Strings[Semantic.Custom.Title]}" Classes="nut-section-title" />
+      <TextBlock Text="{Binding Strings[Semantic.Custom.LimitedValidation]}" Classes="nut-metadata" TextWrapping="Wrap" />
+      <ItemsControl ItemsSource="{Binding CustomParameters}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:ServerCustomParameterViewModel">
+            <WrapPanel Margin="0,3">
+              <TextBlock Width="160" Margin="0,0,8,8" Text="{Binding Name}" FontWeight="SemiBold" />
+              <TextBox Width="280" Margin="0,0,8,8" Text="{Binding DraftValue, Mode=TwoWay}" IsReadOnly="{Binding !CanEdit}" AutomationProperties.Name="{Binding Name}" />
+              <Button Margin="0,0,8,8" Content="{Binding SaveText}" Command="{Binding SaveCommand}" IsEnabled="{Binding CanEdit}" />
+              <Button Margin="0,0,8,8" Classes="nut-danger" Content="{Binding RemoveText}" Command="{Binding RemoveCommand}" IsEnabled="{Binding CanEdit}" />
+            </WrapPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <WrapPanel IsVisible="{Binding CanEdit}">
+        <TextBox Width="160" Margin="0,0,8,8" Text="{Binding NewCustomName, Mode=TwoWay}" PlaceholderText="{Binding Strings[Ups.Editor.NutKey]}" />
+        <TextBox Width="280" Margin="0,0,8,8" Text="{Binding NewCustomValue, Mode=TwoWay}" PlaceholderText="{Binding Strings[Ups.Editor.Value]}" />
+        <Button Margin="0,0,8,8" Content="{Binding Strings[Semantic.Operation.AddCustomParameter]}" Command="{Binding AddCustomParameterCommand}" />
+      </WrapPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

@@ -10,7 +10,7 @@ using NutManager.Core.Validation;
 
 namespace NutManager.App.ViewModels;
 
-public sealed partial class UpsConfigurationEditorViewModel : ObservableObject, IDisposable
+public sealed partial class UpsConfigurationEditorViewModel : ObservableObject, ISemanticConfigurationEditor
 {
     private readonly NutConfigurationFileSnapshot _snapshot;
     private readonly NutConfigurationFileSchema _schema;

@@ -44,7 +44,7 @@ Only one task should normally be in progress at a time.
 | T24B | DONE | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
 | T25 | DONE | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
 | T26 | DONE | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
-| T27 | TODO | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
+| T27 | DONE | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
 | T28 | TODO | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | TODO | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 
@@ -393,7 +393,7 @@ Create the Core semantic schema, projection, validation, and mutation layer that
 
 ## T26 — Graphical ups.conf configuration
 
-**Status:** TODO
+**Status:** DONE
 
 ### Objective
 
@@ -432,7 +432,7 @@ Provide a dedicated driver-aware UPS configuration form for `ups.conf`.
 
 ## T27 — Graphical server and general configuration
 
-**Status:** TODO
+**Status:** DONE
 
 ### Objective
 
@@ -459,6 +459,13 @@ Provide dedicated graphical `upsd.conf` and `nut.conf` forms.
 ### Completion criteria
 
 - supported server/general settings are graphical without altering unmanaged syntax.
+
+### Implemented
+
+- dedicated `nut.conf` General editor with required `MODE`, release-backed Advanced fields, `KEY=value` insertion grammar, and limited-validation custom assignments;
+- dedicated `upsd.conf` Server editor with stable repeated `LISTEN` rows, syntax-only IPv4/IPv6/hostname/wildcard validation, server/timeouts, TLS metadata, and protected change-only `CERTIDENT`;
+- semantic review, read-only redacted preview, external-change protection, and explicit Apply through the existing Local/SFTP/SMB pipelines only;
+- responsive graphical composition with ReadOnly/Manage capability enforcement and no DNS, socket, certificate, process, or service side effects.
 
 ## T28 — Graphical users and monitoring configuration
 

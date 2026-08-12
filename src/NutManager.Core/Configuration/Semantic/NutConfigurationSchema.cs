@@ -84,6 +84,28 @@ public sealed class NutConfigurationValueCodec : INutConfigurationValueCodec
                 : Invalid<string>(field, "Semantic.Value.Choice", "Semantic.Validation.Choice"));
     }
 
+    public static INutConfigurationValueCodec Boolean(string trueToken = "true", string falseToken = "false") => new NutConfigurationValueCodec(
+        (value, field) => ParseBoolean(value) is { } parsed
+            ? new(parsed, [])
+            : Invalid<object>(field, "Semantic.Value.Boolean", "Semantic.Validation.Boolean"),
+        (value, field) => value is bool boolean
+            ? new(boolean ? trueToken : falseToken, [])
+            : value is string text && ParseBoolean(text) is { } parsed
+                ? new(parsed ? trueToken : falseToken, [])
+                : Invalid<string>(field, "Semantic.Value.Boolean", "Semantic.Validation.Boolean"));
+
+    public static INutConfigurationValueCodec AliasChoice(IReadOnlyDictionary<string, string> aliases) => new NutConfigurationValueCodec(
+        (value, field) => aliases.TryGetValue(value, out var canonical)
+            ? new(canonical, [])
+            : Invalid<object>(field, "Semantic.Value.Choice", "Semantic.Validation.Choice"),
+        (value, field) => value is string text && aliases.TryGetValue(text, out var canonical)
+            ? new(canonical, [])
+            : Invalid<string>(field, "Semantic.Value.Choice", "Semantic.Validation.Choice"));
+
+    public static INutConfigurationValueCodec Create(
+        Func<string, string, FieldValidationResult<object>> parse,
+        Func<object, string, FieldValidationResult<string>> serialize) => new NutConfigurationValueCodec(parse, serialize);
+
     public static INutConfigurationValueCodec IntegerRange(int minimum, int maximum) => new NutConfigurationValueCodec(
         (value, field) => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed >= minimum && parsed <= maximum
             ? new(parsed, [])
@@ -102,6 +124,13 @@ public sealed class NutConfigurationValueCodec : INutConfigurationValueCodec
 
     private static FieldValidationResult<T> Invalid<T>(string field, string code, string resourceKey) =>
         new(default, [new FieldValidationIssue(field, code, ValidationSeverity.Error, resourceKey)]);
+
+    private static bool? ParseBoolean(string value) => value.Trim().ToLowerInvariant() switch
+    {
+        "true" or "yes" or "on" or "1" => true,
+        "false" or "no" or "off" or "0" => false,
+        _ => null
+    };
 }
 
 public sealed record NutConfigurationChoice(string TechnicalValue, string ResourceKey);

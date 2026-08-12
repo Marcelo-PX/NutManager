@@ -7,6 +7,7 @@ public enum NutConfigurationSemanticChangeOperation
     Remove,
     SetAutomatic,
     AddRepeatedRow,
+    EditRepeatedRow,
     RemoveRepeatedRow,
     AddSection,
     RemoveSection,
