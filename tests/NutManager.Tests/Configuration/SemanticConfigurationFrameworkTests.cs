@@ -24,7 +24,8 @@ public sealed class SemanticConfigurationFrameworkTests
         Assert.Equal(5, registry.FileSchemas.Count);
         Assert.Equal("driver", registry.GetField("Ups.Driver")?.Name);
         Assert.Equal(NutConfigurationFieldKind.SecretChange, registry.GetField("UpsdUsers.Password")?.FieldKind);
-        Assert.Empty(registry.GetFields(NutConfigurationFileKind.UpsConf, NutConfigurationFieldScope.Global));
+        Assert.Equal(["driverpath", "maxretry", "retrydelay"],
+            registry.GetFields(NutConfigurationFileKind.UpsConf, NutConfigurationFieldScope.Global).Select(field => field.Name));
     }
 
     [Fact]
@@ -481,6 +482,30 @@ public sealed class SemanticConfigurationFrameworkTests
         finally { Directory.Delete(directory, true); }
     }
 
+    [Fact]
+    public async Task UpsConfigurationCandidateUsesExistingLocalSafeWritePipeline()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var path = Path.Combine(directory, "ups.conf");
+            await File.WriteAllTextAsync(path, "[UPS]\r\ndriver = nutdrv_qx\r\nport = COM4\r\n", new UTF8Encoding(false));
+            var pipeline = new NutConfigurationFilePipeline();
+            var load = await pipeline.LoadAsync(path, NutConfigurationFileKind.UpsConf);
+            using var draft = new NutConfigurationSemanticDraft(load.Snapshot!.Document,
+                NutUpsConfigurationCatalog.CreateFileSchema(), new("nutdrv_qx"));
+            Assert.True(draft.Set("Ups.Description", "Local rack", "UPS").Succeeded);
+
+            var result = await pipeline.ApplyAsync(
+                NutConfigurationGeneratedPreviewFactory.Prepare(pipeline, load.Snapshot, draft).PreparedChange);
+
+            Assert.Equal(NutConfigurationApplyStatus.Success, result.Status);
+            Assert.Contains("desc = \"Local rack\"", await File.ReadAllTextAsync(path));
+            Assert.NotNull(result.BackupPath);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -503,6 +528,32 @@ public sealed class SemanticConfigurationFrameworkTests
 
         Assert.Equal(NutConfigurationApplyStatus.Success, result.Status);
         Assert.Equal("MODE=netserver\n", session.GetText(target));
+        Assert.Equal(1, session.CommitCalls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpsConfigurationCandidateUsesExistingSftpOrSmbRemotePipeline(bool smb)
+    {
+        var directory = smb ? @"\\server\share\etc\nut" : "/etc/nut";
+        IRemoteNutConfigurationPathPolicy policy = smb
+            ? new SmbRemoteNutConfigurationPathPolicy(@"\\server\share")
+            : SftpRemoteNutConfigurationPathPolicy.Instance;
+        await using var session = new FakeRemoteSession(policy, directory);
+        var target = policy.CombineDirectChild(directory, "ups.conf");
+        session.SetFile(target, "[UPS]\ndriver = nutdrv_qx\nport = COM4\n");
+        var pipeline = new RemoteNutConfigurationFilePipeline(session, directory, true);
+        var load = await pipeline.LoadAsync(target, NutConfigurationFileKind.UpsConf);
+        using var draft = new NutConfigurationSemanticDraft(load.Snapshot!.Document,
+            NutUpsConfigurationCatalog.CreateFileSchema(), new("nutdrv_qx"));
+        Assert.True(draft.Set("Ups.Description", "Remote rack", "UPS").Succeeded);
+
+        var result = await pipeline.ApplyAsync(
+            NutConfigurationGeneratedPreviewFactory.Prepare(pipeline, load.Snapshot, draft).PreparedChange);
+
+        Assert.Equal(NutConfigurationApplyStatus.Success, result.Status);
+        Assert.Contains("desc = \"Remote rack\"", session.GetText(target));
         Assert.Equal(1, session.CommitCalls);
     }
 

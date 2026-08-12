@@ -6,11 +6,19 @@ For supported configuration, administrators should not need manual `.conf` editi
 
 ## UPS (`ups.conf`)
 
-**Administration → NUT Configuration → UPS** has a configured-UPS selector plus Add, Rename, and Remove actions with section-name validation. Identification contains UPS name and `desc`. Driver selection supports detected/installed choices, explicit documented input, and Detect automatically; detection persists a concrete required driver after confirmation.
+**Administration → NUT Configuration → UPS** has a configured-UPS selector plus Add, Rename, and Remove actions with section-name validation. Identification contains UPS name and `desc`. Driver selection supports passively detected/installed choices and explicit technical input. Passive discovery never selects or persists a driver automatically.
 
-Port control depends on the driver: Automatic, COM selector, USB auto, network endpoint, device path, or custom. Local COM choices use passive Windows enumeration; remote profiles do not pretend to enumerate a server's COM ports. Protocol choices and Automatic are offered only where a driver schema documents them. Dynamic Basic/Advanced driver parameters can model documented connection, polling, battery, and driver-specific options. UI-only helper metadata is never emitted as an invented NUT directive.
+Port control depends on the driver: serial-capable schemas can suggest passively enumerated local COM names, `usbhid-ups` suggests its documented `auto` token, and network or unknown drivers retain explicit technical input. Remote profiles do not pretend to enumerate a server's COM ports. Protocol choices and Automatic are offered only where a driver schema documents them. Dynamic Basic/Advanced driver parameters model documented connection, polling, battery, and driver-specific options. UI-only helper metadata is never emitted as an invented NUT directive.
 
-The planned runtime-calibration assistant collects high/low load percentages and runtimes, validates high load > low load and positive valid values, generates official `runtimecal` syntax, previews it, and changes only the semantic draft after **Use calibration**. It does not fabricate `battery.runtime`.
+The implemented runtime-calibration assistant collects high/low load percentages and runtimes, validates high load > low load and positive valid values, generates official `runtimecal = runtime_high,load_high,runtime_low,load_low` syntax, previews it, and changes only the semantic draft after **Use calibration**. It does not fabricate `battery.runtime`, start a process, run a calibration command, or discharge the UPS.
+
+### Implemented driver coverage and limits
+
+The structured production catalog covers documented options used by `nutdrv_qx`, `usbhid-ups`, and `snmp-ups`. It includes shared `ups.conf` retry/polling/description settings, applicable USB matching, documented Qx protocol/battery/runtime settings, USB HID selection/reconnect flags, and SNMP version/MIB/security fields. Sensitive SNMP values use change-only replacement and removal. The application never treats this list as every NUT driver: other valid driver executables found passively under the detected installation, and existing valid configured names, stay selectable with a visible limited-validation warning.
+
+Local COM choices reuse passive T17 metadata and do not open a port. Remote profiles do not receive local COM metadata. The form does not execute a driver or `upsdrvctl`; safe diagnostics remain the separately confirmed T17 workflow. Apply remains T14 preview/backup/temporary validation/replace/verify/rollback, including the existing T19 SFTP and T19B SMB transports.
+
+Primary references used for the production descriptors are the official NUT `ups.conf(5)`, `nutdrv_qx(8)`, `usbhid-ups(8)`, and `snmp-ups(8)` manuals. Where documentation does not establish a universal default or range, NutManager does not invent one.
 
 ## Server and general files
 

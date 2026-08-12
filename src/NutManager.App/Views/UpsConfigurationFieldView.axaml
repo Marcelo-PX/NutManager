@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             x:Class="NutManager.App.Views.UpsConfigurationFieldView"
+             x:DataType="viewModels:UpsConfigurationFieldViewModel">
+  <Border Classes="nut-card-elevated" Padding="12" Margin="0,0,0,8">
+    <StackPanel Spacing="5">
+      <TextBlock Text="{Binding Group}" Classes="nut-metadata" />
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock Grid.Column="1" Text="{Binding Unit}" Classes="nut-metadata" />
+      </Grid>
+      <TextBlock Text="{Binding Help}" Classes="nut-metadata" TextWrapping="Wrap" />
+      <CheckBox Content="{Binding Strings[Ups.Editor.Enabled]}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" IsVisible="{Binding IsFlag}"
+                AutomationProperties.Name="{Binding Label}" />
+      <ComboBox ItemsSource="{Binding Choices}" SelectedValueBinding="{Binding TechnicalValue}" SelectedValue="{Binding DraftValue, Mode=TwoWay}"
+                IsVisible="{Binding HasChoices}" AutomationProperties.Name="{Binding Label}">
+        <ComboBox.ItemTemplate><DataTemplate x:DataType="viewModels:UpsFieldChoiceViewModel"><TextBlock Text="{Binding DisplayName}" /></DataTemplate></ComboBox.ItemTemplate>
+      </ComboBox>
+      <TextBox Text="{Binding DraftValue, Mode=TwoWay}" IsVisible="{Binding IsValue}" AutomationProperties.Name="{Binding Label}" />
+      <StackPanel IsVisible="{Binding IsSensitive}" Spacing="5">
+        <TextBlock Text="{Binding SensitiveStateText}" Classes="nut-metadata" />
+        <TextBox x:Name="SensitiveReplacementBox"
+                 PasswordChar="●"
+                 PlaceholderText="{Binding Strings[Ups.Editor.SecretReplacement]}"
+                 AutomationProperties.Name="{Binding Label}" />
+        <WrapPanel>
+          <Button Content="{Binding Strings[Ups.Editor.ReplaceSecret]}" Click="ReplaceSensitiveButton_OnClick" Margin="0,0,8,0" />
+          <Button Classes="nut-danger" Content="{Binding Strings[Ups.Editor.Remove]}" Click="RemoveSensitiveButton_OnClick" IsVisible="{Binding IsSensitiveConfigured}" />
+        </WrapPanel>
+      </StackPanel>
+      <Button Content="{Binding AutomaticText}" Click="SetAutomaticButton_OnClick" IsVisible="{Binding SupportsAutomatic}" HorizontalAlignment="Left" />
+      <TextBlock Text="{Binding StateText}" Classes="nut-metadata" />
+    </StackPanel>
+  </Border>
+</UserControl>

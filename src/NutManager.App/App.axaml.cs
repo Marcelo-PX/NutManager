@@ -89,7 +89,8 @@ public partial class App : Application
             isLocalManagement ? new WindowsNutDriverDiagnostics() : null,
             runtimeProfile,
             remoteManagement,
-            settings.Language);
+            settings.Language,
+            isLocalManagement ? new WindowsNutDriverCatalogSource() : null);
         var settingsPage = new SettingsPageViewModel(
             settings,
             store,
@@ -127,6 +128,7 @@ public partial class App : Application
             runtimeProfile.Profile.Management.Mode,
             runtimeProfile.Profile.AccessMode,
             runtimeProfile.Profile.Monitoring.PreferredUpsName);
+        administration.SemanticReviewChanged += viewModel.SetSemanticReview;
         viewModel.ThemeChanged += async preference =>
         {
             ApplyTheme(preference);

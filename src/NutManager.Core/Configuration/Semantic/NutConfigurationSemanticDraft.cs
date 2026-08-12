@@ -4,7 +4,7 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
 {
     private readonly string _originalText;
     private readonly NutConfigurationFileSchema _schema;
-    private readonly NutConfigurationSemanticContext _context;
+    private NutConfigurationSemanticContext _context;
     private readonly NutConfigurationParser _parser = new();
     private readonly NutConfigurationSemanticProjector _projector = new();
     private readonly NutConfigurationSemanticValidator _validator;
@@ -34,6 +34,13 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
     public NutConfigurationSemanticProjection Projection { get; private set; } = null!;
     public NutConfigurationSemanticValidationResult Validation { get; private set; } = null!;
     public NutConfigurationSemanticReview Review => new(_review.ToArray());
+
+    public void UpdateContext(NutConfigurationSemanticContext context)
+    {
+        ThrowIfDisposed();
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        RefreshState();
+    }
 
     public NutConfigurationMutationResult Set(string semanticId, object value, string? section = null, int? occurrence = null)
     {

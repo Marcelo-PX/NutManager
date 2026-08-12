@@ -6,6 +6,7 @@ using NutManager.App.Localization;
 using NutManager.App.Services;
 using NutManager.Core.Administration;
 using NutManager.Core.Configuration;
+using NutManager.Core.Configuration.Semantic;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 
@@ -18,6 +19,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private INutConfigurationFilePipeline? _configurationPipeline;
     private readonly ILocalNutWindowsAdministration? _windowsAdministration;
     private readonly ILocalNutDriverDiagnostics? _driverDiagnostics;
+    private readonly ILocalNutDriverCatalogSource? _driverCatalogSource;
     private readonly ManagedNutServerRuntimeContext? _profileContext;
     private readonly RemoteManagementSessionViewModel? _remoteManagement;
     private NutInstallationInfo? _currentInstallation;
@@ -29,7 +31,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private int _installationContextVersion;
 
     public AdministrationPageViewModel()
-        : this(null, null, null, null, null, null, UiLanguagePreference.PtBr)
+        : this(null, null, null, null, null, null, UiLanguagePreference.PtBr, null)
     {
     }
 
@@ -40,7 +42,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ILocalNutDriverDiagnostics? driverDiagnostics = null,
         ManagedNutServerRuntimeContext? profileContext = null,
         RemoteManagementSessionViewModel? remoteManagement = null,
-        UiLanguagePreference language = UiLanguagePreference.PtBr)
+        UiLanguagePreference language = UiLanguagePreference.PtBr,
+        ILocalNutDriverCatalogSource? driverCatalogSource = null)
         : base(
             new NutManagerLocalizer(language).Get("Administration.Title"),
             profileContext?.Profile.Management.Mode == NutManagementMode.Remote
@@ -51,6 +54,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _configurationPipeline = configurationPipeline;
         _windowsAdministration = windowsAdministration;
         _driverDiagnostics = driverDiagnostics;
+        _driverCatalogSource = driverCatalogSource;
         _profileContext = profileContext;
         _remoteManagement = remoteManagement;
         Strings = new NutManagerLocalizer(language);
@@ -106,6 +110,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     [ObservableProperty]
     private IReadOnlyList<NutConfigurationPreviewLineViewModel> _previewLines;
+
+    [ObservableProperty]
+    private UpsConfigurationEditorViewModel? _upsConfigurationEditor;
+
+    [ObservableProperty]
+    private SemanticConfigurationReviewViewModel? _semanticReview;
 
     [ObservableProperty]
     private NutConfigurationFileItemViewModel? _selectedFile;
@@ -217,7 +227,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool HasNoLoadedFile => !HasLoadedFile;
 
-    public bool HasDraftChanges => _entries.Any(entry => entry.IsChanged);
+    public bool HasDraftChanges => _entries.Any(entry => entry.IsChanged) || UpsConfigurationEditor?.HasChanges == true;
+
+    public bool IsUpsConfigurationEditorVisible => UpsConfigurationEditor is not null;
+
+    public bool IsLegacyConfigurationEditorVisible => HasLoadedFile && UpsConfigurationEditor is null;
 
     public bool HasPreview => _preparedChange is not null;
 
@@ -291,7 +305,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanEditEntries => CanEditConfiguration && HasLoadedFile && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
 
-    public bool CanReview => CanEditConfiguration && HasLoadedFile && HasDraftChanges && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
+    public bool CanReview => CanEditConfiguration && HasLoadedFile && HasDraftChanges &&
+        (UpsConfigurationEditor is null || !UpsConfigurationEditor.HasChanges || UpsConfigurationEditor.CanReview) &&
+        !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
 
     public bool CanApply => CanEditConfiguration && HasPreview && _preparedDraftVersion == _draftVersion && IsPreviewConfirmed && !IsBusy && !IsDetectingInstallation && !IsRemoteSessionBusy;
 
@@ -416,6 +432,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public IReadOnlyList<string> PendingPermissionTargets => PendingAdministrativeAction?.PermissionRepairPlan?.AffectedPaths ?? Array.Empty<string>();
 
     public string CriticalResultText => "CRÍTICO — a configuração pode necessitar recuperação manual.";
+
+    public event Action<SemanticConfigurationReviewViewModel?>? SemanticReviewChanged;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -592,13 +610,28 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
                 return;
             }
 
-            if (!TryApplyDrafts(reloaded.Snapshot.Document))
+            NutConfigurationPreparedChange prepared;
+            if (UpsConfigurationEditor?.HasChanges == true)
+            {
+                if (!UpsConfigurationEditor.CanReview)
+                {
+                    SetStatus(Strings.Get("Ups.Validation.ResolveBeforeReview"));
+                    return;
+                }
+                var generated = UpsConfigurationEditor.Prepare(_configurationPipeline);
+                prepared = generated.PreparedChange;
+                SemanticReview = new SemanticConfigurationReviewViewModel(generated, UpsConfigurationEditor.Draft.Projection, Strings);
+                SemanticReviewChanged?.Invoke(SemanticReview);
+            }
+            else if (!TryApplyDrafts(reloaded.Snapshot.Document))
             {
                 SetStatus("O arquivo foi alterado externamente ou não é mais compatível com as alterações em edição.");
                 return;
             }
-
-            var prepared = _configurationPipeline.Prepare(reloaded.Snapshot);
+            else
+            {
+                prepared = _configurationPipeline.Prepare(reloaded.Snapshot);
+            }
             if (!prepared.HasChanges)
             {
                 SetStatus("Não há alterações para revisar.");
@@ -710,6 +743,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         {
             entry.ResetDraft();
         }
+
+        UpsConfigurationEditor?.Reset();
 
         await LoadSelectedFileAsync(cancellationToken);
     }
@@ -990,7 +1025,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
             _loadedSnapshot = result.Snapshot;
             expectedFile.SetLoaded();
-            BuildEntries(result.Snapshot.Document);
+            await BuildEditorsAsync(result.Snapshot, cancellationToken);
             InvalidatePreview();
             OnPropertyChanged(nameof(SelectedFileEncodingText));
             OnPropertyChanged(nameof(HasLoadedFile));
@@ -1206,6 +1241,26 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         NotifyWorkflowPropertiesChanged();
     }
 
+    private async Task BuildEditorsAsync(NutConfigurationFileSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        UpsConfigurationEditor?.Dispose();
+        UpsConfigurationEditor = null;
+        if (snapshot.FileKind == NutConfigurationFileKind.UpsConf)
+        {
+            BuildEntries(snapshot.Document);
+            IReadOnlyList<string>? installed = null;
+            if (IsLocalManagementProfile && _driverCatalogSource is not null && _currentInstallation is not null)
+                installed = await _driverCatalogSource.GetInstalledDriverNamesAsync(_currentInstallation, cancellationToken);
+            var editor = new UpsConfigurationEditorViewModel(snapshot, installed, IsLocalManagementProfile ? ComPorts : [], Strings);
+            editor.Changed += OnUpsConfigurationChanged;
+            UpsConfigurationEditor = editor;
+            _draftVersion++;
+            NotifyWorkflowPropertiesChanged();
+            return;
+        }
+        BuildEntries(snapshot.Document);
+    }
+
     private static NutConfigurationSectionViewModel CreateGeneralGroup(ICollection<NutConfigurationSectionViewModel> groups)
     {
         var group = new NutConfigurationSectionViewModel("Geral");
@@ -1224,6 +1279,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
 
         _loadedSnapshot = null;
+        if (UpsConfigurationEditor is not null)
+        {
+            UpsConfigurationEditor.Changed -= OnUpsConfigurationChanged;
+            UpsConfigurationEditor.Dispose();
+            UpsConfigurationEditor = null;
+        }
         _entries = Array.Empty<NutConfigurationEntryViewModel>();
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         InvalidatePreview();
@@ -1269,6 +1330,15 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         NotifyWorkflowPropertiesChanged();
     }
 
+    private void OnUpsConfigurationChanged()
+    {
+        _draftVersion++;
+        InvalidateAdministrativeAction();
+        InvalidateDriverDiagnostic();
+        InvalidatePreview();
+        NotifyWorkflowPropertiesChanged();
+    }
+
     private bool TryApplyDrafts(NutConfigurationDocument document)
     {
         foreach (var entry in _entries.Where(entry => entry.IsChanged))
@@ -1293,6 +1363,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _preparedDraftVersion = -1;
         PreviewLines = Array.Empty<NutConfigurationPreviewLineViewModel>();
         IsPreviewConfirmed = false;
+        SemanticReview = null;
+        SemanticReviewChanged?.Invoke(null);
         NotifyWorkflowPropertiesChanged();
     }
 
@@ -1381,6 +1453,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanSelectConfigurationFile));
         OnPropertyChanged(nameof(IsRemoteConfigurationReady));
         OnPropertyChanged(nameof(IsConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsUpsConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsLegacyConfigurationEditorVisible));
         OnPropertyChanged(nameof(CanChangeRemoteSessionContext));
         OnPropertyChanged(nameof(CanConnectRemote));
         OnPropertyChanged(nameof(CanDisconnectRemote));
@@ -1528,6 +1602,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     partial void OnTemporaryPathChanged(string? value) => OnPropertyChanged(nameof(HasTemporaryPath));
 
     partial void OnStatusMessageChanged(string? value) => OnPropertyChanged(nameof(HasStatusMessage));
+
+    partial void OnUpsConfigurationEditorChanged(UpsConfigurationEditorViewModel? value)
+    {
+        OnPropertyChanged(nameof(IsUpsConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsLegacyConfigurationEditorVisible));
+        NotifyWorkflowPropertiesChanged();
+    }
 
     private void OnRemoteConfigurationContextChanged(
         INutConfigurationFilePipeline? pipeline,
