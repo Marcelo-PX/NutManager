@@ -1228,17 +1228,23 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
                 return;
             }
 
-            _loadedSnapshot = result.Snapshot;
-            expectedFile.SetLoaded();
-            await BuildEditorsAsync(result.Snapshot, navigation.Token);
-            if (generation != _navigationGeneration)
+            EditorBuildResult? editors = await BuildEditorsAsync(result.Snapshot, navigation.Token);
+            if (generation != _navigationGeneration ||
+                !IsCurrentLoadTarget(expectedFile, expectedPath, expectedFileKind, expectedInstallationContextVersion))
             {
-                // A newer selection landed while the editors were being built; its own load owns the
-                // screen now, so drop what was just built instead of publishing it over the newer file.
-                ClearLoadedDocument();
+                // This generation no longer owns the screen. Its locally-built editors have never
+                // been published, so disposing them cannot disturb the newer selection.
+                editors.Dispose();
                 return;
             }
 
+            if (navigation.IsCancellationRequested)
+            {
+                editors.Dispose();
+                navigation.Token.ThrowIfCancellationRequested();
+            }
+
+            PublishEditors(result.Snapshot, expectedFile, editors);
             InvalidatePreview();
             OnPropertyChanged(nameof(SelectedFileEncodingText));
             OnPropertyChanged(nameof(HasLoadedFile));
@@ -1427,13 +1433,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         return true;
     }
 
-    private void BuildEntries(NutConfigurationDocument document)
+    private static EditorBuildResult BuildEntries(NutConfigurationDocument document)
     {
-        foreach (var entry in _entries)
-        {
-            entry.PropertyChanged -= OnEntryPropertyChanged;
-        }
-
         var groups = new List<NutConfigurationSectionViewModel>();
         NutConfigurationSectionViewModel? currentGroup = null;
         var entries = new List<NutConfigurationEntryViewModel>();
@@ -1464,7 +1465,6 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             currentGroup ??= CreateGeneralGroup(groups);
             currentGroup.Entries.Add(entry);
             entries.Add(entry);
-            entry.PropertyChanged += OnEntryPropertyChanged;
         }
 
         foreach (var group in groups)
@@ -1472,51 +1472,102 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             group.SetRawContentSummary(rawNodeCount);
         }
 
-        _entries = entries;
-        Sections = groups;
+        return new EditorBuildResult(entries, groups);
+    }
+
+    private async Task<EditorBuildResult> BuildEditorsAsync(
+        NutConfigurationFileSnapshot snapshot,
+        CancellationToken cancellationToken)
+    {
+        if (snapshot.FileKind == NutConfigurationFileKind.UpsConf)
+        {
+            var result = BuildEntries(snapshot.Document);
+            IReadOnlyList<string>? installed = null;
+            if (IsLocalManagementProfile && _driverCatalogSource is not null && _currentInstallation is not null)
+                installed = await _driverCatalogSource.GetInstalledDriverNamesAsync(_currentInstallation, cancellationToken);
+            result.UpsEditor = new UpsConfigurationEditorViewModel(
+                snapshot,
+                installed,
+                IsLocalManagementProfile ? ComPorts : [],
+                Strings);
+            return result;
+        }
+        if (snapshot.FileKind == NutConfigurationFileKind.NutConf)
+        {
+            return new EditorBuildResult([], [])
+            {
+                NutEditor = new NutGeneralConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration)
+            };
+        }
+        if (snapshot.FileKind == NutConfigurationFileKind.UpsdConf)
+        {
+            return new EditorBuildResult([], [])
+            {
+                UpsdEditor = new UpsdConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration)
+            };
+        }
+        return BuildEntries(snapshot.Document);
+    }
+
+    private void PublishEditors(
+        NutConfigurationFileSnapshot snapshot,
+        NutConfigurationFileItemViewModel selectedFile,
+        EditorBuildResult result)
+    {
+        foreach (var entry in _entries)
+        {
+            entry.PropertyChanged -= OnEntryPropertyChanged;
+        }
+
+        DisposeSemanticEditors();
+        _loadedSnapshot = snapshot;
+        selectedFile.SetLoaded();
+        _entries = result.Entries;
+        Sections = result.Sections;
+        foreach (var entry in _entries)
+        {
+            entry.PropertyChanged += OnEntryPropertyChanged;
+        }
+
+        if (result.UpsEditor is not null)
+        {
+            result.UpsEditor.Changed += OnUpsConfigurationChanged;
+            UpsConfigurationEditor = result.UpsEditor;
+            result.UpsEditor = null;
+        }
+        if (result.NutEditor is not null)
+        {
+            result.NutEditor.Changed += OnSemanticConfigurationChanged;
+            NutGeneralConfigurationEditor = result.NutEditor;
+            result.NutEditor = null;
+        }
+        if (result.UpsdEditor is not null)
+        {
+            result.UpsdEditor.Changed += OnSemanticConfigurationChanged;
+            UpsdConfigurationEditor = result.UpsdEditor;
+            result.UpsdEditor = null;
+        }
+
         _draftVersion++;
         NotifyWorkflowPropertiesChanged();
     }
 
-    private async Task BuildEditorsAsync(NutConfigurationFileSnapshot snapshot, CancellationToken cancellationToken)
+    private sealed class EditorBuildResult(
+        IReadOnlyList<NutConfigurationEntryViewModel> entries,
+        IReadOnlyList<NutConfigurationSectionViewModel> sections) : IDisposable
     {
-        DisposeSemanticEditors();
-        if (snapshot.FileKind == NutConfigurationFileKind.UpsConf)
+        public IReadOnlyList<NutConfigurationEntryViewModel> Entries { get; } = entries;
+        public IReadOnlyList<NutConfigurationSectionViewModel> Sections { get; } = sections;
+        public UpsConfigurationEditorViewModel? UpsEditor { get; set; }
+        public NutGeneralConfigurationEditorViewModel? NutEditor { get; set; }
+        public UpsdConfigurationEditorViewModel? UpsdEditor { get; set; }
+
+        public void Dispose()
         {
-            BuildEntries(snapshot.Document);
-            IReadOnlyList<string>? installed = null;
-            if (IsLocalManagementProfile && _driverCatalogSource is not null && _currentInstallation is not null)
-                installed = await _driverCatalogSource.GetInstalledDriverNamesAsync(_currentInstallation, cancellationToken);
-            var editor = new UpsConfigurationEditorViewModel(snapshot, installed, IsLocalManagementProfile ? ComPorts : [], Strings);
-            editor.Changed += OnUpsConfigurationChanged;
-            UpsConfigurationEditor = editor;
-            _draftVersion++;
-            NotifyWorkflowPropertiesChanged();
-            return;
+            UpsEditor?.Dispose();
+            NutEditor?.Dispose();
+            UpsdEditor?.Dispose();
         }
-        if (snapshot.FileKind == NutConfigurationFileKind.NutConf)
-        {
-            _entries = [];
-            Sections = [];
-            var editor = new NutGeneralConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration);
-            editor.Changed += OnSemanticConfigurationChanged;
-            NutGeneralConfigurationEditor = editor;
-            _draftVersion++;
-            NotifyWorkflowPropertiesChanged();
-            return;
-        }
-        if (snapshot.FileKind == NutConfigurationFileKind.UpsdConf)
-        {
-            _entries = [];
-            Sections = [];
-            var editor = new UpsdConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration);
-            editor.Changed += OnSemanticConfigurationChanged;
-            UpsdConfigurationEditor = editor;
-            _draftVersion++;
-            NotifyWorkflowPropertiesChanged();
-            return;
-        }
-        BuildEntries(snapshot.Document);
     }
 
     private static NutConfigurationSectionViewModel CreateGeneralGroup(ICollection<NutConfigurationSectionViewModel> groups)

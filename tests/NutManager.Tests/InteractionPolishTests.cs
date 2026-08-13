@@ -29,6 +29,39 @@ public sealed class InteractionPolishTests
         Assert.Contains(expected, Controls("NutStatusLed.axaml.cs"), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(NutLedState.Healthy, 2.0)]
+    [InlineData(NutLedState.Pending, 3.2)]
+    [InlineData(NutLedState.Critical, 3.2)]
+    [InlineData(NutLedState.Unavailable, 0.0)]
+    public void LedPulsePeriodsAreSemanticAndDeterministic(NutLedState state, double seconds)
+    {
+        Assert.Equal(TimeSpan.FromSeconds(seconds), NutStatusLed.PulsePeriodFor(state));
+    }
+
+    [Fact]
+    public void PendingAndCriticalShareTheExactSamePulseImplementation()
+    {
+        Assert.Equal(
+            NutStatusLed.PulsePeriodFor(NutLedState.Pending),
+            NutStatusLed.PulsePeriodFor(NutLedState.Critical));
+
+        var source = Controls("NutStatusLed.axaml.cs");
+        Assert.Contains("NutLedState.Pending or NutLedState.Critical", source, StringComparison.Ordinal);
+        Assert.Equal(1, source.Split("private void StartPulse(", StringSplitOptions.None).Length - 1);
+    }
+
+    [Fact]
+    public void LedStopsEveryCompositionAnimationOnDetachOrStaticState()
+    {
+        var source = Controls("NutStatusLed.axaml.cs");
+
+        Assert.Contains("OnDetachedFromVisualTree", source, StringComparison.Ordinal);
+        Assert.Contains("halo.StopAnimation(ScaleTarget)", source, StringComparison.Ordinal);
+        Assert.Contains("halo.StopAnimation(OpacityTarget)", source, StringComparison.Ordinal);
+        Assert.Contains("core.StopAnimation(OpacityTarget)", source, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheLedIsOneBallWhoseGlowIsABlurredShadowRatherThanAnotherCircle()
     {

@@ -21,8 +21,8 @@ public enum NutLedState
 /// <summary>
 /// The shell's status light. The breathing halo is the only continuous animation in the
 /// application and it is confined to this control: it runs on the render thread through the
-/// Composition API, so there is no timer and no UI-thread work per frame. States that mean
-/// "something is wrong" stay still, because a pulse reads as liveness.
+/// Composition API, so there is no timer and no UI-thread work per frame. Healthy, pending, and
+/// critical states breathe at their semantic cadence; unavailable stays still.
 /// </summary>
 public partial class NutStatusLed : UserControl
 {
@@ -60,6 +60,12 @@ public partial class NutStatusLed : UserControl
         ApplyState();
     }
 
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        StopPulse();
+        base.OnDetachedFromVisualTree(e);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -70,14 +76,7 @@ public partial class NutStatusLed : UserControl
 
     private void ApplyState()
     {
-        // Only a healthy link breathes. Amber breathes slowly to stay noticeable without nagging;
-        // red and grey hold still so a fault never looks like activity.
-        var period = State switch
-        {
-            NutLedState.Healthy => TimeSpan.FromSeconds(2.0),
-            NutLedState.Pending => TimeSpan.FromSeconds(3.2),
-            _ => TimeSpan.Zero
-        };
+        var period = PulsePeriodFor(State);
 
         // The shadow colour lives in a style, so the state is handed over as a class.
         Halo.Classes.Set("healthy", State == NutLedState.Healthy);
@@ -93,6 +92,13 @@ public partial class NutStatusLed : UserControl
 
         StartPulse(period);
     }
+
+    public static TimeSpan PulsePeriodFor(NutLedState state) => state switch
+    {
+        NutLedState.Healthy => TimeSpan.FromSeconds(2.0),
+        NutLedState.Pending or NutLedState.Critical => TimeSpan.FromSeconds(3.2),
+        _ => TimeSpan.Zero
+    };
 
     private void StartPulse(TimeSpan period)
     {
@@ -148,11 +154,13 @@ public partial class NutStatusLed : UserControl
     {
         Halo.Tag = null;
         _pulseRunning = false;
-        if (ElementComposition.GetElementVisual(Halo) is not { } halo) return;
-
-        // A held state still deserves a faint halo, just a motionless one.
-        halo.Scale = new Vector3D(1, 1, 1);
-        halo.Opacity = State == NutLedState.Unavailable ? 0f : 0.75f;
+        if (ElementComposition.GetElementVisual(Halo) is { } halo)
+        {
+            halo.StopAnimation(ScaleTarget);
+            halo.StopAnimation(OpacityTarget);
+            halo.Scale = new Vector3D(1, 1, 1);
+            halo.Opacity = State == NutLedState.Unavailable ? 0f : 0.75f;
+        }
 
         if (ElementComposition.GetElementVisual(Core) is { } core)
         {

@@ -135,6 +135,36 @@ public sealed class ConfigurationNavigationTests
     }
 
     [Fact]
+    public async Task DriverCatalogCompletionFromStaleNavigationCannotReplaceOrClearCurrentEditor()
+    {
+        var catalog = new GatedDriverCatalogSource();
+        var (viewModel, _) = await CreateAsync(catalog);
+        var upsConf = File(viewModel, "ups.conf");
+        var nutConf = File(viewModel, "nut.conf");
+
+        var staleSelection = viewModel.SelectFileAsync(upsConf);
+        await catalog.WaitUntilStartedAsync();
+
+        var currentSelection = viewModel.SelectFileAsync(nutConf);
+        await currentSelection;
+        Assert.NotNull(viewModel.NutGeneralConfigurationEditor);
+
+        catalog.Release();
+        await staleSelection;
+
+        Assert.Equal("nut.conf", viewModel.SelectedFile?.FileName);
+        Assert.Equal("nut.conf", viewModel.SelectedFileName);
+        Assert.NotNull(viewModel.NutGeneralConfigurationEditor);
+        Assert.Null(viewModel.UpsConfigurationEditor);
+        Assert.Null(viewModel.UpsdConfigurationEditor);
+        Assert.True(viewModel.HasLoadedFile);
+        Assert.False(viewModel.IsLoadingFile);
+        Assert.False(viewModel.IsBusy);
+        Assert.True(viewModel.CanSelectConfigurationFile);
+        Assert.Null(viewModel.StatusMessage);
+    }
+
+    [Fact]
     public async Task AFailedLoadReleasesTheListAndTheNextFileStillLoads()
     {
         var (viewModel, pipeline) = await CreateAsync();
@@ -216,7 +246,8 @@ public sealed class ConfigurationNavigationTests
     private static NutConfigurationFileItemViewModel File(AdministrationPageViewModel viewModel, string fileName) =>
         viewModel.ConfigurationFiles.Single(file => file.FileName == fileName);
 
-    private static async Task<(AdministrationPageViewModel ViewModel, NavigationPipeline Pipeline)> CreateAsync()
+    private static async Task<(AdministrationPageViewModel ViewModel, NavigationPipeline Pipeline)> CreateAsync(
+        ILocalNutDriverCatalogSource? driverCatalogSource = null)
     {
         const string root = "/nav/nut";
         const string etc = "/nav/nut/etc";
@@ -236,9 +267,34 @@ public sealed class ConfigurationNavigationTests
             ],
             "Teste");
 
-        var viewModel = new AdministrationPageViewModel(new NavigationDetector(installation), pipeline);
+        var viewModel = new AdministrationPageViewModel(
+            new NavigationDetector(installation),
+            pipeline,
+            driverCatalogSource: driverCatalogSource);
         await viewModel.InitializeAsync();
         return (viewModel, pipeline);
+    }
+
+    private sealed class GatedDriverCatalogSource : ILocalNutDriverCatalogSource
+    {
+        private readonly TaskCompletionSource<bool> _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task WaitUntilStartedAsync() => _started.Task;
+
+        public void Release() => _release.TrySetResult(true);
+
+        public async Task<IReadOnlyList<string>> GetInstalledDriverNamesAsync(
+            NutInstallationInfo installation,
+            CancellationToken cancellationToken)
+        {
+            _started.TrySetResult(true);
+            // Deliberately finish after cancellation to model an asynchronous dependency that has
+            // already crossed a non-cancellable boundary. Generation ownership must still protect
+            // the editor publication.
+            await _release.Task;
+            return ["nutdrv_qx"];
+        }
     }
 
     private sealed class NavigationDetector(NutInstallationInfo installation) : ILocalNutInstallationDetector

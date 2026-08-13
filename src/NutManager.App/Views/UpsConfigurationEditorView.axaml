@@ -56,13 +56,18 @@
 
     <!-- ==================== UPS section actions ==================== -->
     <Border Classes="nut-card-flat" Padding="14,12">
-      <WrapPanel>
+      <!--
+        Spacing belongs to the panel, not to each child. With per-child margins the gaps drifted
+        between 8 and 16px, and nothing carried a bottom margin at all, so whatever wrapped onto a
+        second row sat flush against the row above it. ItemSpacing and LineSpacing apply between
+        items only, so no stray gap is left at the edges of the card either.
+      -->
+      <WrapPanel ItemSpacing="10" LineSpacing="10">
         <TextBox Text="{Binding NewSectionName, Mode=TwoWay}"
                  PlaceholderText="{Binding Strings[Ups.Editor.NewUpsName]}"
                  Width="170"
-                 Margin="0,0,8,0"
                  AutomationProperties.Name="{Binding Strings[Ups.Editor.NewUpsName]}" />
-        <Button Command="{Binding AddSectionCommand}" Margin="0,0,16,0">
+        <Button Command="{Binding AddSectionCommand}">
           <StackPanel Orientation="Horizontal" Spacing="7">
             <PathIcon Classes="nut-icon-add" Data="{DynamicResource NutIconAdd}" Width="14" Height="14" />
             <TextBlock Text="{Binding Strings[Ups.Editor.AddUps]}" />
@@ -70,10 +75,9 @@
         </Button>
         <TextBox Text="{Binding RenameSectionName, Mode=TwoWay}"
                  Width="170"
-                 Margin="0,0,8,0"
                  IsVisible="{Binding HasSections}"
                  AutomationProperties.Name="{Binding Strings[Ups.Editor.RenameUpsName]}" />
-        <Button Command="{Binding RenameSectionCommand}" Margin="0,0,8,0" IsVisible="{Binding HasSections}">
+        <Button Command="{Binding RenameSectionCommand}" IsVisible="{Binding HasSections}">
           <StackPanel Orientation="Horizontal" Spacing="7">
             <PathIcon Classes="nut-icon-edit" Data="{DynamicResource NutIconEdit}" Width="14" Height="14" />
             <TextBlock Text="{Binding Strings[Ups.Editor.Rename]}" />
