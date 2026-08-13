@@ -36,6 +36,22 @@ public sealed class ShellPresentationTests
     }
 
     [Fact]
+    public void ProfileQuickMenuResourcesAreLocalizedInBothOfficialCultures()
+    {
+        var portuguese = new NutManagerLocalizer(UiLanguagePreference.PtBr);
+        var english = new NutManagerLocalizer(UiLanguagePreference.EnUs);
+
+        Assert.Equal("Perfis cadastrados", portuguese.Get("Shell.SavedProfiles"));
+        Assert.Equal("Saved profiles", english.Get("Shell.SavedProfiles"));
+        Assert.Equal("Abrir perfis", portuguese.Get("Shell.OpenProfiles"));
+        Assert.Equal("Open profiles", english.Get("Shell.OpenProfiles"));
+        Assert.Equal("Gerenciar perfis", portuguese.Get("Shell.ManageProfiles"));
+        Assert.Equal("Manage profiles", english.Get("Shell.ManageProfiles"));
+        Assert.Equal("© 2026 · NutManager · Marcelo Pacheco", portuguese.Get("Shell.Authorship"));
+        Assert.Equal(portuguese.Get("Shell.Authorship"), english.Get("Shell.Authorship"));
+    }
+
+    [Fact]
     public void TechnicalNutTokensAreInvariant()
     {
         var portuguese = new NutManagerLocalizer(UiLanguagePreference.PtBr);

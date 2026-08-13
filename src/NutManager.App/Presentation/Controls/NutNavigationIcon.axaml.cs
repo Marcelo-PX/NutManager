@@ -62,7 +62,7 @@ public partial class NutNavigationIcon : UserControl
     {
         if (!IsActive)
         {
-            foreach (var layer in new Visual[] { OverviewDetail, DevicesLedTop, DevicesLedBottom, GearBase, DiagnosticsDot, KnobTop, KnobBottom })
+            foreach (var layer in new Visual[] { OverviewDetail, DevicesLedTop, DevicesLedBottom, AdministrationBase, AdministrationBadge, AdministrationCheck, GearBase, DiagnosticsDot })
             {
                 NutIconMotion.Reset(layer, restingOpacity: 1);
             }
@@ -84,8 +84,10 @@ public partial class NutNavigationIcon : UserControl
                 break;
 
             case AppPage.Administration:
-                // A slow, continuous turn. Nothing snaps back when the pointer leaves mid-rotation.
-                NutIconMotion.Spin(GearBase, new Size(24, 24), TimeSpan.FromSeconds(7));
+                // A short lift and verified-badge pop reinforce authorization without looping.
+                NutIconMotion.NudgeOnce(AdministrationBase, -1.25, TimeSpan.FromMilliseconds(220));
+                NutIconMotion.PopOnce(AdministrationBadge, new Size(24, 24), 1.16, TimeSpan.FromMilliseconds(220));
+                NutIconMotion.PopOnce(AdministrationCheck, new Size(24, 24), 1.2, TimeSpan.FromMilliseconds(220));
                 break;
 
             case AppPage.Diagnostics:
@@ -94,10 +96,7 @@ public partial class NutNavigationIcon : UserControl
                 break;
 
             case AppPage.Settings:
-                // The knobs run their tracks and trade ends. The tracks span x=2.75..21.25 in the
-                // 24-unit box, so 6.5 units of travel stays comfortably inside them.
-                NutIconMotion.Slide(KnobTop, -6.5, TimeSpan.FromSeconds(2.6));
-                NutIconMotion.Slide(KnobBottom, 6.5, TimeSpan.FromSeconds(2.6));
+                NutIconMotion.Spin(GearBase, new Size(24, 24), TimeSpan.FromSeconds(7));
                 break;
         }
     }

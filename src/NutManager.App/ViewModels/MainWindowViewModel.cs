@@ -10,6 +10,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 {
     private readonly IReadOnlyDictionary<AppPage, PageViewModel> _pages;
     private readonly OverviewPageViewModel _overviewPage;
+    private readonly SettingsPageViewModel _settingsPage;
     private readonly bool _isMockModeConfigured;
     private readonly string? _activeEndpoint;
     private readonly string? _activeProfileName;
@@ -49,6 +50,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(devicesPage);
 
         _overviewPage = overviewPage;
+        _settingsPage = settingsPage ?? new SettingsPageViewModel();
         _isMockModeConfigured = mockMode;
         _activeEndpoint = string.IsNullOrWhiteSpace(activeEndpoint) ? null : activeEndpoint;
         _activeProfileName = string.IsNullOrWhiteSpace(activeProfileName) ? null : activeProfileName;
@@ -64,7 +66,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             [AppPage.Devices] = devicesPage,
             [AppPage.Administration] = administrationPage ?? new AdministrationPageViewModel(),
             [AppPage.Diagnostics] = diagnosticsPage ?? new DiagnosticsPageViewModel(),
-            [AppPage.Settings] = settingsPage ?? new SettingsPageViewModel()
+            [AppPage.Settings] = _settingsPage
         };
 
         NavigationItems = new List<NavigationItemViewModel>
@@ -159,6 +161,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public IReadOnlyList<NavigationItemViewModel> NavigationItems { get; }
     public IReadOnlyList<ThemeOption> ThemeOptions { get; }
+    public IReadOnlyList<ManagedProfileCardViewModel> ManagedProfileCards => _settingsPage.ManagedProfileCards;
     public NutManagerLocalizer Localizer { get; private set; }
 
     [ObservableProperty] private AppPage _selectedPage;
@@ -177,7 +180,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public bool IsSidebarOverlay => SidebarDisplay == SidebarDisplayState.Overlay;
     public bool IsWideLayout => ShellLayout == ShellLayoutState.Wide;
     public bool IsCompactLayout => ShellLayout == ShellLayoutState.Compact;
+    public bool IsFooterAuthorshipVisible => !IsCompactLayout;
     public bool IsOverlayOpen => IsSidebarOverlay && _isOverlayOpen;
+    public double NavigationOverlayOpacity => IsOverlayOpen ? 1d : 0d;
+    public Thickness NavigationOverlayMargin => IsOverlayOpen ? new Thickness(0) : new Thickness(-24, 0, 24, 0);
     public bool IsBackgroundInteractionEnabled => !IsOverlayOpen && !IsReviewDrawerOverlay;
     public bool IsNavigationToggleVisible => ShellLayout != ShellLayoutState.Medium;
     public double SidebarWidth => IsSidebarExpanded ? 220 : IsSidebarCollapsed ? 72 : 0;
@@ -211,6 +217,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     });
     public string ApplicationVersionText => $"v{typeof(MainWindowViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.0.0"}";
     public string AdministrationConfirmationText => Localizer.Get("Shell.AdministrationConfirmation");
+    public string FooterAuthorshipText => Localizer.Get("Shell.Authorship");
+    public string OpenProfilesText => Localizer.Get("Shell.OpenProfiles");
+    public string SavedProfilesText => Localizer.Get("Shell.SavedProfiles");
+    public string ManageProfilesText => Localizer.Get("Shell.ManageProfiles");
     public ConnectionPresentationState ConnectionPresentation => ShellPresentationMapper.ConnectionFor(
         _overviewPage.ConnectionState,
         _overviewPage.DataFreshness,
@@ -288,6 +298,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenManagedProfile(ManagedProfileCardViewModel? profile)
+    {
+        if (profile is not null)
+        {
+            // Selection remains owned by Settings. Its setter preserves a dirty draft by opening
+            // the existing decision flow instead of silently replacing it.
+            _settingsPage.SelectedProfileCard = profile;
+        }
+
+        Navigate(AppPage.Settings);
+    }
+
+    [RelayCommand]
     private void ToggleNavigation()
     {
         if (ShellLayout == ShellLayoutState.Medium) return;
@@ -296,6 +319,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             _isOverlayOpen = !_isOverlayOpen;
             OnPropertyChanged(nameof(IsOverlayOpen));
+            OnPropertyChanged(nameof(NavigationOverlayOpacity));
+            OnPropertyChanged(nameof(NavigationOverlayMargin));
             OnPropertyChanged(nameof(IsBackgroundInteractionEnabled));
             OnPropertyChanged(nameof(NavigationToggleName));
             return;
@@ -358,7 +383,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsSidebarOverlay));
         OnPropertyChanged(nameof(IsWideLayout));
         OnPropertyChanged(nameof(IsCompactLayout));
+        OnPropertyChanged(nameof(IsFooterAuthorshipVisible));
         OnPropertyChanged(nameof(IsOverlayOpen));
+        OnPropertyChanged(nameof(NavigationOverlayOpacity));
+        OnPropertyChanged(nameof(NavigationOverlayMargin));
         OnPropertyChanged(nameof(IsBackgroundInteractionEnabled));
         OnPropertyChanged(nameof(IsNavigationToggleVisible));
         OnPropertyChanged(nameof(SidebarWidth));
@@ -374,6 +402,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (!_isOverlayOpen) return;
         _isOverlayOpen = false;
         OnPropertyChanged(nameof(IsOverlayOpen));
+        OnPropertyChanged(nameof(NavigationOverlayOpacity));
+        OnPropertyChanged(nameof(NavigationOverlayMargin));
         OnPropertyChanged(nameof(IsBackgroundInteractionEnabled));
         OnPropertyChanged(nameof(NavigationToggleName));
     }

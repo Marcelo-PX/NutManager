@@ -180,10 +180,12 @@ public sealed class InteractionPolishTests
         Assert.Contains("NutIconMotion.Breathe(OverviewDetail", icon, StringComparison.Ordinal);
         Assert.Contains("NutIconMotion.Blink(DevicesLedTop", icon, StringComparison.Ordinal);
         Assert.Contains("NutIconMotion.Blink(DevicesLedBottom", icon, StringComparison.Ordinal);
-        Assert.Contains("NutIconMotion.Spin(GearBase", icon, StringComparison.Ordinal);
+        Assert.Contains("NutIconMotion.NudgeOnce(AdministrationBase", icon, StringComparison.Ordinal);
+        Assert.Contains("NutIconMotion.PopOnce(AdministrationBadge", icon, StringComparison.Ordinal);
+        Assert.Contains("NutIconMotion.PopOnce(AdministrationCheck", icon, StringComparison.Ordinal);
         Assert.Contains("NutIconMotion.Sweep(DiagnosticsDot", icon, StringComparison.Ordinal);
-        Assert.Contains("NutIconMotion.Slide(KnobTop", icon, StringComparison.Ordinal);
-        Assert.Contains("NutIconMotion.Slide(KnobBottom", icon, StringComparison.Ordinal);
+        Assert.Contains("case AppPage.Settings:", icon, StringComparison.Ordinal);
+        Assert.Contains("NutIconMotion.Spin(GearBase", icon, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -201,19 +203,72 @@ public sealed class InteractionPolishTests
     }
 
     [Fact]
-    public void TheSlidingHandlesCarryTheirRingsSoNothingComesApart()
+    public void AdministrationAndSettingsUseDistinctSemanticIconFamilies()
     {
-        // Fluent draws the tracks and both handle rings in one path. Sliding only the fill left the
-        // ring behind and read as a rendering fault, so the glyph is split into tracks plus handles.
         var icons = Themes("NutIcons.axaml");
         var control = Controls("NutNavigationIcon.axaml");
 
-        Assert.Contains("NutIconSettingsTracks", icons, StringComparison.Ordinal);
-        Assert.Contains("NutIconSettingsRingTop", icons, StringComparison.Ordinal);
-        Assert.Contains("NutIconSettingsRingBottom", icons, StringComparison.Ordinal);
-        Assert.Contains("x:Name=\"KnobTop\"", control, StringComparison.Ordinal);
-        Assert.Contains("NutIconSettingsRingTop", control, StringComparison.Ordinal);
-        Assert.DoesNotContain("NutIconSettingsBase", control, StringComparison.Ordinal);
+        Assert.Contains("NutIconAdministrationBase", icons, StringComparison.Ordinal);
+        Assert.Contains("NutIconAdministrationBadge", icons, StringComparison.Ordinal);
+        Assert.Contains("NutIconAdministrationCheck", icons, StringComparison.Ordinal);
+        Assert.Contains("NutIconAdministrationBase", control, StringComparison.Ordinal);
+        Assert.Contains("NutIconGearBase", control, StringComparison.Ordinal);
+        Assert.Contains("NutOnAccentBrush", Themes("NutShellStyles.axaml"), StringComparison.Ordinal);
+        Assert.DoesNotContain("NutIconSettingsTracks", control, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProfileFlyoutMatchesExpandedSidebarAndUsesSmoothEntrance()
+    {
+        var window = Repository.Read(Path.Combine("src", "NutManager.App", "MainWindow.axaml"));
+        var metrics = Themes("NutMetrics.axaml");
+
+        Assert.Contains("Width=\"{DynamicResource NutSidebarExpandedWidth}\"", window, StringComparison.Ordinal);
+        Assert.Contains("NutSidebarExpandedWidth\">220", metrics, StringComparison.Ordinal);
+        Assert.Contains("DoubleTransition Property=\"Opacity\" Duration=\"0:0:0.18\"", window, StringComparison.Ordinal);
+        Assert.Contains("ThicknessTransition Property=\"Margin\" Duration=\"0:0:0.22\"", window, StringComparison.Ordinal);
+        Assert.Contains("CubicEaseOut", window, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Border Width=\"300\"", window, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShellMotionUsesStateDrivenTransitionsWithoutFrameTimers()
+    {
+        var shell = Repository.Read(Path.Combine("src", "NutManager.App", "MainWindow.axaml"));
+
+        Assert.Contains("DoubleTransition Property=\"Width\" Duration=\"0:0:0.22\" Easing=\"CubicEaseOut\"", shell, StringComparison.Ordinal);
+        Assert.Contains("ThicknessTransition Property=\"Margin\" Duration=\"0:0:0.22\" Easing=\"CubicEaseOut\"", shell, StringComparison.Ordinal);
+        Assert.Contains("DoubleTransition Property=\"Opacity\" Duration=\"0:0:0.18\" Easing=\"CubicEaseOut\"", shell, StringComparison.Ordinal);
+        Assert.DoesNotContain("DispatcherTimer", shell, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PageHeadersMatchTheNavigationIconSemantics()
+    {
+        var administration = Repository.Read(Path.Combine("src", "NutManager.App", "Views", "AdministrationPageView.axaml"));
+        var settings = Repository.Read(Path.Combine("src", "NutManager.App", "Views", "SettingsPageView.axaml"));
+
+        Assert.Contains("NutIconAdministration", administration, StringComparison.Ordinal);
+        Assert.Contains("NutIconGearBase", settings, StringComparison.Ordinal);
+        Assert.DoesNotContain("NutIconSettings\" Width=\"20\"", settings, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProfileQuickMenuBindsOnlyNonSecretPresentationMetadata()
+    {
+        var shell = Repository.Read(Path.Combine("src", "NutManager.App", "MainWindow.axaml"));
+        var menu = shell[shell.IndexOf("x:Name=\"ProfileQuickMenuButton\"", StringComparison.Ordinal)..];
+        menu = menu[..menu.IndexOf("<!-- ==================== Footer", StringComparison.Ordinal)];
+
+        Assert.Contains("{Binding Name}", menu, StringComparison.Ordinal);
+        Assert.Contains("{Binding Endpoint}", menu, StringComparison.Ordinal);
+        Assert.Contains("{Binding ManagementMode}", menu, StringComparison.Ordinal);
+        Assert.Contains("{Binding AccessMode}", menu, StringComparison.Ordinal);
+        Assert.Contains("{Binding Transport}", menu, StringComparison.Ordinal);
+        Assert.DoesNotContain("Password", menu, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Passphrase", menu, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Credential", menu, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("PrivateKey", menu, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -107,6 +107,45 @@ public static class NutIconMotion
         visual.StartAnimation(ScaleProperty, animation);
     }
 
+    /// <summary>Moves a layer up and settles it once, for non-looping administrative feedback.</summary>
+    public static void NudgeOnce(Visual target, double distance, TimeSpan duration)
+    {
+        if (Visual(target) is not { } visual) return;
+        var animation = visual.Compositor.CreateVector3DKeyFrameAnimation();
+        animation.Target = OffsetProperty;
+        animation.Duration = duration;
+        animation.IterationCount = 1;
+        animation.InsertKeyFrame(0f, new Vector3D(0, 0, 0), Smooth);
+        animation.InsertKeyFrame(0.45f, new Vector3D(0, distance, 0), Smooth);
+        animation.InsertKeyFrame(1f, new Vector3D(0, 0, 0), Smooth);
+        visual.StartAnimation(OffsetProperty, animation);
+    }
+
+    /// <summary>Scales and fades a detail layer once, without becoming a notification loop.</summary>
+    public static void PopOnce(Visual target, Size size, double peak, TimeSpan duration)
+    {
+        if (Visual(target) is not { } visual) return;
+        visual.CenterPoint = new Vector3D(size.Width / 2, size.Height / 2, 0);
+
+        var scale = visual.Compositor.CreateVector3DKeyFrameAnimation();
+        scale.Target = ScaleProperty;
+        scale.Duration = duration;
+        scale.IterationCount = 1;
+        scale.InsertKeyFrame(0f, new Vector3D(0.86, 0.86, 1), Smooth);
+        scale.InsertKeyFrame(0.55f, new Vector3D(peak, peak, 1), Smooth);
+        scale.InsertKeyFrame(1f, new Vector3D(1, 1, 1), Smooth);
+        visual.StartAnimation(ScaleProperty, scale);
+
+        var opacity = visual.Compositor.CreateScalarKeyFrameAnimation();
+        opacity.Target = OpacityProperty;
+        opacity.Duration = duration;
+        opacity.IterationCount = 1;
+        opacity.InsertKeyFrame(0f, 0.25f, Smooth);
+        opacity.InsertKeyFrame(0.4f, 1f, Smooth);
+        opacity.InsertKeyFrame(1f, 1f, Smooth);
+        visual.StartAnimation(OpacityProperty, opacity);
+    }
+
     /// <summary>Breathes a layer's opacity between two levels, for a halo behind a live reading.</summary>
     public static void Glow(Visual target, double low, double high, TimeSpan period)
     {

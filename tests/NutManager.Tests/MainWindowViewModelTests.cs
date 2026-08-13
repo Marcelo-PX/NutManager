@@ -53,6 +53,16 @@ public sealed class MainWindowViewModelTests
 
         Assert.Equal(SidebarPreference.Collapsed, viewModel.SidebarPreference);
         Assert.Equal(SidebarDisplayState.Collapsed, viewModel.SidebarDisplay);
+        Assert.Equal(72, viewModel.SidebarWidth);
+    }
+
+    [Fact]
+    public void ExpandedSidebarKeepsItsSemanticWidth()
+    {
+        var viewModel = CreateShell(sidebarPreference: SidebarPreference.Expanded);
+
+        Assert.Equal(SidebarDisplayState.Expanded, viewModel.SidebarDisplay);
+        Assert.Equal(220, viewModel.SidebarWidth);
     }
 
     [Fact]
@@ -232,6 +242,74 @@ public sealed class MainWindowViewModelTests
 
         Assert.Equal(ConnectionPresentationState.Unavailable, viewModel.ConnectionPresentation);
     }
+
+    [Fact]
+    public void ProfileQuickMenuProjectsEveryExistingCardAndDoesNotActivateOnSelection()
+    {
+        var active = CreateProfile("Local", NutManagementMode.Local, ManagedNutServerAccessMode.Manage);
+        var other = CreateProfile("Remote", NutManagementMode.Remote, ManagedNutServerAccessMode.ReadOnly);
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, active.Id, [active, other]);
+        var settings = new SettingsPageViewModel(new ApplicationSettings(), null, profiles, null, runtimeProfileId: active.Id);
+        var viewModel = new MainWindowViewModel(
+            ThemePreference.System,
+            new OverviewPageViewModel(),
+            new DevicesPageViewModel(),
+            settings);
+
+        viewModel.OpenManagedProfileCommand.Execute(settings.ManagedProfileCards.Single(card => card.Profile.Id == other.Id));
+
+        Assert.Equal(2, viewModel.ManagedProfileCards.Count);
+        Assert.Single(viewModel.ManagedProfileCards, card => card.IsActive);
+        Assert.Equal(other.Id, settings.SelectedManagedProfile?.Id);
+        Assert.Equal(active.Id, profiles.ActiveProfileId);
+        Assert.Equal(AppPage.Settings, viewModel.SelectedPage);
+    }
+
+    [Fact]
+    public void ProfileQuickMenuSelectionPreservesDirtyDraftDecisionFlow()
+    {
+        var active = CreateProfile("Local", NutManagementMode.Local, ManagedNutServerAccessMode.Manage);
+        var other = CreateProfile("Remote", NutManagementMode.Remote, ManagedNutServerAccessMode.ReadOnly);
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, active.Id, [active, other]);
+        var settings = new SettingsPageViewModel(new ApplicationSettings(), null, profiles, null, runtimeProfileId: active.Id);
+        var viewModel = new MainWindowViewModel(
+            ThemePreference.System,
+            new OverviewPageViewModel(),
+            new DevicesPageViewModel(),
+            settings);
+        settings.ProfileDraft.Name = "Unsaved";
+
+        viewModel.OpenManagedProfileCommand.Execute(settings.ManagedProfileCards.Single(card => card.Profile.Id == other.Id));
+
+        Assert.Equal(active.Id, settings.SelectedManagedProfile?.Id);
+        Assert.True(settings.IsDirtyDraftDecisionVisible);
+        Assert.True(settings.IsProfileDraftDirty);
+        Assert.Equal(AppPage.Settings, viewModel.SelectedPage);
+    }
+
+    [Fact]
+    public void CompactLayoutHidesOnlyFooterAuthorship()
+    {
+        var viewModel = CreateShell(SidebarPreference.Expanded);
+
+        Assert.True(viewModel.IsFooterAuthorshipVisible);
+        viewModel.UpdateLayoutWidth(700);
+        Assert.False(viewModel.IsFooterAuthorshipVisible);
+        Assert.NotEmpty(viewModel.AdministrationConfirmationText);
+        Assert.NotEmpty(viewModel.ConnectionStatusText);
+    }
+
+    private static ManagedNutServerProfile CreateProfile(
+        string name,
+        NutManagementMode managementMode,
+        ManagedNutServerAccessMode accessMode) => new(
+        Guid.NewGuid(),
+        name,
+        new NutMonitoringProfile("127.0.0.1"),
+        managementMode == NutManagementMode.Remote
+            ? new NutManagementProfile(managementMode, "management.example", "/etc/nut")
+            : new NutManagementProfile(managementMode),
+        accessMode);
 
     private static MainWindowViewModel CreateShell(SidebarPreference sidebarPreference) => new(
         ThemePreference.System,

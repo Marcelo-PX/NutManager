@@ -132,6 +132,48 @@
     <Setter Property="BorderThickness" Value="0,0,1,0" />
   </Style>
 
+  <Style Selector="Button.nut-profile-card">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="10" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-profile-card /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-profile-card:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+
+  <Style Selector="Button.nut-profile-menu-item">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="9" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.nut-profile-menu-item /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-profile-menu-item:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+  </Style>
+  <Style Selector="Button.nut-profile-manage">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+
   <!--
     Every navigation item fills the sidebar's inner width, so the hover and selected surfaces all
     start and end at the same X regardless of how long the label is. Width comes from the layout,
@@ -269,11 +311,16 @@
     <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
   </Style>
 
-  <!-- Administration: the hub engages inside the gear. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-hub,
-                   Button.nut-navigation-item.selected Path.nut-nav-hub">
+  <!-- Administration: verified badge and check appear over the managed-profile silhouette. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-admin-badge,
+                   Button.nut-navigation-item.selected Path.nut-nav-admin-badge">
     <Setter Property="Opacity" Value="1" />
     <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-admin-check,
+                   Button.nut-navigation-item.selected Path.nut-nav-admin-check">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Fill" Value="{DynamicResource NutOnAccentBrush}" />
   </Style>
 
   <!-- Diagnostics: an endpoint reading appears at the end of the trace. -->
@@ -283,16 +330,11 @@
     <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
   </Style>
 
-  <!-- Settings: the two slider knobs light up, each in its own accent. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-knob-top,
-                   Button.nut-navigation-item.selected Path.nut-nav-knob-top">
+  <!-- Settings: the hub engages inside the gear. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-hub,
+                   Button.nut-navigation-item.selected Path.nut-nav-hub">
     <Setter Property="Opacity" Value="1" />
     <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
-  </Style>
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-knob-bottom,
-                   Button.nut-navigation-item.selected Path.nut-nav-knob-bottom">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutCyanBrush}" />
   </Style>
 
   <!-- Disabled items keep their geometry but drop all semantic emphasis. -->
@@ -346,20 +388,19 @@
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
   </Style>
 
-  <Style Selector="Border.nut-profile-card">
-    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="Padding" Value="10" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
-      </Transitions>
-    </Setter>
+  <Style Selector="FlyoutPresenter.nut-profile-flyout">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
-  <Style Selector="Border.nut-profile-card:pointerover">
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+
+  <Style Selector="Border.nut-profile-flyout-surface">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceElevatedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource NutRadiusLarge}" />
+    <Setter Property="BoxShadow" Value="0 12 32 0 #59000000" />
   </Style>
 
   <Style Selector="Border.nut-profile-avatar">

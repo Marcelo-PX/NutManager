@@ -129,4 +129,42 @@ public partial class MainWindow : Window
             eventArgs.Handled = true;
         }
     }
+
+    private void ProfileQuickMenuItem_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
+    {
+        if (DataContext is MainWindowViewModel viewModel && sender is Button { DataContext: ManagedProfileCardViewModel profile })
+        {
+            viewModel.OpenManagedProfileCommand.Execute(profile);
+            ProfileQuickMenuButton.Flyout?.Hide();
+        }
+    }
+
+    private void ProfileQuickMenuFlyout_OnOpened(object? sender, EventArgs eventArgs)
+    {
+        ProfileQuickMenuSurface.Opacity = 0;
+        ProfileQuickMenuSurface.Margin = new Thickness(0, 8, 0, 0);
+
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                ProfileQuickMenuSurface.Opacity = 1;
+                ProfileQuickMenuSurface.Margin = default;
+            },
+            DispatcherPriority.Render);
+    }
+
+    private void ProfileQuickMenuFlyout_OnClosed(object? sender, EventArgs eventArgs)
+    {
+        ProfileQuickMenuSurface.Opacity = 0;
+        ProfileQuickMenuSurface.Margin = new Thickness(0, 8, 0, 0);
+    }
+
+    private void ManageProfiles_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.OpenManagedProfileCommand.Execute(null);
+            ProfileQuickMenuButton.Flyout?.Hide();
+        }
+    }
 }
