@@ -79,10 +79,20 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         _statusItems = Array.Empty<OverviewStatusItemViewModel>();
     }
 
-    public OverviewPageViewModel(IUpsPollingCoordinator polling, UiLanguagePreference language = UiLanguagePreference.PtBr)
+    /// <summary>
+    /// The endpoint is passed separately because the polling state does not carry it: the
+    /// coordinator reports readings, not where they came from. Without it the connection card
+    /// reported the server address as unavailable while the shell header was showing that very
+    /// address, which is a wiring gap rather than a missing NUT variable.
+    /// </summary>
+    public OverviewPageViewModel(
+        IUpsPollingCoordinator polling,
+        UiLanguagePreference language = UiLanguagePreference.PtBr,
+        NutEndpoint? endpoint = null)
         : this(language)
     {
         _polling = polling;
+        _endpoint = endpoint;
         polling.StateChanged += ApplyPollingState;
         ApplyPollingState(polling.State);
     }
@@ -150,7 +160,7 @@ public sealed partial class OverviewPageViewModel : PageViewModel
 
     public string LastSuccessfulUpdateText => Snapshot is null
         ? Strings.Get("Status.Unavailable")
-        : Snapshot.LastSuccessfulUpdate.ToString("g", CultureInfo.CurrentCulture);
+        : NutTimestampPresentation.Local(Snapshot.LastSuccessfulUpdate, "g");
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -187,10 +197,14 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         OnPropertyChanged(nameof(SourceLabel));
         OnPropertyChanged(nameof(IsSimulated));
         OnPropertyChanged(nameof(LastSuccessfulUpdateText));
+        NotifyDashboardChanged();
     }
 
-    partial void OnConnectionStateChanged(ConnectionState value) =>
+    partial void OnConnectionStateChanged(ConnectionState value)
+    {
         OnPropertyChanged(nameof(ConnectionStateText));
+        OnPropertyChanged(nameof(IsConnected));
+    }
 
     partial void OnDataFreshnessChanged(DataFreshness value) =>
         OnPropertyChanged(nameof(DataFreshnessText));
@@ -198,8 +212,240 @@ public sealed partial class OverviewPageViewModel : PageViewModel
     partial void OnLoadErrorChanged(string? value) =>
         OnPropertyChanged(nameof(HasLoadError));
 
-    partial void OnStatusItemsChanged(IReadOnlyList<OverviewStatusItemViewModel> value) =>
+    partial void OnStatusItemsChanged(IReadOnlyList<OverviewStatusItemViewModel> value)
+    {
         OnPropertyChanged(nameof(HasNoStatusItems));
+        NotifyDashboardChanged();
+    }
+
+    // ==================== Dashboard presentation (T27A) ====================
+    // Every reading below is projected straight from the current snapshot. A missing NUT variable
+    // stays missing: the card keeps its composition and shows the unavailable label instead of a
+    // substituted or remembered value.
+
+    private string? Variable(string name) =>
+        Snapshot?.Variables.TryGetValue(name, out var variable) == true && !string.IsNullOrWhiteSpace(variable.Value)
+            ? variable.Value
+            : null;
+
+    private string UnavailableText => Strings.Get("Status.Unavailable");
+
+    private static string Number(decimal value) => value.ToString("0.##", CultureInfo.CurrentCulture);
+
+    public double? BatteryPercent => Snapshot?.BatteryChargePercentage is { } value ? (double)value : null;
+
+    public bool HasBatteryPercent => BatteryPercent is not null;
+
+    public double BatteryBarValue => BatteryPercent ?? 0d;
+
+    public string BatteryValueText => Snapshot?.BatteryChargePercentage is { } value ? $"{Number(value)}%" : UnavailableText;
+
+    public string BatterySeverityClass => BatteryPercent switch
+    {
+        null => "unavailable",
+        < 20 => "critical",
+        < 50 => "warning",
+        _ => "healthy"
+    };
+
+    public string? BatteryVoltageText => Snapshot?.BatteryVoltage is { } value ? $"{Number(value)} V" : null;
+
+    public bool HasBatteryVoltage => Snapshot?.BatteryVoltage is not null;
+
+    /// <summary>
+    /// Battery condition reported by a real NUT status token. NUT does not publish a "charged"
+    /// state, so when no battery-related token is present this stays null and the row is hidden
+    /// rather than showing an unavailable label beside an available charge reading.
+    /// </summary>
+    private string? BatteryStateToken =>
+        StatusTokens(StatusSemanticState.Charging) ??
+        StatusTokens(StatusSemanticState.Discharging) ??
+        StatusTokens(StatusSemanticState.LowBattery) ??
+        StatusTokens(StatusSemanticState.ReplaceBattery);
+
+    public string BatteryStateText => BatteryStateToken ?? UnavailableText;
+
+    public bool HasBatteryStateText => BatteryStateToken is not null;
+
+    public bool HasLoadPercent => LoadPercent is not null;
+
+    public bool HasInputVoltage => Snapshot?.InputVoltage is not null;
+
+    public bool HasOutputVoltage => Snapshot?.OutputVoltage is not null;
+
+    /// <summary>Localized unavailable label, rendered in a reduced style instead of the metric size.</summary>
+    public string UnavailableLabel => UnavailableText;
+
+    private string? StatusTokens(StatusSemanticState state) => Snapshot?.StatusTokens
+        .Where(token => token.State == state)
+        .Select(token => token.State switch
+        {
+            StatusSemanticState.Charging => Strings.Get("UpsStatus.Charging"),
+            StatusSemanticState.Discharging => Strings.Get("UpsStatus.Discharging"),
+            StatusSemanticState.LowBattery => Strings.Get("UpsStatus.LowBattery"),
+            StatusSemanticState.ReplaceBattery => Strings.Get("UpsStatus.ReplaceBattery"),
+            _ => token.OriginalToken
+        })
+        .FirstOrDefault();
+
+    public double? LoadPercent => Snapshot?.LoadPercentage is { } value ? (double)value : null;
+
+    public string LoadValueText => Snapshot?.LoadPercentage is { } value ? $"{Number(value)}%" : UnavailableText;
+
+    /// <summary>
+    /// Text drawn inside the gauge arc. An absent reading renders an em dash placeholder so the
+    /// long localized unavailable label is shown once, in reduced style, outside the arc.
+    /// </summary>
+    public string LoadGaugeText => Snapshot?.LoadPercentage is { } value ? $"{Number(value)}%" : "—";
+
+    /// <summary>Real and apparent power are optional NUT variables; they are shown only when reported.</summary>
+    public string? LoadPowerText
+    {
+        get
+        {
+            var watts = Variable("ups.realpower");
+            var voltAmps = Variable("ups.power");
+            return (watts, voltAmps) switch
+            {
+                (not null, not null) => $"{watts} W / {voltAmps} VA",
+                (not null, null) => $"{watts} W",
+                (null, not null) => $"{voltAmps} VA",
+                _ => null
+            };
+        }
+    }
+
+    public bool HasLoadPowerText => LoadPowerText is not null;
+
+    public string RuntimeValueText => Snapshot?.Runtime is { } runtime ? FormatDuration(runtime) : UnavailableText;
+
+    public bool HasRuntime => Snapshot?.Runtime is not null;
+
+    /// <summary>Raw NUT reading behind the humanised runtime, shown as technical metadata only.</summary>
+    public string? RuntimeRawText => Variable("battery.runtime") is { } seconds ? $"battery.runtime {seconds} s" : null;
+
+    public bool HasRuntimeRawText => RuntimeRawText is not null;
+
+    public string InputVoltageText => Snapshot?.InputVoltage is { } value ? $"{Number(value)} V" : UnavailableText;
+
+    public string OutputVoltageText => Snapshot?.OutputVoltage is { } value ? $"{Number(value)} V" : UnavailableText;
+
+    public string? FrequencyText => Snapshot?.Frequency is { } value ? $"{Number(value)} Hz" : null;
+
+    public bool HasFrequency => Snapshot?.Frequency is not null;
+
+    public string TemperatureText => Snapshot?.Temperature is { } value ? $"{Number(value)} °C" : UnavailableText;
+
+    public bool HasTemperature => Snapshot?.Temperature is not null;
+
+    public string DriverText => Variable("driver.name") ?? UnavailableText;
+
+    public string? DriverVersionText => Variable("driver.version.internal") ?? Variable("driver.version");
+
+    public bool HasDriverVersion => DriverVersionText is not null;
+
+    public string UpsTypeText => Variable("ups.type") ?? UnavailableText;
+
+    public bool HasUpsType => Variable("ups.type") is not null;
+
+    public OverviewStatusItemViewModel? PrimaryStatus => StatusItems.Count > 0 ? StatusItems[0] : null;
+
+    public bool HasPrimaryStatus => PrimaryStatus is not null;
+
+    public string PrimaryStatusToken => PrimaryStatus?.OriginalToken ?? "—";
+
+    public string PrimaryStatusText => PrimaryStatus?.StateText ?? UnavailableText;
+
+    private StatusSeverity? PrimarySeverity => Snapshot?.StatusTokens.Count > 0
+        ? Snapshot.StatusTokens.Max(token => token.Severity)
+        : null;
+
+    public bool IsStatusHealthy => PrimarySeverity is StatusSeverity.Normal or StatusSeverity.Informational;
+
+    public bool IsStatusWarning => PrimarySeverity == StatusSeverity.Warning;
+
+    public bool IsStatusCritical => PrimarySeverity == StatusSeverity.Critical;
+
+    public bool IsStatusUnavailable => PrimarySeverity is null;
+
+    /// <summary>
+    /// Plain-language meaning of the reported status token. This explains a real NUT state; it is
+    /// not a derived health score and is absent when the state is unknown.
+    /// </summary>
+    public string? PrimaryStatusDescription => Snapshot?.StatusTokens.Count > 0
+        ? Snapshot.StatusTokens
+            .OrderByDescending(token => token.Severity)
+            .Select(token => token.State switch
+            {
+                StatusSemanticState.Online => Strings.Get("UpsStatus.Online.Description"),
+                StatusSemanticState.OnBattery => Strings.Get("UpsStatus.OnBattery.Description"),
+                StatusSemanticState.LowBattery => Strings.Get("UpsStatus.LowBattery.Description"),
+                StatusSemanticState.ReplaceBattery => Strings.Get("UpsStatus.ReplaceBattery.Description"),
+                StatusSemanticState.Overloaded => Strings.Get("UpsStatus.Overloaded.Description"),
+                StatusSemanticState.Bypass => Strings.Get("UpsStatus.Bypass.Description"),
+                StatusSemanticState.Calibration => Strings.Get("UpsStatus.Calibration.Description"),
+                StatusSemanticState.OutputOff => Strings.Get("UpsStatus.OutputOff.Description"),
+                _ => null
+            })
+            .FirstOrDefault(description => description is not null)
+        : null;
+
+    public bool HasPrimaryStatusDescription => PrimaryStatusDescription is not null;
+
+    public bool IsConnected => ConnectionState == ConnectionState.Connected;
+
+    // Active configuration and administration shortcuts are supplied by the shell, which already
+    // owns this state. The dashboard only presents them; it performs no administrative action.
+    [ObservableProperty]
+    private IReadOnlyList<OverviewInfoRowViewModel> _activeConfigurationRows = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<OverviewShortcutViewModel> _administrationShortcuts = [];
+
+    public bool HasActiveConfiguration => ActiveConfigurationRows.Count > 0;
+
+    public bool HasAdministrationShortcuts => AdministrationShortcuts.Count > 0;
+
+    public void SetDashboardContext(
+        IReadOnlyList<OverviewInfoRowViewModel> activeConfiguration,
+        IReadOnlyList<OverviewShortcutViewModel> shortcuts)
+    {
+        ActiveConfigurationRows = activeConfiguration ?? [];
+        AdministrationShortcuts = shortcuts ?? [];
+    }
+
+    partial void OnActiveConfigurationRowsChanged(IReadOnlyList<OverviewInfoRowViewModel> value) =>
+        OnPropertyChanged(nameof(HasActiveConfiguration));
+
+    partial void OnAdministrationShortcutsChanged(IReadOnlyList<OverviewShortcutViewModel> value) =>
+        OnPropertyChanged(nameof(HasAdministrationShortcuts));
+
+    public string EndpointText => _endpoint is not null
+        ? $"{_endpoint.Host}:{_endpoint.Port.ToString(CultureInfo.InvariantCulture)}"
+        : UnavailableText;
+
+    public string SelectedUpsText => Snapshot?.Identity.Name ?? _upsName ?? UnavailableText;
+
+    private void NotifyDashboardChanged()
+    {
+        foreach (var property in DashboardProperties) OnPropertyChanged(property);
+    }
+
+    private static readonly string[] DashboardProperties =
+    [
+        nameof(BatteryPercent), nameof(HasBatteryPercent), nameof(BatteryBarValue), nameof(BatteryValueText),
+        nameof(BatterySeverityClass), nameof(BatteryVoltageText), nameof(HasBatteryVoltage), nameof(BatteryStateText),
+        nameof(HasBatteryStateText), nameof(HasLoadPercent), nameof(HasInputVoltage), nameof(HasOutputVoltage),
+        nameof(PrimaryStatusDescription), nameof(HasPrimaryStatusDescription),
+        nameof(LoadPercent), nameof(LoadValueText), nameof(LoadGaugeText), nameof(LoadPowerText), nameof(HasLoadPowerText),
+        nameof(RuntimeValueText), nameof(HasRuntime), nameof(RuntimeRawText), nameof(HasRuntimeRawText),
+        nameof(InputVoltageText), nameof(OutputVoltageText), nameof(FrequencyText), nameof(HasFrequency),
+        nameof(TemperatureText), nameof(HasTemperature), nameof(DriverText), nameof(DriverVersionText),
+        nameof(HasDriverVersion), nameof(UpsTypeText), nameof(HasUpsType),
+        nameof(PrimaryStatus), nameof(HasPrimaryStatus), nameof(PrimaryStatusToken), nameof(PrimaryStatusText),
+        nameof(IsStatusHealthy), nameof(IsStatusWarning), nameof(IsStatusCritical), nameof(IsStatusUnavailable),
+        nameof(IsConnected), nameof(EndpointText), nameof(SelectedUpsText)
+    ];
 
     private IReadOnlyList<OverviewMetricViewModel> CreateMetricCards(UpsSnapshot? snapshot) =>
     [
@@ -252,6 +498,14 @@ public sealed partial class OverviewPageViewModel : PageViewModel
                 StatusSeverity.Critical => Strings.Get("Severity.Critical"),
                 _ => Strings.Get("Common.Unknown")
             });
+}
+
+/// <summary>Diagnostics surfaces that map to a real NutManager capability.</summary>
+public enum DiagnosticsTab
+{
+    Overview,
+    Connectivity,
+    Environment
 }
 
 public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposable
@@ -309,6 +563,45 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     }
 
     public NutManagerLocalizer Strings { get; }
+
+    // ==================== T27A diagnostics presentation ====================
+    // Only tabs backed by a real capability exist. NutManager has no quick-test runner, no event
+    // log reader and no latency history, so no such surface is fabricated here.
+
+    [ObservableProperty]
+    private DiagnosticsTab _selectedTab = DiagnosticsTab.Overview;
+
+    public bool IsOverviewTab => SelectedTab == DiagnosticsTab.Overview;
+    public bool IsConnectivityTab => SelectedTab == DiagnosticsTab.Connectivity;
+    public bool IsEnvironmentTab => SelectedTab == DiagnosticsTab.Environment;
+
+    [RelayCommand]
+    private void ShowOverviewTab() => SelectedTab = DiagnosticsTab.Overview;
+
+    [RelayCommand]
+    private void ShowConnectivityTab() => SelectedTab = DiagnosticsTab.Connectivity;
+
+    [RelayCommand]
+    private void ShowEnvironmentTab() => SelectedTab = DiagnosticsTab.Environment;
+
+    partial void OnSelectedTabChanged(DiagnosticsTab value)
+    {
+        OnPropertyChanged(nameof(IsOverviewTab));
+        OnPropertyChanged(nameof(IsConnectivityTab));
+        OnPropertyChanged(nameof(IsEnvironmentTab));
+    }
+
+    // Categorical states derived from the live polling/installation state. These are never
+    // aggregated into a score: no health percentage or pass/fail tally is invented.
+    public bool IsConnectionHealthy => _pollingState.ConnectionState == ConnectionState.Connected;
+    public bool IsConnectionCritical => _pollingState.ConnectionState is ConnectionState.Disconnected or ConnectionState.ConnectionFailed;
+    public bool IsDataFresh => _pollingState.DataFreshness == DataFreshness.Fresh;
+    public bool IsDataStale => _pollingState.DataFreshness == DataFreshness.Stale;
+    public bool HasSnapshot => _pollingState.Snapshot is not null;
+    public bool HasLastError => !string.IsNullOrWhiteSpace(_pollingState.LastError);
+    public bool IsLocalInstallationDetected => _localInstallation.IsDetected;
+    public bool IsMockMode => _settings.MockMode;
+    public bool HasDevicesDiscovered => DiscoveredUpsCount > 0;
 
     public IReadOnlyList<string> DiagnosticGroups =>
     [
@@ -369,7 +662,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     };
     public string LastSuccessfulUpdateText => _pollingState.Snapshot is null
         ? Strings.Get("Status.Unavailable")
-        : _pollingState.Snapshot.LastSuccessfulUpdate.ToString("g", CultureInfo.CurrentCulture);
+        : NutTimestampPresentation.Local(_pollingState.Snapshot.LastSuccessfulUpdate, "g");
     public string LastErrorText => string.IsNullOrWhiteSpace(_pollingState.LastError) ? Strings.Get("Diagnostics.NoError") : _pollingState.LastError;
 
     public string LocalInstallationStatusText => _localInstallation.IsDetected
@@ -573,6 +866,12 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
         OnPropertyChanged(nameof(DataSourceText));
         OnPropertyChanged(nameof(LastSuccessfulUpdateText));
         OnPropertyChanged(nameof(LastErrorText));
+        OnPropertyChanged(nameof(IsConnectionHealthy));
+        OnPropertyChanged(nameof(IsConnectionCritical));
+        OnPropertyChanged(nameof(IsDataFresh));
+        OnPropertyChanged(nameof(IsDataStale));
+        OnPropertyChanged(nameof(HasSnapshot));
+        OnPropertyChanged(nameof(HasLastError));
     }
 
     private void NotifyDevicePropertiesChanged()

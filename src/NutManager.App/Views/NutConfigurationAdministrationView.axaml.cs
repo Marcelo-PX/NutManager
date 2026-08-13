@@ -45,10 +45,21 @@ public partial class NutConfigurationAdministrationView : UserControl
 
     private async void ConfigurationFileList_OnSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
     {
-        if (DataContext is AdministrationPageViewModel viewModel &&
-            eventArgs.AddedItems.OfType<NutConfigurationFileItemViewModel>().FirstOrDefault() is { } file)
+        if (DataContext is not AdministrationPageViewModel viewModel ||
+            eventArgs.AddedItems.OfType<NutConfigurationFileItemViewModel>().FirstOrDefault() is not { } file)
+        {
+            return;
+        }
+
+        // Nothing awaits this handler, so an escaping exception would tear the process down instead
+        // of surfacing. SelectFileAsync reports its own failures; this only stops the crash.
+        try
         {
             await viewModel.SelectFileAsync(file);
+        }
+        catch (Exception)
+        {
+            // Already reflected in the view model status.
         }
     }
 }

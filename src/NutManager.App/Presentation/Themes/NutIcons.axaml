@@ -1,15 +1,168 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <!-- PathIcon fills geometries, so every glyph uses closed shapes rather than stroke-only paths. -->
+  <!--
+    Shared vector iconography on a 24x24 grid.
+    PathIcon fills geometries and StreamGeometry uses the even-odd rule, so outlined glyphs are
+    expressed as an outer subpath plus an inner subpath that punches the interior through.
+    Keep new glyphs on the same grid and stroke weight (~1.6px equivalent) so scale stays uniform.
+  -->
+
+  <!-- Navigation -->
   <StreamGeometry x:Key="NutIconMenu">M3,5 L21,5 L21,7 L3,7 Z M3,11 L21,11 L21,13 L3,13 Z M3,17 L21,17 L21,19 L3,19 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconOverview">M3,11.5 L12,3 L21,11.5 M5,10 L5,21 L10,21 L10,15 L14,15 L14,21 L19,21 L19,10</StreamGeometry>
-  <StreamGeometry x:Key="NutIconDevices">M5,3 L19,3 L19,21 L5,21 Z M7,6 L17,6 L17,9 L7,9 Z M7,11 L17,11 L17,14 L7,14 Z M8,17 L11,17 L11,19 L8,19 Z M13,17 L16,17 L16,19 L13,19 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconAdministration">M10,2 L14,2 L15,5 L18,6 L21,4 L23,8 L20,10 L20,14 L23,16 L21,20 L18,18 L15,19 L14,22 L10,22 L9,19 L6,18 L3,20 L1,16 L4,14 L4,10 L1,8 L3,4 L6,6 L9,5 Z M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconDiagnostics">M2,12 L6,12 L9,4 L13,19 L16,10 L19,12 L22,12 L22,14 L18,14 L17,13 L13,22 L9,8 L7,14 L2,14 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconSettings">M3,6 L13,6 L13,8 L3,8 Z M18,6 L21,6 L21,8 L18,8 Z M15,4 L18,4 L18,10 L15,10 Z M3,11 L7,11 L7,13 L3,13 Z M12,11 L21,11 L21,13 L12,13 Z M8,9 L11,9 L11,15 L8,15 Z M3,16 L13,16 L13,18 L3,18 Z M18,16 L21,16 L21,18 L18,18 Z M15,14 L18,14 L18,20 L15,20 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconSun">M9,9 A4,4 0 1 0 15,15 A4,4 0 1 0 9,9 Z M11,1 L13,1 L13,5 L11,5 Z M11,19 L13,19 L13,23 L11,23 Z M1,11 L5,11 L5,13 L1,13 Z M19,11 L23,11 L23,13 L19,13 Z M4,4 L5.5,2.5 L8,5 L6.5,6.5 Z M16,18 L17.5,16.5 L20,19 L18.5,20.5 Z M16,6 L18.5,3.5 L20,5 L17.5,7.5 Z M4,20 L6.5,17.5 L8,19 L5.5,21.5 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconMoon">M19,15 A8,8 0 1 1 10,3 A7,7 0 0 0 19,15 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconChevronLeft">M16,4 L8,12 L16,20 L16,16 L12,12 L16,8 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconChevronRight">M8,4 L16,12 L8,20 L8,16 L12,12 L8,8 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconClose">M5,4 L12,11 L19,4 L20,5 L13,12 L20,19 L19,20 L12,13 L5,20 L4,19 L11,12 L4,5 Z</StreamGeometry>
+  <!-- Outlined house: one silhouette punched by its interior, so weight matches the other nav glyphs. -->
+  <StreamGeometry x:Key="NutIconOverview">M12,3 L21.4,10.6 L21.4,20.3 A1,1 0 0 1 20.4,21.3 L14.5,21.3 L14.5,15.3 L9.5,15.3 L9.5,21.3 L3.6,21.3 A1,1 0 0 1 2.6,20.3 L2.6,10.6 Z M12,5.2 L4.4,11.4 L4.4,19.5 L7.7,19.5 L7.7,13.5 L16.3,13.5 L16.3,19.5 L19.6,19.5 L19.6,11.4 Z</StreamGeometry>
+  <!-- Two rack units; the status dot sits inside the punched interior so it reads as a filled LED. -->
+  <StreamGeometry x:Key="NutIconDevices">M4,3.9 L20,3.9 A1.5,1.5 0 0 1 21.5,5.4 L21.5,9.6 A1.5,1.5 0 0 1 20,11.1 L4,11.1 A1.5,1.5 0 0 1 2.5,9.6 L2.5,5.4 A1.5,1.5 0 0 1 4,3.9 Z M4.2,5.6 L4.2,9.4 L19.8,9.4 L19.8,5.6 Z M6,6.6 L11,6.6 L11,8.4 L6,8.4 Z M17.3,6.6 A0.95,0.95 0 1 1 17.29,6.6 Z M4,12.9 L20,12.9 A1.5,1.5 0 0 1 21.5,14.4 L21.5,18.6 A1.5,1.5 0 0 1 20,20.1 L4,20.1 A1.5,1.5 0 0 1 2.5,18.6 L2.5,14.4 A1.5,1.5 0 0 1 4,12.9 Z M4.2,14.6 L4.2,18.4 L19.8,18.4 L19.8,14.6 Z M6,15.6 L11,15.6 L11,17.4 L6,17.4 Z M17.3,15.6 A0.95,0.95 0 1 1 17.29,15.6 Z</StreamGeometry>
+  <!-- Nonzero fill (F1) so the eight teeth union with the body instead of cancelling it. -->
+  <StreamGeometry x:Key="NutIconAdministration">F1 M12,3.9 A8.1,8.1 0 1 1 11.99,3.9 Z M12,8.7 A3.3,3.3 0 1 0 12.01,8.7 Z M10.4,1.9 L13.6,1.9 L13.6,6.3 L10.4,6.3 Z M10.4,17.7 L13.6,17.7 L13.6,22.1 L10.4,22.1 Z M1.9,10.4 L6.3,10.4 L6.3,13.6 L1.9,13.6 Z M17.7,10.4 L22.1,10.4 L22.1,13.6 L17.7,13.6 Z M16.24,5.50 L18.08,3.66 L20.34,5.92 L18.50,7.76 Z M7.76,5.50 L5.92,3.66 L3.66,5.92 L5.50,7.76 Z M16.24,18.50 L18.08,20.34 L20.34,18.08 L18.50,16.24 Z M7.76,18.50 L5.92,20.34 L3.66,18.08 L5.50,16.24 Z</StreamGeometry>
+  <!-- Even-weight pulse polyline built from unioned segments (F1). -->
+  <StreamGeometry x:Key="NutIconDiagnostics">F1 M2.6,11.1 L7.4,11.1 L7.4,12.9 L2.6,12.9 Z M6.56,11.68 L9.16,4.88 L10.84,5.52 L8.24,12.32 Z M9.14,5.45 L10.86,4.95 L14.86,18.55 L13.14,19.05 Z M13.16,18.48 L15.76,11.68 L17.44,12.32 L14.84,19.12 Z M16.6,11.1 L21.4,11.1 L21.4,12.9 L16.6,12.9 Z</StreamGeometry>
+  <!-- Three tracks with rounded knobs; F1 keeps the knobs solid over the rails. -->
+  <StreamGeometry x:Key="NutIconSettings">F1 M3,5.9 L21,5.9 L21,7.1 L3,7.1 Z M3,11.4 L21,11.4 L21,12.6 L3,12.6 Z M3,16.9 L21,16.9 L21,18.1 L3,18.1 Z M15.4,6.5 A2.6,2.6 0 1 1 15.39,6.5 Z M15.4,8 A1.1,1.1 0 1 0 15.41,8 Z M8.6,12 A2.6,2.6 0 1 1 8.59,12 Z M8.6,13.5 A1.1,1.1 0 1 0 8.61,13.5 Z M15.4,17.5 A2.6,2.6 0 1 1 15.39,17.5 Z M15.4,19 A1.1,1.1 0 1 0 15.41,19 Z</StreamGeometry>
+
+  <!--
+    ==================== Navigation glyphs (Fluent UI System Icons) ====================
+    The five navigation silhouettes are the official 24px "regular" outlines from
+    microsoft/fluentui-system-icons, imported verbatim and stored locally so the application stays
+    offline. Source: https://github.com/microsoft/fluentui-system-icons
+    Licence: MIT, Copyright (c) 2020 Microsoft Corporation. See docs/THIRD-PARTY-NOTICES.md.
+
+    Fluent paths rely on the non-zero winding rule, hence the F1 prefix: their counters are cut by
+    reversed sub-paths, so rendering them even-odd would fill the interiors and turn each glyph
+    into a blob. Detail layers are drawn separately on top and never alter the base silhouette.
+  -->
+  <StreamGeometry x:Key="NutIconOverviewBase">F1 M10.5495 2.53189C11.3874 1.82531 12.6126 1.82531 13.4505 2.5319L20.2005 8.224C20.7074 8.65152 21 9.2809 21 9.94406L21 19.2539C21 20.2204 20.2165 21.0039 19.25 21.0039H15.75C14.7835 21.0039 14 20.2204 14 19.2539L14 14.2468C14 14.1088 13.8881 13.9968 13.75 13.9968H10.25C10.1119 13.9968 9.99999 14.1088 9.99999 14.2468L9.99999 19.2539C9.99999 20.2204 9.2165 21.0039 8.25 21.0039H4.75C3.7835 21.0039 3 20.2204 3 19.2539V9.94406C3 9.2809 3.29255 8.65152 3.79952 8.224L10.5495 2.53189ZM12.4835 3.6786C12.2042 3.44307 11.7958 3.44307 11.5165 3.6786L4.76651 9.37071C4.59752 9.51321 4.5 9.72301 4.5 9.94406L4.5 19.2539C4.5 19.392 4.61193 19.5039 4.75 19.5039H8.25C8.38807 19.5039 8.49999 19.392 8.49999 19.2539L8.49999 14.2468C8.49999 13.2803 9.2835 12.4968 10.25 12.4968H13.75C14.7165 12.4968 15.5 13.2803 15.5 14.2468L15.5 19.2539C15.5 19.392 15.6119 19.5039 15.75 19.5039H19.25C19.3881 19.5039 19.5 19.392 19.5 19.2539L19.5 9.94406C19.5 9.72301 19.4025 9.51321 19.2335 9.37071L12.4835 3.6786Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconOverviewDetail">F1 M9.7,9.1 L14.3,9.1 A0.65,0.65 0 0 1 14.3,10.4 L9.7,10.4 A0.65,0.65 0 0 1 9.7,9.1 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="NutIconDevicesBase">F1 M9.25 6C8.83579 6 8.5 6.33579 8.5 6.75C8.5 7.16421 8.83579 7.5 9.25 7.5H14.75C15.1642 7.5 15.5 7.16421 15.5 6.75C15.5 6.33579 15.1642 6 14.75 6H9.25ZM8.5 17.75C8.5 17.3358 8.83579 17 9.25 17H14.75C15.1642 17 15.5 17.3358 15.5 17.75C15.5 18.1642 15.1642 18.5 14.75 18.5H9.25C8.83579 18.5 8.5 18.1642 8.5 17.75ZM9.25 14C8.83579 14 8.5 14.3358 8.5 14.75C8.5 15.1642 8.83579 15.5 9.25 15.5H14.75C15.1642 15.5 15.5 15.1642 15.5 14.75C15.5 14.3358 15.1642 14 14.75 14H9.25ZM6 5C6 3.34315 7.34315 2 9 2H15C16.6569 2 18 3.34315 18 5V19C18 20.6569 16.6569 22 15 22H9C7.34315 22 6 20.6569 6 19V5ZM9 3.5C8.17157 3.5 7.5 4.17157 7.5 5V19C7.5 19.8284 8.17157 20.5 9 20.5H15C15.8284 20.5 16.5 19.8284 16.5 19V5C16.5 4.17157 15.8284 3.5 15 3.5H9Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconDevicesLedTop">F1 M10.15,10.75 A0.85,0.85 0 1 1 10.14,10.75 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconDevicesLedBottom">F1 M13.85,10.75 A0.85,0.85 0 1 1 13.84,10.75 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="NutIconGearBase">F1 M12.0122 2.25C12.7462 2.25846 13.4773 2.34326 14.1937 2.50304C14.5064 2.57279 14.7403 2.83351 14.7758 3.15196L14.946 4.67881C15.0231 5.37986 15.615 5.91084 16.3206 5.91158C16.5103 5.91188 16.6979 5.87238 16.8732 5.79483L18.2738 5.17956C18.5651 5.05159 18.9055 5.12136 19.1229 5.35362C20.1351 6.43464 20.8889 7.73115 21.3277 9.14558C21.4223 9.45058 21.3134 9.78203 21.0564 9.9715L19.8149 10.8866C19.4607 11.1468 19.2516 11.56 19.2516 11.9995C19.2516 12.4389 19.4607 12.8521 19.8157 13.1129L21.0582 14.0283C21.3153 14.2177 21.4243 14.5492 21.3297 14.8543C20.8911 16.2685 20.1377 17.5649 19.1261 18.6461C18.9089 18.8783 18.5688 18.9483 18.2775 18.8206L16.8712 18.2045C16.4688 18.0284 16.0068 18.0542 15.6265 18.274C15.2463 18.4937 14.9933 18.8812 14.945 19.3177L14.7759 20.8444C14.741 21.1592 14.5122 21.4182 14.204 21.4915C12.7556 21.8361 11.2465 21.8361 9.79803 21.4915C9.48991 21.4182 9.26105 21.1592 9.22618 20.8444L9.05736 19.32C9.00777 18.8843 8.75434 18.498 8.37442 18.279C7.99451 18.06 7.5332 18.0343 7.1322 18.2094L5.72557 18.8256C5.43422 18.9533 5.09403 18.8833 4.87678 18.6509C3.86462 17.5685 3.11119 16.2705 2.6732 14.8548C2.57886 14.5499 2.68786 14.2186 2.94485 14.0293L4.18818 13.1133C4.54232 12.8531 4.75147 12.4399 4.75147 12.0005C4.75147 11.561 4.54232 11.1478 4.18771 10.8873L2.94516 9.97285C2.6878 9.78345 2.5787 9.45178 2.67337 9.14658C3.11212 7.73215 3.86594 6.43564 4.87813 5.35462C5.09559 5.12236 5.43594 5.05259 5.72724 5.18056L7.12762 5.79572C7.53056 5.97256 7.9938 5.94585 8.37577 5.72269C8.75609 5.50209 9.00929 5.11422 9.05817 4.67764L9.22824 3.15196C9.26376 2.83335 9.49786 2.57254 9.8108 2.50294C10.5281 2.34342 11.26 2.25865 12.0122 2.25ZM12.0124 3.7499C11.5583 3.75524 11.1056 3.79443 10.6578 3.86702L10.5489 4.84418C10.4471 5.75368 9.92003 6.56102 9.13042 7.01903C8.33597 7.48317 7.36736 7.53903 6.52458 7.16917L5.62629 6.77456C5.05436 7.46873 4.59914 8.25135 4.27852 9.09168L5.07632 9.67879C5.81513 10.2216 6.25147 11.0837 6.25147 12.0005C6.25147 12.9172 5.81513 13.7793 5.0771 14.3215L4.27805 14.9102C4.59839 15.752 5.05368 16.5361 5.626 17.2316L6.53113 16.8351C7.36923 16.4692 8.33124 16.5227 9.12353 16.9794C9.91581 17.4361 10.4443 18.2417 10.548 19.1526L10.657 20.1365C11.5466 20.2878 12.4555 20.2878 13.3451 20.1365L13.4541 19.1527C13.5549 18.2421 14.0828 17.4337 14.876 16.9753C15.6692 16.5168 16.6332 16.463 17.4728 16.8305L18.3772 17.2267C18.949 16.5323 19.4041 15.7495 19.7247 14.909L18.9267 14.3211C18.1879 13.7783 17.7516 12.9162 17.7516 11.9995C17.7516 11.0827 18.1879 10.2206 18.9258 9.67847L19.7227 9.09109C19.4021 8.25061 18.9468 7.46784 18.3748 6.77356L17.4783 7.16737C17.113 7.32901 16.7178 7.4122 16.3187 7.41158C14.849 7.41004 13.6155 6.30355 13.4551 4.84383L13.3462 3.8667C12.9007 3.7942 12.4526 3.75512 12.0124 3.7499ZM11.9997 8.24995C14.0708 8.24995 15.7497 9.92888 15.7497 12C15.7497 14.071 14.0708 15.75 11.9997 15.75C9.92863 15.75 8.2497 14.071 8.2497 12C8.2497 9.92888 9.92863 8.24995 11.9997 8.24995ZM11.9997 9.74995C10.7571 9.74995 9.7497 10.7573 9.7497 12C9.7497 13.2426 10.7571 14.25 11.9997 14.25C13.2423 14.25 14.2497 13.2426 14.2497 12C14.2497 10.7573 13.2423 9.74995 11.9997 9.74995Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconGearHub">F1 M12,10.35 A1.65,1.65 0 1 1 11.99,10.35 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="NutIconDiagnosticsBase">F1 M8.46238 6.80905L11.746 20.426C11.9236 21.1626 12.957 21.2011 13.1891 20.4798L16.4456 10.3575L17.0318 12.4532C17.1224 12.7772 17.4176 13.0012 17.7541 13.0012H21.2477C21.6619 13.0012 21.9977 12.6654 21.9977 12.2512C21.9977 11.837 21.6619 11.5012 21.2477 11.5012H18.3231L17.2181 7.55053C17.0179 6.83439 16.0096 6.81496 15.7819 7.52284L12.5785 17.4797L9.22531 3.57419C9.04279 2.81728 7.97039 2.80542 7.77117 3.5581L5.66883 11.5012H2.75C2.33579 11.5012 2 11.837 2 12.2512C2 12.6654 2.33579 13.0012 2.75 13.0012H6.24614C6.58645 13.0012 6.88411 12.7721 6.97118 12.4431L8.46238 6.80905Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconDiagnosticsDot">F1 M20.6,8.4 A1.15,1.15 0 1 1 20.59,8.4 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="NutIconSettingsBase">F1 M8.75 14.5C10.2861 14.5 11.5738 15.5656 11.9131 16.998L21.25 17C21.6642 17 22 17.3358 22 17.75C22 18.1297 21.7176 18.4435 21.3516 18.4932L21.25 18.5L11.9131 18.501C11.5742 19.9339 10.2865 21 8.75 21C7.21354 21 5.92583 19.9339 5.58691 18.501L2.75 18.5C2.33579 18.5 2 18.1642 2 17.75C2 17.3703 2.28236 17.0565 2.64844 17.0068L2.75 17L5.58691 16.999C5.92583 15.5661 7.21354 14.5 8.75 14.5ZM8.75 16C7.7835 16 7 16.7835 7 17.75C7 18.7165 7.7835 19.5 8.75 19.5C9.7165 19.5 10.5 18.7165 10.5 17.75C10.5 16.7835 9.7165 16 8.75 16ZM15.25 3C16.7865 3 18.0742 4.06613 18.4131 5.49902L21.25 5.5C21.6642 5.5 22 5.83579 22 6.25C22 6.6297 21.7176 6.9435 21.3516 6.99316L21.25 7L18.4131 7.00098C18.0742 8.43387 16.7865 9.5 15.25 9.5C13.7135 9.5 12.4258 8.43387 12.0869 7.00098L2.75 7C2.33579 7 2 6.66421 2 6.25C2 5.8703 2.28236 5.5565 2.64844 5.50684L2.75 5.5L12.0869 5.49805C12.4262 4.06562 13.7139 3 15.25 3ZM15.25 4.5C14.2836 4.5 13.5002 5.2837 13.5 6.25C13.5 7.2165 14.2835 8 15.25 8C16.2165 8 17 7.2165 17 6.25C16.9998 5.2837 16.2164 4.5 15.25 4.5Z</StreamGeometry>
+  <!-- Handle fills, r=1.3 inside a ring whose inner edge is at 1.75: big enough to read as a lit
+       handle, still short of touching the ring. Two half arcs, as the near-degenerate single-arc
+       form is ill-conditioned above roughly one unit. -->
+  <StreamGeometry x:Key="NutIconSettingsKnobTop">F1 M13.95,6.25 A1.3,1.3 0 1 0 16.55,6.25 A1.3,1.3 0 1 0 13.95,6.25 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSettingsKnobBottom">F1 M7.45,17.75 A1.3,1.3 0 1 0 10.05,17.75 A1.3,1.3 0 1 0 7.45,17.75 Z</StreamGeometry>
+
+  <!--
+    The options glyph is split so its handles can travel. Fluent draws the tracks and both handle
+    rings in one path, which pins the ring in place while only the fill could move, and a dot
+    sliding out of a stationary ring reads as a rendering fault rather than a control being
+    adjusted. These three pieces reproduce the same drawing at the same coordinates - tracks
+    spanning x=2.75..21.25 at y=6.25 and y=17.75, rings of r=1.75..2.5 on the same centres - with
+    each handle as its own unit that can carry its ring and fill together.
+  -->
+  <StreamGeometry x:Key="NutIconSettingsTracks">F1 M3.5,5.5 L20.5,5.5 A0.75,0.75 0 0 1 20.5,7 L3.5,7 A0.75,0.75 0 0 1 3.5,5.5 Z M3.5,17 L20.5,17 A0.75,0.75 0 0 1 20.5,18.5 L3.5,18.5 A0.75,0.75 0 0 1 3.5,17 Z</StreamGeometry>
+  <!-- Two half arcs per circle. The near-degenerate single-arc form used for the tiny LEDs above is
+       ill-conditioned at this radius and renders as an open horseshoe. -->
+  <StreamGeometry x:Key="NutIconSettingsRingTop">F0 M12.75,6.25 A2.5,2.5 0 1 0 17.75,6.25 A2.5,2.5 0 1 0 12.75,6.25 Z M13.5,6.25 A1.75,1.75 0 1 0 17,6.25 A1.75,1.75 0 1 0 13.5,6.25 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSettingsRingBottom">F0 M6.25,17.75 A2.5,2.5 0 1 0 11.25,17.75 A2.5,2.5 0 1 0 6.25,17.75 Z M7,17.75 A1.75,1.75 0 1 0 10.5,17.75 A1.75,1.75 0 1 0 7,17.75 Z</StreamGeometry>
+
+  <!-- Configuration domains -->
+  <StreamGeometry x:Key="NutIconGeneral">M5,2.8 L14.5,2.8 L19.4,7.7 L19.4,21.2 L5,21.2 Z M6.7,4.5 L6.7,19.5 L17.7,19.5 L17.7,9 L13.2,9 L13.2,4.5 Z M8.4,11.2 L16,11.2 L16,12.9 L8.4,12.9 Z M8.4,14.6 L16,14.6 L16,16.3 L8.4,16.3 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconUps">M4.6,2.8 L19.4,2.8 L19.4,21.2 L4.6,21.2 Z M6.3,4.5 L6.3,19.5 L17.7,19.5 L17.7,4.5 Z M8,6.6 L16,6.6 L16,8.3 L8,8.3 Z M8,10 L16,10 L16,11.7 L8,11.7 Z M8.6,14.2 L11.4,14.2 L11.4,17.6 L8.6,17.6 Z M13,14.2 L15.4,14.2 L15.4,17.6 L13,17.6 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconServer">M2.8,4 L21.2,4 L21.2,10.6 L2.8,10.6 Z M4.5,5.7 L4.5,8.9 L19.5,8.9 L19.5,5.7 Z M2.8,13.4 L21.2,13.4 L21.2,20 L2.8,20 Z M4.5,15.1 L4.5,18.3 L19.5,18.3 L19.5,15.1 Z M16.4,6.4 A0.95,0.95 0 1 0 16.41,6.4 Z M16.4,15.8 A0.95,0.95 0 1 0 16.41,15.8 Z M6,6.5 L10.5,6.5 L10.5,8.1 L6,8.1 Z M6,15.9 L10.5,15.9 L10.5,17.5 L6,17.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconUsers">M9,3.4 A4.1,4.1 0 1 1 8.99,3.4 Z M9,5.1 A2.4,2.4 0 1 0 9.01,5.1 Z M1.9,20.6 C1.9,16.6 5.1,14.2 9,14.2 C12.9,14.2 16.1,16.6 16.1,20.6 L14.4,20.6 C14.4,17.6 12.1,15.9 9,15.9 C5.9,15.9 3.6,17.6 3.6,20.6 Z M16.6,9.6 A3.2,3.2 0 1 1 16.59,9.6 Z M17.4,14.4 C20,15.1 22.1,17 22.1,20.6 L20.4,20.6 C20.4,17.7 18.8,16.3 16.8,15.8 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconMonitoring">M2.8,4.4 L21.2,4.4 L21.2,16.4 L2.8,16.4 Z M4.5,6.1 L4.5,14.7 L19.5,14.7 L19.5,6.1 Z M8.5,18.6 L15.5,18.6 L15.5,20.3 L8.5,20.3 Z M11.1,16.4 L12.9,16.4 L12.9,19.2 L11.1,19.2 Z M6.4,11.7 L8.7,11.7 L10.1,8.3 L12.1,13.2 L13.5,10.9 L14.5,11.7 L17.6,11.7 L17.6,13.1 L13.9,13.1 L13.2,12.5 L12,14.6 L10.1,10 L9.4,13.1 L6.4,13.1 Z</StreamGeometry>
+
+  <!-- Metrics -->
+  <StreamGeometry x:Key="NutIconBattery">M2.4,6.6 L17.6,6.6 L17.6,17.4 L2.4,17.4 Z M4.1,8.3 L4.1,15.7 L15.9,15.7 L15.9,8.3 Z M19,10.2 L22,10.2 L22,13.8 L19,13.8 Z M5.5,9.7 L14.5,9.7 L14.5,14.3 L5.5,14.3 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconGauge">M12,3.6 A9,9 0 0 1 21,12.6 L19.3,12.6 A7.3,7.3 0 0 0 4.7,12.6 L3,12.6 A9,9 0 0 1 12,3.6 Z M11.2,12 L16.4,7.7 L13.1,13.6 A1.7,1.7 0 0 1 10.3,13.1 Z M11.1,16.6 L12.9,16.6 L12.9,18.3 L11.1,18.3 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconRuntime">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M11.2,6.6 L12.8,6.6 L12.8,12.3 L17,14.8 L16.2,16.2 L11.2,13.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconInput">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M6.5,12.4 L9,12.4 L10.6,8.6 L13.4,15.6 L14.8,12.4 L17.5,12.4 L17.5,14 L15.9,14 L13.4,19.4 L10.6,12.4 L9.9,14 L6.5,14 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconOutput">M8.3,2.8 L10,2.8 L10,8.4 L8.3,8.4 Z M14,2.8 L15.7,2.8 L15.7,8.4 L14,8.4 Z M5.6,9.2 L18.4,9.2 L18.4,13.4 A6.4,6.4 0 0 1 12,19.8 A6.4,6.4 0 0 1 5.6,13.4 Z M7.3,10.9 L7.3,13.4 A4.7,4.7 0 0 0 12,18.1 A4.7,4.7 0 0 0 16.7,13.4 L16.7,10.9 Z M11.1,19.2 L12.9,19.2 L12.9,21.6 L11.1,21.6 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconTemperature">M9.4,3.4 A2.6,2.6 0 0 1 14.6,3.4 L14.6,13 A4.9,4.9 0 1 1 9.4,13 Z M11.1,4.2 L11.1,14 A3.2,3.2 0 1 0 12.9,14 L12.9,4.2 A0.9,0.9 0 0 0 11.1,4.2 Z M11.2,9.4 L12.8,9.4 L12.8,16.4 L11.2,16.4 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconDriver">M8.4,8.4 L15.6,8.4 L15.6,15.6 L8.4,15.6 Z M5.6,5.6 L18.4,5.6 L18.4,18.4 L5.6,18.4 Z M7.3,7.3 L7.3,16.7 L16.7,16.7 L16.7,7.3 Z M8.6,2.4 L10.2,2.4 L10.2,5 L8.6,5 Z M13.8,2.4 L15.4,2.4 L15.4,5 L13.8,5 Z M8.6,19 L10.2,19 L10.2,21.6 L8.6,21.6 Z M13.8,19 L15.4,19 L15.4,21.6 L13.8,21.6 Z M2.4,8.6 L5,8.6 L5,10.2 L2.4,10.2 Z M2.4,13.8 L5,13.8 L5,15.4 L2.4,15.4 Z M19,8.6 L21.6,8.6 L21.6,10.2 L19,10.2 Z M19,13.8 L21.6,13.8 L21.6,15.4 L19,15.4 Z</StreamGeometry>
+
+  <!-- Connectivity -->
+  <StreamGeometry x:Key="NutIconConnection">M9.2,14.8 L14.8,9.2 L16,10.4 L10.4,16 Z M6.6,17.4 A4.1,4.1 0 0 1 6.6,11.6 L9.4,8.8 L10.6,10 L7.8,12.8 A2.4,2.4 0 0 0 11.2,16.2 L14,13.4 L15.2,14.6 L12.4,17.4 A4.1,4.1 0 0 1 6.6,17.4 Z M11.6,6.6 A4.1,4.1 0 0 1 17.4,12.4 L14.6,15.2 L13.4,14 L16.2,11.2 A2.4,2.4 0 0 0 12.8,7.8 L10,10.6 L8.8,9.4 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconRefresh">M12,3.4 A8.6,8.6 0 0 1 20.4,10.2 L18.6,10.2 A6.8,6.8 0 0 0 6.5,7.5 L9.4,7.5 L9.4,9.2 L3.6,9.2 L3.6,3.4 L5.3,3.4 L5.3,6.2 A8.6,8.6 0 0 1 12,3.4 Z M12,20.6 A8.6,8.6 0 0 1 3.6,13.8 L5.4,13.8 A6.8,6.8 0 0 0 17.5,16.5 L14.6,16.5 L14.6,14.8 L20.4,14.8 L20.4,20.6 L18.7,20.6 L18.7,17.8 A8.6,8.6 0 0 1 12,20.6 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconShield">M12,2.4 L20.4,5.8 L20.4,12 C20.4,16.9 17,20.5 12,21.9 C7,20.5 3.6,16.9 3.6,12 L3.6,5.8 Z M12,4.3 L5.3,7 L5.3,12 C5.3,15.9 7.9,18.8 12,20.1 C16.1,18.8 18.7,15.9 18.7,12 L18.7,7 Z M10.9,14.2 L8.4,11.7 L9.6,10.5 L10.9,11.8 L14.4,8.3 L15.6,9.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconNetwork">M11.1,2.8 L12.9,2.8 L12.9,7.4 L11.1,7.4 Z M8.4,7.4 L15.6,7.4 L15.6,10.6 L8.4,10.6 Z M4.4,13.4 L19.6,13.4 L19.6,14.9 L12.9,14.9 L12.9,16.6 L11.1,16.6 L11.1,14.9 L4.4,14.9 Z M11.1,10.6 L12.9,10.6 L12.9,13.4 L11.1,13.4 Z M2,16.6 L6.8,16.6 L6.8,21.2 L2,21.2 Z M9.6,16.6 L14.4,16.6 L14.4,21.2 L9.6,21.2 Z M17.2,16.6 L22,16.6 L22,21.2 L17.2,21.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconPort">M6.6,2.8 L17.4,2.8 L17.4,13.6 L6.6,13.6 Z M8.3,4.5 L8.3,11.9 L15.7,11.9 L15.7,4.5 Z M10,6.2 L11,6.2 L11,10.2 L10,10.2 Z M13,6.2 L14,6.2 L14,10.2 L13,10.2 Z M11.1,13.6 L12.9,13.6 L12.9,17.8 L11.1,17.8 Z M8.4,17.8 L15.6,17.8 L15.6,21.2 L8.4,21.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconRemote">M2.8,4.4 L21.2,4.4 L21.2,15.6 L2.8,15.6 Z M4.5,6.1 L4.5,13.9 L19.5,13.9 L19.5,6.1 Z M6.6,8 L11.4,8 L11.4,9.5 L6.6,9.5 Z M6.6,10.6 L9.8,10.6 L9.8,12.1 L6.6,12.1 Z M9,17.8 L15,17.8 L15,19.3 L9,19.3 Z M17.2,16.8 L18.8,16.8 L18.8,21.4 L17.2,21.4 Z M15.2,19.2 L20.8,19.2 L20.8,20.7 L15.2,20.7 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSmb">M2.8,5 L11,5 L12.6,7 L21.2,7 L21.2,19 L2.8,19 Z M4.5,6.7 L4.5,17.3 L19.5,17.3 L19.5,8.7 L11.8,8.7 L10.2,6.7 Z M7,11 L17,11 L17,12.5 L7,12.5 Z M7,13.8 L13.5,13.8 L13.5,15.3 L7,15.3 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconFolder">M2.8,5 L10.2,5 L11.8,7 L21.2,7 L21.2,19 L2.8,19 Z M4.5,6.7 L4.5,17.3 L19.5,17.3 L19.5,8.7 L11,8.7 L9.4,6.7 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconFile">M5.4,2.8 L14.6,2.8 L19,7.2 L19,21.2 L5.4,21.2 Z M7.1,4.5 L7.1,19.5 L17.3,19.5 L17.3,8.6 L13.2,8.6 L13.2,4.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconLogs">M4.4,2.8 L19.6,2.8 L19.6,21.2 L4.4,21.2 Z M6.1,4.5 L6.1,19.5 L17.9,19.5 L17.9,4.5 Z M7.8,7.2 L16.2,7.2 L16.2,8.7 L7.8,8.7 Z M7.8,10.4 L16.2,10.4 L16.2,11.9 L7.8,11.9 Z M7.8,13.6 L13.4,13.6 L13.4,15.1 L7.8,15.1 Z M7.8,16.4 L11.4,16.4 L11.4,17.9 L7.8,17.9 Z</StreamGeometry>
+
+  <!-- Security -->
+  <StreamGeometry x:Key="NutIconCertificate">M3.4,3.6 L20.6,3.6 L20.6,15.6 L3.4,15.6 Z M5.1,5.3 L5.1,13.9 L18.9,13.9 L18.9,5.3 Z M6.8,7.2 L14,7.2 L14,8.6 L6.8,8.6 Z M6.8,10 L11.6,10 L11.6,11.4 L6.8,11.4 Z M15.8,16.4 A2.9,2.9 0 1 1 15.79,16.4 Z M13.3,20.4 L14.6,19.1 L15.8,20 L17,19.1 L18.3,20.4 L18.3,22.6 L15.8,21.2 L13.3,22.6 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconTls">M6.6,10 L6.6,7.4 A5.4,5.4 0 0 1 17.4,7.4 L17.4,10 L19.2,10 L19.2,21 L4.8,21 L4.8,10 Z M8.3,10 L15.7,10 L15.7,7.4 A3.7,3.7 0 0 0 8.3,7.4 Z M6.5,11.7 L6.5,19.3 L17.5,19.3 L17.5,11.7 Z M11.1,13.8 L12.9,13.8 L12.9,17.2 L11.1,17.2 Z</StreamGeometry>
+
+  <!-- Service control -->
+  <StreamGeometry x:Key="NutIconService">M4.4,3.4 L19.6,3.4 L19.6,20.6 L4.4,20.6 Z M6.1,5.1 L6.1,18.9 L17.9,18.9 L17.9,5.1 Z M7.8,7 L16.2,7 L16.2,8.5 L7.8,8.5 Z M7.8,10.2 L16.2,10.2 L16.2,11.7 L7.8,11.7 Z M14.4,14.4 A1.5,1.5 0 1 0 14.41,14.4 Z M7.8,14 L12,14 L12,15.5 L7.8,15.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconStart">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M9.8,7.8 L16.6,12 L9.8,16.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconStop">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M8.8,8.8 L15.2,8.8 L15.2,15.2 L8.8,15.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconRestart">M12,3.4 A8.6,8.6 0 1 1 5.3,6.6 L6.6,7.8 A6.9,6.9 0 1 0 12,5.1 Z M11.2,1.6 L15.4,4.4 L11.2,7.2 Z</StreamGeometry>
+
+  <!-- Actions -->
+  <StreamGeometry x:Key="NutIconAdd">M11.1,4.6 L12.9,4.6 L12.9,11.1 L19.4,11.1 L19.4,12.9 L12.9,12.9 L12.9,19.4 L11.1,19.4 L11.1,12.9 L4.6,12.9 L4.6,11.1 L11.1,11.1 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconEdit">M15.6,2.9 L21.1,8.4 L8.5,21 L3,21 L3,15.5 Z M15.6,5.3 L4.7,16.2 L4.7,19.3 L7.8,19.3 L18.7,8.4 Z M13.9,7 L17,10.1 L15.8,11.3 L12.7,8.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconDelete">M9,2.8 L15,2.8 L15,4.6 L20.4,4.6 L20.4,6.4 L3.6,6.4 L3.6,4.6 L9,4.6 Z M5.4,8.2 L18.6,8.2 L18.6,21.2 L5.4,21.2 Z M7.1,9.9 L7.1,19.5 L16.9,19.5 L16.9,9.9 Z M9.4,11.4 L10.9,11.4 L10.9,18 L9.4,18 Z M13.1,11.4 L14.6,11.4 L14.6,18 L13.1,18 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconApply">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M10.8,15.6 L7,11.8 L8.3,10.5 L10.8,13 L15.7,8.1 L17,9.4 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconDiscard">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M8.5,9.7 L9.7,8.5 L12,10.8 L14.3,8.5 L15.5,9.7 L13.2,12 L15.5,14.3 L14.3,15.5 L12,13.2 L9.7,15.5 L8.5,14.3 L10.8,12 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconReview">M3.4,4.4 L20.6,4.4 L20.6,16.4 L3.4,16.4 Z M5.1,6.1 L5.1,14.7 L18.9,14.7 L18.9,6.1 Z M6.8,7.8 L13,7.8 L13,9.2 L6.8,9.2 Z M6.8,11 L11,11 L11,12.4 L6.8,12.4 Z M15.4,17.4 L17.6,19.6 L21.4,15.8 L22.6,17 L17.6,22 L14.2,18.6 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconPreview">M12,4.6 C17,4.6 21.2,8.2 22.6,12 C21.2,15.8 17,19.4 12,19.4 C7,19.4 2.8,15.8 1.4,12 C2.8,8.2 7,4.6 12,4.6 Z M12,6.3 C8.2,6.3 4.8,8.9 3.3,12 C4.8,15.1 8.2,17.7 12,17.7 C15.8,17.7 19.2,15.1 20.7,12 C19.2,8.9 15.8,6.3 12,6.3 Z M12,8.6 A3.4,3.4 0 1 1 11.99,8.6 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSearch">M10.6,2.8 A7.8,7.8 0 1 1 10.59,2.8 Z M10.6,4.5 A6.1,6.1 0 1 0 10.61,4.5 Z M15.6,14.4 L16.8,13.2 L21.6,18 L20.4,19.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconCopy">M8,2.8 L21.2,2.8 L21.2,16 L8,16 Z M9.7,4.5 L9.7,14.3 L19.5,14.3 L19.5,4.5 Z M2.8,8 L6.4,8 L6.4,9.7 L4.5,9.7 L4.5,19.5 L14.3,19.5 L14.3,17.6 L16,17.6 L16,21.2 L2.8,21.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconHelp">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M11.1,16.2 L12.9,16.2 L12.9,18 L11.1,18 Z M12.1,6.4 C14,6.4 15.4,7.7 15.4,9.5 C15.4,11.3 14,11.8 13.1,12.5 C12.7,12.8 12.7,13.2 12.7,14.8 L11.2,14.8 C11.2,12.6 11.3,12.1 12.2,11.4 C13,10.8 13.8,10.5 13.8,9.5 C13.8,8.6 13.1,7.9 12,7.9 C10.9,7.9 10.2,8.6 10.1,9.8 L8.6,9.8 C8.7,7.8 10.1,6.4 12.1,6.4 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconInfo">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M11.1,10.4 L12.9,10.4 L12.9,17.6 L11.1,17.6 Z M11.1,6.6 L12.9,6.6 L12.9,8.6 L11.1,8.6 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconWarning">M12,2.6 L22.6,21 L1.4,21 Z M12,6.2 L4.4,19.3 L19.6,19.3 Z M11.1,10 L12.9,10 L12.9,15 L11.1,15 Z M11.1,16.2 L12.9,16.2 L12.9,18 L11.1,18 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconError">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M8.5,9.7 L9.7,8.5 L12,10.8 L14.3,8.5 L15.5,9.7 L13.2,12 L15.5,14.3 L14.3,15.5 L12,13.2 L9.7,15.5 L8.5,14.3 L10.8,12 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSuccess">M12,2.6 A9.4,9.4 0 1 1 11.99,2.6 Z M12,4.3 A7.7,7.7 0 1 0 12.01,4.3 Z M10.8,15.6 L7,11.8 L8.3,10.5 L10.8,13 L15.7,8.1 L17,9.4 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconCheck">M9.6,17.4 L3.8,11.6 L5.3,10.1 L9.6,14.4 L18.7,5.3 L20.2,6.8 Z</StreamGeometry>
+
+  <!-- Chevrons and direction -->
+  <StreamGeometry x:Key="NutIconChevronLeft">M15.2,4.9 L16.6,6.3 L10.9,12 L16.6,17.7 L15.2,19.1 L8.1,12 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconChevronRight">M8.8,4.9 L15.9,12 L8.8,19.1 L7.4,17.7 L13.1,12 L7.4,6.3 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconChevronDown">M4.9,8.8 L12,15.9 L19.1,8.8 L17.7,7.4 L12,13.1 L6.3,7.4 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconChevronUp">M4.9,15.2 L6.3,16.6 L12,10.9 L17.7,16.6 L19.1,15.2 L12,8.1 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconBack">M11.4,4.6 L12.8,6 L7.8,11 L20.4,11 L20.4,13 L7.8,13 L12.8,18 L11.4,19.4 L3.9,12 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconForward">M12.6,4.6 L20.1,12 L12.6,19.4 L11.2,18 L16.2,13 L3.6,13 L3.6,11 L16.2,11 L11.2,6 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconClose">M5.6,4.2 L12,10.6 L18.4,4.2 L19.8,5.6 L13.4,12 L19.8,18.4 L18.4,19.8 L12,13.4 L5.6,19.8 L4.2,18.4 L10.6,12 L4.2,5.6 Z</StreamGeometry>
+
+  <!-- Theme and identity -->
+  <!--
+    The sun is split so its rays can turn without dragging the disc around with them, and both
+    pieces are redrawn: the rays used to be bare rectangles with square corners meeting a thin
+    outlined ring, which read as a gear more than a sun at 17px. They are now rounded capsules
+    around a solid disc. The single-key version below stays for callers that just want the glyph.
+  -->
+  <StreamGeometry x:Key="NutIconSunCore">F1 M7.6,12 A4.4,4.4 0 1 0 16.4,12 A4.4,4.4 0 1 0 7.6,12 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSunRays">F1 M11.1,1.6 A0.9,0.9 0 0 1 12.9,1.6 L12.9,4 A0.9,0.9 0 0 1 11.1,4 Z M11.1,20 A0.9,0.9 0 0 1 12.9,20 L12.9,22.4 A0.9,0.9 0 0 1 11.1,22.4 Z M1.6,12.9 A0.9,0.9 0 0 1 1.6,11.1 L4,11.1 A0.9,0.9 0 0 1 4,12.9 Z M20,12.9 A0.9,0.9 0 0 1 20,11.1 L22.4,11.1 A0.9,0.9 0 0 1 22.4,12.9 Z M4.28,5.55 A0.9,0.9 0 0 1 5.55,4.28 L7.25,5.98 A0.9,0.9 0 0 1 5.98,7.25 Z M18.02,19.29 A0.9,0.9 0 0 1 19.29,18.02 L20.99,19.72 A0.9,0.9 0 0 1 19.72,20.99 Z M19.72,4.28 A0.9,0.9 0 0 1 20.99,5.55 L19.29,7.25 A0.9,0.9 0 0 1 18.02,5.98 Z M5.98,18.02 A0.9,0.9 0 0 1 7.25,19.29 L5.55,20.99 A0.9,0.9 0 0 1 4.28,19.72 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSun">M12,7.4 A4.6,4.6 0 1 1 11.99,7.4 Z M12,9.1 A2.9,2.9 0 1 0 12.01,9.1 Z M11.1,1.4 L12.9,1.4 L12.9,5 L11.1,5 Z M11.1,19 L12.9,19 L12.9,22.6 L11.1,22.6 Z M1.4,11.1 L5,11.1 L5,12.9 L1.4,12.9 Z M19,11.1 L22.6,11.1 L22.6,12.9 L19,12.9 Z M4.2,5.5 L5.5,4.2 L8,6.7 L6.7,8 Z M16,17.3 L17.3,16 L19.8,18.5 L18.5,19.8 Z M18.5,4.2 L19.8,5.5 L17.3,8 L16,6.7 Z M5.5,19.8 L4.2,18.5 L6.7,16 L8,17.3 Z</StreamGeometry>
+  <!--
+    Crescent traced as one closed figure: the long way round the disc (centre 12,12 r=9) from one
+    horn to the other, then back along the bite (centre 17.2,6.8 r=7.6). The endpoints are the real
+    intersections of those two circles, so the horns close to a point rather than ending bluntly.
+
+    A smaller bite pushed further out gives a full-bodied crescent with short horns. Keeping the
+    bite nearly as large as the disc produces the opposite - a thin fingernail with long fragile
+    horns that break up at 18px.
+
+    The four craters are extra subpaths under the even-odd rule, so they are covered twice and come
+    out as genuine holes: the surface behind shows through and they stay correct on any background,
+    which a painted-on dot would not. Each sits clear of the disc edge, of the bite and of its
+    neighbours, so no crater can break the silhouette or merge into another. Radii are 1.5, 1.1,
+    1.0 and 0.85 - below about 0.8 they vanish into the antialiasing at this size.
+
+    Subtracting one disc from another under the even-odd rule does not work for the bite itself:
+    the part of the cutting disc falling outside the other is covered an odd number of times and
+    fills in, turning the crescent into a ring. Only the fully enclosed craters can work this way.
+  -->
+  <StreamGeometry x:Key="NutIconMoon">F0 M10.55,3.12 A9,9 0 1 0 20.88,13.45 A7.6,7.6 0 0 1 10.55,3.12 Z M8,15.5 A1.5,1.5 0 1 0 11,15.5 A1.5,1.5 0 1 0 8,15.5 Z M11.5,19 A1,1 0 1 0 13.5,19 A1,1 0 1 0 11.5,19 Z M6.65,10.5 A0.85,0.85 0 1 0 8.35,10.5 A0.85,0.85 0 1 0 6.65,10.5 Z M14.2,17.4 A1.1,1.1 0 1 0 16.4,17.4 A1.1,1.1 0 1 0 14.2,17.4 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconProfile">M12,2.8 A4.8,4.8 0 1 1 11.99,2.8 Z M12,4.5 A3.1,3.1 0 1 0 12.01,4.5 Z M3.6,21.2 C3.6,16.4 7.4,13.6 12,13.6 C16.6,13.6 20.4,16.4 20.4,21.2 L18.7,21.2 C18.7,17.5 15.7,15.3 12,15.3 C8.3,15.3 5.3,17.5 5.3,21.2 Z</StreamGeometry>
+
+  <!-- Window chrome -->
+  <StreamGeometry x:Key="NutIconWindowMinimize">M4,11.2 L20,11.2 L20,12.8 L4,12.8 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconWindowMaximize">M4.6,4.6 L19.4,4.6 L19.4,19.4 L4.6,19.4 Z M6.2,6.2 L6.2,17.8 L17.8,17.8 L17.8,6.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconWindowRestore">M7.6,3.4 L20.6,3.4 L20.6,16.4 L16.4,16.4 L16.4,20.6 L3.4,20.6 L3.4,7.6 L7.6,7.6 Z M9.2,5 L9.2,7.6 L16.4,7.6 L16.4,14.8 L19,14.8 L19,5 Z M5,9.2 L5,19 L14.8,19 L14.8,9.2 Z</StreamGeometry>
 </ResourceDictionary>

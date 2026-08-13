@@ -4,67 +4,111 @@
              xmlns:views="clr-namespace:NutManager.App.Views"
              x:Class="NutManager.App.Views.AdministrationPageView"
              x:DataType="viewModels:AdministrationPageViewModel">
+  <!--
+    Administration presents a vertical section rail beside the active surface instead of a row of
+    equally weighted blocks, so the selected area and the working surface read as one workflow.
+  -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="20">
-      <StackPanel Spacing="6">
-        <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
-        <TextBlock Text="{Binding Description}" MaxWidth="900" TextWrapping="Wrap" />
+    <StackPanel Spacing="18">
+
+      <!-- Header -->
+      <StackPanel Spacing="3">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
+          <PathIcon Data="{DynamicResource NutIconAdministration}"
+                    Width="21"
+                    Height="21"
+                    Foreground="{DynamicResource NutAccentBrightBrush}"
+                    VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Text="{Binding Description}" Classes="nut-page-subtitle" MaxWidth="900" TextWrapping="Wrap" />
       </StackPanel>
 
-      <Border Classes="nut-card">
-        <StackPanel Spacing="12">
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-            <StackPanel Spacing="3">
-              <TextBlock Text="{Binding Strings[Administration.Context.Title]}" Classes="nut-section-title" />
-              <TextBlock Text="{Binding ManagedProfileName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <!-- Active management context -->
+      <Border Classes="nut-card-elevated">
+        <StackPanel Spacing="13">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+            <PathIcon Data="{DynamicResource NutIconProfile}" Classes="accent" Width="18" Height="18" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Spacing="2">
+              <TextBlock Text="{Binding Strings[Administration.Context.Title]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding ManagedProfileName}" Classes="nut-card-title" TextWrapping="Wrap" />
             </StackPanel>
-            <TextBlock Grid.Column="1"
-                       Text="{Binding AdministrationAvailabilityText}"
-                       VerticalAlignment="Center"
-                       TextWrapping="Wrap" />
+            <Border Grid.Column="2" Classes="nut-pill">
+              <TextBlock Text="{Binding AdministrationAvailabilityText}" FontSize="12" TextWrapping="Wrap" />
+            </Border>
           </Grid>
-          <WrapPanel ItemWidth="220" ItemHeight="52">
-            <StackPanel Margin="0,0,16,8">
-              <TextBlock Text="{Binding Strings[Administration.Context.Endpoint]}" Classes="nut-metadata" />
-              <TextBlock Text="{Binding ManagedProfileMonitoringEndpoint}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+
+          <Border Classes="nut-divider" />
+
+          <WrapPanel>
+            <StackPanel Width="230" Margin="0,0,16,8" Spacing="3">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Data="{DynamicResource NutIconConnection}" Classes="muted" Width="13" Height="13" />
+                <TextBlock Text="{Binding Strings[Administration.Context.Endpoint]}" Classes="nut-metadata" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="{Binding ManagedProfileMonitoringEndpoint}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="13" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,8">
-              <TextBlock Text="{Binding Strings[Administration.Context.Management]}" Classes="nut-metadata" />
-              <TextBlock Text="{Binding ManagementModeDisplayText}" />
+            <StackPanel Width="180" Margin="0,0,16,8" Spacing="3">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Data="{DynamicResource NutIconServer}" Classes="muted" Width="13" Height="13" />
+                <TextBlock Text="{Binding Strings[Administration.Context.Management]}" Classes="nut-metadata" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="{Binding ManagementModeDisplayText}" FontWeight="SemiBold" FontSize="13" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,8">
-              <TextBlock Text="{Binding Strings[Administration.Context.Access]}" Classes="nut-metadata" />
-              <TextBlock Text="{Binding AccessModeDisplayText}" />
+            <StackPanel Width="180" Margin="0,0,16,8" Spacing="3">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Data="{DynamicResource NutIconShield}" Classes="muted" Width="13" Height="13" />
+                <TextBlock Text="{Binding Strings[Administration.Context.Access]}" Classes="nut-metadata" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="{Binding AccessModeDisplayText}" FontWeight="SemiBold" FontSize="13" Classes="accent" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,8">
-              <TextBlock Text="{Binding Strings[Administration.Context.Transport]}" Classes="nut-metadata" />
-              <TextBlock Text="{Binding TransportDisplayText}" />
+            <StackPanel Width="180" Margin="0,0,0,8" Spacing="3">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Data="{DynamicResource NutIconRemote}" Classes="muted" Width="13" Height="13" />
+                <TextBlock Text="{Binding Strings[Administration.Context.Transport]}" Classes="nut-metadata" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="{Binding TransportDisplayText}" FontWeight="SemiBold" FontSize="13" />
             </StackPanel>
           </WrapPanel>
         </StackPanel>
       </Border>
 
-      <ListBox ItemsSource="{Binding AdministrationSections}"
-               SelectedItem="{Binding SelectedAdministrationSection, Mode=TwoWay}"
-               HorizontalAlignment="Stretch">
-        <ListBox.ItemsPanel>
-          <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-        </ListBox.ItemsPanel>
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="viewModels:AdministrationSectionItemViewModel">
-            <StackPanel Width="220" Margin="8,6" Spacing="3">
-              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding Description}" Classes="nut-metadata" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding AvailabilityText}" FontSize="12" TextWrapping="Wrap" />
-            </StackPanel>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
+      <!-- Section rail + active surface -->
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="18">
+        <ListBox Grid.Column="0"
+                 Width="212"
+                 VerticalAlignment="Top"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="0"
+                 ItemsSource="{Binding AdministrationSections}"
+                 SelectedItem="{Binding SelectedAdministrationSection, Mode=TwoWay}"
+                 AutomationProperties.Name="{Binding Strings[Administration.Context.Title]}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:AdministrationSectionItemViewModel">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="11">
+                <Grid Width="18" Height="18" VerticalAlignment="Top" Margin="0,2,0,0">
+                  <PathIcon Data="{DynamicResource NutIconGeneral}" Width="18" Height="18" IsVisible="{Binding IsNutConfiguration}" />
+                  <PathIcon Data="{DynamicResource NutIconService}" Width="18" Height="18" IsVisible="{Binding IsWindowsService}" />
+                  <PathIcon Data="{DynamicResource NutIconDriver}" Width="18" Height="18" IsVisible="{Binding IsDevicesAndDrivers}" />
+                  <PathIcon Data="{DynamicResource NutIconRemote}" Width="18" Height="18" IsVisible="{Binding IsRemoteAccess}" />
+                </Grid>
+                <StackPanel Grid.Column="1" Spacing="2">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding AvailabilityText}" Classes="nut-metadata" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
 
-      <views:NutConfigurationAdministrationView IsVisible="{Binding IsNutConfigurationSectionSelected}" />
-      <views:WindowsServiceAdministrationView IsVisible="{Binding IsWindowsServiceSectionSelected}" />
-      <views:DevicesDriversAdministrationView IsVisible="{Binding IsDevicesDriversSectionSelected}" />
-      <views:RemoteAccessAdministrationView IsVisible="{Binding IsRemoteAccessSectionSelected}" />
+        <StackPanel Grid.Column="1" Spacing="16">
+          <views:NutConfigurationAdministrationView IsVisible="{Binding IsNutConfigurationSectionSelected}" />
+          <views:WindowsServiceAdministrationView IsVisible="{Binding IsWindowsServiceSectionSelected}" />
+          <views:DevicesDriversAdministrationView IsVisible="{Binding IsDevicesDriversSectionSelected}" />
+          <views:RemoteAccessAdministrationView IsVisible="{Binding IsRemoteAccessSectionSelected}" />
+        </StackPanel>
+      </Grid>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

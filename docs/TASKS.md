@@ -36,15 +36,16 @@ Only one task should normally be in progress at a time.
 | T19 | DONE | Add remote SSH/SFTP management | Manual remote directory browse, validation, and secure management transport |
 | T19B | DONE | Add SMB remote configuration transport | Manual UNC SMB configuration access and verified safe replacement |
 | T20 | DONE | Add secure credential storage | Protected SSH and SMB remote-management credentials |
-| T21 | IN PROGRESS | Validate full Windows local and remote administration | End-to-end Windows-first validation; current findings recorded separately |
+| T21 | DONE | Validate full Windows local and remote administration | End-to-end Windows-first validation; findings recorded and carried into later tasks |
 | T22 | DEFERRED | Future Linux compatibility evaluation | Compatibility may be reconsidered in a future task |
-| T23 | TODO | Evaluate upstream NUT improvements | Focused issues and PR candidates |
+| T23 | DONE | Evaluate upstream NUT improvements | Focused issues and PR candidates |
 | T24 | DONE | Modern responsive shell, design system and localization foundation | Windows-first responsive presentation and pt-BR/en-US foundation |
 | T24A | DONE | Managed server profile UX and typed validation | Reversible profiles, typed validation, deterministic migration, and explicit connection testing |
 | T24B | DONE | Current page and administration presentation decomposition | Focused responsive surfaces over existing safe capabilities |
 | T25 | DONE | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
 | T26 | DONE | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
 | T27 | DONE | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
+| T27A | IN PROGRESS | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | TODO | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | TODO | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 
@@ -224,9 +225,9 @@ Store opt-in SSH and SMB remote-management secrets in Windows Credential Manager
 
 ## T21 — Validate full Windows local and remote administration
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
-Validate Windows-first local and remote administration, including recovery paths, without unsafe UPS operations. Current live findings are recorded in [LIVE-VALIDATION-FINDINGS.md](LIVE-VALIDATION-FINDINGS.md); they are not completed acceptance or authorization for redesign work in this validation stream.
+Validate Windows-first local and remote administration, including recovery paths, without unsafe UPS operations. The live Windows validation was executed and its findings are recorded in [LIVE-VALIDATION-FINDINGS.md](LIVE-VALIDATION-FINDINGS.md) as a historical record of that validation run. Findings that required product changes were carried into the later tasks that own them rather than keeping this validation stream open indefinitely. Further validation of surfaces introduced after this run belongs to the task that introduces them, and final graphical hardening remains T29.
 
 ## T22 — Evaluate Linux administrative compatibility
 
@@ -466,6 +467,44 @@ Provide dedicated graphical `upsd.conf` and `nut.conf` forms.
 - dedicated `upsd.conf` Server editor with stable repeated `LISTEN` rows, syntax-only IPv4/IPv6/hostname/wildcard validation, server/timeouts, TLS metadata, and protected change-only `CERTIDENT`;
 - semantic review, read-only redacted preview, external-change protection, and explicit Apply through the existing Local/SFTP/SMB pipelines only;
 - responsive graphical composition with ReadOnly/Manage capability enforcement and no DNS, socket, certificate, process, or service side effects.
+
+## T27A — Approved visual fidelity, iconography and motion
+
+**Status:** IN PROGRESS
+
+### Objective
+
+Align the existing Windows presentation with the approved visual references, including shared iconography, restrained motion, dashboard hierarchy and configuration-review fidelity without changing administrative behavior.
+
+### Allowed scope
+
+- `NutManager.App` presentation: shared themes, shared controls, views, and the presentation-only view-model projections required to surface state that already exists.
+
+### Requirements
+
+- shared surface hierarchy, typography, colour and motion tokens instead of page-local palettes;
+- vector iconography from one shared resource dictionary, with no emoji, pictographic text, or raster UI icons;
+- integrated window chrome so the product identity and window controls read as one bar;
+- Overview composed as a UPS dashboard with battery, load gauge, runtime, input/output, state and connection;
+- configuration review presented as pending-change cards, redacted generated preview, and an explicit action bar;
+- restrained motion on navigation, selection, metric values, drawer and theme toggle only.
+
+### Do not
+
+- fabricate readings, tests, logs, service state, or capabilities that the product does not implement;
+- change domain logic, writers, transports, credential handling, or semantic configuration behavior;
+- add charting, icon, or animation dependencies;
+- begin T28 or T29.
+
+### Validation
+
+- existing suites stay green; focused tests pin that absent readings remain absent in the dashboard projections;
+- Release build with zero warnings, format, vulnerability and whitespace gates;
+- application launched on Windows to confirm the shell, dashboard and configuration surfaces initialise.
+
+### Completion criteria
+
+- the rendered application matches the approved references closely enough for human visual acceptance, with no functional or safety regression. Final acceptance requires that human comparison and is not implied by passing gates.
 
 ## T28 — Graphical users and monitoring configuration
 

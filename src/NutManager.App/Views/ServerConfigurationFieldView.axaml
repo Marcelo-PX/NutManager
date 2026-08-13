@@ -3,37 +3,72 @@
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              x:Class="NutManager.App.Views.ServerConfigurationFieldView"
              x:DataType="viewModels:ServerConfigurationFieldViewModel">
-  <Border Classes="nut-card-elevated" Padding="12" Margin="0,0,0,8">
-    <StackPanel Spacing="6">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-        <StackPanel>
-          <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding TechnicalName}" Classes="nut-metadata" />
-        </StackPanel>
-        <TextBlock Grid.Column="1" Text="{Binding Unit}" Classes="nut-metadata" />
-      </Grid>
-      <TextBlock Text="{Binding Help}" Classes="nut-metadata" TextWrapping="Wrap" />
-      <TextBlock Text="{Binding Strings[Config.Field.Risky]}" IsVisible="{Binding IsRisky}" TextWrapping="Wrap" />
-      <CheckBox Content="{Binding Strings[Config.Field.ConfigureExplicitly]}"
-                IsChecked="{Binding IsConfigured, Mode=TwoWay}" IsVisible="{Binding IsBoolean}"
-                IsEnabled="{Binding CanEdit}" AutomationProperties.Name="{Binding Strings[Config.Field.ConfigureExplicitly]}" />
-      <ToggleSwitch IsChecked="{Binding BooleanValue, Mode=TwoWay}" IsVisible="{Binding IsBooleanConfigured}"
-                    IsEnabled="{Binding CanEdit}" AutomationProperties.Name="{Binding Label}" />
-      <ComboBox ItemsSource="{Binding Choices}" SelectedValueBinding="{Binding TechnicalValue}"
-                SelectedValue="{Binding DraftValue, Mode=TwoWay}" IsVisible="{Binding HasChoices}"
-                IsEnabled="{Binding CanEdit}" AutomationProperties.Name="{Binding Label}">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="viewModels:UpsFieldChoiceViewModel"><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
-      <TextBox Text="{Binding DraftValue, Mode=TwoWay}" IsVisible="{Binding IsText}"
-               IsReadOnly="{Binding !CanEdit}" AutomationProperties.Name="{Binding Label}" />
-      <StackPanel IsVisible="{Binding IsSensitive}" Spacing="5">
-        <TextBlock Text="{Binding SensitiveStateText}" Classes="nut-metadata" />
-        <TextBlock Text="{Binding Strings[Config.Tls.CertificateIdentity.ChangeOnly]}" TextWrapping="Wrap" />
+  <!--
+    Compact server/general form field matching the ups.conf field composition: label, control and
+    helper text with no per-field card. Columns are arranged by the parent section.
+  -->
+  <StackPanel Spacing="5" Width="248" Margin="0,0,16,14">
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+      <StackPanel Spacing="1">
+        <TextBlock Text="{Binding Label}" Classes="nut-label" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding TechnicalName}" Classes="nut-metadata" FontSize="11" />
       </StackPanel>
-      <Button Content="{Binding Strings[Config.Field.UseAutomatic]}" Click="SetAutomaticButton_OnClick"
-              IsVisible="{Binding SupportsAutomatic}" IsEnabled="{Binding CanEdit}" HorizontalAlignment="Left" />
+      <PathIcon Grid.Column="1"
+                Data="{DynamicResource NutIconWarning}"
+                Classes="warning"
+                Width="12"
+                Height="12"
+                VerticalAlignment="Top"
+                ToolTip.Tip="{Binding Strings[Config.Field.Risky]}"
+                IsVisible="{Binding IsRisky}" />
+    </Grid>
+
+    <CheckBox Content="{Binding Strings[Config.Field.ConfigureExplicitly]}"
+              IsChecked="{Binding IsConfigured, Mode=TwoWay}"
+              IsVisible="{Binding IsBoolean}"
+              IsEnabled="{Binding CanEdit}"
+              AutomationProperties.Name="{Binding Strings[Config.Field.ConfigureExplicitly]}" />
+    <ToggleSwitch IsChecked="{Binding BooleanValue, Mode=TwoWay}"
+                  IsVisible="{Binding IsBooleanConfigured}"
+                  IsEnabled="{Binding CanEdit}"
+                  AutomationProperties.Name="{Binding Label}" />
+
+    <ComboBox ItemsSource="{Binding Choices}"
+              SelectedValueBinding="{Binding TechnicalValue}"
+              SelectedValue="{Binding DraftValue, Mode=TwoWay}"
+              HorizontalAlignment="Stretch"
+              IsVisible="{Binding HasChoices}"
+              IsEnabled="{Binding CanEdit}"
+              AutomationProperties.Name="{Binding Label}">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="viewModels:UpsFieldChoiceViewModel"><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding IsText}">
+      <TextBox Text="{Binding DraftValue, Mode=TwoWay}"
+               IsReadOnly="{Binding !CanEdit}"
+               AutomationProperties.Name="{Binding Label}" />
+      <TextBlock Grid.Column="1"
+                 Text="{Binding Unit}"
+                 Classes="nut-metadata"
+                 VerticalAlignment="Center"
+                 IsVisible="{Binding Unit, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    </Grid>
+
+    <!-- Sensitive fields stay change-only: the stored value is never projected here. -->
+    <StackPanel IsVisible="{Binding IsSensitive}" Spacing="4">
+      <TextBlock Text="{Binding SensitiveStateText}" Classes="nut-metadata" />
+      <TextBlock Text="{Binding Strings[Config.Tls.CertificateIdentity.ChangeOnly]}" Classes="nut-metadata" TextWrapping="Wrap" />
     </StackPanel>
-  </Border>
+
+    <Button Classes="nut-link"
+            Content="{Binding Strings[Config.Field.UseAutomatic]}"
+            Click="SetAutomaticButton_OnClick"
+            IsVisible="{Binding SupportsAutomatic}"
+            IsEnabled="{Binding CanEdit}"
+            HorizontalAlignment="Left" />
+
+    <TextBlock Text="{Binding Help}" Classes="nut-metadata" TextWrapping="Wrap" />
+  </StackPanel>
 </UserControl>

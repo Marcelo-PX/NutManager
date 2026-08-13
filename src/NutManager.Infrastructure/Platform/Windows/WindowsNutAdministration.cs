@@ -91,14 +91,64 @@ public sealed class WindowsNutAdministrationBackend : IWindowsNutAdministrationB
         if (!OperatingSystem.IsWindows()) return NutWindowsAdministrationSnapshot.Unsupported();
         if (!installation.IsDetected || string.IsNullOrWhiteSpace(installation.InstallationDirectory) || string.IsNullOrWhiteSpace(installation.ConfigurationDirectory))
         {
-            return new NutWindowsAdministrationSnapshot(true, GetPrivilegeState(), Array.Empty<NutServiceInfo>(), NutPermissionAssessment.Unsupported(), Array.Empty<NutProcessInfo>(), Array.Empty<NutEventLogEntry>(), "Nenhuma instalação NUT local foi selecionada.");
+            // Without a detected installation the permission assessment cannot be produced, but an
+            // installed NUT service can still be reported by identity so the user sees its real
+            // state. Association stays at name level, which keeps every mutating action disabled.
+            const string notSelected = "Nenhuma instalação NUT local foi selecionada.";
+            var identityOnly = await WindowsNutServiceController.DiscoverAsync(string.Empty, cancellationToken);
+            return new NutWindowsAdministrationSnapshot(true, GetPrivilegeState(), identityOnly.Services,
+                NutPermissionAssessment.NotDetermined(notSelected), Array.Empty<NutProcessInfo>(), Array.Empty<NutEventLogEntry>(),
+                identityOnly.DiagnosticMessage ?? notSelected)
+            {
+                ServiceDiscoveryStatus = identityOnly.Status,
+                Trace = identityOnly.Trace
+            };
         }
 
-        var services = await WindowsNutServiceController.DiscoverAsync(installation.InstallationDirectory, cancellationToken);
-        var permissions = WindowsNutPermissions.Assess(installation.ConfigurationDirectory, installation.ConfigurationFiles);
-        var processes = WindowsNutProcessInspector.Inspect(installation.InstallationDirectory);
-        var eventResult = WindowsNutEventLogReader.Read(services, 50);
-        return new NutWindowsAdministrationSnapshot(true, GetPrivilegeState(), services, permissions, processes, eventResult.Events, EventLogStatus: eventResult.Status, EventLogDiagnosticMessage: eventResult.DiagnosticMessage);
+        // Each subsystem is isolated. Previously a single throw anywhere below - an ACL read, a
+        // process query, the event log - aborted the whole inspection, so the snapshot was never
+        // produced and the page reported "no service found" for a machine that has one. Service
+        // discovery is the primary information and must survive a failure in the others.
+        var failed = new List<string>();
+
+        var discovery = await WindowsNutServiceController.DiscoverAsync(installation.InstallationDirectory, cancellationToken);
+        var services = discovery.Services;
+
+        // Written as inline try/catch rather than lambdas so the platform flow analysis established
+        // by the OperatingSystem.IsWindows() guard above still applies to each call.
+        NutPermissionAssessment permissions;
+        try { permissions = WindowsNutPermissions.Assess(installation.ConfigurationDirectory, installation.ConfigurationFiles); }
+        catch (OperationCanceledException) { throw; }
+        catch { failed.Add("permissões"); permissions = NutPermissionAssessment.NotDetermined("Não foi possível avaliar as permissões."); }
+
+        IReadOnlyList<NutProcessInfo> processes;
+        var processesDenied = false;
+        try { processes = WindowsNutProcessInspector.Inspect(installation.InstallationDirectory, out processesDenied); }
+        catch (OperationCanceledException) { throw; }
+        catch { failed.Add("processos"); processes = Array.Empty<NutProcessInfo>(); }
+
+        IReadOnlyList<NutEventLogEntry> events;
+        NutEventLogStatus eventStatus;
+        string? eventDiagnostic;
+        try { (events, eventStatus, eventDiagnostic) = WindowsNutEventLogReader.Read(services, 10); }
+        catch (OperationCanceledException) { throw; }
+        catch { failed.Add("eventos"); events = Array.Empty<NutEventLogEntry>(); eventStatus = NutEventLogStatus.Failed; eventDiagnostic = "Não foi possível ler o log de eventos."; }
+
+        PrivilegeState privilege;
+        try { privilege = GetPrivilegeState(); }
+        catch (OperationCanceledException) { throw; }
+        catch { failed.Add("privilégio"); privilege = PrivilegeState.Unknown; }
+
+        var diagnostic = failed.Count == 0
+            ? discovery.DiagnosticMessage
+            : $"{discovery.DiagnosticMessage} (subsistemas indisponíveis: {string.Join(", ", failed)})".TrimStart();
+
+        return new NutWindowsAdministrationSnapshot(true, privilege, services, permissions, processes, events, diagnostic, eventStatus, eventDiagnostic)
+        {
+            ServiceDiscoveryStatus = discovery.Status,
+            Trace = discovery.Trace,
+            ProcessInspectionDenied = processesDenied
+        };
     }
 
     public async Task<NutAdministrativeActionResult> ExecuteAsync(NutAdministrativeActionRequest request, CancellationToken cancellationToken)
@@ -213,17 +263,54 @@ public static class WindowsNutAdministrativeRequestValidator
 [SupportedOSPlatform("windows")]
 internal static class WindowsNutServiceController
 {
-    public static Task<IReadOnlyList<NutServiceInfo>> DiscoverAsync(string installationDirectory, CancellationToken cancellationToken) => Task.Run<IReadOnlyList<NutServiceInfo>>(() =>
+    public static Task<NutServiceDiscoveryResult> DiscoverAsync(string installationDirectory, CancellationToken cancellationToken) => Task.Run(() =>
     {
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            return System.ServiceProcess.ServiceController.GetServices()
-                .Select(service => CreateInfo(service, installationDirectory))
-                .Where(service => service.IsAssociated)
-                .ToArray();
+            var all = System.ServiceProcess.ServiceController.GetServices();
+
+            // Resolve the exact known identity first: it is deterministic and independent of how
+            // the rest of the machine's services happen to be named.
+            var exact = all.FirstOrDefault(service =>
+                WindowsNutServiceAssociation.IsKnownIdentity(service.ServiceName, service.DisplayName));
+
+            var evaluated = all.Select(service => CreateInfo(service, installationDirectory)).ToArray();
+            var services = evaluated.Where(service => service.IsAssociated).ToArray();
+            var candidate = services.FirstOrDefault()
+                ?? evaluated.FirstOrDefault(info => WindowsNutServiceAssociation.IsKnownIdentity(info.ServiceName, info.DisplayName));
+
+            var trace = new NutServiceDiscoveryTrace(
+                PlatformSupported: true,
+                EnumerationSucceeded: true,
+                EnumeratedServiceCount: all.Length,
+                ExactKnownServiceFound: exact is not null,
+                CandidateServiceName: candidate?.ServiceName ?? exact?.ServiceName,
+                CandidateDisplayName: candidate?.DisplayName ?? exact?.DisplayName,
+                CandidateExecutable: candidate?.BinaryPath,
+                NormalizedExecutable: candidate?.BinaryPath,
+                InstallationRoot: string.IsNullOrWhiteSpace(installationDirectory) ? null : installationDirectory,
+                ContainmentResult: candidate?.BinaryPath is { } path && !string.IsNullOrWhiteSpace(installationDirectory)
+                    ? WindowsPath.IsInside(path, installationDirectory)
+                    : null,
+                Association: candidate?.AssociationConfidence ?? NutAssociationConfidence.None,
+                FailureReason: services.Length > 0 ? null
+                    : exact is null ? "Nenhum serviço com identidade NUT conhecida apareceu na enumeração do SCM."
+                    : "O serviço com identidade NUT foi encontrado, mas não passou na validação de associação.");
+
+            return new NutServiceDiscoveryResult(services, NutServiceDiscoveryStatus.Completed) { Trace = trace };
         }
-        catch { return Array.Empty<NutServiceInfo>(); }
+        catch (System.ComponentModel.Win32Exception exception) when (exception.NativeErrorCode == 5)
+        {
+            // Insufficient rights to query the SCM is not the same as "no service installed".
+            return new NutServiceDiscoveryResult(Array.Empty<NutServiceInfo>(), NutServiceDiscoveryStatus.AccessDenied,
+                "Permissão insuficiente para consultar os serviços do Windows.");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return new NutServiceDiscoveryResult(Array.Empty<NutServiceInfo>(), NutServiceDiscoveryStatus.QueryFailed,
+                "Não foi possível consultar os serviços do Windows.");
+        }
     }, cancellationToken);
 
     public static async Task<NutAdministrativeActionResult> ExecuteAsync(NutAdministrativeActionRequest request, CancellationToken cancellationToken)
@@ -281,7 +368,9 @@ internal static class WindowsNutServiceController
 
 public static class WindowsNutServiceAssociation
 {
-    private static readonly string[] KnownServiceNames = ["NetworkUpsTools", "NUT"];
+    // The Windows installer registers the service as "Network UPS Tools" for both the service name
+    // and the display name; the compact spellings are kept for other packagings.
+    private static readonly string[] KnownServiceNames = ["Network UPS Tools", "NetworkUpsTools", "NetworkUPSTools", "NUT"];
     private static readonly string[] KnownDisplayNames = ["Network UPS Tools"];
     private static readonly string[] RecognizedExecutables = ["nut.exe", "upsd.exe", "upsmon.exe", "upsdrvctl.exe"];
 
@@ -289,18 +378,35 @@ public static class WindowsNutServiceAssociation
     {
         var executable = TryExtractExecutablePath(imagePath);
         var binaryPath = executable is not null && WindowsPath.TryCanonicalize(executable, out var canonicalExecutable) ? canonicalExecutable : null;
-        if (binaryPath is not null)
+
+        var matchesKnownIdentity = IsKnownIdentity(serviceName, displayName);
+
+        // When a binary resolves *and* there is a detected installation to compare it against,
+        // containment is authoritative: a service that merely borrows a known NUT name while
+        // pointing somewhere else must not be associated. This is the anti name-squatting rule.
+        if (binaryPath is not null && !string.IsNullOrWhiteSpace(installationDirectory))
         {
+            if (!WindowsPath.IsInside(binaryPath, installationDirectory)) return (binaryPath, NutAssociationConfidence.None);
+
+            // Inside the trusted root, either a known service identity or a known NUT executable is
+            // enough. The executable list alone used to decide, which rejected a genuinely installed
+            // service whenever the packaging named its binary differently.
             var name = binaryPath[(binaryPath.LastIndexOf('\\') + 1)..];
-            return (binaryPath, RecognizedExecutables.Contains(name, StringComparer.OrdinalIgnoreCase) && WindowsPath.IsInside(binaryPath, installationDirectory)
+            return (binaryPath, matchesKnownIdentity || RecognizedExecutables.Contains(name, StringComparer.OrdinalIgnoreCase)
                 ? NutAssociationConfidence.BinaryPath
                 : NutAssociationConfidence.None);
         }
 
-        return (null, KnownServiceNames.Contains(serviceName, StringComparer.OrdinalIgnoreCase) || KnownDisplayNames.Contains(displayName, StringComparer.OrdinalIgnoreCase)
-            ? NutAssociationConfidence.NameFallback
-            : NutAssociationConfidence.None);
+        // No binary to inspect, or no installation to verify it against. Fall back to the exact
+        // known identities so an installed service is still reported, with the weaker confidence
+        // that keeps every mutating action disabled.
+        return (binaryPath, matchesKnownIdentity ? NutAssociationConfidence.NameFallback : NutAssociationConfidence.None);
     }
+
+    /// <summary>Exact, case-insensitive match against the service names NutManager recognises.</summary>
+    public static bool IsKnownIdentity(string? serviceName, string? displayName) =>
+        (serviceName is not null && KnownServiceNames.Contains(serviceName, StringComparer.OrdinalIgnoreCase)) ||
+        (displayName is not null && KnownDisplayNames.Contains(displayName, StringComparer.OrdinalIgnoreCase));
 
     public static string? TryExtractExecutablePath(string? imagePath)
     {
@@ -386,11 +492,43 @@ internal static class WindowsNutPermissions
 
 internal static class WindowsNutProcessInspector
 {
-    public static IReadOnlyList<NutProcessInfo> Inspect(string installationDirectory) => Process.GetProcesses().Select(process =>
+    /// <summary>
+    /// Associates running processes with the installation by executable path. Reading a process's
+    /// main module requires rights the current session may not have: NUT runs as LocalSystem, so an
+    /// unelevated NutManager cannot inspect it. <paramref name="accessDenied"/> reports that case so
+    /// the UI can say "cannot inspect" instead of asserting that no NUT process is running.
+    /// </summary>
+    public static IReadOnlyList<NutProcessInfo> Inspect(string installationDirectory, out bool accessDenied)
     {
-        try { using (process) { var path = process.MainModule?.FileName; return new NutProcessInfo(process.ProcessName, process.Id, path, path is not null && WindowsNutAdministrativeRequestValidator.IsPathInsideDirectory(path, installationDirectory) ? NutAssociationConfidence.BinaryPath : NutAssociationConfidence.None); } }
-        catch { return new NutProcessInfo(process.ProcessName, process.Id, null, NutAssociationConfidence.None); }
-    }).Where(process => process.AssociationConfidence != NutAssociationConfidence.None).ToArray();
+        var denied = false;
+        var processes = Process.GetProcesses().Select(process =>
+        {
+            try
+            {
+                using (process)
+                {
+                    var path = process.MainModule?.FileName;
+                    return new NutProcessInfo(process.ProcessName, process.Id, path,
+                        path is not null && WindowsNutAdministrativeRequestValidator.IsPathInsideDirectory(path, installationDirectory)
+                            ? NutAssociationConfidence.BinaryPath
+                            : NutAssociationConfidence.None);
+                }
+            }
+            catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
+            {
+                // The process exists but its module list is not readable from this session.
+                denied = true;
+                return new NutProcessInfo(process.ProcessName, process.Id, null, NutAssociationConfidence.None);
+            }
+            catch
+            {
+                return new NutProcessInfo(process.ProcessName, process.Id, null, NutAssociationConfidence.None);
+            }
+        }).Where(process => process.AssociationConfidence != NutAssociationConfidence.None).ToArray();
+
+        accessDenied = denied && processes.Length == 0;
+        return processes;
+    }
 }
 
 [SupportedOSPlatform("windows")]

@@ -312,6 +312,7 @@ public sealed partial class UpsdConfigurationEditorViewModel : ServerGeneralConf
 public sealed partial class ServerConfigurationFieldViewModel : ObservableObject
 {
     private readonly ServerGeneralConfigurationEditorViewModel _owner;
+    private readonly string _committedValue;
     private bool _initializing = true;
 
     public ServerConfigurationFieldViewModel(
@@ -339,6 +340,7 @@ public sealed partial class ServerConfigurationFieldViewModel : ObservableObject
             null => string.Empty,
             _ => Convert.ToString(field.Value, CultureInfo.InvariantCulture) ?? string.Empty
         };
+        _committedValue = _draftValue;
         _booleanValue = field.Value is true;
         _isConfigured = field.State == NutConfigurationSemanticState.Explicit;
         SensitiveStateText = strings.Get(field.SensitiveState switch
@@ -375,7 +377,31 @@ public sealed partial class ServerConfigurationFieldViewModel : ObservableObject
 
     partial void OnDraftValueChanged(string value)
     {
+        // A ComboBox coerces SelectedValue to null while it materializes, before its items can be
+        // matched against the current value, and the two-way binding pushes that null back here.
+        // Taking it for an edit rewrote the draft and forced a rebuild, whose fresh ComboBox did
+        // the same thing on its next materialization: an endless rebuild loop that froze the
+        // screen and left the file permanently reported as modified. A choice is cleared through
+        // "use automatic", never by selecting nothing, so a null can only be that coercion.
+        if (value is null)
+        {
+            RestoreDraftValue();
+            return;
+        }
+
         if (!_initializing && CanEdit) _owner.SetField(Descriptor, value);
+    }
+
+    /// <summary>
+    /// Puts the field's own value back without registering an edit, so the control re-binds to it
+    /// instead of settling on the empty selection it briefly proposed.
+    /// </summary>
+    private void RestoreDraftValue()
+    {
+        if (_initializing) return;
+        _initializing = true;
+        DraftValue = _committedValue;
+        _initializing = false;
     }
 
     partial void OnBooleanValueChanged(bool value)

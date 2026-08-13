@@ -102,7 +102,60 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
         };
         UpdateNavigationSelection();
+        PublishDashboardContext();
     }
+
+    /// <summary>
+    /// Hands the Overview dashboard the management context the shell already owns, plus shortcuts
+    /// that only navigate to existing surfaces. No new state, capability or command is created.
+    /// </summary>
+    private void PublishDashboardContext()
+    {
+        var rows = new List<OverviewInfoRowViewModel>
+        {
+            new(Localizer.Get("Overview.Profile"), ActiveProfileName)
+        };
+        if (_managementMode is { } mode)
+            rows.Add(new(Localizer.Get("Administration.Context.Management"),
+                Localizer.Get(mode == NutManagementMode.Local ? "Management.Local" : "Management.Remote")));
+        if (_accessMode is { } access)
+            rows.Add(new(Localizer.Get("Administration.Context.Access"),
+                Localizer.Get(access == ManagedNutServerAccessMode.Manage ? "Access.Manage" : "Access.ReadOnly")));
+        rows.Add(new(
+            Localizer.Get("Overview.MockState"),
+            Localizer.Get(IsMockMode ? "Common.Enabled" : "Common.Disabled"),
+            IsMockMode));
+
+        var administrationPage = _pages[AppPage.Administration] as AdministrationPageViewModel;
+        var shortcuts = new List<OverviewShortcutViewModel>
+        {
+            CreateShortcut(AdministrationSection.NutConfiguration, OverviewShortcutGlyph.Configuration,
+                "Administration.Section.Configuration", administrationPage),
+            CreateShortcut(AdministrationSection.WindowsService, OverviewShortcutGlyph.Service,
+                "Administration.Section.WindowsService", administrationPage),
+            CreateShortcut(AdministrationSection.DevicesAndDrivers, OverviewShortcutGlyph.Devices,
+                "Administration.Section.DevicesDrivers", administrationPage),
+            new(Localizer.Get("Nav.Diagnostics"), Localizer.Get("Diagnostics.Description"),
+                OverviewShortcutGlyph.Diagnostics, new RelayCommand(() => Navigate(AppPage.Diagnostics)))
+        };
+
+        _overviewPage.SetDashboardContext(rows, shortcuts);
+    }
+
+    private OverviewShortcutViewModel CreateShortcut(
+        AdministrationSection section,
+        OverviewShortcutGlyph glyph,
+        string resourcePrefix,
+        AdministrationPageViewModel? administrationPage) =>
+        new(Localizer.Get(resourcePrefix),
+            Localizer.Get($"{resourcePrefix}.Description"),
+            glyph,
+            new RelayCommand(() =>
+            {
+                if (administrationPage?.AdministrationSections.FirstOrDefault(item => item.Section == section) is { } target)
+                    administrationPage.SelectedAdministrationSection = target;
+                Navigate(AppPage.Administration);
+            }));
 
     public IReadOnlyList<NavigationItemViewModel> NavigationItems { get; }
     public IReadOnlyList<ThemeOption> ThemeOptions { get; }
@@ -187,6 +240,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string ReviewDrawerTitle => Localizer.Get("Shell.ReviewChanges");
     public string ReviewDrawerCloseText => Localizer.Get("Shell.CloseReview");
     public string? ReviewDrawerPendingText => _semanticReview?.PendingText;
+    public string? ReviewDrawerPendingCount => _semanticReview?.ChangeCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
     public object? ReviewDrawerContent => _semanticReview;
     public bool IsReviewDrawerInline => ReviewDrawerDisplay == ReviewDrawerDisplayState.Expanded;
     public bool IsReviewDrawerOverlay => ReviewDrawerDisplay == ReviewDrawerDisplayState.Overlay;
@@ -211,6 +265,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(ReviewDrawerDisplay));
         OnPropertyChanged(nameof(IsReviewDrawerVisible));
         OnPropertyChanged(nameof(ReviewDrawerPendingText));
+        OnPropertyChanged(nameof(ReviewDrawerPendingCount));
         OnPropertyChanged(nameof(ReviewDrawerContent));
         OnPropertyChanged(nameof(IsReviewDrawerInline));
         OnPropertyChanged(nameof(IsReviewDrawerOverlay));

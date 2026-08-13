@@ -86,6 +86,20 @@ Administration
 
 T24B preserves the existing-entry editor and reviewed T14 preview inside NUT Configuration. T25 supplies the generic semantic draft/review/generated-preview foundation without adding a writer. T26 uses that foundation for graphical `ups.conf`. T27 adds dedicated General (`nut.conf`) and Server (`upsd.conf`) surfaces with Basic/Advanced/Custom groups, wrapping LISTEN/TLS/custom rows, textual accessible actions, and the same page-level scroll owner. T28 owns the two remaining final graphical forms.
 
+## Approved visual fidelity (T27A)
+
+T27A aligns the rendered application with the approved visual references without changing behavior. It is presentation-only: view models, commands, validation, semantic configuration, transports and safety boundaries are untouched apart from presentation-only projections that surface state which already existed.
+
+`Presentation/Themes` is the single source for the visual language. `NutColors.axaml` defines an explicit surface hierarchy — window, shell, surface, elevated, interactive, selected — plus border, text, accent and semantic families in both themes, so cards no longer carry the same visual weight and navigation selection is a restrained accent bar and low-contrast surface instead of a saturated block. `NutTypography.axaml` separates page title, section title, card title, label, metadata and the dominant metric readout. `NutMetrics.axaml` owns spacing, radii, icon sizes and shell dimensions. `NutControlStyles.axaml` and `NutShellStyles.axaml` restyle cards, buttons, inputs, lists, tabs, badges, the title bar, navigation and the profile card so surfaces stop reading as default Fluent controls.
+
+`NutIcons.axaml` is the only icon source. Glyphs are `StreamGeometry` on a 24×24 grid using the even-odd rule for outlined shapes, covering navigation, configuration domains, metrics, connectivity, security, service control, actions, chevrons, theme and window chrome. Emoji, pictographic text and raster images are not used as icons, and no icon package is referenced. Semantic icon colour is always redundant with text.
+
+The window uses `WindowDecorations="BorderOnly"` so product identity, connection state, the theme control and the window buttons share one integrated bar instead of a separate Windows title strip. Drag, double-click maximise, minimise, restore and close remain standard Avalonia window operations with no platform interop.
+
+Motion is defined in `NutMotion.axaml` and stays within roughly 140–320 ms for interaction feedback: navigation selection, hover, card and input state, drawer content, tab underline, theme selection, load-gauge sweep and battery value transitions. The connected halo is the only looping animation, is purely decorative, and never carries state on its own. No animation timer, background worker or polling loop is introduced for decoration.
+
+Overview is composed as a UPS dashboard: battery with animated charge bar, semicircular load gauge built from the native `Arc` shape, runtime with its raw NUT reading, input and output, UPS state with its status tokens, and connection. Every reading is projected from the current snapshot; a missing NUT variable keeps its card composition and shows the unavailable label rather than a substituted value, and this is pinned by tests.
+
 ## Accessibility and terminology
 
 Icon-only shell controls have `AutomationProperties.Name`, tooltips, and the shared focus-visible border. Connection state includes text as well as color. Opening Compact navigation transfers focus to its localized close button, cycles keyboard navigation inside the overlay, and disables the shell controls behind the scrim. The overlay can be closed without changing the saved navigation preference, and `Ctrl+B` remains available in applicable states. Critical warnings must always include explicit text. The product displays **SFTP**; internal contracts may retain `SshSftp`.

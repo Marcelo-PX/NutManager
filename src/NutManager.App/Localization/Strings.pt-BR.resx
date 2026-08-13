@@ -160,6 +160,7 @@
   <data name="Administration.Configuration.RemoteAccessHint" xml:space="preserve"><value>Conecte e valide o diretório na seção Acesso remoto antes de carregar arquivos.</value></data>
   <data name="Administration.Configuration.Files" xml:space="preserve"><value>Arquivos de configuração</value></data>
   <data name="Administration.Configuration.NoFiles" xml:space="preserve"><value>Nenhum arquivo de configuração está disponível neste diretório.</value></data>
+  <data name="Administration.Configuration.Loading" xml:space="preserve"><value>Carregando…</value></data>
   <data name="Administration.Configuration.NoSelection" xml:space="preserve"><value>Nenhum arquivo carregado</value></data>
   <data name="Administration.Configuration.NoSelection.Help" xml:space="preserve"><value>Selecione um arquivo disponível para visualizar ou editar.</value></data>
   <data name="Administration.Configuration.Review" xml:space="preserve"><value>Revisão das alterações</value></data>
@@ -755,4 +756,44 @@
   <data name="Config.Field.Upsd.DebugMinimum.Label" xml:space="preserve"><value>Nível mínimo de debug</value></data>
   <data name="Config.Field.Upsd.DebugMinimum.Help" xml:space="preserve"><value>DEBUG_MIN define a verbosidade mínima do upsd e pode ser aplicado em reload pelo runtime.</value></data>
   <data name="Semantic.Operation.EditRepeatedRow" xml:space="preserve"><value>Editar linha repetida</value></data>
+  <data name="Administration.Configuration.PendingChanges" xml:space="preserve"><value>Alterações não aplicadas</value></data>
+  <data name="UpsStatus.Online.Description" xml:space="preserve"><value>O nobreak está alimentando a carga pela rede elétrica.</value></data>
+  <data name="UpsStatus.OnBattery.Description" xml:space="preserve"><value>O nobreak está alimentando a carga pela bateria.</value></data>
+  <data name="UpsStatus.LowBattery.Description" xml:space="preserve"><value>A bateria está baixa e a autonomia restante é curta.</value></data>
+  <data name="UpsStatus.ReplaceBattery.Description" xml:space="preserve"><value>O nobreak indica que a bateria precisa ser substituída.</value></data>
+  <data name="UpsStatus.Overloaded.Description" xml:space="preserve"><value>A carga conectada excede a capacidade do nobreak.</value></data>
+  <data name="UpsStatus.Bypass.Description" xml:space="preserve"><value>A carga está em bypass e não está protegida pela bateria.</value></data>
+  <data name="UpsStatus.Calibration.Description" xml:space="preserve"><value>O nobreak está executando uma calibração de autonomia.</value></data>
+  <data name="UpsStatus.OutputOff.Description" xml:space="preserve"><value>A saída do nobreak está desligada.</value></data>
+  <data name="Administration.Windows.CriticalNotice" xml:space="preserve"><value>Crítico — a operação administrativa requer atenção manual.</value></data>
+  <data name="Administration.Windows.Discovery.Found" xml:space="preserve"><value>Serviço NUT detectado neste computador.</value></data>
+  <data name="Administration.Windows.Discovery.NotFound" xml:space="preserve"><value>Nenhum serviço NUT foi encontrado neste computador.</value></data>
+  <data name="Administration.Windows.Discovery.NotInspected" xml:space="preserve"><value>A administração local ainda não foi inspecionada.</value></data>
+  <data name="Administration.Windows.Processes.InspectionDenied" xml:space="preserve"><value>Não foi possível inspecionar os processos em execução nesta sessão. O NUT roda como LocalSystem, então ler seus módulos exige elevação.</value></data>
+  <data name="Devices.Section.Identification" xml:space="preserve"><value>Identificação</value></data>
+  <data name="Devices.Section.Communication" xml:space="preserve"><value>Comunicação</value></data>
+  <data name="Devices.Section.CurrentState" xml:space="preserve"><value>Estado atual</value></data>
+  <data name="Devices.Identification.NotProvided" xml:space="preserve"><value>O driver não fornece identificação de hardware para este dispositivo.</value></data>
+  <data name="Devices.Identity.Firmware" xml:space="preserve"><value>Firmware</value></data>
+  <data name="Devices.Column.State" xml:space="preserve"><value>Estado</value></data>
+  <data name="Devices.PollingInterval" xml:space="preserve"><value>Intervalo de polling</value></data>
+  <data name="Administration.Windows.Discovery.AccessDenied" xml:space="preserve"><value>Permissão insuficiente para consultar os serviços do Windows.</value></data>
+  <data name="Administration.Windows.Discovery.QueryFailed" xml:space="preserve"><value>Não foi possível consultar os serviços do Windows.</value></data>
+  <data name="Administration.Windows.Unverified" xml:space="preserve"><value>Serviço identificado pelo nome, mas o executável não foi confirmado dentro da instalação NUT detectada. Iniciar, parar e reiniciar permanecem desabilitados.</value></data>
+  <data name="Administration.Windows.CapabilityUnavailable" xml:space="preserve"><value>A administração local do Windows não está disponível nesta sessão.</value></data>
+  <data name="Administration.Drivers.PortConfiguredAndDetected" xml:space="preserve"><value>Configurada · detectada atualmente</value></data>
+  <data name="Administration.Drivers.PortConfiguredNotDetected" xml:space="preserve"><value>Configurada · não detectada atualmente</value></data>
+  <data name="Ups.Editor.StateValid" xml:space="preserve"><value>válido</value></data>
+  <data name="Ups.Editor.StateInvalid" xml:space="preserve"><value>com erros</value></data>
+  <data name="Ups.Editor.Basic" xml:space="preserve"><value>Básico</value></data>
+  <data name="Overview.ActiveConfiguration" xml:space="preserve"><value>Configurações ativas</value></data>
+  <data name="Overview.Administration" xml:space="preserve"><value>Administração</value></data>
+  <data name="Overview.Profile" xml:space="preserve"><value>Perfil</value></data>
+  <data name="Overview.MockState" xml:space="preserve"><value>Dados simulados (mock)</value></data>
+  <data name="Overview.AutoRefresh" xml:space="preserve"><value>Atualização automática</value></data>
+  <data name="Common.Enabled" xml:space="preserve"><value>Ativado</value></data>
+  <data name="Common.Disabled" xml:space="preserve"><value>Desativado</value></data>
+  <data name="Shell.Minimize" xml:space="preserve"><value>Minimizar</value></data>
+  <data name="Shell.Maximize" xml:space="preserve"><value>Maximizar ou restaurar</value></data>
+  <data name="Shell.Close" xml:space="preserve"><value>Fechar</value></data>
 </root>

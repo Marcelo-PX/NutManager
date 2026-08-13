@@ -1,28 +1,14 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using NutManager.App.ViewModels;
 
 namespace NutManager.App.Views;
 
 public partial class DevicesPageView : UserControl
 {
-    public DevicesPageView()
-    {
-        InitializeComponent();
-        SizeChanged += (_, _) => UpdateResponsiveLayout();
-    }
+    public DevicesPageView() => InitializeComponent();
 
-    private void UpdateResponsiveLayout()
-    {
-        var compact = Bounds.Width < 760;
-        DevicesLayout.ColumnDefinitions = compact ? new ColumnDefinitions("*") : new ColumnDefinitions("260,16,*");
-        DevicesLayout.RowDefinitions = compact ? new RowDefinitions("Auto,16,Auto") : new RowDefinitions("Auto");
-        Grid.SetColumn(DeviceListPanel, 0);
-        Grid.SetRow(DeviceListPanel, 0);
-        Grid.SetColumn(DeviceDetailsPanel, compact ? 0 : 2);
-        Grid.SetRow(DeviceDetailsPanel, compact ? 2 : 0);
-    }
-
+    // The table, the selected-device panel and the technical details stack vertically and each
+    // reflows on its own, so no manual column switching is required at narrow widths.
     private async void OnDeviceSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (DataContext is DevicesPageViewModel viewModel)

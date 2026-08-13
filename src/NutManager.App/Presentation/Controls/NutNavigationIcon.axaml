@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shapes="clr-namespace:Avalonia.Controls.Shapes;assembly=Avalonia.Controls"
+             x:Class="NutManager.App.Presentation.Controls.NutNavigationIcon"
+             x:Name="Root"
+             Width="24"
+             Height="24">
+  <!--
+    Layered navigation glyph.
+
+    Every layer is a Path with Stretch="None" inside a 24x24 box, so the geometry renders at its
+    authored coordinates. PathIcon would scale each layer to fill the control: a small detail such
+    as a 3-unit LED would be blown up into a disc covering the whole slot and hiding the base
+    silhouette. Drawing at native coordinates keeps the Fluent base fully visible in every state
+    and keeps the details the size they were designed to be.
+  -->
+  <Grid Width="24" Height="24">
+
+    <!-- Overview: Fluent home with an inner dashboard bar. It lifts slightly, the way a card does. -->
+    <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsOverview, ElementName=Root}">
+      <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconOverviewBase}" />
+      <shapes:Path x:Name="OverviewDetail" Classes="nut-nav-detail nut-nav-overview-detail" Stretch="None" Data="{DynamicResource NutIconOverviewDetail}" />
+    </Grid>
+
+    <!-- Devices: Fluent server tower whose two status LEDs come alive. The rack itself barely moves. -->
+    <Grid Classes="nut-icon-motion nut-icon-nudge" IsVisible="{Binding IsDevices, ElementName=Root}">
+      <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconDevicesBase}" />
+      <shapes:Path x:Name="DevicesLedTop" Classes="nut-nav-detail nut-nav-led-top" Stretch="None" Data="{DynamicResource NutIconDevicesLedTop}" />
+      <shapes:Path x:Name="DevicesLedBottom" Classes="nut-nav-detail nut-nav-led-bottom" Stretch="None" Data="{DynamicResource NutIconDevicesLedBottom}" />
+    </Grid>
+
+    <!-- Administration: the gear turns a fraction of a tooth. A full revolution would read as a
+         progress spinner, which is not what a settings destination means. -->
+    <Grid Classes="nut-icon-motion nut-icon-gear" IsVisible="{Binding IsAdministration, ElementName=Root}">
+      <shapes:Path x:Name="GearBase" Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconGearBase}" />
+      <shapes:Path x:Name="GearHub" Classes="nut-nav-detail nut-nav-hub" Stretch="None" Data="{DynamicResource NutIconGearHub}" />
+    </Grid>
+
+    <!-- Diagnostics: Fluent pulse with an endpoint reading. -->
+    <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsDiagnostics, ElementName=Root}">
+      <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconDiagnosticsBase}" />
+      <shapes:Path x:Name="DiagnosticsDot" Classes="nut-nav-detail nut-nav-pulse-dot" Stretch="None" Data="{DynamicResource NutIconDiagnosticsDot}" />
+    </Grid>
+
+    <!-- Settings: the tracks stay put and each handle travels as one piece, ring and fill together,
+         the way a control being adjusted would. -->
+    <Grid IsVisible="{Binding IsSettings, ElementName=Root}">
+      <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconSettingsTracks}" />
+      <Grid x:Name="KnobTop">
+        <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconSettingsRingTop}" />
+        <shapes:Path Classes="nut-nav-detail nut-nav-knob-top" Stretch="None" Data="{DynamicResource NutIconSettingsKnobTop}" />
+      </Grid>
+      <Grid x:Name="KnobBottom">
+        <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconSettingsRingBottom}" />
+        <shapes:Path Classes="nut-nav-detail nut-nav-knob-bottom" Stretch="None" Data="{DynamicResource NutIconSettingsKnobBottom}" />
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

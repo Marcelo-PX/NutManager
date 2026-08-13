@@ -31,70 +31,83 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="20" MaxWidth="1180">
-      <StackPanel Spacing="4">
-        <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
-        <TextBlock Text="{Binding Description}"
-                   Foreground="{DynamicResource NutTextSecondaryBrush}"
-                   TextWrapping="Wrap" />
+      <StackPanel Spacing="2">
+        <StackPanel Orientation="Horizontal" Spacing="11">
+          <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
+          <PathIcon Data="{DynamicResource NutIconSettings}" Width="20" Height="20" Foreground="{DynamicResource NutAccentBrightBrush}" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Text="{Binding Description}" Classes="nut-page-subtitle" TextWrapping="Wrap" />
       </StackPanel>
 
+      <!-- Appearance and language preferences. The full theme preference (System/Light/Dark) stays
+           here; the header toggle is a shortcut, not a replacement. -->
       <Border Classes="nut-card">
         <StackPanel Spacing="12">
-          <TextBlock Text="{Binding AppearanceTitle}" Classes="nut-section-title" />
-          <Grid x:Name="AppearanceLayout" ColumnDefinitions="*,*,*" ColumnSpacing="12">
-            <StackPanel x:Name="ThemePreferencePanel" Grid.Column="0" Spacing="6">
-              <TextBlock Text="{Binding AppearanceThemeLabel}" FontWeight="SemiBold" />
-              <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <PathIcon Data="{DynamicResource NutIconSun}" Classes="warning" Width="17" Height="17" />
+            <TextBlock Text="{Binding AppearanceTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
+          </StackPanel>
+          <Border Classes="nut-divider" />
+          <Grid x:Name="AppearanceLayout" ColumnDefinitions="*,*,*" ColumnSpacing="14">
+            <StackPanel x:Name="ThemePreferencePanel" Grid.Column="0" Spacing="5">
+              <TextBlock Text="{Binding AppearanceThemeLabel}" Classes="nut-label" />
+              <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}" HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </StackPanel>
-            <StackPanel x:Name="LanguagePreferencePanel" Grid.Column="1" Spacing="6">
-              <TextBlock Text="{Binding AppearanceLanguageLabel}" FontWeight="SemiBold" />
-              <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}">
+            <StackPanel x:Name="LanguagePreferencePanel" Grid.Column="1" Spacing="5">
+              <TextBlock Text="{Binding AppearanceLanguageLabel}" Classes="nut-label" />
+              <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}" HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </StackPanel>
-            <StackPanel x:Name="SidebarPreferencePanel" Grid.Column="2" Spacing="6">
-              <TextBlock Text="{Binding AppearanceSidebarLabel}" FontWeight="SemiBold" />
-              <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}">
+            <StackPanel x:Name="SidebarPreferencePanel" Grid.Column="2" Spacing="5">
+              <TextBlock Text="{Binding AppearanceSidebarLabel}" Classes="nut-label" />
+              <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}" HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </StackPanel>
           </Grid>
-          <TextBlock Text="{Binding RestartLanguageMessage}"
-                     IsVisible="{Binding IsLanguageRestartRequired}"
-                     Foreground="{DynamicResource NutWarningBrush}"
-                     TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="9" IsVisible="{Binding IsLanguageRestartRequired}">
+            <PathIcon Data="{DynamicResource NutIconInfo}" Classes="warning" Width="14" Height="14" VerticalAlignment="Top" />
+            <TextBlock Text="{Binding RestartLanguageMessage}" Classes="warning" FontSize="12.5" TextWrapping="Wrap" />
+          </StackPanel>
         </StackPanel>
       </Border>
 
       <Border Classes="nut-card">
         <StackPanel Spacing="16">
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Spacing="4">
-              <TextBlock Text="{Binding ManagedServersTitle}" Classes="nut-section-title" />
-              <TextBlock Foreground="{DynamicResource NutTextSecondaryBrush}" TextWrapping="Wrap">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
+            <PathIcon Data="{DynamicResource NutIconServer}" Classes="accent" Width="17" Height="17" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Spacing="2">
+              <TextBlock Text="{Binding ManagedServersTitle}" Classes="nut-card-title" />
+              <TextBlock Classes="nut-metadata" TextWrapping="Wrap">
                 <Run Text="{Binding RuntimeProfileLabel}" /><Run Text=": " /><Run Text="{Binding RuntimeProfileName}" />
                 <Run Text="  •  " />
                 <Run Text="{Binding PersistedActiveProfileLabel}" /><Run Text=": " /><Run Text="{Binding PersistedActiveProfileName}" />
               </TextBlock>
             </StackPanel>
-            <Button Grid.Column="1"
+            <Button Grid.Column="2"
                     Classes="nut-primary"
-                    Content="{Binding NewServerText}"
                     Command="{Binding NewServerCommand}"
-                    AutomationProperties.Name="{Binding NewServerText}" />
+                    AutomationProperties.Name="{Binding NewServerText}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Classes="nut-icon-add" Data="{DynamicResource NutIconAdd}" Width="14" Height="14" />
+                <TextBlock Text="{Binding NewServerText}" />
+              </StackPanel>
+            </Button>
           </Grid>
 
-          <Border Background="{DynamicResource NutSurface2Brush}"
-                  BorderBrush="{DynamicResource NutWarningBrush}"
-                  BorderThickness="1"
-                  CornerRadius="8"
+          <Border Classes="nut-card-flat"
                   Padding="12"
+                  BorderBrush="{DynamicResource NutWarningBrush}"
                   IsVisible="{Binding IsActiveProfileRestartRequired}">
-            <StackPanel Spacing="4">
-              <TextBlock Text="{Binding RestartRequiredTitle}" FontWeight="SemiBold" Foreground="{DynamicResource NutWarningBrush}" />
-              <TextBlock Text="{Binding RestartRequiredMessage}" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{DynamicResource NutIconInfo}" Classes="warning" Width="16" Height="16" VerticalAlignment="Top" />
+              <StackPanel Spacing="3">
+                <TextBlock Text="{Binding RestartRequiredTitle}" FontSize="13" FontWeight="SemiBold" Classes="warning" />
+                <TextBlock Text="{Binding RestartRequiredMessage}" Classes="nut-metadata" TextWrapping="Wrap" />
+              </StackPanel>
             </StackPanel>
           </Border>
 
@@ -106,22 +119,22 @@
                        MaxHeight="520">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
-                    <Grid Margin="6" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220">
-                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                      <Border Grid.Column="1"
-                              Padding="7,2"
-                              CornerRadius="6"
-                              Background="{DynamicResource NutSurface2Brush}"
-                              IsVisible="{Binding IsActive}">
-                        <TextBlock Text="{Binding ActiveText}" Foreground="{DynamicResource NutHealthyBrush}" FontSize="12" />
+                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220" RowSpacing="3">
+                      <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <Border Grid.Column="1" Classes="nut-pill healthy" Padding="8,2" IsVisible="{Binding IsActive}">
+                        <TextBlock Text="{Binding ActiveText}" Classes="healthy" FontSize="11" FontWeight="SemiBold" />
                       </Border>
-                      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Endpoint}" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
-                      <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" ItemSpacing="6" LineSpacing="2">
-                        <TextBlock Text="{Binding ManagementMode}" FontSize="12" />
-                        <TextBlock Text="•" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" />
-                        <TextBlock Text="{Binding AccessMode}" FontSize="12" />
-                        <TextBlock Text="•" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" IsVisible="{Binding HasTransport}" />
-                        <TextBlock Text="{Binding Transport}" FontSize="12" IsVisible="{Binding HasTransport}" />
+                      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Endpoint}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                      <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" ItemSpacing="5" LineSpacing="3">
+                        <Border Classes="nut-pill" Padding="7,1">
+                          <TextBlock Text="{Binding ManagementMode}" FontSize="11" Classes="nut-metadata" />
+                        </Border>
+                        <Border Classes="nut-pill" Padding="7,1">
+                          <TextBlock Text="{Binding AccessMode}" FontSize="11" Classes="nut-metadata" />
+                        </Border>
+                        <Border Classes="nut-pill" Padding="7,1" IsVisible="{Binding HasTransport}">
+                          <TextBlock Text="{Binding Transport}" FontSize="11" Classes="nut-metadata" />
+                        </Border>
                       </WrapPanel>
                     </Grid>
                   </DataTemplate>
@@ -140,9 +153,12 @@
             </StackPanel>
 
             <StackPanel x:Name="ProfileEditorPanel" Grid.Column="2" Spacing="14">
-              <TextBlock Text="{Binding EditorTitle}" Classes="nut-section-title" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Data="{DynamicResource NutIconEdit}" Classes="accent" Width="16" Height="16" />
+                <TextBlock Text="{Binding EditorTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
+              </StackPanel>
 
-              <Border Background="{DynamicResource NutSurface2Brush}" CornerRadius="8" Padding="14">
+              <Border Classes="nut-card-flat" Padding="14">
                 <StackPanel Spacing="10">
                   <TextBlock Text="{Binding NameLabel}" FontWeight="SemiBold" />
                   <TextBox Text="{Binding ProfileDraft.Name, Mode=TwoWay}"
@@ -151,7 +167,7 @@
                 </StackPanel>
               </Border>
 
-              <Border Background="{DynamicResource NutSurface2Brush}" CornerRadius="8" Padding="14">
+              <Border Classes="nut-card-flat" Padding="14">
                 <StackPanel Spacing="10">
                   <TextBlock Text="{Binding MonitoringSectionTitle}" FontWeight="SemiBold" FontSize="16" />
                   <TextBlock Text="{Binding MonitoringHostLabel}" FontWeight="SemiBold" />
@@ -202,7 +218,7 @@
                 </StackPanel>
               </Border>
 
-              <Border Background="{DynamicResource NutSurface2Brush}" CornerRadius="8" Padding="14">
+              <Border Classes="nut-card-flat" Padding="14">
                 <StackPanel Spacing="10">
                   <TextBlock Text="{Binding ManagementSectionTitle}" FontWeight="SemiBold" FontSize="16" />
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
@@ -294,15 +310,16 @@
                 </StackPanel>
               </Border>
 
-              <Border Background="{DynamicResource NutSurface2Brush}"
-                      BorderBrush="{DynamicResource NutWarningBrush}"
-                      BorderThickness="1"
-                      CornerRadius="8"
+              <Border Classes="nut-card-flat"
                       Padding="12"
+                      BorderBrush="{DynamicResource NutWarningBrush}"
                       IsVisible="{Binding IsDirtyDraftDecisionVisible}">
                 <StackPanel Spacing="8">
-                  <TextBlock Text="{Binding DirtyDraftTitle}" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding DirtyDraftMessage}" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="9">
+                    <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding DirtyDraftTitle}" FontSize="13" FontWeight="SemiBold" Classes="warning" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding DirtyDraftMessage}" Classes="nut-metadata" TextWrapping="Wrap" />
                   <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
                     <Button Classes="nut-primary" Content="{Binding SaveAndContinueText}" Command="{Binding SaveDirtyDraftAndContinueCommand}" IsEnabled="{Binding CanSaveProfile}" />
                     <Button Content="{Binding DiscardAndContinueText}" Command="{Binding DiscardDirtyDraftAndContinueCommand}" />
@@ -326,14 +343,18 @@
 
       <Border Classes="nut-card">
         <StackPanel Spacing="12">
-          <TextBlock Text="{Binding GeneralSettingsTitle}" Classes="nut-section-title" />
-          <Grid x:Name="GeneralPreferencesLayout" ColumnDefinitions="*,*" ColumnSpacing="12">
-            <StackPanel x:Name="ConnectionTimeoutPanel" Spacing="6">
-              <TextBlock Text="{Binding ConnectionTimeoutLabel}" FontWeight="SemiBold" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <PathIcon Data="{DynamicResource NutIconConnection}" Classes="cyan" Width="17" Height="17" />
+            <TextBlock Text="{Binding GeneralSettingsTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
+          </StackPanel>
+          <Border Classes="nut-divider" />
+          <Grid x:Name="GeneralPreferencesLayout" ColumnDefinitions="*,*" ColumnSpacing="14">
+            <StackPanel x:Name="ConnectionTimeoutPanel" Spacing="5">
+              <TextBlock Text="{Binding ConnectionTimeoutLabel}" Classes="nut-label" />
               <TextBox Text="{Binding ConnectionTimeoutSeconds}" AutomationProperties.Name="{Binding ConnectionTimeoutLabel}" />
             </StackPanel>
-            <StackPanel x:Name="PollingIntervalPanel" Grid.Column="1" Spacing="6">
-              <TextBlock Text="{Binding PollingIntervalLabel}" FontWeight="SemiBold" />
+            <StackPanel x:Name="PollingIntervalPanel" Grid.Column="1" Spacing="5">
+              <TextBlock Text="{Binding PollingIntervalLabel}" Classes="nut-label" />
               <TextBox Text="{Binding PollingIntervalSeconds}" AutomationProperties.Name="{Binding PollingIntervalLabel}" />
             </StackPanel>
           </Grid>

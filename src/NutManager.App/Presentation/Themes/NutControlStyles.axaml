@@ -1,58 +1,858 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Shared control language. Pages compose these classes instead of declaring local palettes,
+    paddings or button styles, so surface hierarchy and motion stay consistent across the shell.
+  -->
+
+  <Styles.Resources>
+    <!--
+      Scroll bar, replaced outright rather than restyled. The stock theme enforces its own minimum
+      width and draws the thumb from a template inside the Thumb, so setting Width or Thumb
+      Background from a style leaves a wide grey column regardless. The pages reserve the gutter
+      instead of letting the bar float over content, so whatever the bar carries is permanent: this
+      template drops the step arrows and the track fill and draws nothing but a slim rounded thumb.
+      Clicking the empty track still pages, because the track buttons are kept and only made
+      invisible to painting.
+    -->
+    <ControlTheme x:Key="NutScrollThumb" TargetType="Thumb">
+      <Setter Property="Background" Value="{DynamicResource NutBorderEmphasisBrush}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="3" />
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.16" />
+        </Transitions>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Background" Value="{DynamicResource NutTextMutedBrush}" />
+      </Style>
+      <Style Selector="^:pressed">
+        <Setter Property="Background" Value="{DynamicResource NutTextSecondaryBrush}" />
+      </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="NutScrollPageButton" TargetType="RepeatButton">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="Arrow" />
+
+      <Style Selector="^:vertical">
+        <Setter Property="Width" Value="7" />
+        <Setter Property="MinWidth" Value="7" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}">
+              <Track Name="PART_Track"
+                     Orientation="Vertical"
+                     IsDirectionReversed="True"
+                     Minimum="{TemplateBinding Minimum}"
+                     Maximum="{TemplateBinding Maximum}"
+                     Value="{TemplateBinding Value, Mode=TwoWay}"
+                     ViewportSize="{TemplateBinding ViewportSize}">
+                <Track.DecreaseButton>
+                  <RepeatButton Name="PART_PageUpButton" Theme="{StaticResource NutScrollPageButton}" />
+                </Track.DecreaseButton>
+                <Track.IncreaseButton>
+                  <RepeatButton Name="PART_PageDownButton" Theme="{StaticResource NutScrollPageButton}" />
+                </Track.IncreaseButton>
+                <Thumb Name="thumb" Theme="{StaticResource NutScrollThumb}" MinHeight="26" Margin="1,0" />
+              </Track>
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </Style>
+
+      <Style Selector="^:horizontal">
+        <Setter Property="Height" Value="7" />
+        <Setter Property="MinHeight" Value="7" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}">
+              <Track Name="PART_Track"
+                     Orientation="Horizontal"
+                     Minimum="{TemplateBinding Minimum}"
+                     Maximum="{TemplateBinding Maximum}"
+                     Value="{TemplateBinding Value, Mode=TwoWay}"
+                     ViewportSize="{TemplateBinding ViewportSize}">
+                <Track.DecreaseButton>
+                  <RepeatButton Name="PART_PageLeftButton" Theme="{StaticResource NutScrollPageButton}" />
+                </Track.DecreaseButton>
+                <Track.IncreaseButton>
+                  <RepeatButton Name="PART_PageRightButton" Theme="{StaticResource NutScrollPageButton}" />
+                </Track.IncreaseButton>
+                <Thumb Name="thumb" Theme="{StaticResource NutScrollThumb}" MinWidth="26" Margin="0,1" />
+              </Track>
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
+
+  <!-- ==================== Surfaces ==================== -->
   <Style Selector="Border.nut-card">
-    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NutCardSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="14" />
     <Setter Property="Padding" Value="18" />
   </Style>
+
   <Style Selector="Border.nut-card-elevated">
-    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="Background" Value="{DynamicResource NutElevatedSheenBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="14" />
     <Setter Property="Padding" Value="18" />
   </Style>
+
+  <!-- Quiet container for grouped rows; deliberately lighter than a card. -->
+  <Style Selector="Border.nut-card-flat">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="14" />
+  </Style>
+
+  <!-- Only for surfaces that actually navigate or activate something. -->
+  <Style Selector="Border.nut-card-interactive">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="14" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.nut-card-interactive:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+
+  <!--
+    Metric cards share one width and minimum height so the dashboard reads as a single compact
+    band. MinHeight (not Height) keeps a longer localized label from clipping.
+  -->
+  <Style Selector="Border.nut-metric-card">
+    <Setter Property="Background" Value="{DynamicResource NutCardSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="15" />
+    <Setter Property="Width" Value="220" />
+    <Setter Property="MinHeight" Value="172" />
+    <Setter Property="Margin" Value="0,0,13,13" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="none" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.2" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.2" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.24" Easing="CubicEaseOut" />
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.24" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <!--
+    Metric cards lift under the pointer. Width, height and margin are untouched: the rise is a
+    render transform, so a card coming forward cannot reflow the band or push its neighbours down
+    a row. The reading itself never changes.
+
+    The movement is vertical only. The band's first column sits flush against the scroll viewer's
+    left edge, so a scale — even a 1.5% one — pushed the card's left border outside the clip region
+    and the rounded corner came back shaved. A lift has nowhere to be cut off.
+  -->
+  <Style Selector="Border.nut-metric-card:pointerover">
+    <Setter Property="RenderTransform" Value="translateY(-4px)" />
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+    <Setter Property="BoxShadow" Value="0 10 26 -8 #7A000000" />
+  </Style>
+
+  <!--
+    The header glyph reacts to what its card measures rather than every card doing the same grow.
+    The generic rule is declared first on purpose: Avalonia resolves equally matching setters by
+    declaration order, so the per-metric rules below have to come after it to win.
+  -->
+  <Style Selector="Border.nut-metric-card PathIcon">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="none" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.28" Easing="CubicEaseOut" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.2" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.nut-metric-card:pointerover PathIcon">
+    <Setter Property="RenderTransform" Value="scale(1.14)" />
+  </Style>
+  <!-- Charge swells. -->
+  <Style Selector="Border.nut-metric-card:pointerover PathIcon.nut-icon-battery">
+    <Setter Property="RenderTransform" Value="scale(1.18)" />
+  </Style>
+  <!-- The needle steps up its dial. -->
+  <Style Selector="Border.nut-metric-card:pointerover PathIcon.nut-icon-gauge">
+    <Setter Property="RenderTransform" Value="rotate(18deg) scale(1.1)" />
+  </Style>
+  <!-- Time advances. -->
+  <Style Selector="Border.nut-metric-card:pointerover PathIcon.nut-icon-runtime">
+    <Setter Property="RenderTransform" Value="rotate(24deg) scale(1.1)" />
+  </Style>
+  <!-- Mains arrives, so the glyph moves inward; the load is fed, so it moves outward. -->
+  <Style Selector="Border.nut-metric-card:pointerover PathIcon.nut-icon-input">
+    <Setter Property="RenderTransform" Value="translateY(2.5px) scale(1.12)" />
+  </Style>
+  <Style Selector="Border.nut-metric-card:pointerover PathIcon.nut-icon-output">
+    <Setter Property="RenderTransform" Value="translateY(-2.5px) scale(1.12)" />
+  </Style>
+
+  <!-- Metric card header: quiet label so the numeric readout carries the emphasis. -->
+  <Style Selector="TextBlock.nut-metric-label">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- Reduced style for an absent reading: never rendered at metric size. -->
+  <Style Selector="TextBlock.nut-metric-unavailable">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style Selector="Border.nut-inset">
+    <Setter Property="Background" Value="{DynamicResource NutCodeSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="12" />
+  </Style>
+
+  <Style Selector="Border.nut-divider">
+    <Setter Property="Background" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="Height" Value="1" />
+  </Style>
+
+  <!-- ==================== Badges ==================== -->
+  <!--
+    Badges report state; they are not buttons, so hover only deepens what is already on screen and
+    never suggests something can be clicked. The response is the same everywhere: the border and
+    the tint of the badge's own semantic colour come up together.
+
+    Nothing that participates in layout is touched. The lift is a RenderTransform scale, which is a
+    render-time effect, so a badge growing on hover cannot widen its row or nudge its neighbours.
+  -->
+  <Style Selector="Border.nut-pill">
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="10,4" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface3Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="none" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.18" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <!--
+    Badges do not move at all on hover. They are laid out with no top or left margin, so they sit
+    flush against their container on both those edges: growing sideways shaved the rounded cap, and
+    rising by even one pixel pushed the one pixel border out of bounds, which removed the top edge
+    entirely and read as the badge being cut off. Colour carries the whole hover response, and a
+    badge that cannot move cannot be clipped.
+  -->
+
+  <!--
+    There is deliberately no entrance animation here. A Style.Animations block on this selector
+    re-runs every time the style is re-evaluated, and hovering does exactly that: the badge dropped
+    back to zero opacity and faded in again under the pointer, which read as the badge being cut
+    away. Avalonia offers no "run once when first applied" scope for a style animation, so the
+    arrival effect is not worth the flicker. Hover is carried entirely by colour and the lift.
+  -->
+
+  <Style Selector="Border.nut-pill.healthy">
+    <Setter Property="Background" Value="{DynamicResource NutHealthySoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+  <Style Selector="Border.nut-pill.healthy:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NutHealthySoftHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrightBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 10 0 #3322C55E" />
+  </Style>
+
+  <Style Selector="Border.nut-pill.warning">
+    <Setter Property="Background" Value="{DynamicResource NutWarningSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutWarningBrush}" />
+  </Style>
+  <Style Selector="Border.nut-pill.warning:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NutWarningSoftHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutWarningBrightBrush}" />
+  </Style>
+
+  <Style Selector="Border.nut-pill.critical">
+    <Setter Property="Background" Value="{DynamicResource NutCriticalSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="Border.nut-pill.critical:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NutCriticalSoftHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutCriticalBrightBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 10 0 #33EF4444" />
+  </Style>
+
+  <Style Selector="Border.nut-pill.accent">
+    <Setter Property="Background" Value="{DynamicResource NutAccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+  </Style>
+  <Style Selector="Border.nut-pill.accent:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NutAccentSoftHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 10 0 #333B82F6" />
+  </Style>
+
+  <!--
+    Halo behind the primary status token. It carries no fill of its own, only a blurred shadow, so
+    the glow fades out at its edges instead of ending on a hard rounded band. It sits under the
+    badge in the same cell and is inert to hit testing, so nothing about the badge changes.
+  -->
+  <Style Selector="Border.nut-status-halo">
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Margin" Value="3" />
+  </Style>
+  <!--
+    Blur and spread are kept inside the row's own height. A wider glow is clipped by the boundary
+    above the badge and ends on a hard horizontal line, which reads as the badge being cut off
+    rather than as light falling away.
+  -->
+  <Style Selector="Border.nut-status-halo.healthy">
+    <Setter Property="BoxShadow" Value="0 0 11 1 #8022C55E" />
+  </Style>
+  <Style Selector="Border.nut-status-halo.warning">
+    <Setter Property="BoxShadow" Value="0 0 11 1 #80F59E0B" />
+  </Style>
+  <Style Selector="Border.nut-status-halo.critical">
+    <Setter Property="BoxShadow" Value="0 0 11 1 #80EF4444" />
+  </Style>
+
+  <!--
+    Neutral is the default badge, which is what "Indisponível" uses. It brightens its border and
+    text and gains no glow: an absent reading must not be dressed up to look like a positive one.
+    The variants are excluded explicitly because Avalonia resolves equally matching setters by
+    declaration order, so a plain .nut-pill:pointerover rule placed here would win over the
+    semantic ones above and repaint every badge the same grey.
+  -->
+  <Style Selector="Border.nut-pill:pointerover:not(.healthy):not(.warning):not(.critical):not(.accent)">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+  <Style Selector="Border.nut-pill:pointerover:not(.healthy):not(.warning):not(.critical):not(.accent) TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+
+  <!-- ==================== Buttons ==================== -->
   <Style Selector="Button">
     <Setter Property="MinHeight" Value="38" />
     <Setter Property="Padding" Value="14,8" />
     <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface3Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceInteractiveBrush}" />
+  </Style>
+  <Style Selector="Button:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextMutedBrush}" />
   </Style>
   <Style Selector="Button:focus-visible">
     <Setter Property="BorderBrush" Value="{DynamicResource NutFocusBrush}" />
     <Setter Property="BorderThickness" Value="2" />
   </Style>
+
   <Style Selector="Button.nut-primary">
     <Setter Property="Background" Value="{DynamicResource NutAccentBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
-    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="Foreground" Value="#FFFFFF" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector="Button.nut-primary /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+  </Style>
+  <Style Selector="Button.nut-primary:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+  </Style>
+
   <Style Selector="Button.nut-success">
     <Setter Property="Background" Value="{DynamicResource NutHealthyBrush}" />
-    <Setter Property="Foreground" Value="#08160B" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="Foreground" Value="#06170C" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector="Button.nut-success /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="TextElement.Foreground" Value="#06170C" />
+  </Style>
+  <Style Selector="Button.nut-success:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#5FE894" />
+    <Setter Property="BorderBrush" Value="#5FE894" />
+    <Setter Property="TextElement.Foreground" Value="#06170C" />
+  </Style>
+
   <Style Selector="Button.nut-danger">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutCriticalBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource NutCriticalBrush}" />
   </Style>
-  <Style Selector="Button.nut-icon">
-    <Setter Property="Width" Value="38" />
-    <Setter Property="Height" Value="38" />
-    <Setter Property="Padding" Value="8" />
+  <Style Selector="Button.nut-danger /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutCriticalBrush}" />
   </Style>
-  <Style Selector="TextBox, ComboBox">
+  <Style Selector="Button.nut-danger:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutCriticalSoftBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+
+  <!--
+    Disabled overrides for the semantic variants.
+    These must be declared AFTER the variants: Avalonia resolves equally specific setters in
+    declaration order, so the variant's own background was winning over the generic :disabled rule
+    and a disabled primary/success/danger button still rendered fully coloured, reading as enabled.
+  -->
+  <Style Selector="Button.nut-primary:disabled /template/ ContentPresenter,
+                   Button.nut-success:disabled /template/ ContentPresenter,
+                   Button.nut-danger:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+  </Style>
+  <Style Selector="Button.nut-primary:disabled, Button.nut-success:disabled, Button.nut-danger:disabled">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+  </Style>
+
+  <!-- Quiet button for secondary actions inside dense surfaces. -->
+  <Style Selector="Button.nut-ghost">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-ghost /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-ghost:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+
+  <Style Selector="Button.nut-icon">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.nut-icon /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-icon:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+
+  <!-- Textual affordance that must not read as a filled button. -->
+  <Style Selector="Button.nut-link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="Button.nut-link /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+  <Style Selector="Button.nut-link:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutCyanBrush}" />
+  </Style>
+
+  <!-- ==================== Inputs ==================== -->
+  <Style Selector="TextBox">
     <Setter Property="MinHeight" Value="38" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="11,7" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource NutAccentSoftBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+  <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="BorderThickness" Value="1.6" />
+  </Style>
+  <Style Selector="TextBox.nut-invalid">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="TextBox.nut-invalid /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="TextBox.nut-code">
+    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New, monospace" />
+    <Setter Property="Background" Value="{DynamicResource NutCodeSurfaceBrush}" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="MinHeight" Value="38" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="11,6" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="ComboBox /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="ComboBox:pointerover /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+  <Style Selector="ComboBox:focus /template/ Border#Background">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+  </Style>
+
+  <Style Selector="CheckBox">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+  </Style>
+  <Style Selector="CheckBox /template/ Border#NormalRectangle">
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+
+  <Style Selector="ToggleSwitch">
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+
+  <Style Selector="ProgressBar">
+    <Setter Property="Background" Value="{DynamicResource NutTrackBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="MinHeight" Value="6" />
+  </Style>
+  <Style Selector="ProgressBar /template/ Border#PART_Indicator">
+    <Setter Property="CornerRadius" Value="999" />
+  </Style>
+
+  <!--
+    Reusable animated value bar for battery charge and similar bounded readings. The transition
+    animates between real readings only; an unavailable value keeps the track empty rather than
+    sliding back to zero on every poll.
+  -->
+  <Style Selector="ProgressBar.nut-value-bar">
+    <Setter Property="Height" Value="8" />
+    <Setter Property="MinHeight" Value="8" />
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Value" Duration="0:0:0.32" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ProgressBar.nut-value-bar.healthy">
+    <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+  <Style Selector="ProgressBar.nut-value-bar.warning">
+    <Setter Property="Foreground" Value="{DynamicResource NutWarningBrush}" />
+  </Style>
+  <Style Selector="ProgressBar.nut-value-bar.critical">
+    <Setter Property="Foreground" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="ProgressBar.nut-value-bar.unavailable">
+    <Setter Property="Foreground" Value="{DynamicResource NutUnavailableBrush}" />
+  </Style>
+
+  <!-- ==================== Lists ==================== -->
+  <Style Selector="ListBoxItem">
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="Margin" Value="0,2" />
+  </Style>
+  <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
   </Style>
   <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource NutSelectionBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceSelectedBrush}" />
   </Style>
   <Style Selector="ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+
+  <!-- ==================== Tabs ==================== -->
+  <Style Selector="Button.nut-tab">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0,0,0,2" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="4,8" />
+    <Setter Property="Margin" Value="0,0,22,0" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-tab /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-tab:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-tab.selected">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!--
+    ==================== Scrollbars ====================
+
+    A thin rail rather than a chrome column. The pages reserve the gutter instead of letting the bar
+    float over content, so the bar is always present and any bulk it carries is permanent: the step
+    arrows are dropped, the track is left transparent and only the thumb is drawn. Width alone is
+    not enough because the theme template sets its own minimum, so MinWidth has to come down too.
+
+    Paging by clicking the track still works: only the two line buttons are hidden, never the track
+    buttons that sit inside it.
+  -->
+  <!-- The bar itself is defined as a ControlTheme in Styles.Resources at the top of this file. -->
+
+  <!--
+    ==================== Expanders ====================
+
+    Untouched, these render as bare black boxes that size to their own header, so a column of them
+    came out ragged and darker than the card holding them. They now take the same surface, border,
+    radius and padding as the flat cards, and stretch, so a stack of expanders lines up with each
+    other and with the rows above them.
+  -->
+  <Style Selector="Expander">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="14" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.16" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Expander:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+
+  <!-- The header is the whole clickable row; it carries no surface of its own so the expander
+       reads as one object rather than a button sitting inside a box. -->
+  <Style Selector="Expander /template/ ToggleButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="14,11" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton /template/ Border">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton:pointerover /template/ Border">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton /template/ ContentPresenter">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+    <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- ==================== Icons ==================== -->
+  <!--
+    Icon microinteractions.
+    Motion runs through TransformOperationsTransition, so rotations, slides and growth all ease
+    instead of snapping, and none of them touch layout: an icon that grows or slides cannot shift
+    the label beside it or resize its button's hit target. Nothing here loops, and every hover cue
+    has a matching focus/selected state elsewhere in the styles.
+  -->
+  <Style Selector="PathIcon">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+  </Style>
+
+  <Style Selector="Button PathIcon">
+    <Setter Property="Opacity" Value="0.88" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="none" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Foreground" Duration="0:0:0.18" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button:pointerover PathIcon">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Button:disabled PathIcon">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+
+  <!-- Gear: short turn toward the setting, never a full revolution and never a loop. -->
+  <Style Selector="PathIcon.nut-icon-gear">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+  </Style>
+  <Style Selector=":pointerover PathIcon.nut-icon-gear">
+    <Setter Property="RenderTransform" Value="rotate(25deg)" />
+  </Style>
+
+  <!-- Refresh: partial turn in the direction of the reload arrows. -->
+  <Style Selector="PathIcon.nut-icon-refresh">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+  </Style>
+  <Style Selector=":pointerover PathIcon.nut-icon-refresh">
+    <Setter Property="RenderTransform" Value="rotate(75deg)" />
+  </Style>
+
+  <!-- Pencil: slight tilt, as if picked up. -->
+  <Style Selector="PathIcon.nut-icon-edit">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+  </Style>
+  <Style Selector=":pointerover PathIcon.nut-icon-edit">
+    <Setter Property="RenderTransform" Value="rotate(-8deg)" />
+  </Style>
+
+  <!-- Chevrons slide the way they point. Translation, not margin, so nothing reflows. -->
+  <Style Selector=":pointerover PathIcon.nut-icon-forward">
+    <Setter Property="RenderTransform" Value="translateX(2px)" />
+  </Style>
+  <Style Selector=":pointerover PathIcon.nut-icon-back">
+    <Setter Property="RenderTransform" Value="translateX(-2px)" />
+  </Style>
+
+  <!-- Plus grows a little; the control keeps its measured size so the hit target is unchanged. -->
+  <Style Selector=":pointerover PathIcon.nut-icon-add">
+    <Setter Property="RenderTransform" Value="scale(1.12)" />
+  </Style>
+
+  <!-- Trash takes on the destructive colour and its lid nudges, rather than filling the control. -->
+  <Style Selector=":pointerover PathIcon.nut-icon-delete">
+    <Setter Property="Foreground" Value="{DynamicResource NutCriticalBrush}" />
+    <Setter Property="RenderTransform" Value="translateY(-1px) scale(1.04)" />
+  </Style>
+
+  <!-- Shield lifts and brightens; no glow layer is added. -->
+  <Style Selector=":pointerover PathIcon.nut-icon-shield">
+    <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="RenderTransform" Value="translateY(-1px) scale(1.03)" />
+  </Style>
+
+  <Style Selector="PathIcon.healthy">
+    <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+  <Style Selector="PathIcon.warning">
+    <Setter Property="Foreground" Value="{DynamicResource NutWarningBrush}" />
+  </Style>
+  <Style Selector="PathIcon.critical">
+    <Setter Property="Foreground" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="PathIcon.accent">
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+  <Style Selector="PathIcon.cyan">
+    <Setter Property="Foreground" Value="{DynamicResource NutCyanBrush}" />
+  </Style>
+  <Style Selector="PathIcon.purple">
+    <Setter Property="Foreground" Value="{DynamicResource NutPurpleBrush}" />
+  </Style>
+  <Style Selector="PathIcon.muted">
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
   </Style>
 </Styles>

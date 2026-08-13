@@ -10,61 +10,125 @@
         MinWidth="680"
         MinHeight="480"
         Background="{DynamicResource NutWindowBrush}"
+        WindowDecorations="BorderOnly"
         SizeChanged="Window_OnSizeChanged"
         KeyDown="Window_OnKeyDown">
-  <Grid>
+  <!--
+    The client area is extended so the product identity, connection state and window controls live
+    in one integrated bar instead of a separate Windows title strip. OffScreenMargin keeps content
+    inside the work area when the window is maximised.
+  -->
+  <Grid Margin="{Binding OffScreenMargin, RelativeSource={RelativeSource AncestorType=Window}}">
     <Grid.RowDefinitions>
       <RowDefinition Height="{DynamicResource NutHeaderHeight}" />
       <RowDefinition Height="*" />
       <RowDefinition Height="{DynamicResource NutFooterHeight}" />
     </Grid.RowDefinitions>
-    <Border Grid.Row="0" Classes="nut-shell-header" Padding="16,10" IsEnabled="{Binding IsBackgroundInteractionEnabled}">
-      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+
+    <!-- ==================== Integrated title bar ==================== -->
+    <Border Grid.Row="0"
+            Classes="nut-titlebar"
+            Padding="14,0,8,0"
+            PointerPressed="TitleBar_OnPointerPressed"
+            DoubleTapped="TitleBar_OnDoubleTapped">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
         <Button x:Name="HeaderNavigationButton"
                 Grid.Column="0"
                 Classes="nut-icon"
-                IsVisible="{Binding IsNavigationToggleVisible}"
+                IsVisible="{Binding IsCompactLayout}"
+                IsEnabled="{Binding IsBackgroundInteractionEnabled}"
                 Command="{Binding ToggleNavigationCommand}"
                 ToolTip.Tip="{Binding NavigationToggleName}"
                 AutomationProperties.Name="{Binding NavigationToggleName}">
-          <PathIcon Data="{DynamicResource NutIconMenu}" Width="20" Height="20" />
+          <PathIcon Data="{DynamicResource NutIconMenu}" Width="18" Height="18" />
         </Button>
 
-        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center" ClipToBounds="True">
-          <controls:NutConnectionIndicator StatusText="{Binding ApplicationName}"
-                                           DetailText="{Binding ConnectionSummaryText}"
-                                           AccessibleText="{Binding ConnectionTooltip}"
-                                           IsHealthy="{Binding IsConnectionHealthy}"
-                                           IsPending="{Binding IsConnectionPending}"
-                                           IsCritical="{Binding IsConnectionCritical}"
-                                           IsUnavailable="{Binding IsConnectionUnavailable}" />
-          <controls:NutStatusBadge Grid.Column="1"
-                                   Text="{Binding SimulationText}"
+        <controls:NutConnectionIndicator Grid.Column="1"
+                                         VerticalAlignment="Center"
+                                         StatusText="{Binding ApplicationName}"
+                                         StateText="{Binding ConnectionStatusText}"
+                                         DetailText="{Binding ConnectionDetailText}"
+                                         AccessibleText="{Binding ConnectionTooltip}"
+                                         IsHealthy="{Binding IsConnectionHealthy}"
+                                         IsPending="{Binding IsConnectionPending}"
+                                         IsCritical="{Binding IsConnectionCritical}"
+                                         IsUnavailable="{Binding IsConnectionUnavailable}" />
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <controls:NutStatusBadge Text="{Binding SimulationText}"
                                    IsWarning="True"
                                    IsVisible="{Binding IsMockMode}"
                                    AutomationProperties.Name="{Binding SimulationText}" />
-        </Grid>
 
-        <Button Grid.Column="2"
-                Classes="nut-icon"
-                Click="ThemeToggleButton_OnClick"
-                ToolTip.Tip="{Binding ThemeToggleName}"
-                AutomationProperties.Name="{Binding ThemeToggleName}">
-          <Grid Width="20" Height="20">
-            <PathIcon Data="{DynamicResource NutIconSun}" Width="20" Height="20" IsVisible="{Binding ShowLightThemeAction}" />
-            <PathIcon Data="{DynamicResource NutIconMoon}" Width="20" Height="20" IsVisible="{Binding ShowDarkThemeAction}" />
-          </Grid>
-        </Button>
+          <Border Classes="nut-theme-toggle" IsEnabled="{Binding IsBackgroundInteractionEnabled}">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+              <Button Classes="nut-theme-option"
+                      Classes.selected="{Binding ShowDarkThemeAction}"
+                      Click="LightThemeButton_OnClick"
+                      ToolTip.Tip="{Binding Localizer[Theme.Light]}"
+                      AutomationProperties.Name="{Binding Localizer[Theme.Light]}">
+                <!-- Disc and rays are separate layers so the rays can turn on their own. Stretch
+                     is off so each renders at its authored coordinates in the 24-unit box. -->
+                <Grid Width="18" Height="18">
+                  <Viewbox Width="18" Height="18">
+                    <Grid Width="24" Height="24">
+                      <Path Classes="nut-theme-glyph nut-sun-rays" Stretch="None" Data="{DynamicResource NutIconSunRays}" />
+                      <Path Classes="nut-theme-glyph nut-sun-core" Stretch="None" Data="{DynamicResource NutIconSunCore}" />
+                    </Grid>
+                  </Viewbox>
+                </Grid>
+              </Button>
+              <Button Classes="nut-theme-option moon"
+                      Classes.selected="{Binding ShowLightThemeAction}"
+                      Click="DarkThemeButton_OnClick"
+                      ToolTip.Tip="{Binding Localizer[Theme.Dark]}"
+                      AutomationProperties.Name="{Binding Localizer[Theme.Dark]}">
+                <Grid Width="18" Height="18">
+                  <Viewbox Width="18" Height="18">
+                    <Grid Width="24" Height="24">
+                      <Path Classes="nut-theme-glyph nut-moon" Stretch="None" Data="{DynamicResource NutIconMoon}" />
+                    </Grid>
+                  </Viewbox>
+                </Grid>
+              </Button>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+          <Button Classes="nut-window-button"
+                  Click="MinimizeButton_OnClick"
+                  ToolTip.Tip="{Binding Localizer[Shell.Minimize]}"
+                  AutomationProperties.Name="{Binding Localizer[Shell.Minimize]}">
+            <PathIcon Data="{DynamicResource NutIconWindowMinimize}" Width="15" Height="15" />
+          </Button>
+          <Button Classes="nut-window-button"
+                  Click="MaximizeButton_OnClick"
+                  ToolTip.Tip="{Binding Localizer[Shell.Maximize]}"
+                  AutomationProperties.Name="{Binding Localizer[Shell.Maximize]}">
+            <Grid Width="15" Height="15">
+              <PathIcon x:Name="MaximizeGlyph" Data="{DynamicResource NutIconWindowMaximize}" Width="15" Height="15" />
+              <PathIcon x:Name="RestoreGlyph" Data="{DynamicResource NutIconWindowRestore}" Width="15" Height="15" IsVisible="False" />
+            </Grid>
+          </Button>
+          <Button Classes="nut-window-button close"
+                  Click="CloseButton_OnClick"
+                  ToolTip.Tip="{Binding Localizer[Shell.Close]}"
+                  AutomationProperties.Name="{Binding Localizer[Shell.Close]}">
+            <PathIcon Data="{DynamicResource NutIconClose}" Width="15" Height="15" />
+          </Button>
+        </StackPanel>
       </Grid>
     </Border>
 
+    <!-- ==================== Body ==================== -->
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
       <Border Grid.Column="0"
               Width="{Binding SidebarWidth}"
               Classes="nut-shell-sidebar"
               IsEnabled="{Binding IsBackgroundInteractionEnabled}"
               ClipToBounds="True">
-        <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="10,12,10,10">
+        <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="12,10,12,10">
           <Button Grid.Row="0"
                   Classes="nut-icon"
                   HorizontalAlignment="Right"
@@ -72,28 +136,25 @@
                   Command="{Binding ToggleNavigationCommand}"
                   ToolTip.Tip="{Binding NavigationToggleName}"
                   AutomationProperties.Name="{Binding NavigationToggleName}">
-            <Grid Width="18" Height="18">
-              <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="18" Height="18" IsVisible="{Binding IsSidebarExpanded}" />
-              <PathIcon Data="{DynamicResource NutIconChevronRight}" Width="18" Height="18" IsVisible="{Binding IsSidebarCollapsed}" />
+            <Grid Width="17" Height="17">
+              <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="17" Height="17" IsVisible="{Binding IsSidebarExpanded}" />
+              <PathIcon Data="{DynamicResource NutIconChevronRight}" Width="17" Height="17" IsVisible="{Binding IsSidebarCollapsed}" />
             </Grid>
           </Button>
 
-          <ItemsControl Grid.Row="1" ItemsSource="{Binding NavigationItems}" Margin="0,8,0,0">
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding NavigationItems}" Margin="0,6,0,0">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="viewModels:NavigationItemViewModel">
+                <!-- The tooltip only carries information while the label is hidden (collapsed rail);
+                     with the label visible it would repeat the text and cover the next item. -->
                 <Button Classes.nut-navigation-item="True"
                         Classes.selected="{Binding IsSelected}"
                         AutomationProperties.Name="{Binding Title}"
                         ToolTip.Tip="{Binding Title}"
+                        ToolTip.ServiceEnabled="{Binding $parent[Window].DataContext.IsSidebarCollapsed}"
                         Command="{Binding NavigateCommand}">
-                  <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Grid Width="22" Height="22">
-                      <PathIcon Data="{DynamicResource NutIconOverview}" Width="21" Height="21" IsVisible="{Binding IsOverview}" />
-                      <PathIcon Data="{DynamicResource NutIconDevices}" Width="21" Height="21" IsVisible="{Binding IsDevices}" />
-                      <PathIcon Data="{DynamicResource NutIconAdministration}" Width="21" Height="21" IsVisible="{Binding IsAdministration}" />
-                      <PathIcon Data="{DynamicResource NutIconDiagnostics}" Width="21" Height="21" IsVisible="{Binding IsDiagnostics}" />
-                      <PathIcon Data="{DynamicResource NutIconSettings}" Width="21" Height="21" IsVisible="{Binding IsSettings}" />
-                    </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="13">
+                    <controls:NutNavigationIcon Kind="{Binding Page}" />
                     <TextBlock Text="{Binding Title}"
                                IsVisible="{Binding $parent[Window].DataContext.IsSidebarExpanded}"
                                VerticalAlignment="Center" />
@@ -104,22 +165,27 @@
           </ItemsControl>
 
           <Border Grid.Row="2" Classes="nut-profile-card" IsVisible="{Binding IsSidebarExpanded}" Margin="0,12,0,8">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-              <Border Width="34" Height="34" CornerRadius="17" BorderBrush="{DynamicResource NutBorderBrush}" BorderThickness="1">
-                <TextBlock Text="N" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <Border Classes="nut-profile-avatar">
+                <PathIcon Data="{DynamicResource NutIconProfile}" Width="17" Height="17" Foreground="{DynamicResource NutTextSecondaryBrush}" />
               </Border>
-              <StackPanel Grid.Column="1" Spacing="2">
-                <TextBlock Text="{Binding ActiveProfileLabel}" Classes="nut-metadata" />
-                <TextBlock Text="{Binding ActiveProfileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding ActiveProfileModeText}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+              <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ActiveProfileName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding ActiveProfileModeText}" Classes="nut-metadata accent" TextTrimming="CharacterEllipsis" />
               </StackPanel>
+              <PathIcon Grid.Column="2"
+                        Data="{DynamicResource NutIconChevronDown}"
+                        Width="14"
+                        Height="14"
+                        Foreground="{DynamicResource NutTextMutedBrush}"
+                        VerticalAlignment="Center" />
             </Grid>
           </Border>
 
           <TextBlock Grid.Row="3"
                      Text="{Binding ApplicationVersionText}"
                      Classes="nut-metadata"
-                     Margin="8,4"
+                     Margin="6,2"
                      IsVisible="{Binding IsSidebarExpanded}" />
         </Grid>
       </Border>
@@ -135,6 +201,7 @@
       <controls:NutReviewDrawerHost Grid.Column="2"
                                     IsOpen="{Binding IsReviewDrawerInline}"
                                     Title="{Binding ReviewDrawerTitle}"
+                                    PendingCount="{Binding ReviewDrawerPendingCount}"
                                     PendingText="{Binding ReviewDrawerPendingText}"
                                     DrawerContent="{Binding ReviewDrawerContent}"
                                     CloseCommand="{Binding CloseReviewDrawerCommand}"
@@ -148,6 +215,7 @@
         <controls:NutReviewDrawerHost HorizontalAlignment="Right"
                                       IsOpen="True"
                                       Title="{Binding ReviewDrawerTitle}"
+                                      PendingCount="{Binding ReviewDrawerPendingCount}"
                                       PendingText="{Binding ReviewDrawerPendingText}"
                                       DrawerContent="{Binding ReviewDrawerContent}"
                                       CloseCommand="{Binding CloseReviewDrawerCommand}"
@@ -170,7 +238,7 @@
                     Command="{Binding ToggleNavigationCommand}"
                     ToolTip.Tip="{Binding NavigationToggleName}"
                     AutomationProperties.Name="{Binding NavigationToggleName}">
-              <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="18" Height="18" />
+              <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="17" Height="17" />
             </Button>
             <ItemsControl Grid.Row="1" ItemsSource="{Binding NavigationItems}">
               <ItemsControl.ItemTemplate>
@@ -180,14 +248,8 @@
                           AutomationProperties.Name="{Binding Title}"
                           ToolTip.Tip="{Binding Title}"
                           Command="{Binding NavigateCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                      <Grid Width="22" Height="22">
-                        <PathIcon Data="{DynamicResource NutIconOverview}" Width="21" Height="21" IsVisible="{Binding IsOverview}" />
-                        <PathIcon Data="{DynamicResource NutIconDevices}" Width="21" Height="21" IsVisible="{Binding IsDevices}" />
-                        <PathIcon Data="{DynamicResource NutIconAdministration}" Width="21" Height="21" IsVisible="{Binding IsAdministration}" />
-                        <PathIcon Data="{DynamicResource NutIconDiagnostics}" Width="21" Height="21" IsVisible="{Binding IsDiagnostics}" />
-                        <PathIcon Data="{DynamicResource NutIconSettings}" Width="21" Height="21" IsVisible="{Binding IsSettings}" />
-                      </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="13">
+                      <controls:NutNavigationIcon Kind="{Binding Page}" />
                       <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                     </StackPanel>
                   </Button>
@@ -199,14 +261,14 @@
       </Grid>
     </Grid>
 
-    <Border Grid.Row="2"
-            Background="{DynamicResource NutHeaderBrush}"
-            BorderBrush="{DynamicResource NutBorderSubtleBrush}"
-            BorderThickness="0,1,0,0"
-            Padding="16,4">
-      <Grid ColumnDefinitions="*,Auto">
-        <TextBlock Text="{Binding AdministrationConfirmationText}" Classes="nut-metadata" VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+    <!-- ==================== Footer ==================== -->
+    <Border Grid.Row="2" Classes="nut-footer" Padding="16,0">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+          <PathIcon Data="{DynamicResource NutIconShield}" Width="13" Height="13" Foreground="{DynamicResource NutHealthyBrush}" />
+          <TextBlock Text="{Binding AdministrationConfirmationText}" Classes="nut-metadata" VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
           <Ellipse Width="7" Height="7" Fill="{DynamicResource NutHealthyBrush}" IsVisible="{Binding IsConnectionHealthy}" />
           <Ellipse Width="7" Height="7" Fill="{DynamicResource NutWarningBrush}" IsVisible="{Binding IsConnectionPending}" />
           <Ellipse Width="7" Height="7" Fill="{DynamicResource NutCriticalBrush}" IsVisible="{Binding IsConnectionCritical}" />

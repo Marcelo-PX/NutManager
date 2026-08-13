@@ -519,8 +519,11 @@ public sealed class AdministrationPageViewModelTests
     }
 
     [Fact]
-    public async Task ConcurrentFileSelectionIsRejectedWhileTheCurrentLoadIsInProgress()
+    public async Task ConcurrentFileSelectionSupersedesTheLoadInProgressInsteadOfBeingRejected()
     {
+        // A load in flight used to refuse the next pick and switch the file list off, which left the
+        // list disabled during the very click that started the load. Picking again is now the way
+        // out: the running load is cancelled and only the newest pick may publish an editor.
         var pipeline = new TestPipeline();
         pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         pipeline.SetFile("/session/nut/etc/upsd.conf", NutConfigurationFileKind.UpsdConf, "LISTEN 127.0.0.1\n");
@@ -534,18 +537,29 @@ public sealed class AdministrationPageViewModelTests
 
         var firstSelection = viewModel.SelectFileAsync(nutConf);
         await started.Task;
-        await viewModel.SelectFileAsync(upsdConf);
 
-        Assert.True(viewModel.IsBusy);
-        Assert.False(viewModel.CanSelectConfigurationFile);
-        Assert.Equal(1, pipeline.LoadCalls);
-        Assert.Same(nutConf, viewModel.SelectedFile);
+        Assert.True(viewModel.IsLoadingFile);
+        Assert.True(viewModel.CanSelectConfigurationFile);
+
+        pipeline.NextLoadCompletion = null;
+        pipeline.LoadStarted = null;
+        var secondSelection = viewModel.SelectFileAsync(upsdConf);
+
+        Assert.Equal(2, pipeline.LoadCalls);
+        Assert.Same(upsdConf, viewModel.SelectedFile);
+
+        // The superseded load answers late and must not overwrite the newer file.
         completion.SetResult(pipeline.CreateSuccessLoadResult("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n"));
         await firstSelection;
+        await secondSelection;
 
-        Assert.Equal(1, pipeline.LoadCalls);
-        Assert.Equal("nut.conf", viewModel.SelectedFile!.FileName);
+        Assert.Equal("upsd.conf", viewModel.SelectedFile!.FileName);
         Assert.True(viewModel.HasLoadedFile);
+        Assert.NotNull(viewModel.UpsdConfigurationEditor);
+        Assert.Null(viewModel.NutGeneralConfigurationEditor);
+        Assert.False(viewModel.IsBusy);
+        Assert.False(viewModel.IsLoadingFile);
+        Assert.True(viewModel.CanSelectConfigurationFile);
     }
 
     [Fact]

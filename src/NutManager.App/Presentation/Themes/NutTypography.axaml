@@ -1,31 +1,100 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Deliberate weight separation: page title, section title, card title, label and metadata must
+    never read as the same level. Sizes stay relative so Windows scaling keeps the ratios.
+  -->
   <Style Selector="Window">
     <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI, Arial" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
+
   <Style Selector="TextBlock.nut-product-title">
     <Setter Property="FontSize" Value="21" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
+
   <Style Selector="TextBlock.nut-page-title">
     <Setter Property="FontSize" Value="27" />
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LineHeight" Value="34" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
+
+  <Style Selector="TextBlock.nut-page-subtitle">
+    <Setter Property="FontSize" Value="13.5" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+
   <Style Selector="TextBlock.nut-section-title">
     <Setter Property="FontSize" Value="18" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
+
+  <Style Selector="TextBlock.nut-card-title">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+
   <Style Selector="TextBlock.nut-body">
     <Setter Property="FontSize" Value="14" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
   </Style>
+
+  <Style Selector="TextBlock.nut-label">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+
   <Style Selector="TextBlock.nut-metadata">
     <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+  </Style>
+
+  <!-- Dominant numeric readout used by the dashboard metric cards. -->
+  <Style Selector="TextBlock.nut-metric-value">
+    <Setter Property="FontSize" Value="34" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LineHeight" Value="40" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.nut-metric-unit">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.nut-mono">
+    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New, monospace" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.healthy">
+    <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+  <Style Selector="TextBlock.warning">
+    <Setter Property="Foreground" Value="{DynamicResource NutWarningBrush}" />
+  </Style>
+  <Style Selector="TextBlock.critical">
+    <Setter Property="Foreground" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="TextBlock.accent">
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+  <Style Selector="TextBlock.purple">
+    <Setter Property="Foreground" Value="{DynamicResource NutPurpleBrush}" />
+  </Style>
+  <Style Selector="TextBlock.cyan">
+    <Setter Property="Foreground" Value="{DynamicResource NutCyanBrush}" />
+  </Style>
+  <Style Selector="TextBlock.muted">
     <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
   </Style>
 </Styles>

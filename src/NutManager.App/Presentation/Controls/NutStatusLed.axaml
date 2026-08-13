@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NutManager.App.Presentation.Controls.NutStatusLed"
+             x:Name="Root"
+             Width="32"
+             Height="32"
+             ClipToBounds="False">
+  <!--
+    One lit ball, not a stack of circles. Earlier versions layered a second and third ellipse
+    around the core to suggest a glow, but an ellipse has a hard edge: concentric ellipses read as
+    rings drawn around the dot rather than as light coming off it. The glow is a blurred drop
+    shadow instead, so it fades out with no contour of its own.
+
+    A shadow colour cannot come from a brush binding, so each state carries its own class. The halo
+    is a bare 6px border with no fill - only its shadow is ever visible - and pulsing the ball means
+    animating that shadow's opacity and scale from the render thread through the Composition API,
+    which costs nothing on the UI thread.
+
+    The halo is deliberately smaller than the 10px core and its shadow carries no spread, so the
+    shadow always originates inside the core and the glow emerges from under it. A halo as wide as
+    the core, or any spread at all, starts the shadow outside the core's edge and leaves a dark gap
+    ringing the ball - which is the ring look this layout exists to avoid.
+
+    That constraint also caps the pulse: the halo is 6px and the core 10px, so the shadow's hole
+    grows with it and at 1.6 the two are within a fraction of a pixel of each other, which brings a
+    dark rim back at the peak of every breath. 1.45 keeps roughly half a pixel of overlap, and the
+    swell is carried mostly by opacity anyway.
+
+    Sizes are even numbers inside an even cell so every layer centres on a whole pixel. A
+    fractional size leaves the circle straddling a half pixel and the antialiasing comes out
+    heavier on one side, which at this diameter reads as the ball sitting crooked.
+
+    The cell is 32px for a 10px ball because the glow has to fit inside it. At full swell the
+    shadow reaches about 15px from the centre, and a cell any tighter than that crops the round
+    glow against its own straight edges - which is where the square outline around the light came
+    from. The extra width is empty space, not a bigger indicator.
+
+    Colour and animation are decorative; the state is always spelled out in the adjacent text and
+    in the accessible name.
+  -->
+  <UserControl.Styles>
+    <Style Selector="Border.nut-led-halo">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="999" />
+    </Style>
+    <Style Selector="Border.nut-led-halo.healthy">
+      <Setter Property="BoxShadow" Value="0 0 11 0 #F24ADE80" />
+    </Style>
+    <Style Selector="Border.nut-led-halo.pending">
+      <Setter Property="BoxShadow" Value="0 0 11 0 #F2FBBF24" />
+    </Style>
+    <Style Selector="Border.nut-led-halo.critical">
+      <Setter Property="BoxShadow" Value="0 0 11 0 #F2F87171" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Width="32" Height="32" Background="Transparent" ClipToBounds="False">
+    <Border x:Name="Halo"
+            Classes="nut-led-halo"
+            Width="6"
+            Height="6"
+            Opacity="0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            IsHitTestVisible="False" />
+    <Ellipse x:Name="Core"
+             Width="10"
+             Height="10"
+             Fill="{Binding StateBrush, ElementName=Root}"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center" />
+    <!-- Lens highlight: upper-left quadrant, deliberately faint so it never reads as gloss. -->
+    <Ellipse x:Name="Highlight"
+             Width="2"
+             Height="2"
+             Fill="White"
+             Opacity="0.34"
+             Margin="0,0,4,4"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             IsHitTestVisible="False" />
+  </Grid>
+</UserControl>

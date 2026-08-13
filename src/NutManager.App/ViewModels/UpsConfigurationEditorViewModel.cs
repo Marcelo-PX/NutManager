@@ -326,7 +326,36 @@ public sealed partial class UpsConfigurationEditorViewModel : ObservableObject, 
         OnPropertyChanged(nameof(HasUnsupportedFields));
         OnPropertyChanged(nameof(HasCustomParameters));
         OnPropertyChanged(nameof(HasGlobalFields));
+        BasicFieldGroups = UpsFieldGroupViewModel.From(BasicFields);
+        AdvancedFieldGroups = UpsFieldGroupViewModel.From(AdvancedFields);
     }
+
+    // Basic/Advanced is a presentation filter over the same draft; it changes no configuration.
+    [RelayCommand]
+    private void ShowBasicTab() => ShowAdvanced = false;
+
+    [RelayCommand]
+    private void ShowAdvancedTab() => ShowAdvanced = true;
+
+    public bool IsBasicSelected => !ShowAdvanced;
+
+    /// <summary>Validation state of the current draft, shown as a status chip in the header.</summary>
+    public bool IsConfigurationValid => !Validation.HasErrors;
+
+    public string ConfigurationStateText =>
+        _strings.Get(IsConfigurationValid ? "Ups.Editor.StateValid" : "Ups.Editor.StateInvalid");
+
+    /// <summary>Basic fields projected into the documented presentation sections of the form.</summary>
+    [ObservableProperty]
+    private IReadOnlyList<UpsFieldGroupViewModel> _basicFieldGroups = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<UpsFieldGroupViewModel> _advancedFieldGroups = [];
+
+    public bool HasAdvancedFieldGroups => AdvancedFieldGroups.Count > 0;
+
+    partial void OnAdvancedFieldGroupsChanged(IReadOnlyList<UpsFieldGroupViewModel> value) =>
+        OnPropertyChanged(nameof(HasAdvancedFieldGroups));
 
     private IReadOnlyList<UpsFieldChoiceViewModel>? PortChoices(string? driver)
     {
@@ -355,7 +384,11 @@ public sealed partial class UpsConfigurationEditorViewModel : ObservableObject, 
         OnPropertyChanged(nameof(ValidationIssues));
         OnPropertyChanged(nameof(HasValidationIssues));
         OnPropertyChanged(nameof(HasInputErrors));
+        OnPropertyChanged(nameof(IsConfigurationValid));
+        OnPropertyChanged(nameof(ConfigurationStateText));
     }
+
+    partial void OnShowAdvancedChanged(bool value) => OnPropertyChanged(nameof(IsBasicSelected));
 
     private string Localize(string key, string fallback)
     {
@@ -371,6 +404,8 @@ public sealed partial class UpsConfigurationEditorViewModel : ObservableObject, 
 public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
 {
     private readonly UpsConfigurationEditorViewModel _owner;
+    private readonly string _committedValue;
+    private bool _restoringDraftValue;
 
     public UpsConfigurationFieldViewModel(
         NutConfigurationSemanticField field,
@@ -384,7 +419,8 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
         Strings = strings;
         Label = Localize(strings, Descriptor.LabelResourceKey, Descriptor.Name);
         Help = Localize(strings, Descriptor.HelpResourceKey, strings.Get("Ups.Editor.DocumentedOptionHelp"));
-        Group = strings.Get(Descriptor.Presentation?.GroupResourceKey ?? "Ups.Group.Advanced");
+        GroupKey = Descriptor.Presentation?.GroupResourceKey ?? "Ups.Group.Advanced";
+        Group = strings.Get(GroupKey);
         Unit = Descriptor.Presentation?.UnitResourceKey is { } unit ? strings.Get(unit) : null;
         IsAdvanced = Descriptor.Presentation?.IsAdvanced == true;
         IsRisky = Descriptor.Presentation?.IsRisky == true;
@@ -401,6 +437,7 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
             null => string.Empty,
             _ => Convert.ToString(field.Value, CultureInfo.InvariantCulture) ?? string.Empty
         };
+        _committedValue = _draftValue;
         _isEnabled = field.State is NutConfigurationSemanticState.Explicit or NutConfigurationSemanticState.ExplicitAutoToken;
         StateText = strings.Get($"Semantic.State.{field.State}");
         AutomaticText = strings.Get("Ups.Editor.SetAutomatic");
@@ -419,6 +456,9 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
     public string Label { get; }
     public string Help { get; }
     public string Group { get; }
+
+    /// <summary>Untranslated group resource key, used to pick the section glyph.</summary>
+    public string GroupKey { get; }
     public string? Unit { get; }
     public string StateText { get; }
     public string AutomaticText { get; }
@@ -440,7 +480,31 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
 
     partial void OnDraftValueChanged(string value)
     {
+        // See ServerConfigurationFieldViewModel: a ComboBox coerces SelectedValue to null while it
+        // materializes and the two-way binding pushes that null back. Treating it as an edit spun
+        // the editor in an endless rebuild loop and marked the file modified on load.
+        if (value is null)
+        {
+            RestoreDraftValue();
+            return;
+        }
+
+        // The restore below re-enters with the committed value; that is this view model putting its
+        // own value back, not the user editing, so it must not register a change.
+        if (_restoringDraftValue) return;
         if (!IsFlag && !IsSensitive) _owner.SetField(Descriptor, value, Section);
+    }
+
+    /// <summary>
+    /// Puts the field's own value back without registering an edit, so the control re-binds to it
+    /// instead of settling on the empty selection it briefly proposed.
+    /// </summary>
+    private void RestoreDraftValue()
+    {
+        if (_restoringDraftValue) return;
+        _restoringDraftValue = true;
+        DraftValue = _committedValue;
+        _restoringDraftValue = false;
     }
 
     partial void OnIsEnabledChanged(bool value)

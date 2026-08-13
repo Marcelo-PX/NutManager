@@ -1,26 +1,27 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:NutManager.App.Presentation.Controls"
              x:Class="NutManager.App.Presentation.Controls.NutConnectionIndicator"
              x:Name="Root">
   <Grid ColumnDefinitions="Auto,*"
-        ColumnSpacing="10"
+        ColumnSpacing="4"
         VerticalAlignment="Center"
         ClipToBounds="True"
         ToolTip.Tip="{Binding AccessibleText, ElementName=Root}"
         AutomationProperties.Name="{Binding AccessibleText, ElementName=Root}">
-    <Grid Grid.Column="0" Width="24" Height="24">
-      <Ellipse Width="24" Height="24" Fill="{DynamicResource NutHealthyBrush}" Opacity="0.16" IsVisible="{Binding IsHealthy, ElementName=Root}" />
-      <Ellipse Width="24" Height="24" Fill="{DynamicResource NutWarningBrush}" Opacity="0.16" IsVisible="{Binding IsPending, ElementName=Root}" />
-      <Ellipse Width="24" Height="24" Fill="{DynamicResource NutCriticalBrush}" Opacity="0.16" IsVisible="{Binding IsCritical, ElementName=Root}" />
-      <Ellipse Width="24" Height="24" Fill="{DynamicResource NutUnavailableBrush}" Opacity="0.16" IsVisible="{Binding IsUnavailable, ElementName=Root}" />
-      <Ellipse Width="12" Height="12" Fill="{DynamicResource NutHealthyBrush}" IsVisible="{Binding IsHealthy, ElementName=Root}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Ellipse Width="12" Height="12" Fill="{DynamicResource NutWarningBrush}" IsVisible="{Binding IsPending, ElementName=Root}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Ellipse Width="12" Height="12" Fill="{DynamicResource NutCriticalBrush}" IsVisible="{Binding IsCritical, ElementName=Root}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Ellipse Width="12" Height="12" Fill="{DynamicResource NutUnavailableBrush}" IsVisible="{Binding IsUnavailable, ElementName=Root}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-    </Grid>
+    <controls:NutStatusLed Grid.Column="0" State="{Binding LedState, ElementName=Root}" />
     <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" ClipToBounds="True">
-      <TextBlock Text="{Binding StatusText, ElementName=Root}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-      <TextBlock Text="{Binding DetailText, ElementName=Root}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+      <TextBlock Text="{Binding StatusText, ElementName=Root}" Classes="nut-product-title" TextTrimming="CharacterEllipsis" />
+      <StackPanel Orientation="Horizontal" Spacing="6" ClipToBounds="True">
+        <TextBlock Text="{Binding StateText, ElementName=Root}"
+                   FontSize="12"
+                   FontWeight="SemiBold"
+                   Foreground="{Binding StateBrush, ElementName=Root}"
+                   TextTrimming="CharacterEllipsis"
+                   IsVisible="{Binding HasStateText, ElementName=Root}" />
+        <TextBlock Text="•" Classes="nut-metadata" IsVisible="{Binding HasStateText, ElementName=Root}" />
+        <TextBlock Text="{Binding DetailText, ElementName=Root}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
     </StackPanel>
   </Grid>
 </UserControl>
