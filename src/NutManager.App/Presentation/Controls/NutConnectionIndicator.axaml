@@ -1,47 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:NutManager.App.Presentation.Controls"
              x:Class="NutManager.App.Presentation.Controls.NutConnectionIndicator"
              x:Name="Root">
-  <UserControl.Styles>
-    <!--
-      The connected halo is the only looping animation in the shell. It is decorative: connection
-      state is always carried by the dot colour, the state text and the accessible name, so the
-      animation never becomes the sole indicator. Non-healthy states stay static by design.
-    -->
-    <Style Selector="Ellipse.nut-halo.pulsing">
-      <Style.Animations>
-        <!-- Opacity only: no transform animator is required and the glow stays cheap to render. -->
-        <Animation Duration="0:0:2.6" IterationCount="Infinite" Easing="SineEaseInOut">
-          <KeyFrame Cue="0%">
-            <Setter Property="Opacity" Value="0.34" />
-          </KeyFrame>
-          <KeyFrame Cue="50%">
-            <Setter Property="Opacity" Value="0.11" />
-          </KeyFrame>
-          <KeyFrame Cue="100%">
-            <Setter Property="Opacity" Value="0.34" />
-          </KeyFrame>
-        </Animation>
-      </Style.Animations>
-    </Style>
-  </UserControl.Styles>
-
   <Grid ColumnDefinitions="Auto,*"
-        ColumnSpacing="12"
+        ColumnSpacing="4"
         VerticalAlignment="Center"
         ClipToBounds="True"
         ToolTip.Tip="{Binding AccessibleText, ElementName=Root}"
         AutomationProperties.Name="{Binding AccessibleText, ElementName=Root}">
-    <Grid Grid.Column="0" Width="26" Height="26">
-      <Ellipse Classes="nut-halo pulsing" Width="26" Height="26" Fill="{DynamicResource NutHealthyBrush}" Opacity="0.28" IsVisible="{Binding IsHealthy, ElementName=Root}" />
-      <Ellipse Classes="nut-halo" Width="26" Height="26" Fill="{DynamicResource NutWarningBrush}" Opacity="0.18" IsVisible="{Binding IsPending, ElementName=Root}" />
-      <Ellipse Classes="nut-halo" Width="26" Height="26" Fill="{DynamicResource NutCriticalBrush}" Opacity="0.18" IsVisible="{Binding IsCritical, ElementName=Root}" />
-      <Ellipse Classes="nut-halo" Width="26" Height="26" Fill="{DynamicResource NutUnavailableBrush}" Opacity="0.16" IsVisible="{Binding IsUnavailable, ElementName=Root}" />
-      <Ellipse Width="13" Height="13" Fill="{DynamicResource NutHealthyBrush}" IsVisible="{Binding IsHealthy, ElementName=Root}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Ellipse Width="13" Height="13" Fill="{DynamicResource NutWarningBrush}" IsVisible="{Binding IsPending, ElementName=Root}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Ellipse Width="13" Height="13" Fill="{DynamicResource NutCriticalBrush}" IsVisible="{Binding IsCritical, ElementName=Root}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Ellipse Width="13" Height="13" Fill="{DynamicResource NutUnavailableBrush}" IsVisible="{Binding IsUnavailable, ElementName=Root}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-    </Grid>
+    <controls:NutStatusLed Grid.Column="0" State="{Binding LedState, ElementName=Root}" />
     <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" ClipToBounds="True">
       <TextBlock Text="{Binding StatusText, ElementName=Root}" Classes="nut-product-title" TextTrimming="CharacterEllipsis" />
       <StackPanel Orientation="Horizontal" Spacing="6" ClipToBounds="True">

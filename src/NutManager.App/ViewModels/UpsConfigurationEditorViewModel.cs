@@ -404,6 +404,8 @@ public sealed partial class UpsConfigurationEditorViewModel : ObservableObject, 
 public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
 {
     private readonly UpsConfigurationEditorViewModel _owner;
+    private readonly string _committedValue;
+    private bool _restoringDraftValue;
 
     public UpsConfigurationFieldViewModel(
         NutConfigurationSemanticField field,
@@ -435,6 +437,7 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
             null => string.Empty,
             _ => Convert.ToString(field.Value, CultureInfo.InvariantCulture) ?? string.Empty
         };
+        _committedValue = _draftValue;
         _isEnabled = field.State is NutConfigurationSemanticState.Explicit or NutConfigurationSemanticState.ExplicitAutoToken;
         StateText = strings.Get($"Semantic.State.{field.State}");
         AutomaticText = strings.Get("Ups.Editor.SetAutomatic");
@@ -477,7 +480,31 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
 
     partial void OnDraftValueChanged(string value)
     {
+        // See ServerConfigurationFieldViewModel: a ComboBox coerces SelectedValue to null while it
+        // materializes and the two-way binding pushes that null back. Treating it as an edit spun
+        // the editor in an endless rebuild loop and marked the file modified on load.
+        if (value is null)
+        {
+            RestoreDraftValue();
+            return;
+        }
+
+        // The restore below re-enters with the committed value; that is this view model putting its
+        // own value back, not the user editing, so it must not register a change.
+        if (_restoringDraftValue) return;
         if (!IsFlag && !IsSensitive) _owner.SetField(Descriptor, value, Section);
+    }
+
+    /// <summary>
+    /// Puts the field's own value back without registering an edit, so the control re-binds to it
+    /// instead of settling on the empty selection it briefly proposed.
+    /// </summary>
+    private void RestoreDraftValue()
+    {
+        if (_restoringDraftValue) return;
+        _restoringDraftValue = true;
+        DraftValue = _committedValue;
+        _restoringDraftValue = false;
     }
 
     partial void OnIsEnabledChanged(bool value)

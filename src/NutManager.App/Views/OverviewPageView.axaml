@@ -65,7 +65,7 @@
         <Border Classes="nut-metric-card">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="9">
-              <PathIcon Data="{DynamicResource NutIconBattery}" Classes="healthy" Width="18" Height="18" />
+              <PathIcon Data="{DynamicResource NutIconBattery}" Classes="nut-icon-battery healthy" Width="18" Height="18" />
               <TextBlock Text="{Binding Strings[Overview.Metric.BatteryCharge]}" Classes="nut-metric-label" />
             </StackPanel>
             <TextBlock Text="{Binding BatteryValueText}"
@@ -98,7 +98,7 @@
         <Border Classes="nut-metric-card">
           <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="9">
-              <PathIcon Data="{DynamicResource NutIconGauge}" Classes="cyan" Width="18" Height="18" />
+              <PathIcon Data="{DynamicResource NutIconGauge}" Classes="nut-icon-gauge cyan" Width="18" Height="18" />
               <TextBlock Text="{Binding Strings[Overview.Metric.Load]}" Classes="nut-metric-label" />
             </StackPanel>
             <controls:NutLoadGauge Percent="{Binding LoadPercent}"
@@ -121,7 +121,7 @@
         <Border Classes="nut-metric-card">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="9">
-              <PathIcon Data="{DynamicResource NutIconRuntime}" Classes="purple" Width="18" Height="18" />
+              <PathIcon Data="{DynamicResource NutIconRuntime}" Classes="nut-icon-runtime purple" Width="18" Height="18" />
               <TextBlock Text="{Binding Strings[Overview.Metric.Runtime]}" Classes="nut-metric-label" />
             </StackPanel>
             <TextBlock Text="{Binding RuntimeValueText}"
@@ -141,7 +141,7 @@
         <Border Classes="nut-metric-card">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="9">
-              <PathIcon Data="{DynamicResource NutIconInput}" Classes="warning" Width="18" Height="18" />
+              <PathIcon Data="{DynamicResource NutIconInput}" Classes="nut-icon-input warning" Width="18" Height="18" />
               <TextBlock Text="{Binding Strings[Overview.Metric.InputVoltage]}" Classes="nut-metric-label" />
             </StackPanel>
             <TextBlock Text="{Binding InputVoltageText}"
@@ -158,7 +158,7 @@
         <Border Classes="nut-metric-card">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="9">
-              <PathIcon Data="{DynamicResource NutIconOutput}" Classes="healthy" Width="18" Height="18" />
+              <PathIcon Data="{DynamicResource NutIconOutput}" Classes="nut-icon-output healthy" Width="18" Height="18" />
               <TextBlock Text="{Binding Strings[Overview.Metric.OutputVoltage]}" Classes="nut-metric-label" />
             </StackPanel>
             <TextBlock Text="{Binding OutputVoltageText}"
@@ -181,19 +181,41 @@
               <TextBlock Text="{Binding Strings[Overview.State]}" Classes="nut-card-title" VerticalAlignment="Center" />
             </StackPanel>
 
-            <StackPanel Orientation="Horizontal" Spacing="16">
-              <Border Classes="nut-pill"
-                      Classes.healthy="{Binding IsStatusHealthy}"
-                      Classes.warning="{Binding IsStatusWarning}"
-                      Classes.critical="{Binding IsStatusCritical}"
-                      Padding="20,9"
-                      VerticalAlignment="Center">
-                <TextBlock Text="{Binding PrimaryStatusToken}" FontSize="20" FontWeight="Bold" />
-              </Border>
-              <StackPanel Spacing="2" VerticalAlignment="Center">
+            <!--
+              A grid, not a horizontal stack: a stack hands its children unlimited width along the
+              stacking axis, so the description kept claiming its full width and spilled past the
+              card, which then clipped it. The star column bounds the text to whatever space is
+              actually left, so it wraps instead of overflowing at any card width.
+            -->
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+              <!--
+                The primary status token is the one badge that reports a live condition, so it gets
+                a halo that breathes behind it, in the same language as the shell's status light.
+                The halo is a separate layer underneath: the badge itself never moves, so the row
+                keeps its metrics. Everything else on the page stays still.
+              -->
+              <Grid VerticalAlignment="Center">
+                <Border x:Name="PrimaryStatusHalo"
+                        Classes="nut-status-halo"
+                        Classes.healthy="{Binding IsStatusHealthy}"
+                        Classes.warning="{Binding IsStatusWarning}"
+                        Classes.critical="{Binding IsStatusCritical}"
+                        Opacity="0"
+                        IsHitTestVisible="False" />
+                <Border Classes="nut-pill"
+                        Classes.healthy="{Binding IsStatusHealthy}"
+                        Classes.warning="{Binding IsStatusWarning}"
+                        Classes.critical="{Binding IsStatusCritical}"
+                        Padding="20,9"
+                        VerticalAlignment="Center">
+                  <TextBlock Text="{Binding PrimaryStatusToken}" FontSize="20" FontWeight="Bold" />
+                </Border>
+              </Grid>
+              <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                 <TextBlock Text="{Binding PrimaryStatusText}"
                            FontSize="18"
                            FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"
                            Classes.healthy="{Binding IsStatusHealthy}"
                            Classes.warning="{Binding IsStatusWarning}"
                            Classes.critical="{Binding IsStatusCritical}"
@@ -201,13 +223,12 @@
                 <TextBlock Text="{Binding PrimaryStatusDescription}"
                            Classes="nut-metadata"
                            TextWrapping="Wrap"
-                           MaxWidth="330"
                            IsVisible="{Binding HasPrimaryStatusDescription}" />
                 <TextBlock Text="{Binding Strings[Overview.NoStatus]}"
                            Classes="nut-metadata"
                            IsVisible="{Binding HasNoStatusItems}" />
               </StackPanel>
-            </StackPanel>
+            </Grid>
 
             <ItemsControl ItemsSource="{Binding StatusItems}" IsVisible="{Binding !HasNoStatusItems}">
               <ItemsControl.ItemsPanel>
@@ -391,33 +412,11 @@
         </Border>
       </Grid>
 
-      <!-- ==================== Identity ==================== -->
-      <Border Classes="nut-card">
-        <StackPanel Spacing="12">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <PathIcon Data="{DynamicResource NutIconDevices}" Classes="cyan" Width="18" Height="18" />
-            <TextBlock Text="{Binding Strings[Overview.SelectedUps]}" Classes="nut-card-title" VerticalAlignment="Center" />
-          </StackPanel>
-          <WrapPanel>
-            <StackPanel Width="250" Margin="0,0,16,8" Spacing="2">
-              <TextBlock Text="{Binding Strings[Overview.DescriptionLabel]}" Classes="nut-metadata" />
-              <TextBlock Text="{Binding Identity.Description}" FontSize="13" TextWrapping="Wrap" />
-            </StackPanel>
-            <StackPanel Width="180" Margin="0,0,16,8" Spacing="2">
-              <TextBlock Text="{Binding Strings[Overview.Manufacturer]}" Classes="nut-metadata" />
-              <TextBlock Text="{Binding Identity.Manufacturer}" FontSize="13" TextWrapping="Wrap" />
-            </StackPanel>
-            <StackPanel Width="180" Margin="0,0,16,8" Spacing="2">
-              <TextBlock Text="{Binding Strings[Overview.Model]}" Classes="nut-metadata" />
-              <TextBlock Text="{Binding Identity.Model}" FontSize="13" TextWrapping="Wrap" />
-            </StackPanel>
-            <StackPanel Width="180" Margin="0,0,0,8" Spacing="2">
-              <TextBlock Text="{Binding Strings[Overview.NutName]}" Classes="nut-metadata" />
-              <TextBlock Text="{Binding Identity.Name}" FontSize="13" TextWrapping="Wrap" />
-            </StackPanel>
-          </WrapPanel>
-        </StackPanel>
-      </Border>
+      <!--
+        The identity card was removed from this page. Three of its four fields were blank in
+        practice and the fourth, the NUT name, is already on the connection card above; Devices
+        carries the full identification for anyone who needs it.
+      -->
     </StackPanel>
   </ScrollViewer>
 </UserControl>

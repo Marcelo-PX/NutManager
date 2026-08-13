@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:NutManager.App.Presentation.Controls">
   <!--
     Shell chrome: title bar, sidebar, navigation, profile card and footer.
     Navigation selection is a restrained accent bar plus a low-contrast surface rather than a
@@ -87,6 +88,38 @@
     <Setter Property="Background" Value="{DynamicResource NutAccentSoftBrush}" />
   </Style>
 
+  <!--
+    Theme glyphs. Both take their colour from the button so the selected state keeps working, and
+    both move in a way that suits what they are: the sun's rays turn a notch on their own while its
+    disc holds still, and the moon leans back as if setting. Transitions only, so the toggle costs
+    nothing when nobody is pointing at it.
+  -->
+  <Style Selector="Path.nut-theme-glyph">
+    <Setter Property="Fill" Value="{Binding $parent[Button].Foreground}" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="none" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.34" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-theme-option:pointerover Path.nut-sun-rays">
+    <Setter Property="RenderTransform" Value="rotate(45deg) scale(1.06)" />
+  </Style>
+  <Style Selector="Button.nut-theme-option.selected Path.nut-sun-rays">
+    <Setter Property="RenderTransform" Value="rotate(22.5deg)" />
+  </Style>
+  <Style Selector="Button.nut-theme-option:pointerover Path.nut-sun-core">
+    <Setter Property="RenderTransform" Value="scale(1.1)" />
+  </Style>
+  <Style Selector="Button.nut-theme-option:pointerover Path.nut-moon">
+    <Setter Property="RenderTransform" Value="rotate(-18deg) scale(1.06)" />
+  </Style>
+  <Style Selector="Button.nut-theme-option.selected Path.nut-moon">
+    <Setter Property="RenderTransform" Value="rotate(-10deg)" />
+  </Style>
+
   <Style Selector="Border.nut-shell-header">
     <Setter Property="Background" Value="{DynamicResource NutHeaderBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
@@ -148,9 +181,47 @@
   <!--
     ==================== Layered navigation glyph states ====================
     Base silhouette and detail layers animate separately, and each family reacts in a way that
-    suits the object it depicts rather than every icon simply turning accent-coloured. Only
-    opacity, brush and thickness are animated: Avalonia 12 has no RenderTransform transition.
+    suits the object it depicts rather than every icon simply turning accent-coloured.
+
+    Motion uses TransformOperationsTransition, which is the supported way to interpolate
+    RenderTransform: the crash seen earlier came from pointing a keyframe Animation at
+    RenderTransform, for which no animator is registered. Transitions are state driven, so a
+    sidebar at rest costs nothing.
   -->
+  <Style Selector="Grid.nut-icon-motion, Path.nut-icon-motion">
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="none" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <!-- Each family moves in the way its object would. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-lift">
+    <Setter Property="RenderTransform" Value="translateY(-1px) scale(1.04)" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-nudge">
+    <Setter Property="RenderTransform" Value="scale(1.03)" />
+  </Style>
+  <!-- The gear's turn is a compositor loop on the glyph itself, so the grid only lends the scale. -->
+  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-gear">
+    <Setter Property="RenderTransform" Value="scale(1.03)" />
+  </Style>
+  <!--
+    Looping motion cannot be expressed here. A keyframe Animation targeting RenderTransform throws
+    "no animator registered" at startup even when its values are TransformOperations, because the
+    transition and the animator are separate mechanisms and only the transition supports it. The
+    per-destination loops therefore live on the compositor, driven from NutNavigationIcon, and this
+    flag is how a style hands the hover state to it.
+
+    Hover only. A selected row keeps its accent colouring but stops moving: the page you are
+    already on has no reason to animate forever, and an idle sidebar must cost nothing.
+  -->
+  <Style Selector="Button.nut-navigation-item:pointerover controls|NutNavigationIcon">
+    <Setter Property="IsActive" Value="True" />
+  </Style>
   <Style Selector="Path.nut-nav-base">
     <Setter Property="Fill" Value="{DynamicResource NutTextMutedBrush}" />
     <Setter Property="Transitions">

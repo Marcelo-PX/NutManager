@@ -160,6 +160,7 @@
   <data name="Administration.Configuration.RemoteAccessHint" xml:space="preserve"><value>Conecte e valide o diretório na seção Acesso remoto antes de carregar arquivos.</value></data>
   <data name="Administration.Configuration.Files" xml:space="preserve"><value>Arquivos de configuração</value></data>
   <data name="Administration.Configuration.NoFiles" xml:space="preserve"><value>Nenhum arquivo de configuração está disponível neste diretório.</value></data>
+  <data name="Administration.Configuration.Loading" xml:space="preserve"><value>Carregando…</value></data>
   <data name="Administration.Configuration.NoSelection" xml:space="preserve"><value>Nenhum arquivo carregado</value></data>
   <data name="Administration.Configuration.NoSelection.Help" xml:space="preserve"><value>Selecione um arquivo disponível para visualizar ou editar.</value></data>
   <data name="Administration.Configuration.Review" xml:space="preserve"><value>Revisão das alterações</value></data>

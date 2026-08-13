@@ -45,8 +45,25 @@
   <StreamGeometry x:Key="NutIconDiagnosticsDot">F1 M20.6,8.4 A1.15,1.15 0 1 1 20.59,8.4 Z</StreamGeometry>
 
   <StreamGeometry x:Key="NutIconSettingsBase">F1 M8.75 14.5C10.2861 14.5 11.5738 15.5656 11.9131 16.998L21.25 17C21.6642 17 22 17.3358 22 17.75C22 18.1297 21.7176 18.4435 21.3516 18.4932L21.25 18.5L11.9131 18.501C11.5742 19.9339 10.2865 21 8.75 21C7.21354 21 5.92583 19.9339 5.58691 18.501L2.75 18.5C2.33579 18.5 2 18.1642 2 17.75C2 17.3703 2.28236 17.0565 2.64844 17.0068L2.75 17L5.58691 16.999C5.92583 15.5661 7.21354 14.5 8.75 14.5ZM8.75 16C7.7835 16 7 16.7835 7 17.75C7 18.7165 7.7835 19.5 8.75 19.5C9.7165 19.5 10.5 18.7165 10.5 17.75C10.5 16.7835 9.7165 16 8.75 16ZM15.25 3C16.7865 3 18.0742 4.06613 18.4131 5.49902L21.25 5.5C21.6642 5.5 22 5.83579 22 6.25C22 6.6297 21.7176 6.9435 21.3516 6.99316L21.25 7L18.4131 7.00098C18.0742 8.43387 16.7865 9.5 15.25 9.5C13.7135 9.5 12.4258 8.43387 12.0869 7.00098L2.75 7C2.33579 7 2 6.66421 2 6.25C2 5.8703 2.28236 5.5565 2.64844 5.50684L2.75 5.5L12.0869 5.49805C12.4262 4.06562 13.7139 3 15.25 3ZM15.25 4.5C14.2836 4.5 13.5002 5.2837 13.5 6.25C13.5 7.2165 14.2835 8 15.25 8C16.2165 8 17 7.2165 17 6.25C16.9998 5.2837 16.2164 4.5 15.25 4.5Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconSettingsKnobTop">F1 M15.25,6.25 A0.95,0.95 0 1 1 15.24,6.25 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconSettingsKnobBottom">F1 M8.75,17.75 A0.95,0.95 0 1 1 8.74,17.75 Z</StreamGeometry>
+  <!-- Handle fills, r=1.3 inside a ring whose inner edge is at 1.75: big enough to read as a lit
+       handle, still short of touching the ring. Two half arcs, as the near-degenerate single-arc
+       form is ill-conditioned above roughly one unit. -->
+  <StreamGeometry x:Key="NutIconSettingsKnobTop">F1 M13.95,6.25 A1.3,1.3 0 1 0 16.55,6.25 A1.3,1.3 0 1 0 13.95,6.25 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSettingsKnobBottom">F1 M7.45,17.75 A1.3,1.3 0 1 0 10.05,17.75 A1.3,1.3 0 1 0 7.45,17.75 Z</StreamGeometry>
+
+  <!--
+    The options glyph is split so its handles can travel. Fluent draws the tracks and both handle
+    rings in one path, which pins the ring in place while only the fill could move, and a dot
+    sliding out of a stationary ring reads as a rendering fault rather than a control being
+    adjusted. These three pieces reproduce the same drawing at the same coordinates - tracks
+    spanning x=2.75..21.25 at y=6.25 and y=17.75, rings of r=1.75..2.5 on the same centres - with
+    each handle as its own unit that can carry its ring and fill together.
+  -->
+  <StreamGeometry x:Key="NutIconSettingsTracks">F1 M3.5,5.5 L20.5,5.5 A0.75,0.75 0 0 1 20.5,7 L3.5,7 A0.75,0.75 0 0 1 3.5,5.5 Z M3.5,17 L20.5,17 A0.75,0.75 0 0 1 20.5,18.5 L3.5,18.5 A0.75,0.75 0 0 1 3.5,17 Z</StreamGeometry>
+  <!-- Two half arcs per circle. The near-degenerate single-arc form used for the tiny LEDs above is
+       ill-conditioned at this radius and renders as an open horseshoe. -->
+  <StreamGeometry x:Key="NutIconSettingsRingTop">F0 M12.75,6.25 A2.5,2.5 0 1 0 17.75,6.25 A2.5,2.5 0 1 0 12.75,6.25 Z M13.5,6.25 A1.75,1.75 0 1 0 17,6.25 A1.75,1.75 0 1 0 13.5,6.25 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSettingsRingBottom">F0 M6.25,17.75 A2.5,2.5 0 1 0 11.25,17.75 A2.5,2.5 0 1 0 6.25,17.75 Z M7,17.75 A1.75,1.75 0 1 0 10.5,17.75 A1.75,1.75 0 1 0 7,17.75 Z</StreamGeometry>
 
   <!-- Configuration domains -->
   <StreamGeometry x:Key="NutIconGeneral">M5,2.8 L14.5,2.8 L19.4,7.7 L19.4,21.2 L5,21.2 Z M6.7,4.5 L6.7,19.5 L17.7,19.5 L17.7,9 L13.2,9 L13.2,4.5 Z M8.4,11.2 L16,11.2 L16,12.9 L8.4,12.9 Z M8.4,14.6 L16,14.6 L16,16.3 L8.4,16.3 Z</StreamGeometry>
@@ -113,8 +130,35 @@
   <StreamGeometry x:Key="NutIconClose">M5.6,4.2 L12,10.6 L18.4,4.2 L19.8,5.6 L13.4,12 L19.8,18.4 L18.4,19.8 L12,13.4 L5.6,19.8 L4.2,18.4 L10.6,12 L4.2,5.6 Z</StreamGeometry>
 
   <!-- Theme and identity -->
+  <!--
+    The sun is split so its rays can turn without dragging the disc around with them, and both
+    pieces are redrawn: the rays used to be bare rectangles with square corners meeting a thin
+    outlined ring, which read as a gear more than a sun at 17px. They are now rounded capsules
+    around a solid disc. The single-key version below stays for callers that just want the glyph.
+  -->
+  <StreamGeometry x:Key="NutIconSunCore">F1 M7.6,12 A4.4,4.4 0 1 0 16.4,12 A4.4,4.4 0 1 0 7.6,12 Z</StreamGeometry>
+  <StreamGeometry x:Key="NutIconSunRays">F1 M11.1,1.6 A0.9,0.9 0 0 1 12.9,1.6 L12.9,4 A0.9,0.9 0 0 1 11.1,4 Z M11.1,20 A0.9,0.9 0 0 1 12.9,20 L12.9,22.4 A0.9,0.9 0 0 1 11.1,22.4 Z M1.6,12.9 A0.9,0.9 0 0 1 1.6,11.1 L4,11.1 A0.9,0.9 0 0 1 4,12.9 Z M20,12.9 A0.9,0.9 0 0 1 20,11.1 L22.4,11.1 A0.9,0.9 0 0 1 22.4,12.9 Z M4.28,5.55 A0.9,0.9 0 0 1 5.55,4.28 L7.25,5.98 A0.9,0.9 0 0 1 5.98,7.25 Z M18.02,19.29 A0.9,0.9 0 0 1 19.29,18.02 L20.99,19.72 A0.9,0.9 0 0 1 19.72,20.99 Z M19.72,4.28 A0.9,0.9 0 0 1 20.99,5.55 L19.29,7.25 A0.9,0.9 0 0 1 18.02,5.98 Z M5.98,18.02 A0.9,0.9 0 0 1 7.25,19.29 L5.55,20.99 A0.9,0.9 0 0 1 4.28,19.72 Z</StreamGeometry>
   <StreamGeometry x:Key="NutIconSun">M12,7.4 A4.6,4.6 0 1 1 11.99,7.4 Z M12,9.1 A2.9,2.9 0 1 0 12.01,9.1 Z M11.1,1.4 L12.9,1.4 L12.9,5 L11.1,5 Z M11.1,19 L12.9,19 L12.9,22.6 L11.1,22.6 Z M1.4,11.1 L5,11.1 L5,12.9 L1.4,12.9 Z M19,11.1 L22.6,11.1 L22.6,12.9 L19,12.9 Z M4.2,5.5 L5.5,4.2 L8,6.7 L6.7,8 Z M16,17.3 L17.3,16 L19.8,18.5 L18.5,19.8 Z M18.5,4.2 L19.8,5.5 L17.3,8 L16,6.7 Z M5.5,19.8 L4.2,18.5 L6.7,16 L8,17.3 Z</StreamGeometry>
-  <StreamGeometry x:Key="NutIconMoon">M20.4,15.2 A9.2,9.2 0 1 1 8.8,3.6 A7.6,7.6 0 0 0 20.4,15.2 Z M17.6,16.4 A9.3,9.3 0 0 1 7.6,6.4 A7.5,7.5 0 1 0 17.6,16.4 Z</StreamGeometry>
+  <!--
+    Crescent traced as one closed figure: the long way round the disc (centre 12,12 r=9) from one
+    horn to the other, then back along the bite (centre 17.2,6.8 r=7.6). The endpoints are the real
+    intersections of those two circles, so the horns close to a point rather than ending bluntly.
+
+    A smaller bite pushed further out gives a full-bodied crescent with short horns. Keeping the
+    bite nearly as large as the disc produces the opposite - a thin fingernail with long fragile
+    horns that break up at 18px.
+
+    The four craters are extra subpaths under the even-odd rule, so they are covered twice and come
+    out as genuine holes: the surface behind shows through and they stay correct on any background,
+    which a painted-on dot would not. Each sits clear of the disc edge, of the bite and of its
+    neighbours, so no crater can break the silhouette or merge into another. Radii are 1.5, 1.1,
+    1.0 and 0.85 - below about 0.8 they vanish into the antialiasing at this size.
+
+    Subtracting one disc from another under the even-odd rule does not work for the bite itself:
+    the part of the cutting disc falling outside the other is covered an odd number of times and
+    fills in, turning the crescent into a ring. Only the fully enclosed craters can work this way.
+  -->
+  <StreamGeometry x:Key="NutIconMoon">F0 M10.55,3.12 A9,9 0 1 0 20.88,13.45 A7.6,7.6 0 0 1 10.55,3.12 Z M8,15.5 A1.5,1.5 0 1 0 11,15.5 A1.5,1.5 0 1 0 8,15.5 Z M11.5,19 A1,1 0 1 0 13.5,19 A1,1 0 1 0 11.5,19 Z M6.65,10.5 A0.85,0.85 0 1 0 8.35,10.5 A0.85,0.85 0 1 0 6.65,10.5 Z M14.2,17.4 A1.1,1.1 0 1 0 16.4,17.4 A1.1,1.1 0 1 0 14.2,17.4 Z</StreamGeometry>
   <StreamGeometry x:Key="NutIconProfile">M12,2.8 A4.8,4.8 0 1 1 11.99,2.8 Z M12,4.5 A3.1,3.1 0 1 0 12.01,4.5 Z M3.6,21.2 C3.6,16.4 7.4,13.6 12,13.6 C16.6,13.6 20.4,16.4 20.4,21.2 L18.7,21.2 C18.7,17.5 15.7,15.3 12,15.3 C8.3,15.3 5.3,17.5 5.3,21.2 Z</StreamGeometry>
 
   <!-- Window chrome -->

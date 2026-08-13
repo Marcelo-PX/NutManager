@@ -79,10 +79,20 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         _statusItems = Array.Empty<OverviewStatusItemViewModel>();
     }
 
-    public OverviewPageViewModel(IUpsPollingCoordinator polling, UiLanguagePreference language = UiLanguagePreference.PtBr)
+    /// <summary>
+    /// The endpoint is passed separately because the polling state does not carry it: the
+    /// coordinator reports readings, not where they came from. Without it the connection card
+    /// reported the server address as unavailable while the shell header was showing that very
+    /// address, which is a wiring gap rather than a missing NUT variable.
+    /// </summary>
+    public OverviewPageViewModel(
+        IUpsPollingCoordinator polling,
+        UiLanguagePreference language = UiLanguagePreference.PtBr,
+        NutEndpoint? endpoint = null)
         : this(language)
     {
         _polling = polling;
+        _endpoint = endpoint;
         polling.StateChanged += ApplyPollingState;
         ApplyPollingState(polling.State);
     }

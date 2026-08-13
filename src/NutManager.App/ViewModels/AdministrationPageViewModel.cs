@@ -1268,10 +1268,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         finally
         {
             // A superseded load must never clear the busy state of the load that replaced it.
+            // IsBusy is cleared first on purpose: clearing IsLoadingFile first would make the list
+            // count as busy-outside-navigation for one notification and flick it disabled.
             if (generation == _navigationGeneration)
             {
-                IsLoadingFile = false;
                 IsBusy = false;
+                IsLoadingFile = false;
             }
 
             if (ReferenceEquals(_navigationCancellation, navigation))

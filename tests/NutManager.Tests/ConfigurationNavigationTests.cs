@@ -56,6 +56,26 @@ public sealed class ConfigurationNavigationTests
     }
 
     [Fact]
+    public async Task TheFileListIsNeverReportedAsDisabledAtAnyPointDuringNavigation()
+    {
+        // The list is disabled by a single false on this property, and a click landing in that gap
+        // is lost. No notification raised during a load may carry one.
+        var (viewModel, _) = await CreateAsync();
+        var disabled = new List<string>();
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (!viewModel.CanSelectConfigurationFile) disabled.Add(args.PropertyName ?? "?");
+        };
+
+        foreach (var fileName in new[] { "nut.conf", "ups.conf", "upsd.conf", "nut.conf" })
+        {
+            await viewModel.SelectFileAsync(File(viewModel, fileName));
+        }
+
+        Assert.Empty(disabled);
+    }
+
+    [Fact]
     public async Task TheNewestSelectionWinsWhenLoadsCompleteOutOfOrder()
     {
         var (viewModel, pipeline) = await CreateAsync();
@@ -201,7 +221,7 @@ public sealed class ConfigurationNavigationTests
         const string root = "/nav/nut";
         const string etc = "/nav/nut/etc";
         var pipeline = new NavigationPipeline();
-        pipeline.SetFile($"{etc}/nut.conf", NutConfigurationFileKind.NutConf, "MODE=netserver\n");
+        pipeline.SetFile($"{etc}/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
         pipeline.SetFile($"{etc}/ups.conf", NutConfigurationFileKind.UpsConf, "[ups]\n\tdriver = nutdrv_qx\n\tport = COM4\n");
         pipeline.SetFile($"{etc}/upsd.conf", NutConfigurationFileKind.UpsdConf, "MAXAGE 15\n");
 

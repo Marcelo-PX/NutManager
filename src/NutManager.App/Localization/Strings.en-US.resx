@@ -160,6 +160,7 @@
   <data name="Administration.Configuration.RemoteAccessHint" xml:space="preserve"><value>Connect and validate the directory under Remote access before loading files.</value></data>
   <data name="Administration.Configuration.Files" xml:space="preserve"><value>Configuration files</value></data>
   <data name="Administration.Configuration.NoFiles" xml:space="preserve"><value>No configuration file is available in this directory.</value></data>
+  <data name="Administration.Configuration.Loading" xml:space="preserve"><value>Loading…</value></data>
   <data name="Administration.Configuration.NoSelection" xml:space="preserve"><value>No file loaded</value></data>
   <data name="Administration.Configuration.NoSelection.Help" xml:space="preserve"><value>Select an available file to view or edit.</value></data>
   <data name="Administration.Configuration.Review" xml:space="preserve"><value>Change review</value></data>

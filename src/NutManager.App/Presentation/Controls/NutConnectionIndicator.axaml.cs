@@ -44,6 +44,19 @@ public partial class NutConnectionIndicator : UserControl
     public bool HasStateText => !string.IsNullOrWhiteSpace(StateText);
 
     /// <summary>
+    /// Collapses the presentation flags into the single state the light renders. Only states the
+    /// shell actually reports are mapped; nothing here invents a condition the view model cannot
+    /// produce.
+    /// </summary>
+    public NutLedState LedState => IsHealthy
+        ? NutLedState.Healthy
+        : IsPending
+            ? NutLedState.Pending
+            : IsCritical
+                ? NutLedState.Critical
+                : NutLedState.Unavailable;
+
+    /// <summary>
     /// Resolves the state label colour from the current presentation flags. Colour is redundant
     /// with <see cref="StateText"/> so it never becomes the only carrier of connection meaning.
     /// </summary>
@@ -66,8 +79,12 @@ public partial class NutConnectionIndicator : UserControl
                  change.Property == IsCriticalProperty || change.Property == IsUnavailableProperty)
         {
             RaisePropertyChanged(StateBrushProperty, default, default);
+            RaisePropertyChanged(LedStateProperty, default, default);
         }
     }
+
+    private static readonly DirectProperty<NutConnectionIndicator, NutLedState> LedStateProperty =
+        AvaloniaProperty.RegisterDirect<NutConnectionIndicator, NutLedState>(nameof(LedState), owner => owner.LedState);
 
     private static readonly DirectProperty<NutConnectionIndicator, bool> HasStateTextProperty =
         AvaloniaProperty.RegisterDirect<NutConnectionIndicator, bool>(nameof(HasStateText), owner => owner.HasStateText);

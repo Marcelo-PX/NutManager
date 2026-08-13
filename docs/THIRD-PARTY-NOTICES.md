@@ -15,7 +15,11 @@ manager. Only assets copied into this repository are recorded.
 - **Why it is vendored:** the application must run entirely offline, so the geometry is stored
   locally instead of being fetched or pulled in as a runtime dependency. No icon font, icon package
   or remote asset is referenced.
-- **Icons imported:** Home, Server, Settings, Pulse, Options.
+- **Icons imported:** Home, Server, Settings (gear), Pulse.
+- **Not imported:** the options/sliders glyph was previously taken from the same source but is now
+  drawn in this repository. Fluent packs the tracks and both handle rings into a single path, which
+  makes the handles impossible to move independently; the local version reproduces the same drawing
+  at the same coordinates as three pieces so each handle can travel its track as one unit.
 
 The MIT licence permits this use provided the copyright notice and permission notice are retained.
 The notice is reproduced below.

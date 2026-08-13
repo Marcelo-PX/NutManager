@@ -61,7 +61,7 @@ public partial class App : Application
         }
 
         var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
-        var overview = new OverviewPageViewModel(polling, settings.Language);
+        var overview = new OverviewPageViewModel(polling, settings.Language, endpoint);
         var devices = new DevicesPageViewModel(client, endpoint, polling, runtimeProfile.Profile.Monitoring.PreferredUpsName, settings.Language);
         var isLocalManagement = runtimeProfile.Profile.Management.Mode == NutManagementMode.Local;
         IRemoteNutConfigurationTransport? remoteTransport = runtimeProfile.Profile.Management.ConfigurationTransport switch

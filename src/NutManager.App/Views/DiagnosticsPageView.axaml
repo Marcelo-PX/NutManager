@@ -130,10 +130,6 @@
                   <TextBlock Text="{Binding Manufacturer}" FontSize="13" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
                 <StackPanel Width="150" Margin="0,0,14,9" Spacing="2">
-                  <TextBlock Text="{Binding Strings[Overview.Model]}" Classes="nut-metadata" />
-                  <TextBlock Text="{Binding Model}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-                <StackPanel Width="150" Margin="0,0,0,9" Spacing="2">
                   <TextBlock Text="{Binding Strings[Diagnostics.Snapshot]}" Classes="nut-metadata" />
                   <TextBlock Text="{Binding SnapshotStatusText}" FontSize="13" Classes.healthy="{Binding HasSnapshot}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>

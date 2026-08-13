@@ -67,14 +67,29 @@
                       Click="LightThemeButton_OnClick"
                       ToolTip.Tip="{Binding Localizer[Theme.Light]}"
                       AutomationProperties.Name="{Binding Localizer[Theme.Light]}">
-                <PathIcon Data="{DynamicResource NutIconSun}" Width="17" Height="17" />
+                <!-- Disc and rays are separate layers so the rays can turn on their own. Stretch
+                     is off so each renders at its authored coordinates in the 24-unit box. -->
+                <Grid Width="18" Height="18">
+                  <Viewbox Width="18" Height="18">
+                    <Grid Width="24" Height="24">
+                      <Path Classes="nut-theme-glyph nut-sun-rays" Stretch="None" Data="{DynamicResource NutIconSunRays}" />
+                      <Path Classes="nut-theme-glyph nut-sun-core" Stretch="None" Data="{DynamicResource NutIconSunCore}" />
+                    </Grid>
+                  </Viewbox>
+                </Grid>
               </Button>
               <Button Classes="nut-theme-option moon"
                       Classes.selected="{Binding ShowLightThemeAction}"
                       Click="DarkThemeButton_OnClick"
                       ToolTip.Tip="{Binding Localizer[Theme.Dark]}"
                       AutomationProperties.Name="{Binding Localizer[Theme.Dark]}">
-                <PathIcon Data="{DynamicResource NutIconMoon}" Width="17" Height="17" />
+                <Grid Width="18" Height="18">
+                  <Viewbox Width="18" Height="18">
+                    <Grid Width="24" Height="24">
+                      <Path Classes="nut-theme-glyph nut-moon" Stretch="None" Data="{DynamicResource NutIconMoon}" />
+                    </Grid>
+                  </Viewbox>
+                </Grid>
               </Button>
             </StackPanel>
           </Border>

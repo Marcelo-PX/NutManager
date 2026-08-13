@@ -94,6 +94,19 @@
   <SolidColorBrush x:Key="NutWarningSoftBrush" Color="#2EF59E0B" />
   <SolidColorBrush x:Key="NutCriticalBrush" Color="#F87171" />
   <SolidColorBrush x:Key="NutCriticalSoftBrush" Color="#2EEF4444" />
+  <!--
+    Hover pairs for the semantic badges. The soft fills are alpha over whatever surface is behind
+    them, so one definition reads correctly in both themes; the bright borders are the same hues
+    lifted a step, which keeps a hovered badge unmistakably the same state it was.
+  -->
+  <SolidColorBrush x:Key="NutAccentSoftHoverBrush" Color="#4D2F6FE0" />
+  <SolidColorBrush x:Key="NutHealthyBrightBrush" Color="#86EFAC" />
+  <SolidColorBrush x:Key="NutHealthySoftHoverBrush" Color="#4D22C55E" />
+  <SolidColorBrush x:Key="NutWarningBrightBrush" Color="#FCD34D" />
+  <SolidColorBrush x:Key="NutWarningSoftHoverBrush" Color="#4DF59E0B" />
+  <SolidColorBrush x:Key="NutCriticalBrightBrush" Color="#FCA5A5" />
+  <SolidColorBrush x:Key="NutCriticalSoftHoverBrush" Color="#4DEF4444" />
+
   <SolidColorBrush x:Key="NutPurpleBrush" Color="#A78BFA" />
   <SolidColorBrush x:Key="NutFocusBrush" Color="#7DA9FF" />
   <SolidColorBrush x:Key="NutUnavailableBrush" Color="#687D95" />
