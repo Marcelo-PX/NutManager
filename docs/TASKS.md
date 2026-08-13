@@ -46,7 +46,7 @@ Only one task should normally be in progress at a time.
 | T26 | DONE | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
 | T27 | DONE | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
 | T27A | IN PROGRESS | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
-| T28 | TODO | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
+| T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | TODO | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 
 ---
@@ -508,7 +508,7 @@ Align the existing Windows presentation with the approved visual references, inc
 
 ## T28 — Graphical users and monitoring configuration
 
-**Status:** TODO
+**Status:** DONE
 
 ### Objective
 

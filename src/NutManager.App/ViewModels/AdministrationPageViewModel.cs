@@ -123,6 +123,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private UpsdConfigurationEditorViewModel? _upsdConfigurationEditor;
 
     [ObservableProperty]
+    private UpsdUsersConfigurationEditorViewModel? _upsdUsersConfigurationEditor;
+
+    [ObservableProperty]
+    private UpsmonConfigurationEditorViewModel? _upsmonConfigurationEditor;
+
+    [ObservableProperty]
     private SemanticConfigurationReviewViewModel? _semanticReview;
 
     [ObservableProperty]
@@ -250,7 +256,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool IsEditorPlaceholderVisible => HasNoLoadedFile && !IsLoadingFile;
 
     private ISemanticConfigurationEditor? ActiveSemanticEditor =>
-        UpsConfigurationEditor ?? (ISemanticConfigurationEditor?)NutGeneralConfigurationEditor ?? UpsdConfigurationEditor;
+        UpsConfigurationEditor ?? (ISemanticConfigurationEditor?)NutGeneralConfigurationEditor ?? UpsdConfigurationEditor
+        ?? (ISemanticConfigurationEditor?)UpsdUsersConfigurationEditor ?? UpsmonConfigurationEditor;
 
     public bool HasDraftChanges => _entries.Any(entry => entry.IsChanged) || ActiveSemanticEditor?.HasChanges == true;
 
@@ -259,6 +266,10 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool IsNutGeneralConfigurationEditorVisible => NutGeneralConfigurationEditor is not null;
 
     public bool IsUpsdConfigurationEditorVisible => UpsdConfigurationEditor is not null;
+
+    public bool IsUpsdUsersConfigurationEditorVisible => UpsdUsersConfigurationEditor is not null;
+
+    public bool IsUpsmonConfigurationEditorVisible => UpsmonConfigurationEditor is not null;
 
     public bool IsLegacyConfigurationEditorVisible => HasLoadedFile && ActiveSemanticEditor is null;
 
@@ -1506,6 +1517,20 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
                 UpsdEditor = new UpsdConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration)
             };
         }
+        if (snapshot.FileKind == NutConfigurationFileKind.UpsdUsers)
+        {
+            return new EditorBuildResult([], [])
+            {
+                UpsdUsersEditor = new UpsdUsersConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration)
+            };
+        }
+        if (snapshot.FileKind == NutConfigurationFileKind.UpsmonConf)
+        {
+            return new EditorBuildResult([], [])
+            {
+                UpsmonEditor = new UpsmonConfigurationEditorViewModel(snapshot, Strings, CanEditConfiguration)
+            };
+        }
         return BuildEntries(snapshot.Document);
     }
 
@@ -1547,6 +1572,18 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             UpsdConfigurationEditor = result.UpsdEditor;
             result.UpsdEditor = null;
         }
+        if (result.UpsdUsersEditor is not null)
+        {
+            result.UpsdUsersEditor.Changed += OnSemanticConfigurationChanged;
+            UpsdUsersConfigurationEditor = result.UpsdUsersEditor;
+            result.UpsdUsersEditor = null;
+        }
+        if (result.UpsmonEditor is not null)
+        {
+            result.UpsmonEditor.Changed += OnSemanticConfigurationChanged;
+            UpsmonConfigurationEditor = result.UpsmonEditor;
+            result.UpsmonEditor = null;
+        }
 
         _draftVersion++;
         NotifyWorkflowPropertiesChanged();
@@ -1561,12 +1598,16 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         public UpsConfigurationEditorViewModel? UpsEditor { get; set; }
         public NutGeneralConfigurationEditorViewModel? NutEditor { get; set; }
         public UpsdConfigurationEditorViewModel? UpsdEditor { get; set; }
+        public UpsdUsersConfigurationEditorViewModel? UpsdUsersEditor { get; set; }
+        public UpsmonConfigurationEditorViewModel? UpsmonEditor { get; set; }
 
         public void Dispose()
         {
             UpsEditor?.Dispose();
             NutEditor?.Dispose();
             UpsdEditor?.Dispose();
+            UpsdUsersEditor?.Dispose();
+            UpsmonEditor?.Dispose();
         }
     }
 
@@ -1765,6 +1806,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(IsUpsConfigurationEditorVisible));
         OnPropertyChanged(nameof(IsNutGeneralConfigurationEditorVisible));
         OnPropertyChanged(nameof(IsUpsdConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsUpsdUsersConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsUpsmonConfigurationEditorVisible));
         OnPropertyChanged(nameof(IsLegacyConfigurationEditorVisible));
         OnPropertyChanged(nameof(CanChangeRemoteSessionContext));
         OnPropertyChanged(nameof(CanConnectRemote));
@@ -1947,6 +1990,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     partial void OnUpsdConfigurationEditorChanged(UpsdConfigurationEditorViewModel? value)
     {
         OnPropertyChanged(nameof(IsUpsdConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsUpsdUsersConfigurationEditorVisible));
+        OnPropertyChanged(nameof(IsUpsmonConfigurationEditorVisible));
         OnPropertyChanged(nameof(IsLegacyConfigurationEditorVisible));
         NotifyWorkflowPropertiesChanged();
     }
@@ -1970,6 +2015,18 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             UpsdConfigurationEditor.Changed -= OnSemanticConfigurationChanged;
             UpsdConfigurationEditor.Dispose();
             UpsdConfigurationEditor = null;
+        }
+        if (UpsdUsersConfigurationEditor is not null)
+        {
+            UpsdUsersConfigurationEditor.Changed -= OnSemanticConfigurationChanged;
+            UpsdUsersConfigurationEditor.Dispose();
+            UpsdUsersConfigurationEditor = null;
+        }
+        if (UpsmonConfigurationEditor is not null)
+        {
+            UpsmonConfigurationEditor.Changed -= OnSemanticConfigurationChanged;
+            UpsmonConfigurationEditor.Dispose();
+            UpsmonConfigurationEditor = null;
         }
     }
 

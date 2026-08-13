@@ -796,4 +796,124 @@
   <data name="Shell.Minimize" xml:space="preserve"><value>Minimize</value></data>
   <data name="Shell.Maximize" xml:space="preserve"><value>Maximize or restore</value></data>
   <data name="Shell.Close" xml:space="preserve"><value>Close</value></data>
+  <data name="UpsdUsers.Title" xml:space="preserve"><value>NUT users</value></data>
+  <data name="UpsdUsers.Description" xml:space="preserve"><value>Accounts upsd uses to authenticate clients. Saving does not restart the service.</value></data>
+  <data name="UpsdUsers.User.Label" xml:space="preserve"><value>User</value></data>
+  <data name="UpsdUsers.Group.Permissions" xml:space="preserve"><value>Permissions</value></data>
+  <data name="UpsdUsers.Users" xml:space="preserve"><value>Configured users</value></data>
+  <data name="UpsdUsers.Empty" xml:space="preserve"><value>No NUT user is configured.</value></data>
+  <data name="UpsdUsers.AddUser" xml:space="preserve"><value>Add user</value></data>
+  <data name="UpsdUsers.RenameUser" xml:space="preserve"><value>Rename</value></data>
+  <data name="UpsdUsers.RemoveUser" xml:space="preserve"><value>Remove user</value></data>
+  <data name="UpsdUsers.NewUserName" xml:space="preserve"><value>New user name</value></data>
+  <data name="UpsdUsers.RenameTo" xml:space="preserve"><value>New name</value></data>
+  <data name="UpsdUsers.Password.Label" xml:space="preserve"><value>Password</value></data>
+  <data name="UpsdUsers.Password.Help" xml:space="preserve"><value>Password the client uses to authenticate against this server. The stored value is never displayed.</value></data>
+  <data name="UpsdUsers.Password.Configured" xml:space="preserve"><value>Password configured</value></data>
+  <data name="UpsdUsers.Password.NotConfigured" xml:space="preserve"><value>No password configured</value></data>
+  <data name="UpsdUsers.Password.Pending" xml:space="preserve"><value>New password set</value></data>
+  <data name="UpsdUsers.Password.Change" xml:space="preserve"><value>Change password</value></data>
+  <data name="UpsdUsers.Password.Define" xml:space="preserve"><value>Set password</value></data>
+  <data name="UpsdUsers.Password.New" xml:space="preserve"><value>New password</value></data>
+  <data name="UpsdUsers.Password.Confirm" xml:space="preserve"><value>Confirm new password</value></data>
+  <data name="UpsdUsers.Actions.Label" xml:space="preserve"><value>Permissions</value></data>
+  <data name="UpsdUsers.Actions.Help" xml:space="preserve"><value>Operations this user may request from upsd.</value></data>
+  <data name="UpsdUsers.Actions.Set" xml:space="preserve"><value>Change variables (SET)</value></data>
+  <data name="UpsdUsers.Actions.Fsd" xml:space="preserve"><value>Forced Shutdown (FSD)</value></data>
+  <data name="UpsdUsers.Actions.Unmanaged" xml:space="preserve"><value>Preserved permissions not managed here</value></data>
+  <data name="UpsdUsers.Warning.Fsd" xml:space="preserve"><value>This permission lets the user request Forced Shutdown from NUT, which can start the shutdown process on upsmon clients. NutManager only writes the configuration.</value></data>
+  <data name="UpsdUsers.InstantCommands.Label" xml:space="preserve"><value>Instant commands</value></data>
+  <data name="UpsdUsers.InstantCommands.Help" xml:space="preserve"><value>Commands this user may trigger on the driver.</value></data>
+  <data name="UpsdUsers.InstantCommands.None" xml:space="preserve"><value>None</value></data>
+  <data name="UpsdUsers.InstantCommands.All" xml:space="preserve"><value>All — ALL</value></data>
+  <data name="UpsdUsers.InstantCommands.Specific" xml:space="preserve"><value>Specific</value></data>
+  <data name="UpsdUsers.InstantCommands.Add" xml:space="preserve"><value>Add command</value></data>
+  <data name="UpsdUsers.InstantCommands.Name" xml:space="preserve"><value>Command name</value></data>
+  <data name="UpsdUsers.Warning.AllCommands" xml:space="preserve"><value>This user will be able to run every instant command the server and driver allow.</value></data>
+  <data name="UpsdUsers.UpsmonRole.Label" xml:space="preserve"><value>upsmon usage</value></data>
+  <data name="UpsdUsers.UpsmonRole.Help" xml:space="preserve"><value>Role declared when an upsmon client uses this account.</value></data>
+  <data name="UpsdUsers.Role.None" xml:space="preserve"><value>None</value></data>
+  <data name="UpsdUsers.Role.Primary" xml:space="preserve"><value>Primary</value></data>
+  <data name="UpsdUsers.Role.Secondary" xml:space="preserve"><value>Secondary</value></data>
+  <data name="UpsdUsers.Warning.Primary" xml:space="preserve"><value>A primary upsmon client can take part in Forced Shutdown coordination.</value></data>
+  <data name="UpsdUsers.Validation.NameRequired" xml:space="preserve"><value>Enter a user name.</value></data>
+  <data name="UpsdUsers.Validation.NameInvalid" xml:space="preserve"><value>The name cannot contain spaces, brackets or #.</value></data>
+  <data name="UpsdUsers.Validation.NameDuplicate" xml:space="preserve"><value>A user with that name already exists.</value></data>
+  <data name="UpsdUsers.Validation.PasswordRequired" xml:space="preserve"><value>Enter the new password.</value></data>
+  <data name="UpsdUsers.Validation.PasswordMismatch" xml:space="preserve"><value>The confirmation does not match the new password.</value></data>
+  <data name="UpsdUsers.Validation.CommandInvalid" xml:space="preserve"><value>Enter a command name without spaces.</value></data>
+  <data name="UpsdUsers.Validation.Actions" xml:space="preserve"><value>Invalid permission list.</value></data>
+  <data name="UpsdUsers.Validation.InstantCommands" xml:space="preserve"><value>Invalid command list.</value></data>
+  <data name="Upsmon.Title" xml:space="preserve"><value>UPS monitoring</value></data>
+  <data name="Upsmon.Description" xml:space="preserve"><value>upsmon configuration. Saving neither starts nor restarts the service.</value></data>
+  <data name="Upsmon.Group.Monitoring" xml:space="preserve"><value>Monitoring</value></data>
+  <data name="Upsmon.Group.Shutdown" xml:space="preserve"><value>Shutdown and power</value></data>
+  <data name="Upsmon.Group.Polling" xml:space="preserve"><value>Polling and timing</value></data>
+  <data name="Upsmon.Group.Notifications" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Upsmon.Monitor.Label" xml:space="preserve"><value>Monitored UPS</value></data>
+  <data name="Upsmon.Monitor.Help" xml:space="preserve"><value>Each MONITOR line ties this host to a UPS served by an upsd.</value></data>
+  <data name="Upsmon.Monitor.Empty" xml:space="preserve"><value>No UPS is configured for monitoring.</value></data>
+  <data name="Upsmon.Monitor.Add" xml:space="preserve"><value>Add monitor</value></data>
+  <data name="Upsmon.Monitor.Remove" xml:space="preserve"><value>Remove monitor</value></data>
+  <data name="Upsmon.Monitor.Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Upsmon.Monitor.System" xml:space="preserve"><value>UPS / server</value></data>
+  <data name="Upsmon.Monitor.SystemHelp" xml:space="preserve"><value>Accepts ups, ups@host or ups@host:port.</value></data>
+  <data name="Upsmon.Monitor.PowerValue" xml:space="preserve"><value>Supplies powered</value></data>
+  <data name="Upsmon.Monitor.PowerValueHelp" xml:space="preserve"><value>How many of this system power supplies are fed by this UPS.</value></data>
+  <data name="Upsmon.Monitor.Username" xml:space="preserve"><value>User</value></data>
+  <data name="Upsmon.Monitor.Role" xml:space="preserve"><value>Role</value></data>
+  <data name="Upsmon.Monitor.PasswordConfigured" xml:space="preserve"><value>Password configured</value></data>
+  <data name="Upsmon.Monitor.PasswordMissing" xml:space="preserve"><value>Password missing</value></data>
+  <data name="Upsmon.Monitor.PasswordPending" xml:space="preserve"><value>New password set</value></data>
+  <data name="Upsmon.Monitor.ChangePassword" xml:space="preserve"><value>Change password</value></data>
+  <data name="Upsmon.Monitor.UnmanagedRole" xml:space="preserve"><value>Role not managed here</value></data>
+  <data name="Upsmon.MinSupplies.Label" xml:space="preserve"><value>Minimum supplies required</value></data>
+  <data name="Upsmon.MinSupplies.Help" xml:space="preserve"><value>How many supplies must stay powered for the system to keep running.</value></data>
+  <data name="Upsmon.ShutdownCommand.Label" xml:space="preserve"><value>Shutdown command</value></data>
+  <data name="Upsmon.ShutdownCommand.Help" xml:space="preserve"><value>Command upsmon runs when shutting the system down.</value></data>
+  <data name="Upsmon.PowerDownFlag.Label" xml:space="preserve"><value>Power-down flag file</value></data>
+  <data name="Upsmon.PowerDownFlag.Help" xml:space="preserve"><value>File upsmon uses to signal the final shutdown stage.</value></data>
+  <data name="Upsmon.FinalDelay.Label" xml:space="preserve"><value>Final delay</value></data>
+  <data name="Upsmon.FinalDelay.Help" xml:space="preserve"><value>Wait before the final shutdown stage.</value></data>
+  <data name="Upsmon.HostSync.Label" xml:space="preserve"><value>Host synchronisation</value></data>
+  <data name="Upsmon.HostSync.Help" xml:space="preserve"><value>How long a primary waits for secondaries to disconnect.</value></data>
+  <data name="Upsmon.PollFrequency.Label" xml:space="preserve"><value>Polling interval</value></data>
+  <data name="Upsmon.PollFrequency.Help" xml:space="preserve"><value>Interval between upsd queries during normal operation.</value></data>
+  <data name="Upsmon.PollFrequencyAlert.Label" xml:space="preserve"><value>Interval while on battery</value></data>
+  <data name="Upsmon.PollFrequencyAlert.Help" xml:space="preserve"><value>Interval between queries while the UPS is on battery.</value></data>
+  <data name="Upsmon.DeadTime.Label" xml:space="preserve"><value>Time before considered dead</value></data>
+  <data name="Upsmon.DeadTime.Help" xml:space="preserve"><value>Silence tolerated before the UPS is treated as unavailable.</value></data>
+  <data name="Upsmon.NoCommWarnTime.Label" xml:space="preserve"><value>No-communication warning</value></data>
+  <data name="Upsmon.NoCommWarnTime.Help" xml:space="preserve"><value>Interval between warnings about lost communication.</value></data>
+  <data name="Upsmon.ReplaceBatteryWarnTime.Label" xml:space="preserve"><value>Replace-battery warning</value></data>
+  <data name="Upsmon.ReplaceBatteryWarnTime.Help" xml:space="preserve"><value>Interval between replace-battery warnings.</value></data>
+  <data name="Upsmon.NotifyCommand.Label" xml:space="preserve"><value>Notification command</value></data>
+  <data name="Upsmon.NotifyCommand.Help" xml:space="preserve"><value>Program called for events flagged with EXEC.</value></data>
+  <data name="Upsmon.NotifyFlag.Label" xml:space="preserve"><value>Notification flags</value></data>
+  <data name="Upsmon.NotifyFlag.Help" xml:space="preserve"><value>How each event is reported.</value></data>
+  <data name="Upsmon.NotifyMessage.Label" xml:space="preserve"><value>Notification message</value></data>
+  <data name="Upsmon.NotifyMessage.Help" xml:space="preserve"><value>Text used instead of the NUT default message.</value></data>
+  <data name="Upsmon.Notify.Event" xml:space="preserve"><value>Event</value></data>
+  <data name="Upsmon.Notify.Syslog" xml:space="preserve"><value>System log</value></data>
+  <data name="Upsmon.Notify.Wall" xml:space="preserve"><value>Logged-in users</value></data>
+  <data name="Upsmon.Notify.Exec" xml:space="preserve"><value>Run command</value></data>
+  <data name="Upsmon.Notify.Ignore" xml:space="preserve"><value>Ignore</value></data>
+  <data name="Upsmon.Notify.Message" xml:space="preserve"><value>Custom message</value></data>
+  <data name="Upsmon.Notify.DefaultMessage" xml:space="preserve"><value>NUT default</value></data>
+  <data name="Upsmon.Notify.Unmanaged" xml:space="preserve"><value>Preserved events not managed here</value></data>
+  <data name="Upsmon.Warning.Shutdown" xml:space="preserve"><value>upsmon may run this command during the shutdown process. NutManager only writes the configuration and never runs or tests the command.</value></data>
+  <data name="Upsmon.Warning.NotifyCommand" xml:space="preserve"><value>Events flagged with EXEC may run this program. NutManager neither runs nor tests the command.</value></data>
+  <data name="Upsmon.Warning.ExecWithoutCommand" xml:space="preserve"><value>Some events use EXEC but no notification command is configured.</value></data>
+  <data name="Upsmon.Validation.PasswordRequired" xml:space="preserve"><value>Enter the monitor password.</value></data>
+  <data name="Upsmon.Validation.PasswordMismatch" xml:space="preserve"><value>The confirmation does not match the password.</value></data>
+  <data name="Upsmon.Validation.MonitorIncomplete" xml:space="preserve"><value>The MONITOR line is incomplete.</value></data>
+  <data name="Upsmon.Validation.MonitorSystem" xml:space="preserve"><value>Enter the UPS as ups, ups@host or ups@host:port.</value></data>
+  <data name="Upsmon.Validation.MonitorPowerValue" xml:space="preserve"><value>Enter a whole number of zero or more.</value></data>
+  <data name="Upsmon.Validation.MonitorUsername" xml:space="preserve"><value>Enter the user name without spaces.</value></data>
+  <data name="Upsmon.Validation.MonitorRole" xml:space="preserve"><value>Enter the monitor role.</value></data>
+  <data name="Upsmon.Validation.NotifyFlag" xml:space="preserve"><value>Invalid notification flag.</value></data>
+  <data name="Upsmon.Validation.NotifyMessage" xml:space="preserve"><value>Invalid notification message.</value></data>
+  <data name="Upsmon.NotConfigured" xml:space="preserve"><value>NUT default</value></data>
+  <data name="Common.Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="Common.Cancel" xml:space="preserve"><value>Cancel</value></data>
 </root>

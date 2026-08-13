@@ -150,6 +150,71 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
             : new(NutConfigurationMutationStatus.TargetNotFound, "Repeated.RowNotFound");
     }
 
+    /// <summary>
+    /// Edits a composite row while carrying its existing credential across untouched. The caller
+    /// supplies the row with a placeholder where the secret goes; the stored token is spliced in
+    /// during replay, so an administrator can change a monitor's power value without the password
+    /// ever being read, displayed or re-typed.
+    /// </summary>
+    public NutConfigurationMutationResult EditRepeatedPreservingSecret(string semanticId, string rowId, object value)
+    {
+        var descriptor = GetDescriptor(semanticId);
+        if (descriptor is null) return NotFound();
+        if (!descriptor.HasEmbeddedSecret) return new(NutConfigurationMutationStatus.UnsupportedOperation, "Secret.NotEmbedded");
+        var target = Projection.Fields.SingleOrDefault(field => field.Descriptor.SemanticId == semanticId && field.StableRowId == rowId);
+        if (target?.Occurrence is not { } occurrence) return new(NutConfigurationMutationStatus.TargetNotFound, "Repeated.RowNotFound");
+        var serialized = descriptor.Codec.Serialize(value, descriptor.SemanticId);
+        if (!serialized.IsValid || serialized.Value is null) return Invalid();
+
+        return Commit(
+            new(DraftMutationKind.SetPreservingSecret, descriptor, target.Section, occurrence, serialized.Value),
+            ReviewFor(descriptor, NutConfigurationSemanticChangeOperation.EditRepeatedRow, target.Section, occurrence,
+                null, null, sensitive: true));
+    }
+
+    /// <summary>Replaces only the credential inside a composite row, leaving its other values alone.</summary>
+    public NutConfigurationMutationResult ReplaceRepeatedSecret(string semanticId, string rowId, NutSensitiveValue replacement)
+    {
+        ArgumentNullException.ThrowIfNull(replacement);
+        var descriptor = GetDescriptor(semanticId);
+        if (descriptor is null) return NotFound();
+        if (!descriptor.HasEmbeddedSecret) return new(NutConfigurationMutationStatus.UnsupportedOperation, "Secret.NotEmbedded");
+        var target = Projection.Fields.SingleOrDefault(field => field.Descriptor.SemanticId == semanticId && field.StableRowId == rowId);
+        if (target?.Occurrence is not { } occurrence) return new(NutConfigurationMutationStatus.TargetNotFound, "Repeated.RowNotFound");
+
+        var payload = new SensitivePayload(replacement.CopyValue());
+        var result = Commit(
+            new(DraftMutationKind.ReplaceEmbeddedSecret, descriptor, target.Section, occurrence, Sensitive: payload),
+            ReviewFor(descriptor, NutConfigurationSemanticChangeOperation.EditRepeatedRow, target.Section, occurrence,
+                "Semantic.Sensitive.Configured", "Semantic.Sensitive.ReplacementPending", sensitive: true));
+        if (!result.Succeeded) payload.Dispose();
+        return result;
+    }
+
+    /// <summary>
+    /// Appends a composite row together with its credential. A new row has no stored secret to
+    /// preserve, so the credential is required here rather than optional.
+    /// </summary>
+    public NutConfigurationMutationResult AddRepeatedWithSecret(string semanticId, object value, NutSensitiveValue secret)
+    {
+        ArgumentNullException.ThrowIfNull(secret);
+        var descriptor = GetDescriptor(semanticId);
+        if (descriptor is null) return NotFound();
+        if (!descriptor.HasEmbeddedSecret || descriptor.Scope != NutConfigurationFieldScope.Repeated)
+            return new(NutConfigurationMutationStatus.UnsupportedOperation, "Secret.NotEmbedded");
+        var serialized = descriptor.Codec.Serialize(value, descriptor.SemanticId);
+        if (!serialized.IsValid || serialized.Value is null) return Invalid();
+
+        var payload = new SensitivePayload(secret.CopyValue());
+        var identity = $"added:{_nextRepeatedRowIdentity}";
+        var result = Commit(
+            new(DraftMutationKind.AddRepeatedWithSecret, descriptor, null, null, serialized.Value, Sensitive: payload, RowIdentity: identity),
+            ReviewFor(descriptor, NutConfigurationSemanticChangeOperation.AddRepeatedRow, null, null, null, null, sensitive: true));
+        if (result.Succeeded) _nextRepeatedRowIdentity++;
+        else payload.Dispose();
+        return result;
+    }
+
     public NutConfigurationMutationResult AddSection(string name) => Commit(
         new(DraftMutationKind.AddSection, Section: name),
         GenericReview("Semantic.Section", NutConfigurationSemanticChangeOperation.AddSection, name, null, name));
@@ -239,13 +304,13 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
         var mutator = new NutConfigurationDocumentMutator(document);
         foreach (var mutation in mutations)
         {
-            var result = Apply(mutator, mutation);
+            var result = Apply(mutator, document, mutation);
             if (!result.Succeeded) return (null, result);
         }
         return (document, null);
     }
 
-    private NutConfigurationMutationResult Apply(NutConfigurationDocumentMutator mutator, DraftMutation mutation)
+    private NutConfigurationMutationResult Apply(NutConfigurationDocumentMutator mutator, NutConfigurationDocument document, DraftMutation mutation)
     {
         if (mutation.Kind == DraftMutationKind.AddSection) return mutator.AddSection(mutation.Section!);
         if (mutation.Kind == DraftMutationKind.RemoveSection) return mutator.RemoveSection(mutation.Section!);
@@ -253,6 +318,10 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
         if (mutation.Kind is DraftMutationKind.AddCustom or DraftMutationKind.EditCustom or DraftMutationKind.RemoveCustom)
             return ApplyCustom(mutator, mutation);
         var descriptor = mutation.Descriptor!;
+        if (mutation.Kind is DraftMutationKind.SetPreservingSecret
+            or DraftMutationKind.ReplaceEmbeddedSecret
+            or DraftMutationKind.AddRepeatedWithSecret)
+            return ApplyEmbeddedSecret(mutator, document, mutation, descriptor);
         var value = mutation.Sensitive is null ? mutation.Value : mutation.Sensitive.Reveal();
         return mutation.Kind switch
         {
@@ -264,6 +333,46 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
             DraftMutationKind.AddRepeated => Insert(mutator, descriptor, mutation.Value!, mutation.Section, mutation.RowIdentity),
             _ => new(NutConfigurationMutationStatus.UnsupportedOperation, "Mutation.Unsupported")
         };
+    }
+
+    /// <summary>
+    /// Rebuilds a composite row's arguments. The stored credential is read from the document being
+    /// replayed and written straight back into the new line; it is never returned, logged, or put
+    /// anywhere a caller could reach.
+    /// </summary>
+    private NutConfigurationMutationResult ApplyEmbeddedSecret(
+        NutConfigurationDocumentMutator mutator,
+        NutConfigurationDocument document,
+        DraftMutation mutation,
+        NutConfigurationFieldDescriptor descriptor)
+    {
+        var secretIndex = descriptor.SecretTokenIndex!.Value;
+        if (mutation.Kind == DraftMutationKind.AddRepeatedWithSecret)
+        {
+            var line = NutEmbeddedSecret.Replace(mutation.Value!, secretIndex, mutation.Sensitive!.RevealSpan());
+            return mutator.InsertDirective(descriptor.Name, line, mutation.Section, descriptor.InsertionOrder,
+                PreferredOrder(descriptor), mutation.RowIdentity);
+        }
+
+        var current = CurrentArguments(document, descriptor, mutation.Section, mutation.Occurrence);
+        if (current is null) return new(NutConfigurationMutationStatus.TargetNotFound, "Repeated.RowNotFound");
+        var arguments = mutation.Kind == DraftMutationKind.SetPreservingSecret
+            ? NutEmbeddedSecret.Preserve(current, mutation.Value!, secretIndex)
+            : NutEmbeddedSecret.Replace(current, secretIndex, mutation.Sensitive!.RevealSpan());
+        return mutator.SetDirectiveArguments(descriptor.Name, arguments, mutation.Section, mutation.Occurrence);
+    }
+
+    private static string? CurrentArguments(
+        NutConfigurationDocument document,
+        NutConfigurationFieldDescriptor descriptor,
+        string? section,
+        int? occurrence)
+    {
+        var matches = document.Nodes.OfType<NutConfigurationDirectiveNode>()
+            .Where(node => Equal(node.Name, descriptor.Name) && EqualSection(node.SectionName, section))
+            .ToArray();
+        var index = occurrence ?? (matches.Length == 1 ? 0 : -1);
+        return index >= 0 && index < matches.Length ? matches[index].Arguments : null;
     }
 
     private static NutConfigurationMutationResult ApplyCustom(NutConfigurationDocumentMutator mutator, DraftMutation mutation) =>
@@ -285,7 +394,7 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
         int? occurrence)
     {
         var set = descriptor.EntryKind == NutConfigurationEntryKind.Assignment
-            ? mutator.SetAssignment(descriptor.Name, value, section, occurrence)
+            ? mutator.SetAssignment(descriptor.Name, value, section, occurrence, !descriptor.ValueIsTokenList)
             : mutator.SetDirectiveArguments(descriptor.Name, value, section, occurrence);
         return set.Status == NutConfigurationMutationStatus.TargetNotFound && occurrence is null
             ? Insert(mutator, descriptor, value, section)
@@ -299,7 +408,7 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
         string? section,
         string? semanticIdentity = null) =>
         descriptor.EntryKind == NutConfigurationEntryKind.Assignment
-            ? mutator.InsertAssignment(descriptor.Name, value, section, descriptor.InsertionOrder, PreferredOrder(descriptor), semanticIdentity)
+            ? mutator.InsertAssignment(descriptor.Name, value, section, descriptor.InsertionOrder, PreferredOrder(descriptor), semanticIdentity, !descriptor.ValueIsTokenList)
             : mutator.InsertDirective(descriptor.Name, value, section, descriptor.InsertionOrder, PreferredOrder(descriptor), semanticIdentity);
 
     private IReadOnlyDictionary<string, int> PreferredOrder(NutConfigurationFieldDescriptor descriptor) =>
@@ -399,7 +508,11 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
     private static bool Equal(string left, string right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
     private static bool EqualSection(string? left, string? right) => left is null && right is null || left is not null && right is not null && Equal(left, right);
 
-    private enum DraftMutationKind { Set, Automatic, Remove, AddRepeated, AddSection, RemoveSection, RenameSection, AddCustom, EditCustom, RemoveCustom }
+    private enum DraftMutationKind
+    {
+        Set, Automatic, Remove, AddRepeated, AddSection, RemoveSection, RenameSection, AddCustom, EditCustom, RemoveCustom,
+        SetPreservingSecret, ReplaceEmbeddedSecret, AddRepeatedWithSecret
+    }
 
     private sealed record DraftMutation(
         DraftMutationKind Kind,
@@ -416,6 +529,7 @@ public sealed class NutConfigurationSemanticDraft : IDisposable
     {
         private char[]? _value = value;
         public string Reveal() => _value is null ? throw new ObjectDisposedException(nameof(SensitivePayload)) : new string(_value);
+        public ReadOnlySpan<char> RevealSpan() => _value ?? throw new ObjectDisposedException(nameof(SensitivePayload));
         public void Dispose() { if (_value is null) return; Array.Clear(_value); _value = null; }
         public override string ToString() => "<sensitive>";
     }
