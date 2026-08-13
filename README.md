@@ -2,7 +2,7 @@
 
 NutManager is a Windows-first desktop client and local administration interface for [Network UPS Tools (NUT)](https://github.com/networkupstools/nut), built with Avalonia and .NET.
 
-> Project status: active development. The monitoring MVP and Windows local-administration foundations are implemented; live package acceptance remains in progress.
+> Project status: active development. Windows x64 monitoring, local and remote administration, the recoverable configuration pipeline, and dedicated graphical configuration for the supported NUT files are implemented. Final graphical-configuration UX hardening remains T29.
 
 ## Purpose
 
@@ -15,6 +15,12 @@ NutManager makes NUT monitoring, configuration, diagnostics, and explicitly conf
 - NUT TCP monitoring, UPS discovery, telemetry, polling, reconnect, and stale-data behavior;
 - deterministic mock mode and read-only diagnostics.
 
+### Graphical configuration
+
+All five supported files have a dedicated graphical form: `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`. Forms build a semantic draft that is validated, projected onto the syntax-preserving document, reviewed, and only then written.
+
+Editing preserves comments, ordering, quoting, spacing, unknown directives, and unmanaged sections. Every write goes through the same pipeline: generated read-only preview with secrets redacted, backup, temporary-file validation, safe replacement, verification, and rollback on failure. Generated configuration text is never the primary editor, and applying a change never restarts a service.
+
 ### Persistence
 
 - per-user application settings;
@@ -23,15 +29,21 @@ NutManager makes NUT monitoring, configuration, diagnostics, and explicitly conf
 ### Windows local management
 
 - local NUT installation detection;
-- syntax-preserving configuration editing with review, backup, safe replacement, and rollback;
 - Windows service, UAC-boundary, ACL, process, and Event Log administration;
 - passive COM-port enumeration and controlled NUT driver diagnostics.
 
-### Remote profiles
+### Remote management
 
 Remote profiles can monitor through the standard NUT TCP connection and access configuration through SSH/SFTP or SMB. The user manually browses and validates the selected remote directory; no server/share autodiscovery or local-management fallback is used. SSH/SFTP host keys require explicit SHA-256 fingerprint trust/pinning. SMB accesses only a user-supplied UNC share and can use the current Windows identity or session-only explicit credentials.
 
-Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can write only after an explicit same-directory safe-write capability probe: Windows/OpenSSH for SSH/SFTP, or verified `File.Replace` behavior for SMB. SSH/SMB secrets are session-only by default and may be explicitly remembered after a successful connection in Windows Credential Manager; profile JSON contains only non-secret metadata, including an optional private-key path. Remote service, ACL, COM-port, and driver administration are not implemented.
+Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can write only after an explicit same-directory safe-write capability probe: Windows/OpenSSH for SSH/SFTP, or verified `File.Replace` behavior for SMB. Local, SFTP, and SMB use the same configuration architecture; the transport changes only readiness, path, and write implementation. Remote service, ACL, COM-port, and driver administration are not implemented.
+
+### Secrets
+
+Two separate domains:
+
+- **transport credentials** — SSH and SMB secrets are session-only by default and may be explicitly remembered after a successful connection in Windows Credential Manager. Profile JSON contains only non-secret metadata, including an optional private-key path.
+- **NUT configuration credentials** — passwords inside `upsd.users` and `upsmon.conf` are change-only. A stored value is never projected into the interface, review, or generated preview; the application reports only whether one is configured.
 
 ## Platform support
 
@@ -57,8 +69,13 @@ The official package is `NutManager-win-x64.zip`, a self-contained Windows x64 a
 
 - [Product specification](docs/SPEC.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Implementation plan](docs/TASKS.md)
-- [MVP package validation](docs/MVP-VALIDATION.md)
+- [Implementation roadmap](docs/TASKS.md)
+- [Graphical NUT configuration](docs/GRAPHICAL-NUT-CONFIGURATION.md)
+- [Semantic configuration architecture](docs/SEMANTIC-CONFIGURATION-ARCHITECTURE.md)
+- [UI design system](docs/UI-DESIGN-SYSTEM.md)
+- [Localization](docs/LOCALIZATION.md)
+- [Profile validation architecture](docs/PROFILE-VALIDATION-ARCHITECTURE.md)
+- [MVP package validation](docs/MVP-VALIDATION.md) and [live validation findings](docs/LIVE-VALIDATION-FINDINGS.md) — historical acceptance records
 - [Rules for coding agents](AGENTS.md)
 
 ## Upstream relationship

@@ -86,13 +86,13 @@ read → parse → requested in-memory change → preview/diff → backup
 → temporary write → validation → safe replacement → verification → rollback on failure
 ```
 
-The graphical editor changes existing entries one file at a time and sends writes exclusively through the pipeline. It does not automatically activate, reload, or restart services after an apply.
+Editing works on one file at a time and sends writes exclusively through the pipeline. It does not automatically activate, reload, or restart services after an apply.
 
 ### Implemented semantic graphical configuration foundation (T25)
 
-T15 remains the current editor for existing entries. T25 adds a platform-neutral Core schema registry, projection, typed conversion, layered validation, replay-based semantic draft, review model, and explicit structural mutation boundary above the T13 syntax-preserving document. Mutations are validated and replayed from the original text, so failed user operations are atomic and never partially alter the candidate. The implemented flow is graphical form → semantic draft → semantic schema/validation → T13 document → semantic review/generated preview → the existing T14 safe-write pipeline → Local/SFTP/SMB.
+T15 established the editor for existing entries and remains the fallback for content no dedicated form covers. T25 adds a platform-neutral Core schema registry, projection, typed conversion, layered validation, replay-based semantic draft, review model, and explicit structural mutation boundary above the T13 syntax-preserving document. Mutations are validated and replayed from the original text, so failed user operations are atomic and never partially alter the candidate. The implemented flow is graphical form → semantic draft → semantic schema/validation → T13 document → semantic review/generated preview → the existing T14 safe-write pipeline → Local/SFTP/SMB.
 
-Descriptors are immutable Core data: stable semantic IDs, file/scope/entry identity, localized label/help keys, invariant value codecs, field kind, required/sensitive metadata, setting-specific Automatic policy, applicability, insertion order, choices, and known activation metadata. T26 extends the built-in `ups.conf` schema with documented driver-aware production descriptors for `nutdrv_qx`, `usbhid-ups`, and `snmp-ups`; installed/configured drivers without a schema remain editable with limited validation instead of guessed semantics. T27 adds the release-backed `nut.conf` and `upsd.conf` production schemas; T28 owns the remaining `upsd.users` and `upsmon.conf` forms. See [Semantic configuration architecture](SEMANTIC-CONFIGURATION-ARCHITECTURE.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
+Descriptors are immutable Core data: stable semantic IDs, file/scope/entry identity, localized label/help keys, invariant value codecs, field kind, required/sensitive metadata, setting-specific Automatic policy, applicability, insertion order, choices, and known activation metadata. T26 extends the built-in `ups.conf` schema with documented driver-aware production descriptors for `nutdrv_qx`, `usbhid-ups`, and `snmp-ups`; installed/configured drivers without a schema remain editable with limited validation instead of guessed semantics. T27 adds the release-backed `nut.conf` and `upsd.conf` production schemas, and T28 completes the set with `upsd.users` and `upsmon.conf`. Every supported file now has a dedicated graphical form. See [Semantic configuration architecture](SEMANTIC-CONFIGURATION-ARCHITECTURE.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
 
 ## 7.1 Presentation and localization architecture
 
@@ -116,13 +116,47 @@ The schemas come from the official NUT 2.8.5 release manpages. Address validatio
 
 `pt-BR` is the default culture and `en-US` is an official culture. The shell and Appearance & Language surface resolve semantic keys through `NutManagerLocalizer`; the two culture resource sets are tested for exact key parity and deterministic fallback. The language preference is persisted, with full application after restart rather than a partial live switch. Display values follow UI culture; every NUT parser and serializer remains culture-invariant. NUT filenames, directives, driver names, status tokens, and SFTP stay invariant. Existing pages not yet redesigned are not retroactively described as localized. See [UI design system](UI-DESIGN-SYSTEM.md) and [Localization](LOCALIZATION.md).
 
+### Implemented graphical users/monitoring boundary (T28)
+
+`UpsdUsersConfigurationEditorViewModel` and `UpsmonConfigurationEditorViewModel` each own one T25 semantic draft for one loaded snapshot, following the same publication and cancellation rules as the earlier forms.
+
+`upsd.users` has no global scope: every section of the file is one account, so the editor works one user at a time rather than flattening sections into a single form. It supports validated add/rename/remove, change-only password replacement, `SET` and `FSD` permissions, instant-command modes (none, `ALL`, or an explicit list), and the `upsmon` `primary`/`secondary` role. Permission tokens the release does not manage stay visible and are written back untouched, and the historic `master`/`slave` spellings are preserved rather than rewritten.
+
+`upsmon.conf` is directive-scoped. Repeated `MONITOR` rows carry stable draft-lifetime identity, so an edit still targets the same logical row after earlier rows shift. The form also owns `MINSUPPLIES`, the shutdown group (`SHUTDOWNCMD`, `POWERDOWNFLAG`, `FINALDELAY`, `HOSTSYNC`), the polling group (`POLLFREQ`, `POLLFREQALERT`, `DEADTIME`, `NOCOMMWARNTIME`, `RBWARNTIME`), `NOTIFYCMD`, and a notification matrix over the 29 documented events with `NOTIFYFLAG`/`NOTIFYMSG`. `IGNORE` is exclusive of the other flags in both directions. An unknown event is shown as preserved instead of being dropped.
+
+Warnings are semantic, not operational. `FSD`, `ALL` instant commands, a `primary` role, `SHUTDOWNCMD`, and `EXEC` without a configured `NOTIFYCMD` each surface an explanation. NutManager writes these settings and never executes them: no forced shutdown, no shutdown command, no notification command, and no automatic service restart.
+
+### Embedded configuration secrets
+
+Before T28, a sensitive descriptor marked a whole value as secret — an SNMP community, the `CERTIDENT` password component, a `password` assignment. `upsmon.conf` introduced a second shape:
+
+```text
+MONITOR system powervalue username password role
+```
+
+Here the credential is one token between arguments the administrator legitimately edits. Changing a power value must not require knowing the password, and must not lose it.
+
+`SecretTokenIndex` on the descriptor marks that position. The projector blanks the token before the codec runs, so the parsed row that reaches Presentation has no password field at all — `NutMonitorEntry` is `System`, `PowerValue`, `Username`, `Role`. What Presentation learns is the same change-only state used everywhere else: not configured, configured, or replacement pending.
+
+`NutEmbeddedSecret` is an internal Core helper that keeps the credential inside Core while the surrounding tokens are rewritten. Three draft mutations use it: `EditRepeatedPreservingSecret` rewrites the visible values and carries the stored credential across, `ReplaceRepeatedSecret` changes only the credential, and `AddRepeatedWithSecret` appends a new row whose credential has to be supplied because there is nothing to preserve. A transport credential is a different domain and is never consulted here.
+
+### Token-list serialization
+
+`ValueIsTokenList` distinguishes a text value that happens to contain spaces from a semantic list of tokens. `actions = SET FSD` is two permissions; quoting it as `actions = "SET FSD"` would make NUT read one unknown permission. The mutator therefore quotes whitespace only for values that are genuinely single text, and descriptors that carry lists opt out.
+
+### Approved visual fidelity and runtime hardening (T27A)
+
+T27A aligned the rendered application with the approved visual references without changing behavior. Architecturally it establishes: one shared token set for surface hierarchy, typography, spacing and motion; `NutIcons.axaml` as the only icon source, with vector geometry and no icon package; a supported motion strategy where transitions cover interaction feedback and the Composition API drives the single looping decoration, because a keyframe animation targeting `RenderTransform` has no registered animator in this Avalonia version; and a connection LED that carries text alongside colour.
+
+It also hardened configuration navigation. Selecting a file no longer disables the list during its own load; a superseded selection is cancelled, and asynchronous construction stays inside a local `EditorBuildResult` until generation ownership and the selected target are checked immediately before atomic publication. A stale generation can therefore neither publish an editor nor clear the editor owned by a newer selection. Two Windows adapter defects were corrected in the same pass: COM enumeration reads the `SERIALCOMM` device map as authoritative with WMI used only for enrichment, and NUT service discovery recognises `nut.exe` as the service host inside the trusted installation root.
+
 ### Profile validation and presentation boundary (T24A/T24B)
 
 T24A implements pure typed syntactic validation and cross-field materialization in Core, reversible draft/dirty-decision presentation in App, and explicit operational `LIST UPS` testing through Infrastructure. Host/port/UNC validation performs no DNS or I/O. The settings v3 migration makes managed profiles authoritative for endpoint and preferred UPS; compatibility endpoint data exists only while reading legacy settings and only bootstraps when no profile document exists. See [Profile validation architecture](PROFILE-VALIDATION-ARCHITECTURE.md).
 
 T24B decomposes the existing Administration presentation into four focused views—NUT Configuration, Windows Service, Devices and Drivers, and Remote Access—while retaining one `AdministrationPageViewModel`, one remote session, and the existing capability instances. Password and passphrase controls remain in the Remote Access view code-behind, are passed as transient memory to the established session methods, and are cleared after use. Overview, Devices, and Diagnostics use responsive composition over real data only. Diagnostics copy is deterministic and omits raw failure details and configuration/credential content.
 
-Local version resolution remains a read-only Windows capability behind `ILocalNutVersionResolver`: detector file metadata is authoritative; when absent, the adapter may execute only the detected in-installation `upsdrvctl.exe` with the fixed `-V` argument, a three-second timeout, bounded capture, cancellation, and defensive parsing. It never uses a shell, network, elevation, retry, or caller-provided arguments. T24B does not alter safe-write, privilege, driver, remote, credential, or secret-input boundaries. Existing live observations remain tracked in [Live validation findings](LIVE-VALIDATION-FINDINGS.md), not asserted as completed T21 acceptance.
+Local version resolution remains a read-only Windows capability behind `ILocalNutVersionResolver`: detector file metadata is authoritative; when absent, the adapter may execute only the detected in-installation `upsdrvctl.exe` with the fixed `-V` argument, a three-second timeout, bounded capture, cancellation, and defensive parsing. It never uses a shell, network, elevation, retry, or caller-provided arguments. T24B does not alter safe-write, privilege, driver, remote, credential, or secret-input boundaries. [Live validation findings](LIVE-VALIDATION-FINDINGS.md) preserves the historical observations from the completed T21 acceptance run; follow-up fixes remain documented under their owning tasks.
 
 ## 8. Windows local administration
 

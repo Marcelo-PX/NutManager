@@ -42,8 +42,46 @@ Projection emits exactly `Explicit`, `AutomaticByOmission`, `ExplicitAutoToken`,
 
 Existing secrets are never pre-filled into normal ViewModel state. Projection reports only change-only status (`NotConfigured`, `Configured`, `ReplacementPending`, or `RemovalPending`). Replacement enters through a disposable transient wrapper, is copied only into the private draft mutation payload, and is revealed only while materializing the internal candidate. Review values are null/redacted, `ToString()` is redacted, and the generated presentation consumes the established T14 redacted preview rather than candidate text. Unsupported content remains through graphical Advanced → Custom parameters rows (key/directive, value/arguments, scope, section) with lexical validation and a localized limited-semantic-validation warning.
 
+### Two shapes of secret
+
+**Whole-value secrets.** The descriptor is marked `Sensitive` and its entire value is the credential: an SNMP community, the password component of `CERTIDENT`, a `password = …` assignment in `upsd.users`. Projection replaces the value with `null` and reports only its state.
+
+**Embedded positional secrets.** T28 added the case where a credential is one token inside a line whose other tokens are ordinary editable fields:
+
+```text
+MONITOR system powervalue username password role
+```
+
+Marking the whole value sensitive would make the row uneditable; leaving it non-sensitive would publish the password. `SecretTokenIndex` names the position instead. The projector blanks that token before the codec parses the line, so the record handed to Presentation has no field capable of holding it — `NutMonitorEntry` is `System`, `PowerValue`, `Username`, `Role`. The two flags are mutually exclusive: a descriptor cannot be both `Sensitive` and carry a `SecretTokenIndex`, and the schema rejects that combination at construction.
+
+The governing principle is the same for both shapes: the sensitive token is never projected, the Core keeps it only for the duration of the operation that needs it, Presentation knows presence and state only, and replacement is change-only.
+
+### Repeated-row mutations that preserve a credential
+
+Editing a repeated row that carries an embedded secret would otherwise force the caller to supply the password again just to change a neighbouring value. Three mutations avoid that:
+
+| Mutation | Purpose |
+| --- | --- |
+| `EditRepeatedPreservingSecret` | rewrites the visible tokens and carries the stored credential across unchanged |
+| `ReplaceRepeatedSecret` | changes only the credential, leaving every other token as written |
+| `AddRepeatedWithSecret` | appends a new row, which must supply a credential because there is none to preserve |
+
+The architectural property is that editing the non-sensitive fields of a repeated row never requires revealing the existing credential. `NutEmbeddedSecret` is internal to Core and has no public surface; the document is threaded through the replay path rather than exposing the mutator's node list.
+
+### Token lists versus text
+
+A serializer must distinguish a text value that contains spaces from a semantic list of tokens. `SHUTDOWNCMD` is text and needs quoting when it contains spaces; `actions = SET FSD` is two permission tokens and quoting it would make NUT read one unknown permission named `SET FSD`. `ValueIsTokenList` marks the descriptors whose values are lists, and the mutator applies whitespace quoting only where the value is genuinely single text. Codecs that read a single argument accept both the quoted form found in a file and the bare value returned by an edit box, so a round trip through the interface does not corrupt a command.
+
 `NutConfigurationGeneratedPreviewFactory` materializes a fresh T13 candidate snapshot and invokes `Prepare` on the supplied `INutConfigurationFilePipeline`. The App review presentation exposes only semantic items, issues, custom rows, and redacted preview lines; it has no write command and no editable generated text. The same call works with the local T14 pipeline and the existing T19 SFTP/T19B SMB pipeline. Applying a later form draft never restarts a service silently; activation metadata is informational and a service action remains separate, explicit, confirmed, and subject to the existing UAC boundary.
 
 ## Task boundaries
 
-T25 supplies the shared framework and representative descriptors. T26 implements the production driver-aware `ups.conf` form and documented `runtimecal` configuration assistant. T27 implements the NUT 2.8.5 `nut.conf`/`upsd.conf` schemas and dedicated forms, including `MODE`, repeated `LISTEN`, server behavior, TLS metadata, and change-only `CERTIDENT`. Their descriptors use invariant codecs, omission-specific defaults, activation metadata, and pure validation; no runtime or network probes occur. T28 owns final `upsd.users`/`upsmon.conf` and credential UX; T29 owns final graphical-configuration hardening. The T15 entry model remains available only for files whose dedicated form has not landed, while all graphical candidates converge on the same T14/T19/T19B pipeline.
+| Task | Scope | Status |
+| --- | --- | --- |
+| T25 | shared framework and representative descriptors | implemented |
+| T26 | production driver-aware `ups.conf` form and documented `runtimecal` assistant | implemented |
+| T27 | NUT 2.8.5 `nut.conf`/`upsd.conf` schemas and forms: `MODE`, repeated `LISTEN`, server behavior, TLS metadata, change-only `CERTIDENT` | implemented |
+| T28 | `upsd.users`/`upsmon.conf` forms, embedded positional secrets, token lists | implemented |
+| T29 | final graphical-configuration UX hardening | remaining |
+
+Every descriptor uses invariant codecs, omission-specific defaults, activation metadata, and pure validation; no runtime or network probes occur. All five supported files now have a dedicated form, so the T15 entry model is a fallback rather than the normal path, and every graphical candidate converges on the same T14/T19/T19B pipeline.
