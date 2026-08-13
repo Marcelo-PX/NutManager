@@ -166,6 +166,22 @@ public sealed class NutConfigurationSemanticProjector
         if (descriptor.Sensitive)
             return new(descriptor, state, null, section, RowId(descriptor.SemanticId, section, occurrence), occurrence, NutSensitiveFieldState.Configured)
             { StableRowId = StableRowId(descriptor.SemanticId, section, node, occurrence) };
+        if (descriptor.HasEmbeddedSecret)
+        {
+            // The secret is blanked before the codec runs, so the parsed value the rest of the
+            // application sees cannot contain it even if a codec were careless. Whether one was
+            // present is still reported, because a row that needs a credential and has none is a
+            // different state from one that is already configured.
+            var stripped = NutEmbeddedSecret.Blank(raw, descriptor.SecretTokenIndex!.Value, out var hadSecret);
+            var safe = descriptor.Codec.Parse(stripped, descriptor.SemanticId);
+            foreach (var issue in safe.Issues)
+                issues.Add(new(issue.Code, issue.Severity, issue.ResourceKey, descriptor.SemanticId, section, RowId(descriptor.SemanticId, section, occurrence)));
+            return new(descriptor, state, safe.IsValid ? safe.Value : stripped, section,
+                RowId(descriptor.SemanticId, section, occurrence), occurrence,
+                hadSecret ? NutSensitiveFieldState.Configured : NutSensitiveFieldState.NotConfigured)
+            { StableRowId = StableRowId(descriptor.SemanticId, section, node, occurrence) };
+        }
+
         var parsed = descriptor.Codec.Parse(raw, descriptor.SemanticId);
         foreach (var issue in parsed.Issues)
             issues.Add(new(issue.Code, issue.Severity, issue.ResourceKey, descriptor.SemanticId, section, RowId(descriptor.SemanticId, section, occurrence)));

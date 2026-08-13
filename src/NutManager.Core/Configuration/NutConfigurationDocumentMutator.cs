@@ -27,10 +27,15 @@ public sealed class NutConfigurationDocumentMutator
     public NutConfigurationDocumentMutator(NutConfigurationDocument document) =>
         _document = document ?? throw new ArgumentNullException(nameof(document));
 
-    public NutConfigurationMutationResult SetAssignment(string name, string value, string? section = null, int? occurrence = null) =>
+    public NutConfigurationMutationResult SetAssignment(
+        string name,
+        string value,
+        string? section = null,
+        int? occurrence = null,
+        bool quoteWhitespace = true) =>
         !ValidToken(name) || !ValidValue(value) || !ValidSectionReference(section)
             ? Invalid()
-            : SetEntry(Assignments(name, section), occurrence, node => node.SetValue(value));
+            : SetEntry(Assignments(name, section), occurrence, node => node.SetValue(value, quoteWhitespace));
 
     public NutConfigurationMutationResult InsertAssignment(
         string name,
@@ -38,17 +43,18 @@ public sealed class NutConfigurationDocumentMutator
         string? section = null,
         int insertionOrder = 0,
         IReadOnlyDictionary<string, int>? preferredOrder = null,
-        string? semanticIdentity = null)
+        string? semanticIdentity = null,
+        bool quoteWhitespace = true)
     {
         if (!AllowsAssignments() || !ValidToken(name) || !ValidValue(value) || !ValidSectionReference(section)) return Invalid();
         var lineEnding = PreferredLineEnding(section);
         var insertionIndex = FindInsertionIndex(section, name, insertionOrder, preferredOrder);
         var insertedLineEnding = insertionIndex == _document.Nodes.Count && !HasFinalNewline() ? string.Empty : lineEnding;
         var separator = AssignmentSeparator();
-        var renderedValue = RenderInsertedValue(value);
+        var renderedValue = quoteWhitespace ? RenderInsertedValue(value) : value;
         var node = new NutConfigurationAssignmentNode(
             $"{name}{separator}{renderedValue}", insertedLineEnding, name, renderedValue, $"{name}{separator}", string.Empty,
-            NeedsQuotes(value) ? '"' : null, section, IsSensitiveAssignment(name));
+            quoteWhitespace && NeedsQuotes(value) ? '"' : null, section, IsSensitiveAssignment(name));
         if (semanticIdentity is not null) node.AssignSemanticIdentity(semanticIdentity);
         InsertAt(insertionIndex, node, lineEnding);
         return NutConfigurationMutationResult.Success();

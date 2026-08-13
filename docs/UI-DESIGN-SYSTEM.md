@@ -30,7 +30,7 @@ Presentation
 
 `00_overview_reference.png` and `00_ups_conf_reference.png` are the primary fidelity targets at 1536×1024. They define shell proportions, surface hierarchy, spacing, typography, icon scale, selection treatment, semantic colors, and the future review-drawer proportions. `01_configuracoes.png` through `09_sobre.png` are secondary storyboards for information architecture and reusable component patterns; they are not evidence that unsupported commands or backends exist.
 
-Phase A validates the shared shell against those primary references. T24B supplies responsive current-page composition for Overview, Devices, Diagnostics, and Administration without inventing unsupported health, history, test, or service capabilities. T25+ owns graphical configuration and populated review-drawer fidelity.
+T24 established the shared shell against those primary references. T24B supplies responsive current-page composition for Overview, Devices, Diagnostics, and Administration without inventing unsupported health, history, test, or service capabilities. T25–T28 now populate the graphical configuration and review-drawer foundation; final cross-surface hardening remains T29.
 
 ## Shell and responsive states
 
@@ -44,7 +44,7 @@ The shell has three presentation states:
 
 The left sidebar has Expanded (currently 220 px), Collapsed (72 px), and Overlay states. In Wide, the chevron, header button, or `Ctrl+B` changes the persisted preference. Medium deliberately projects Collapsed and does not mutate a preference that would have no immediate visual effect. Compact projects navigation as an overlay opened by the header button or `Ctrl+B`; closing it or returning to a wider layout does not overwrite the persisted Expanded/Collapsed preference. The selected item uses a subtle product-owned surface, a 3 px accent bar, and accent foreground—never literal selected text. Collapsed items keep tooltips and accessible names. Sidebar preference is non-secret UI preference data.
 
-The review presentation mapper defines Hidden, Collapsed, Expanded, and Overlay states, and `NutReviewDrawerHost` provides the shared 368 px content host. T25 connects an optional generic semantic-review presentation: deterministic changes, localized validation issues, custom parameters, activation information, and redacted generated-preview lines. With no semantic draft it remains Hidden. The presentation is read-only and has no Apply command; future T26–T28 forms provide the draft actions while persistence continues through the existing safe-write pipeline.
+The review presentation mapper defines Hidden, Collapsed, Expanded, and Overlay states, and `NutReviewDrawerHost` provides the shared 368 px content host. T25 connects an optional generic semantic-review presentation: deterministic changes, localized validation issues, custom parameters, activation information, and redacted generated-preview lines. With no semantic draft it remains Hidden. The presentation is read-only and has no Apply command; the T26–T28 forms provide draft actions while persistence continues through the existing safe-write pipeline.
 
 ## Header, theme, and visual tokens
 
@@ -55,7 +55,7 @@ The header shows the active runtime profile/UPS endpoint and a 12 px connection 
 - red: Disconnected, failure, or critical condition;
 - gray: no active profile or unavailable context.
 
-The halo is currently static. A future restrained transition may be added, but aggressive flashing is prohibited. Blue/cyan is the normal application accent. Green is reserved for healthy/success, while yellow/orange and red retain warning and error meaning. Color never carries the only meaning. Mock mode is displayed persistently through the warning-toned `NutStatusBadge`.
+The Composition-driven halo breathes without a UI-thread timer: Healthy uses the approved 2.0-second pulse, Pending and Critical share the same 3.2-second curve in their respective amber/red semantic colours, and Unavailable is static. State transitions and visual-tree detach explicitly stop the old Composition animations. Aggressive flashing is prohibited. Blue/cyan is the normal application accent. Green is reserved for healthy/success, while yellow/orange and red retain warning and error meaning. Color never carries the only meaning. Mock mode is displayed persistently through the warning-toned `NutStatusBadge`.
 
 The header uses a compact PathIcon sun/moon toggle. System theme remains available in **Settings → Appearance & Language**; clicking the header control from System makes the next Light/Dark preference explicit from the effective theme.
 
@@ -84,11 +84,11 @@ Administration
 └── Remote Access
 ```
 
-T24B preserves the existing-entry editor and reviewed T14 preview inside NUT Configuration. T25 supplies the generic semantic draft/review/generated-preview foundation without adding a writer. T26 uses that foundation for graphical `ups.conf`. T27 adds dedicated General (`nut.conf`) and Server (`upsd.conf`) surfaces with Basic/Advanced/Custom groups, wrapping LISTEN/TLS/custom rows, textual accessible actions, and the same page-level scroll owner. T28 owns the two remaining final graphical forms.
+T24B preserves the existing-entry fallback and reviewed T14 preview inside NUT Configuration. T25 supplies the generic semantic draft/review/generated-preview foundation without adding a writer. T26 uses that foundation for graphical `ups.conf`. T27 adds dedicated General (`nut.conf`) and Server (`upsd.conf`) surfaces with Basic/Advanced/Custom groups, wrapping LISTEN/TLS/custom rows, textual accessible actions, and the same page-level scroll owner. T28 completes the supported set with dedicated Users (`upsd.users`) and Monitoring (`upsmon.conf`) forms, including change-only password presentation and repeated monitor/notification rows.
 
 ## Approved visual fidelity (T27A)
 
-T27A aligns the rendered application with the approved visual references without changing behavior. It is presentation-only: view models, commands, validation, semantic configuration, transports and safety boundaries are untouched apart from presentation-only projections that surface state which already existed.
+T27A aligns the rendered application with the approved visual references without changing domain, transport, write, privilege, or hardware safety boundaries. Its functional hardening is limited to presentation/runtime defects found during visual validation, including latest-selection-wins configuration navigation and passive Windows metadata discovery.
 
 `Presentation/Themes` is the single source for the visual language. `NutColors.axaml` defines an explicit surface hierarchy — window, shell, surface, elevated, interactive, selected — plus border, text, accent and semantic families in both themes, so cards no longer carry the same visual weight and navigation selection is a restrained accent bar and low-contrast surface instead of a saturated block. `NutTypography.axaml` separates page title, section title, card title, label, metadata and the dominant metric readout. `NutMetrics.axaml` owns spacing, radii, icon sizes and shell dimensions. `NutControlStyles.axaml` and `NutShellStyles.axaml` restyle cards, buttons, inputs, lists, tabs, badges, the title bar, navigation and the profile card so surfaces stop reading as default Fluent controls.
 
@@ -96,7 +96,7 @@ T27A aligns the rendered application with the approved visual references without
 
 The window uses `WindowDecorations="BorderOnly"` so product identity, connection state, the theme control and the window buttons share one integrated bar instead of a separate Windows title strip. Drag, double-click maximise, minimise, restore and close remain standard Avalonia window operations with no platform interop.
 
-Motion is defined in `NutMotion.axaml` and stays within roughly 140–320 ms for interaction feedback: navigation selection, hover, card and input state, drawer content, tab underline, theme selection, load-gauge sweep and battery value transitions. The connected halo is the only looping animation, is purely decorative, and never carries state on its own. No animation timer, background worker or polling loop is introduced for decoration.
+Motion is defined in `NutMotion.axaml` and stays within roughly 140–320 ms for interaction feedback: navigation selection, hover, card and input state, drawer content, tab underline, theme selection, load-gauge sweep and battery value transitions. The semantic status halo is the only looping animation, is purely decorative, and never carries state on its own. No animation timer, background worker or polling loop is introduced for decoration.
 
 Overview is composed as a UPS dashboard: battery with animated charge bar, semicircular load gauge built from the native `Arc` shape, runtime with its raw NUT reading, input and output, UPS state with its status tokens, and connection. Every reading is projected from the current snapshot; a missing NUT variable keeps its card composition and shows the unavailable label rather than a substituted value, and this is pinned by tests.
 

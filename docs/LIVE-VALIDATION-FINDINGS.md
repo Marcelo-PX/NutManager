@@ -6,7 +6,7 @@ This is the historical record of the Windows/NUT live validation run performed f
 
 Surfaces introduced after this run are validated by the task that introduces them, and final graphical accessibility, responsive and transport hardening remains T29.
 
-| ID | Finding | Planned response |
+| ID | Finding | Owning response |
 | --- | --- | --- |
 | F-01 | A host input accepted `NOBREAK@127.0.0.1`, mixing UPS identity with a network host. | Resolved in T24A by pure typed host validation. |
 | F-02 | Mock mode currently defaults to enabled and confused the first live test. | Resolved in T24A: new installs default disabled and persisted legacy choices are preserved. |

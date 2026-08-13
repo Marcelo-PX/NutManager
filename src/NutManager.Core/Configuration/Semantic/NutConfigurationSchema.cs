@@ -155,7 +155,9 @@ public sealed class NutConfigurationFieldDescriptor
         INutConfigurationValueCodec? codec = null,
         Func<NutConfigurationSemanticContext, NutConfigurationApplicability>? applicability = null,
         IReadOnlyList<NutConfigurationChoice>? choices = null,
-        NutConfigurationFieldPresentation? presentation = null)
+        NutConfigurationFieldPresentation? presentation = null,
+        int? secretTokenIndex = null,
+        bool valueIsTokenList = false)
     {
         if (string.IsNullOrWhiteSpace(semanticId)) throw new ArgumentException("A semantic ID is required.", nameof(semanticId));
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("A configuration entry name is required.", nameof(name));
@@ -165,6 +167,13 @@ public sealed class NutConfigurationFieldDescriptor
             throw new ArgumentException("Explicit-auto fields require a technical auto token.", nameof(explicitAutoToken));
         if (sensitive && fieldKind != NutConfigurationFieldKind.SecretChange)
             throw new ArgumentException("Sensitive fields must use the change-only field kind.", nameof(fieldKind));
+        // A composite row carries its secret as one token among several, so the row as a whole is
+        // editable while that single token stays change-only. Marking the descriptor sensitive as
+        // well would make the entire row opaque and there would be nothing left to edit.
+        if (secretTokenIndex is not null && sensitive)
+            throw new ArgumentException("A composite row with an embedded secret is not wholly sensitive.", nameof(secretTokenIndex));
+        if (secretTokenIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(secretTokenIndex), "A secret token index cannot be negative.");
 
         FileKind = fileKind;
         SemanticId = semanticId;
@@ -184,6 +193,8 @@ public sealed class NutConfigurationFieldDescriptor
         Applicability = applicability ?? (_ => NutConfigurationApplicability.Applicable);
         Choices = choices?.ToArray() ?? [];
         Presentation = presentation;
+        SecretTokenIndex = secretTokenIndex;
+        ValueIsTokenList = valueIsTokenList;
     }
 
     public NutConfigurationFileKind FileKind { get; }
@@ -204,6 +215,24 @@ public sealed class NutConfigurationFieldDescriptor
     public Func<NutConfigurationSemanticContext, NutConfigurationApplicability> Applicability { get; }
     public IReadOnlyList<NutConfigurationChoice> Choices { get; }
     public NutConfigurationFieldPresentation? Presentation { get; }
+
+    /// <summary>
+    /// Position of the secret inside a whitespace-separated argument list, for directives such as
+    /// upsmon.conf MONITOR that carry a credential alongside ordinary values. The projector blanks
+    /// that token before the codec ever sees the line, so the secret cannot reach a view model,
+    /// and the draft splices the stored token back in when the row's other values are edited.
+    /// </summary>
+    public int? SecretTokenIndex { get; }
+
+    public bool HasEmbeddedSecret => SecretTokenIndex is not null;
+
+    /// <summary>
+    /// The value is a whitespace-separated list of tokens rather than one value that happens to
+    /// contain spaces, as with upsd.users <c>actions</c> and <c>instcmds</c>. Such a value must not
+    /// be quoted on write: NUT would read the quoted run as a single token and the permissions
+    /// would silently stop matching.
+    /// </summary>
+    public bool ValueIsTokenList { get; }
 }
 
 public sealed record NutConfigurationSectionSchema(string SemanticId, string LabelResourceKey, bool UniqueNames = true);

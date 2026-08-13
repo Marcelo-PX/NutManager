@@ -1,0 +1,239 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             x:Class="NutManager.App.Views.UpsdUsersConfigurationEditorView"
+             x:DataType="viewModels:UpsdUsersConfigurationEditorViewModel">
+  <!--
+    One user at a time. The stored password is never bound to anything: the only password state on
+    screen comes from PasswordStateText, and the two boxes below are write-only and cleared as soon
+    as the change is handed to the semantic mutation.
+  -->
+  <StackPanel Spacing="18">
+    <StackPanel Spacing="3">
+      <TextBlock Text="{Binding Strings[UpsdUsers.Title]}" Classes="nut-card-title" />
+      <TextBlock Text="{Binding Strings[UpsdUsers.Description]}" Classes="nut-metadata" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <!-- ==================== Users ==================== -->
+    <Border Classes="nut-card-flat">
+      <StackPanel Spacing="12">
+        <TextBlock Text="{Binding Strings[UpsdUsers.Users]}" Classes="nut-label" />
+
+        <TextBlock Text="{Binding Strings[UpsdUsers.Empty]}"
+                   Classes="nut-metadata"
+                   TextWrapping="Wrap"
+                   IsVisible="{Binding HasNoUsers}" />
+
+        <ListBox ItemsSource="{Binding Users}"
+                 SelectedItem="{Binding SelectedUser, Mode=TwoWay}"
+                 MaxHeight="150"
+                 IsVisible="{Binding HasUsers}"
+                 AutomationProperties.Name="{Binding Strings[UpsdUsers.Users]}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:UpsdUserRowViewModel">
+              <StackPanel Orientation="Horizontal" Spacing="9" Margin="2">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Border Classes="nut-pill healthy" Padding="8,2" IsVisible="{Binding HasPassword}">
+                  <TextBlock Text="•" FontSize="10" />
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <WrapPanel ItemSpacing="10" LineSpacing="10">
+          <TextBox Text="{Binding NewUserName, Mode=TwoWay}"
+                   PlaceholderText="{Binding Strings[UpsdUsers.NewUserName]}"
+                   Width="180"
+                   IsEnabled="{Binding CanEdit}"
+                   AutomationProperties.Name="{Binding Strings[UpsdUsers.NewUserName]}" />
+          <Button Command="{Binding AddUserCommand}" IsEnabled="{Binding CanEdit}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <PathIcon Classes="nut-icon-add" Data="{DynamicResource NutIconAdd}" Width="14" Height="14" />
+              <TextBlock Text="{Binding Strings[UpsdUsers.AddUser]}" />
+            </StackPanel>
+          </Button>
+          <TextBox Text="{Binding RenameUserName, Mode=TwoWay}"
+                   PlaceholderText="{Binding Strings[UpsdUsers.RenameTo]}"
+                   Width="180"
+                   IsVisible="{Binding HasSelectedUser}"
+                   IsEnabled="{Binding CanEdit}"
+                   AutomationProperties.Name="{Binding Strings[UpsdUsers.RenameTo]}" />
+          <Button Command="{Binding RenameUserCommand}" IsVisible="{Binding HasSelectedUser}" IsEnabled="{Binding CanEdit}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <PathIcon Classes="nut-icon-edit" Data="{DynamicResource NutIconEdit}" Width="14" Height="14" />
+              <TextBlock Text="{Binding Strings[UpsdUsers.RenameUser]}" />
+            </StackPanel>
+          </Button>
+          <Button Classes="nut-danger" Command="{Binding RemoveUserCommand}" IsVisible="{Binding HasSelectedUser}" IsEnabled="{Binding CanEdit}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <PathIcon Classes="nut-icon-delete" Data="{DynamicResource NutIconDelete}" Width="14" Height="14" />
+              <TextBlock Text="{Binding Strings[UpsdUsers.RemoveUser]}" />
+            </StackPanel>
+          </Button>
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Spacing="18" IsVisible="{Binding HasSelectedUser}">
+
+      <!-- ==================== Password ==================== -->
+      <Border Classes="nut-card-flat">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[UpsdUsers.Password.Label]}" Classes="nut-label" />
+          <TextBlock Text="{Binding Strings[UpsdUsers.Password.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
+
+          <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding !IsChangingPassword}">
+            <Border Classes="nut-pill" Classes.healthy="{Binding HasPassword}" Padding="10,3">
+              <TextBlock Text="{Binding PasswordStateText}" FontSize="11.5" FontWeight="SemiBold" />
+            </Border>
+            <Button Command="{Binding BeginPasswordChangeCommand}" IsEnabled="{Binding CanEdit}">
+              <TextBlock Text="{Binding Strings[UpsdUsers.Password.Change]}" IsVisible="{Binding HasPassword}" />
+            </Button>
+            <Button Command="{Binding BeginPasswordChangeCommand}" IsEnabled="{Binding CanEdit}" IsVisible="{Binding !HasPassword}">
+              <TextBlock Text="{Binding Strings[UpsdUsers.Password.Define]}" />
+            </Button>
+          </StackPanel>
+
+          <StackPanel Spacing="9" IsVisible="{Binding IsChangingPassword}">
+            <WrapPanel ItemSpacing="10" LineSpacing="10">
+              <StackPanel Spacing="2" Width="220">
+                <TextBlock Text="{Binding Strings[UpsdUsers.Password.New]}" Classes="nut-metadata" />
+                <TextBox x:Name="NewPasswordBox"
+                         PasswordChar="•"
+                         AutomationProperties.Name="{Binding Strings[UpsdUsers.Password.New]}" />
+              </StackPanel>
+              <StackPanel Spacing="2" Width="220">
+                <TextBlock Text="{Binding Strings[UpsdUsers.Password.Confirm]}" Classes="nut-metadata" />
+                <TextBox x:Name="ConfirmPasswordBox"
+                         PasswordChar="•"
+                         AutomationProperties.Name="{Binding Strings[UpsdUsers.Password.Confirm]}" />
+              </StackPanel>
+            </WrapPanel>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Classes="nut-primary" Click="ConfirmPassword_OnClick">
+                <TextBlock Text="{Binding Strings[Common.Confirm]}" />
+              </Button>
+              <Button Command="{Binding CancelPasswordChangeCommand}" Click="CancelPassword_OnClick">
+                <TextBlock Text="{Binding Strings[Common.Cancel]}" />
+              </Button>
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- ==================== Permissions ==================== -->
+      <Border Classes="nut-card-flat">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[UpsdUsers.Actions.Label]}" Classes="nut-label" />
+          <TextBlock Text="{Binding Strings[UpsdUsers.Actions.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
+
+          <CheckBox IsChecked="{Binding AllowSet, Mode=TwoWay}"
+                    IsEnabled="{Binding CanEdit}"
+                    Content="{Binding Strings[UpsdUsers.Actions.Set]}"
+                    AutomationProperties.Name="{Binding Strings[UpsdUsers.Actions.Set]}" />
+          <CheckBox IsChecked="{Binding AllowForcedShutdown, Mode=TwoWay}"
+                    IsEnabled="{Binding CanEdit}"
+                    Content="{Binding Strings[UpsdUsers.Actions.Fsd]}"
+                    AutomationProperties.Name="{Binding Strings[UpsdUsers.Actions.Fsd]}" />
+
+          <Border Classes="nut-card" BorderBrush="{DynamicResource NutWarningBrush}" IsVisible="{Binding ShowForcedShutdownWarning}" Padding="12">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" VerticalAlignment="Top" />
+              <TextBlock Text="{Binding Strings[UpsdUsers.Warning.Fsd]}" Classes="warning" TextWrapping="Wrap" FontSize="12.5" />
+            </StackPanel>
+          </Border>
+
+          <StackPanel Spacing="2" IsVisible="{Binding HasUnmanagedActions}">
+            <TextBlock Text="{Binding Strings[UpsdUsers.Actions.Unmanaged]}" Classes="nut-metadata" />
+            <TextBlock Text="{Binding UnmanagedActionsText}" Classes="nut-mono" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- ==================== Instant commands ==================== -->
+      <Border Classes="nut-card-flat">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[UpsdUsers.InstantCommands.Label]}" Classes="nut-label" />
+          <TextBlock Text="{Binding Strings[UpsdUsers.InstantCommands.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
+
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <RadioButton GroupName="InstCmds" IsChecked="{Binding IsCommandModeNone, Mode=OneWay}"
+                         Command="{Binding SelectNoInstantCommandsCommand}" IsEnabled="{Binding CanEdit}"
+                         Content="{Binding Strings[UpsdUsers.InstantCommands.None]}" />
+            <RadioButton GroupName="InstCmds" IsChecked="{Binding IsCommandModeAll, Mode=OneWay}"
+                         Command="{Binding SelectAllInstantCommandsCommand}" IsEnabled="{Binding CanEdit}"
+                         Content="{Binding Strings[UpsdUsers.InstantCommands.All]}" />
+            <RadioButton GroupName="InstCmds" IsChecked="{Binding IsCommandModeSpecific, Mode=OneWay}"
+                         Command="{Binding SelectSpecificInstantCommandsCommand}" IsEnabled="{Binding CanEdit}"
+                         Content="{Binding Strings[UpsdUsers.InstantCommands.Specific]}" />
+          </StackPanel>
+
+          <Border Classes="nut-card" BorderBrush="{DynamicResource NutWarningBrush}" IsVisible="{Binding ShowAllCommandsWarning}" Padding="12">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" VerticalAlignment="Top" />
+              <TextBlock Text="{Binding Strings[UpsdUsers.Warning.AllCommands]}" Classes="warning" TextWrapping="Wrap" FontSize="12.5" />
+            </StackPanel>
+          </Border>
+
+          <StackPanel Spacing="9" IsVisible="{Binding IsCommandModeSpecific}">
+            <ItemsControl ItemsSource="{Binding InstantCommands}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="8" LineSpacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:UpsdInstantCommandViewModel">
+                  <Border Classes="nut-pill" Padding="10,3">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center" />
+                      <Button Classes="nut-link" Command="{Binding RemoveCommand}" IsEnabled="{Binding CanEdit}" Padding="0">
+                        <PathIcon Classes="nut-icon-delete" Data="{DynamicResource NutIconClose}" Width="10" Height="10" />
+                      </Button>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <WrapPanel ItemSpacing="10" LineSpacing="10">
+              <TextBox Text="{Binding NewInstantCommand, Mode=TwoWay}"
+                       PlaceholderText="{Binding Strings[UpsdUsers.InstantCommands.Name]}"
+                       Width="200"
+                       IsEnabled="{Binding CanEdit}"
+                       AutomationProperties.Name="{Binding Strings[UpsdUsers.InstantCommands.Name]}" />
+              <Button Command="{Binding AddInstantCommandCommand}" IsEnabled="{Binding CanEdit}">
+                <TextBlock Text="{Binding Strings[UpsdUsers.InstantCommands.Add]}" />
+              </Button>
+            </WrapPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- ==================== upsmon role ==================== -->
+      <Border Classes="nut-card-flat">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{Binding Strings[UpsdUsers.UpsmonRole.Label]}" Classes="nut-label" />
+          <TextBlock Text="{Binding Strings[UpsdUsers.UpsmonRole.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
+
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <RadioButton GroupName="UpsmonRole" IsChecked="{Binding IsRoleNone, Mode=OneWay}"
+                         Command="{Binding SelectRoleNoneCommand}" IsEnabled="{Binding CanEdit}"
+                         Content="{Binding Strings[UpsdUsers.Role.None]}" />
+            <RadioButton GroupName="UpsmonRole" IsChecked="{Binding IsRolePrimary, Mode=OneWay}"
+                         Command="{Binding SelectRolePrimaryCommand}" IsEnabled="{Binding CanEdit}"
+                         Content="{Binding Strings[UpsdUsers.Role.Primary]}" />
+            <RadioButton GroupName="UpsmonRole" IsChecked="{Binding IsRoleSecondary, Mode=OneWay}"
+                         Command="{Binding SelectRoleSecondaryCommand}" IsEnabled="{Binding CanEdit}"
+                         Content="{Binding Strings[UpsdUsers.Role.Secondary]}" />
+          </StackPanel>
+
+          <Border Classes="nut-card" BorderBrush="{DynamicResource NutWarningBrush}" IsVisible="{Binding ShowPrimaryWarning}" Padding="12">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" VerticalAlignment="Top" />
+              <TextBlock Text="{Binding Strings[UpsdUsers.Warning.Primary]}" Classes="warning" TextWrapping="Wrap" FontSize="12.5" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+
+    <TextBlock Text="{Binding OperationMessage}" Classes="nut-metadata warning" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

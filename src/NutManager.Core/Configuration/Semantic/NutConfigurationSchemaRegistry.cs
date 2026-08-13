@@ -38,27 +38,7 @@ public sealed class NutConfigurationSchemaRegistry
         NutServerConfigurationCatalog.CreateNutConfSchema(),
         NutUpsConfigurationCatalog.CreateFileSchema(),
         NutServerConfigurationCatalog.CreateUpsdConfSchema(),
-        new(NutConfigurationFileKind.UpsdUsers,
-        [
-            Field(NutConfigurationFileKind.UpsdUsers, "UpsdUsers.Password", NutConfigurationEntryKind.Assignment, "password", NutConfigurationFieldScope.Section,
-                sensitive: true, fieldKind: NutConfigurationFieldKind.SecretChange)
-        ], new("UpsdUsers.Section", "Semantic.Section.User")),
-        new(NutConfigurationFileKind.UpsmonConf,
-        [
-            Field(NutConfigurationFileKind.UpsmonConf, "Upsmon.Monitor", NutConfigurationEntryKind.Directive, "MONITOR", NutConfigurationFieldScope.Repeated,
-                sensitive: true, fieldKind: NutConfigurationFieldKind.SecretChange)
-        ])
+        NutUpsdUsersConfigurationCatalog.CreateSchema(),
+        NutUpsmonConfigurationCatalog.CreateSchema()
     ], NutUpsConfigurationCatalog.CreateDriverSchemas());
-
-    private static NutConfigurationFieldDescriptor Field(
-        NutConfigurationFileKind fileKind,
-        string id,
-        NutConfigurationEntryKind entry,
-        string name,
-        NutConfigurationFieldScope scope,
-        bool required = false,
-        bool sensitive = false,
-        NutConfigurationFieldKind fieldKind = NutConfigurationFieldKind.Text) =>
-        new(fileKind, id, entry, name, scope, $"Semantic.Field.{id}.Label", $"Semantic.Field.{id}.Help",
-            fieldKind, required, sensitive);
 }

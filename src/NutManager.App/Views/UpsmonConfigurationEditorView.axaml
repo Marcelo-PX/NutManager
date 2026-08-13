@@ -1,0 +1,214 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
+             xmlns:views="clr-namespace:NutManager.App.Views"
+             x:Class="NutManager.App.Views.UpsmonConfigurationEditorView"
+             x:DataType="viewModels:UpsmonConfigurationEditorViewModel">
+  <!--
+    Monitors, then the global directives grouped as the file itself groups them. A monitor's stored
+    password is never bound anywhere: each row shows only a state pill, and replacing one goes
+    straight from the write-only boxes into the semantic mutation.
+  -->
+  <StackPanel Spacing="18">
+    <StackPanel Spacing="3">
+      <TextBlock Text="{Binding Strings[Upsmon.Title]}" Classes="nut-card-title" />
+      <TextBlock Text="{Binding Strings[Upsmon.Description]}" Classes="nut-metadata" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <!-- ==================== Monitors ==================== -->
+    <Border Classes="nut-card-flat">
+      <StackPanel Spacing="12">
+        <TextBlock Text="{Binding Strings[Upsmon.Monitor.Label]}" Classes="nut-label" />
+        <TextBlock Text="{Binding Strings[Upsmon.Monitor.Help]}" Classes="nut-metadata" TextWrapping="Wrap" />
+
+        <TextBlock Text="{Binding Strings[Upsmon.Monitor.Empty]}"
+                   Classes="nut-metadata"
+                   TextWrapping="Wrap"
+                   IsVisible="{Binding HasNoMonitors}" />
+
+        <ItemsControl ItemsSource="{Binding Monitors}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:UpsmonMonitorRowViewModel">
+              <Border Classes="nut-card" Padding="14" Margin="0,0,0,10">
+                <StackPanel Spacing="10">
+                  <WrapPanel ItemSpacing="12" LineSpacing="10">
+                    <StackPanel Spacing="2" Width="200">
+                      <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.System]}" Classes="nut-metadata" />
+                      <TextBox Text="{Binding System, Mode=TwoWay}" IsEnabled="{Binding CanEdit}" />
+                    </StackPanel>
+                    <StackPanel Spacing="2" Width="120">
+                      <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.PowerValue]}" Classes="nut-metadata" />
+                      <TextBox Text="{Binding PowerValueText, Mode=TwoWay}" IsEnabled="{Binding CanEdit}" />
+                    </StackPanel>
+                    <StackPanel Spacing="2" Width="160">
+                      <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.Username]}" Classes="nut-metadata" />
+                      <TextBox Text="{Binding Username, Mode=TwoWay}" IsEnabled="{Binding CanEdit}" />
+                    </StackPanel>
+                    <StackPanel Spacing="2" Width="140">
+                      <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.Role]}" Classes="nut-metadata" />
+                      <TextBox Text="{Binding Role, Mode=TwoWay}" IsEnabled="{Binding CanEdit}" />
+                    </StackPanel>
+                  </WrapPanel>
+
+                  <WrapPanel ItemSpacing="10" LineSpacing="10">
+                    <Border Classes="nut-pill" Classes.healthy="{Binding HasPassword}" Classes.warning="{Binding !HasPassword}" Padding="10,3">
+                      <TextBlock Text="{Binding PasswordStateText}" FontSize="11.5" FontWeight="SemiBold" />
+                    </Border>
+                    <Button Command="{Binding SaveCommand}" IsEnabled="{Binding CanEdit}">
+                      <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.Save]}" />
+                    </Button>
+                    <Button Command="{Binding BeginPasswordChangeCommand}" IsEnabled="{Binding CanEdit}">
+                      <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.ChangePassword]}" />
+                    </Button>
+                    <Button Classes="nut-danger" Command="{Binding RemoveCommand}" IsEnabled="{Binding CanEdit}">
+                      <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.Remove]}" />
+                    </Button>
+                  </WrapPanel>
+
+                  <StackPanel Spacing="9" IsVisible="{Binding IsChangingPassword}">
+                    <WrapPanel ItemSpacing="10" LineSpacing="10">
+                      <TextBox Tag="new" PasswordChar="•" Width="200" KeyDown="MonitorPassword_OnKeyDown"
+                               PlaceholderText="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[UpsdUsers.Password.New]}" />
+                      <TextBox Tag="confirm" PasswordChar="•" Width="200" KeyDown="MonitorPassword_OnKeyDown"
+                               PlaceholderText="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[UpsdUsers.Password.Confirm]}" />
+                      <Button Classes="nut-primary" Click="ConfirmMonitorPassword_OnClick">
+                        <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Common.Confirm]}" />
+                      </Button>
+                      <Button Command="{Binding CancelPasswordChangeCommand}" Click="CancelMonitorPassword_OnClick">
+                        <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Common.Cancel]}" />
+                      </Button>
+                    </WrapPanel>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Button Command="{Binding BeginAddMonitorCommand}" IsEnabled="{Binding CanEdit}" IsVisible="{Binding !IsAddingMonitor}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon Classes="nut-icon-add" Data="{DynamicResource NutIconAdd}" Width="14" Height="14" />
+            <TextBlock Text="{Binding Strings[Upsmon.Monitor.Add]}" />
+          </StackPanel>
+        </Button>
+
+        <Border Classes="nut-card" Padding="14" IsVisible="{Binding IsAddingMonitor}">
+          <StackPanel Spacing="10">
+            <WrapPanel ItemSpacing="12" LineSpacing="10">
+              <StackPanel Spacing="2" Width="200">
+                <TextBlock Text="{Binding Strings[Upsmon.Monitor.System]}" Classes="nut-metadata" />
+                <TextBox Text="{Binding NewMonitorSystem, Mode=TwoWay}" AutomationProperties.Name="{Binding Strings[Upsmon.Monitor.System]}" />
+                <TextBlock Text="{Binding Strings[Upsmon.Monitor.SystemHelp]}" Classes="nut-metadata" FontSize="11" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Spacing="2" Width="120">
+                <TextBlock Text="{Binding Strings[Upsmon.Monitor.PowerValue]}" Classes="nut-metadata" />
+                <TextBox Text="{Binding NewMonitorPowerValue, Mode=TwoWay}" AutomationProperties.Name="{Binding Strings[Upsmon.Monitor.PowerValue]}" />
+              </StackPanel>
+              <StackPanel Spacing="2" Width="160">
+                <TextBlock Text="{Binding Strings[Upsmon.Monitor.Username]}" Classes="nut-metadata" />
+                <TextBox Text="{Binding NewMonitorUsername, Mode=TwoWay}" AutomationProperties.Name="{Binding Strings[Upsmon.Monitor.Username]}" />
+              </StackPanel>
+              <StackPanel Spacing="2" Width="140">
+                <TextBlock Text="{Binding Strings[Upsmon.Monitor.Role]}" Classes="nut-metadata" />
+                <TextBox Text="{Binding NewMonitorRole, Mode=TwoWay}" AutomationProperties.Name="{Binding Strings[Upsmon.Monitor.Role]}" />
+              </StackPanel>
+              <StackPanel Spacing="2" Width="180">
+                <TextBlock Text="{Binding Strings[UpsdUsers.Password.New]}" Classes="nut-metadata" />
+                <TextBox x:Name="NewMonitorPassword" PasswordChar="•" AutomationProperties.Name="{Binding Strings[UpsdUsers.Password.New]}" />
+              </StackPanel>
+              <StackPanel Spacing="2" Width="180">
+                <TextBlock Text="{Binding Strings[UpsdUsers.Password.Confirm]}" Classes="nut-metadata" />
+                <TextBox x:Name="ConfirmMonitorPassword" PasswordChar="•" AutomationProperties.Name="{Binding Strings[UpsdUsers.Password.Confirm]}" />
+              </StackPanel>
+            </WrapPanel>
+            <TextBlock Text="{Binding Strings[Upsmon.Monitor.PowerValueHelp]}" Classes="nut-metadata" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Classes="nut-primary" Click="ConfirmAddMonitor_OnClick">
+                <TextBlock Text="{Binding Strings[Common.Confirm]}" />
+              </Button>
+              <Button Command="{Binding CancelAddMonitorCommand}" Click="CancelAddMonitor_OnClick">
+                <TextBlock Text="{Binding Strings[Common.Cancel]}" />
+              </Button>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <!-- ==================== Global directives ==================== -->
+    <Border Classes="nut-card" BorderBrush="{DynamicResource NutWarningBrush}" Padding="12">
+      <StackPanel Orientation="Horizontal" Spacing="9">
+        <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" VerticalAlignment="Top" />
+        <TextBlock Text="{Binding Strings[Upsmon.Warning.Shutdown]}" Classes="warning" TextWrapping="Wrap" FontSize="12.5" />
+      </StackPanel>
+    </Border>
+
+    <ItemsControl ItemsSource="{Binding BasicFields}">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <ItemsControl ItemsSource="{Binding AdvancedFields}">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <Border Classes="nut-card" BorderBrush="{DynamicResource NutWarningBrush}" Padding="12" IsVisible="{Binding ShowExecWithoutCommandWarning}">
+      <StackPanel Orientation="Horizontal" Spacing="9">
+        <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" VerticalAlignment="Top" />
+        <TextBlock Text="{Binding Strings[Upsmon.Warning.ExecWithoutCommand]}" Classes="warning" TextWrapping="Wrap" FontSize="12.5" />
+      </StackPanel>
+    </Border>
+
+    <!-- ==================== Notification matrix ==================== -->
+    <Expander Header="{Binding Strings[Upsmon.Group.Notifications]}" IsExpanded="False">
+      <StackPanel Spacing="10">
+        <TextBlock Text="{Binding Strings[Upsmon.Warning.NotifyCommand]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding Events}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:UpsmonNotificationEventViewModel">
+              <Border Classes="nut-card-flat" Padding="12" Margin="0,0,0,8">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{Binding Event}" Classes="nut-mono" FontWeight="SemiBold" />
+                  <WrapPanel ItemSpacing="14" LineSpacing="8">
+                    <CheckBox IsChecked="{Binding Syslog, Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
+                              Content="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Notify.Syslog]}" />
+                    <CheckBox IsChecked="{Binding Wall, Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
+                              Content="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Notify.Wall]}" />
+                    <CheckBox IsChecked="{Binding Exec, Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
+                              Content="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Notify.Exec]}" />
+                    <CheckBox IsChecked="{Binding Ignore, Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
+                              Content="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Notify.Ignore]}" />
+                  </WrapPanel>
+                  <TextBox Text="{Binding Message, Mode=TwoWay}"
+                           IsEnabled="{Binding CanEdit}"
+                           PlaceholderText="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Notify.DefaultMessage]}" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Expander>
+
+    <!-- ==================== Preserved ==================== -->
+    <Expander Header="{Binding Strings[Upsmon.Notify.Unmanaged]}" IsExpanded="False" IsVisible="{Binding HasUnmanagedEvents}">
+      <ItemsControl ItemsSource="{Binding UnmanagedEvents}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:UpsmonUnmanagedEventViewModel">
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2">
+              <TextBlock Text="{Binding Event}" Classes="nut-mono" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding Value}" Classes="nut-metadata" TextWrapping="Wrap" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Expander>
+
+    <TextBlock Text="{Binding OperationMessage}" Classes="nut-metadata warning" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

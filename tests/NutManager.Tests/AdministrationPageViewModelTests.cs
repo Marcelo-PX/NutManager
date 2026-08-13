@@ -299,20 +299,21 @@ public sealed class AdministrationPageViewModelTests
     [Fact]
     public async Task SensitiveAssignmentNeverExposesCurrentSecretAndItsPreviewIsRedacted()
     {
+        // upsd.users now opens in the graphical editor, so the guarantee is asserted there: the
+        // editor can say a password exists and nothing more, and replacing it stays redacted.
         const string originalSecret = "fictional-password";
         var pipeline = new TestPipeline();
         pipeline.SetFile("/session/nut/etc/upsd.users", NutConfigurationFileKind.UpsdUsers, $"[admin]\npassword = {originalSecret}\nactions = SET\n");
         var viewModel = await CreateInitializedViewModelAsync(pipeline, "upsd.users");
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "upsd.users"));
-        var password = GetEntry(viewModel, "password");
+        var editor = viewModel.UpsdUsersConfigurationEditor;
 
-        Assert.True(password.IsSensitive);
-        Assert.Equal(string.Empty, password.DraftValue);
-        Assert.False(password.IsChanged);
-        Assert.DoesNotContain(originalSecret, GetPublicStringValues(password));
+        Assert.NotNull(editor);
+        Assert.True(editor.HasPassword);
+        Assert.DoesNotContain(originalSecret, GetPublicStringValues(editor));
         Assert.DoesNotContain(originalSecret, GetPublicStringValues(viewModel));
 
-        password.DraftValue = "new-fictional-password";
+        Assert.True(editor.ConfirmPasswordChange("new-fictional-password", "new-fictional-password").Succeeded);
         await viewModel.ReviewChangesAsync();
 
         Assert.Single(viewModel.PreviewLines);
@@ -321,14 +322,38 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal("<redacted>", viewModel.PreviewLines.Single().CandidateText);
         Assert.DoesNotContain(originalSecret, GetPublicStringValues(viewModel));
         Assert.DoesNotContain("new-fictional-password", GetPublicStringValues(viewModel));
+        Assert.DoesNotContain("new-fictional-password", GetPublicStringValues(editor));
     }
 
     [Fact]
-    public Task MonitorDirectiveUsesAnEmptyReplacementFieldAndRedactedPreview() =>
-        AssertSensitiveDirectiveUsesAnEmptyReplacementFieldAndRedactedPreview(
-            NutConfigurationFileKind.UpsmonConf,
-            "upsmon.conf",
-            "MONITOR ups@localhost 1 user fictional-monitor-secret master");
+    public async Task MonitorDirectiveUsesAnEmptyReplacementFieldAndRedactedPreview()
+    {
+        // A MONITOR line carries its credential among ordinary arguments, so the editor exposes the
+        // other values and only a configured/not-configured flag for the password.
+        const string secret = "fictional-monitor-secret";
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/upsmon.conf", NutConfigurationFileKind.UpsmonConf,
+            $"MONITOR ups@localhost 1 monuser {secret} primary\n");
+        var viewModel = await CreateInitializedViewModelAsync(pipeline, "upsmon.conf");
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "upsmon.conf"));
+        var editor = viewModel.UpsmonConfigurationEditor;
+
+        Assert.NotNull(editor);
+        var monitor = Assert.Single(editor.Monitors);
+        Assert.Equal("ups@localhost", monitor.System);
+        Assert.Equal("monuser", monitor.Username);
+        Assert.True(monitor.HasPassword);
+        Assert.DoesNotContain(secret, GetPublicStringValues(monitor));
+        Assert.DoesNotContain(secret, GetPublicStringValues(editor));
+
+        Assert.True(monitor.ConfirmPasswordChange("replacement-secret", "replacement-secret").Succeeded);
+        await viewModel.ReviewChangesAsync();
+
+        Assert.True(viewModel.PreviewLines.Single().IsRedacted);
+        Assert.Equal("<redacted>", viewModel.PreviewLines.Single().CandidateText);
+        Assert.DoesNotContain(secret, GetPublicStringValues(viewModel));
+        Assert.DoesNotContain("replacement-secret", GetPublicStringValues(viewModel));
+    }
 
     [Fact]
     public async Task CertidentUsesDedicatedChangeOnlyEditorAndRedactedPreview()
@@ -353,28 +378,6 @@ public sealed class AdministrationPageViewModelTests
         Assert.Equal("<redacted>", viewModel.PreviewLines.Single().CandidateText);
         Assert.DoesNotContain(originalSecret, GetPublicStringValues(viewModel));
         Assert.DoesNotContain(replacement, GetPublicStringValues(viewModel));
-    }
-
-    private static async Task AssertSensitiveDirectiveUsesAnEmptyReplacementFieldAndRedactedPreview(
-        NutConfigurationFileKind kind,
-        string fileName,
-        string line)
-    {
-        var pipeline = new TestPipeline();
-        pipeline.SetFile($"/session/nut/etc/{fileName}", kind, line + "\n");
-        var viewModel = await CreateInitializedViewModelAsync(pipeline, fileName);
-        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == fileName));
-        var entry = viewModel.Sections.Single().Entries.Single();
-
-        Assert.True(entry.IsSensitive);
-        Assert.Equal(string.Empty, entry.DraftValue);
-        Assert.DoesNotContain("fictional", GetPublicStringValues(entry), StringComparison.OrdinalIgnoreCase);
-
-        entry.DraftValue = "new complete protected arguments";
-        await viewModel.ReviewChangesAsync();
-
-        Assert.True(viewModel.PreviewLines.Single().IsRedacted);
-        Assert.Equal("<redacted>", viewModel.PreviewLines.Single().CandidateText);
     }
 
     [Fact]
@@ -698,11 +701,12 @@ public sealed class AdministrationPageViewModelTests
             new NutConfigurationFilePipeline());
         await viewModel.InitializeAsync();
         await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == "upsd.users"));
-        var password = GetEntry(viewModel, "password");
+        var editor = viewModel.UpsdUsersConfigurationEditor;
 
-        Assert.Equal(string.Empty, password.DraftValue);
+        Assert.NotNull(editor);
+        Assert.True(editor.HasPassword);
         Assert.DoesNotContain(originalSecret, GetPublicStringValues(viewModel));
-        password.DraftValue = replacement;
+        Assert.True(editor.ConfirmPasswordChange(replacement, replacement).Succeeded);
         await viewModel.ReviewChangesAsync();
 
         Assert.All(viewModel.PreviewLines, line => Assert.Equal("<redacted>", line.CandidateText));
@@ -908,6 +912,216 @@ public sealed class AdministrationPageViewModelTests
         Assert.False(viewModel.CanPrepareAdministrativeAction);
         Assert.False(viewModel.CanStartWindowsService);
         Assert.False(viewModel.CanPrepareDriverDiagnostic);
+    }
+
+    // ==================== T28 graphical editors ====================
+
+    private const string UsersSentinel = "UPS_USERS_SECRET_SENTINEL_837CA9";
+    private const string UpsmonSentinel = "UPSMON_SECRET_SENTINEL_A291F1";
+
+    private static TestPipeline CreateT28Pipeline()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=netserver\n");
+        pipeline.SetFile("/session/nut/etc/ups.conf", NutConfigurationFileKind.UpsConf, "[ups-a]\n\tdriver = usbhid-ups\n\tport = auto\n");
+        pipeline.SetFile("/session/nut/etc/upsd.users", NutConfigurationFileKind.UpsdUsers,
+            $"[admin]\n\tpassword = {UsersSentinel}\n\tactions = SET\n\tinstcmds = ALL\n");
+        pipeline.SetFile("/session/nut/etc/upsmon.conf", NutConfigurationFileKind.UpsmonConf,
+            $"MONITOR ups@localhost 1 monuser {UpsmonSentinel} primary\nMINSUPPLIES 1\n");
+        return pipeline;
+    }
+
+    private static Task<AdministrationPageViewModel> CreateT28ViewModelAsync(TestPipeline pipeline) =>
+        CreateInitializedViewModelAsync(pipeline, "nut.conf", "ups.conf", "upsd.users", "upsmon.conf");
+
+    private static Task SelectAsync(AdministrationPageViewModel viewModel, string fileName) =>
+        viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileName == fileName));
+
+    [Fact]
+    public async Task SelectingUpsdUsersPublishesOnlyItsGraphicalEditor()
+    {
+        var viewModel = await CreateT28ViewModelAsync(CreateT28Pipeline());
+
+        await SelectAsync(viewModel, "upsd.users");
+
+        Assert.NotNull(viewModel.UpsdUsersConfigurationEditor);
+        Assert.True(viewModel.IsUpsdUsersConfigurationEditorVisible);
+        Assert.Null(viewModel.UpsmonConfigurationEditor);
+        Assert.Null(viewModel.UpsConfigurationEditor);
+        Assert.Null(viewModel.UpsdConfigurationEditor);
+        Assert.Null(viewModel.NutGeneralConfigurationEditor);
+        // The active semantic editor is private; the page only reveals that one is in charge by
+        // keeping the legacy key/value surface hidden.
+        Assert.False(viewModel.IsLegacyConfigurationEditorVisible);
+        Assert.Equal("admin", viewModel.UpsdUsersConfigurationEditor.Users.Single().Name);
+    }
+
+    [Fact]
+    public async Task SelectingUpsmonPublishesOnlyItsGraphicalEditor()
+    {
+        var viewModel = await CreateT28ViewModelAsync(CreateT28Pipeline());
+
+        await SelectAsync(viewModel, "upsmon.conf");
+
+        Assert.NotNull(viewModel.UpsmonConfigurationEditor);
+        Assert.True(viewModel.IsUpsmonConfigurationEditorVisible);
+        Assert.Null(viewModel.UpsdUsersConfigurationEditor);
+        Assert.False(viewModel.IsLegacyConfigurationEditorVisible);
+        Assert.Equal("ups@localhost", viewModel.UpsmonConfigurationEditor.Monitors.Single().System);
+    }
+
+    [Fact]
+    public async Task WalkingEveryConfigurationFileLeavesExactlyOneEditorPublished()
+    {
+        var viewModel = await CreateT28ViewModelAsync(CreateT28Pipeline());
+
+        foreach (var fileName in new[] { "nut.conf", "ups.conf", "upsd.users", "upsmon.conf", "upsd.users", "nut.conf", "upsmon.conf" })
+        {
+            await SelectAsync(viewModel, fileName);
+
+            ISemanticConfigurationEditor?[] editors =
+            [
+                viewModel.NutGeneralConfigurationEditor,
+                viewModel.UpsConfigurationEditor,
+                viewModel.UpsdConfigurationEditor,
+                viewModel.UpsdUsersConfigurationEditor,
+                viewModel.UpsmonConfigurationEditor
+            ];
+
+            Assert.Single(editors, editor => editor is not null);
+            Assert.False(viewModel.IsLegacyConfigurationEditorVisible);
+            Assert.True(viewModel.HasLoadedFile);
+            Assert.False(viewModel.IsBusy);
+            Assert.False(viewModel.IsLoadingFile);
+            Assert.True(viewModel.CanSelectConfigurationFile);
+        }
+    }
+
+    [Fact]
+    public async Task ASupersededSelectionNeverPublishesItsGraphicalEditor()
+    {
+        var pipeline = CreateT28Pipeline();
+        var viewModel = await CreateT28ViewModelAsync(pipeline);
+        var completion = new TaskCompletionSource<NutConfigurationLoadResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        pipeline.NextLoadCompletion = completion;
+        pipeline.LoadStarted = started;
+
+        var firstSelection = SelectAsync(viewModel, "upsd.users");
+        await started.Task;
+
+        pipeline.NextLoadCompletion = null;
+        pipeline.LoadStarted = null;
+        var secondSelection = SelectAsync(viewModel, "upsmon.conf");
+
+        completion.SetResult(pipeline.CreateSuccessLoadResult(
+            "/session/nut/etc/upsd.users", NutConfigurationFileKind.UpsdUsers, $"[admin]\n\tpassword = {UsersSentinel}\n"));
+        await firstSelection;
+        await secondSelection;
+
+        Assert.Equal("upsmon.conf", viewModel.SelectedFile!.FileName);
+        Assert.NotNull(viewModel.UpsmonConfigurationEditor);
+        Assert.Null(viewModel.UpsdUsersConfigurationEditor);
+        Assert.False(viewModel.IsLegacyConfigurationEditorVisible);
+        Assert.DoesNotContain(UsersSentinel, GetPublicStringValues(viewModel));
+    }
+
+    [Fact]
+    public async Task AGraphicalEditorEditPropagatesToTheDraftAndReviewGates()
+    {
+        var viewModel = await CreateT28ViewModelAsync(CreateT28Pipeline());
+        await SelectAsync(viewModel, "upsd.users");
+
+        Assert.False(viewModel.HasDraftChanges);
+        Assert.False(viewModel.CanReview);
+
+        viewModel.UpsdUsersConfigurationEditor!.AllowForcedShutdown = true;
+
+        Assert.True(viewModel.HasDraftChanges);
+        Assert.True(viewModel.CanReview);
+        Assert.True(viewModel.CanDiscard);
+        Assert.False(viewModel.CanSelectConfigurationFile);
+        Assert.False(viewModel.CanReload);
+    }
+
+    [Fact]
+    public async Task AnInvalidGraphicalValueBlocksReviewUntilItIsCorrected()
+    {
+        var viewModel = await CreateT28ViewModelAsync(CreateT28Pipeline());
+        await SelectAsync(viewModel, "upsmon.conf");
+        var supplies = viewModel.UpsmonConfigurationEditor!.BasicFields
+            .Concat(viewModel.UpsmonConfigurationEditor.AdvancedFields)
+            .Single(field => field.Descriptor.SemanticId == "Upsmon.MinSupplies");
+
+        supplies.DraftValue = "not-a-number";
+
+        Assert.True(viewModel.UpsmonConfigurationEditor.HasInputErrors);
+        Assert.False(viewModel.CanReview);
+
+        supplies.DraftValue = "2";
+
+        Assert.False(viewModel.UpsmonConfigurationEditor.HasInputErrors);
+        Assert.True(viewModel.CanReview);
+    }
+
+    [Fact]
+    public async Task DiscardingRebuildsTheGraphicalEditorFromTheFileAgain()
+    {
+        var viewModel = await CreateT28ViewModelAsync(CreateT28Pipeline());
+        await SelectAsync(viewModel, "upsd.users");
+        var original = viewModel.UpsdUsersConfigurationEditor!;
+        original.AllowForcedShutdown = true;
+        Assert.True(viewModel.HasDraftChanges);
+
+        await viewModel.DiscardChangesAsync();
+
+        Assert.False(viewModel.HasDraftChanges);
+        Assert.NotNull(viewModel.UpsdUsersConfigurationEditor);
+        Assert.NotSame(original, viewModel.UpsdUsersConfigurationEditor);
+        Assert.False(viewModel.UpsdUsersConfigurationEditor.AllowForcedShutdown);
+        Assert.True(viewModel.UpsdUsersConfigurationEditor.HasPassword);
+        Assert.DoesNotContain(UsersSentinel, GetPublicStringValues(viewModel.UpsdUsersConfigurationEditor));
+    }
+
+    [Fact]
+    public async Task NeitherStoredCredentialEverReachesThePageThroughAnyStep()
+    {
+        var pipeline = CreateT28Pipeline();
+        var viewModel = await CreateT28ViewModelAsync(pipeline);
+
+        void AssertClean()
+        {
+            Assert.DoesNotContain(UsersSentinel, GetPublicStringValues(viewModel));
+            Assert.DoesNotContain(UpsmonSentinel, GetPublicStringValues(viewModel));
+            foreach (var line in viewModel.PreviewLines)
+            {
+                Assert.DoesNotContain(UsersSentinel, line.OriginalText + line.CandidateText, StringComparison.Ordinal);
+                Assert.DoesNotContain(UpsmonSentinel, line.OriginalText + line.CandidateText, StringComparison.Ordinal);
+            }
+        }
+
+        await SelectAsync(viewModel, "upsd.users");
+        AssertClean();
+        viewModel.UpsdUsersConfigurationEditor!.AllowForcedShutdown = true;
+        AssertClean();
+        await viewModel.ReviewChangesAsync();
+        AssertClean();
+        await viewModel.DiscardChangesAsync();
+        AssertClean();
+
+        await SelectAsync(viewModel, "upsmon.conf");
+        AssertClean();
+        var monitor = viewModel.UpsmonConfigurationEditor!.Monitors.Single();
+        monitor.Username = "operator";
+        viewModel.UpsmonConfigurationEditor.SaveMonitor(monitor);
+        AssertClean();
+        await viewModel.ReviewChangesAsync();
+        AssertClean();
+        await viewModel.DiscardChangesAsync();
+        AssertClean();
+
+        await SelectAsync(viewModel, "nut.conf");
+        AssertClean();
     }
 
     private static ManagedNutServerRuntimeContext CreateProfileContext(NutManagementMode managementMode, ManagedNutServerAccessMode accessMode)

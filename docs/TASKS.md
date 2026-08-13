@@ -45,8 +45,8 @@ Only one task should normally be in progress at a time.
 | T25 | DONE | Semantic graphical configuration framework | Core schemas, mutations, and semantic review over T13/T14 |
 | T26 | DONE | Graphical ups.conf configuration | Driver-aware UPS administration and runtimecal assistant |
 | T27 | DONE | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
-| T27A | IN PROGRESS | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
-| T28 | TODO | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
+| T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
+| T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | TODO | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 
 ---
@@ -470,7 +470,7 @@ Provide dedicated graphical `upsd.conf` and `nut.conf` forms.
 
 ## T27A — Approved visual fidelity, iconography and motion
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Objective
 
@@ -506,9 +506,21 @@ Align the existing Windows presentation with the approved visual references, inc
 
 - the rendered application matches the approved references closely enough for human visual acceptance, with no functional or safety regression. Final acceptance requires that human comparison and is not implied by passing gates.
 
+### Implemented
+
+- one surface hierarchy, typography, spacing and motion token set in `Presentation/Themes`, replacing page-local palettes; restyled cards, buttons, inputs, lists, tabs, badges, title bar, navigation and profile card;
+- `NutIcons.axaml` as the only icon source: `StreamGeometry` on a 24×24 grid, no icon font, icon package or raster UI image; semantic icon colour always redundant with text;
+- integrated window chrome through `WindowDecorations="BorderOnly"`, using standard Avalonia window operations with no platform interop;
+- Overview composed as a UPS dashboard with battery, semicircular load gauge, runtime, input/output, state and connection, each projected from the current snapshot and pinned by tests that keep an absent NUT variable absent;
+- restrained motion within roughly 140–320 ms for interaction feedback, plus the decorative connection LED as the only looping animation; loops use the Avalonia Composition API because a keyframe animation targeting `RenderTransform` has no registered animator in this version;
+- configuration navigation hardening: the file list stays enabled during a load, a superseded selection is cancelled, and only the newest selection may publish an editor;
+- two runtime defects fixed while validating the above: COM enumeration now reads the `SERIALCOMM` device map with WMI used only for enrichment, and Windows NUT service discovery recognises `nut.exe` inside the trusted installation root.
+
+Human visual acceptance was given for the rendered application. Merged to `main` through PR #33 as merge commit `fae5b4d1`.
+
 ## T28 — Graphical users and monitoring configuration
 
-**Status:** TODO
+**Status:** DONE
 
 ### Objective
 
@@ -536,6 +548,21 @@ Provide dedicated graphical `upsd.users` and `upsmon.conf` forms with protected 
 
 - users and monitoring are manageable graphically with change-only secrets.
 
+### Implemented
+
+- dedicated `upsd.users` editor working one user at a time, since every section of the file is one account: add/rename/remove with section-name validation, change-only password, SET and FSD permissions with an explicit FSD warning, instant-command modes (none/`ALL`/specific) with an `ALL` warning, and the `upsmon` `primary`/`secondary` role with a primary warning;
+- dedicated `upsmon.conf` editor with repeated `MONITOR` rows, `MINSUPPLIES`, shutdown settings, polling and timing directives, `NOTIFYCMD`, and a notification matrix over the 29 documented events with `IGNORE` exclusivity and per-event custom messages;
+- embedded-secret handling for `MONITOR`, whose credential sits between ordinary editable arguments: `SecretTokenIndex` marks the position, the projector blanks the token before any codec or view model sees it, and neighbouring values are edited without revealing the stored password;
+- token-list serialization so `actions = SET FSD` stays a list of tokens instead of being quoted into one;
+- unmanaged permissions, roles, directives and notification events preserved and shown as preserved rather than dropped;
+- semantic review with redacted preview, and Apply exclusively through the existing T13/T14 pipeline over Local, SFTP and SMB.
+
+### Validation record
+
+Gates on the final round: restore PASS; Release build PASS with 0 warnings and 0 errors; 1102/1102 tests PASS, up from a 1051 baseline; vulnerability gate PASS; `dotnet format --verify-no-changes` PASS; `git diff --check` PASS.
+
+Windows runtime smoke against a real installation: ten rapid selections across the five configuration files kept the UI responsive with a maximum observed latency of 19.4 ms, no freeze, and the newest selection always winning. No stored password appeared in the UI, review redacted the sensitive line, and a comparison against the real credential found zero leaks. `C:\NUT\etc\upsd.users` and `C:\NUT\etc\upsmon.conf` kept their original modification times; no Apply was performed during the smoke.
+
 ## T29 — Graphical configuration UX hardening
 
 **Status:** TODO
@@ -551,6 +578,7 @@ Validate and harden the complete graphical configuration experience.
 ### Requirements
 
 - Wide/Medium/Compact, sidebar/drawer, keyboard, focus, automation, clipping/overflow, and semantic-error validation;
+- accessible names on every actionable control, including the configuration action bar, whose buttons currently report their panel type instead of their label to UI Automation because their content is a panel rather than text;
 - `pt-BR` and `en-US` validation; preference persistence;
 - 100/125/150% Windows scaling, invalid-field states, and non-blue Windows system-accent regression;
 - local, SFTP, and SMB regression of reviewed safe writes and recovery;

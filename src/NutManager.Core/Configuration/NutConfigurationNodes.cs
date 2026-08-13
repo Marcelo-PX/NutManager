@@ -122,7 +122,11 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
     /// Replaces only this assignment's value in memory. Existing indentation,
     /// spacing around the equals sign, trailing whitespace, and quote style remain intact.
     /// </summary>
-    public void SetValue(string value)
+    /// <summary>
+    /// Writes a new value. Quoting is added for a value that needs it, unless the caller states the
+    /// value is a token list, in which case quoting would change its meaning rather than protect it.
+    /// </summary>
+    public void SetValue(string value, bool quoteWhitespace = true)
     {
         ArgumentNullException.ThrowIfNull(value);
         if (string.Equals(Value, value, StringComparison.Ordinal))
@@ -130,7 +134,7 @@ public sealed class NutConfigurationAssignmentNode : NutConfigurationNode
             return;
         }
 
-        if (_quoteCharacter is null && RequiresQuotes(value)) _quoteCharacter = '"';
+        if (_quoteCharacter is null && quoteWhitespace && RequiresQuotes(value)) _quoteCharacter = '"';
         Value = value;
         RawValue = RenderValue(value);
         IsModified = true;

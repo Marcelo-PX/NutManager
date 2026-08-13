@@ -31,10 +31,22 @@ The current product also implements:
 - T15 graphical editing of existing configuration entries;
 - T16 Windows service, privilege, ACL, process, and Event Log administration;
 - T17 passive COM and controlled NUT-driver diagnostics;
-- T18 managed local and remote server profiles.
-- T19 SSH/SFTP remote configuration management.
-- T19B SMB remote configuration transport.
-- T20 opt-in protected SSH and SMB credential storage in Windows Credential Manager.
+- T18 managed local and remote server profiles;
+- T19 SSH/SFTP remote configuration management;
+- T19B SMB remote configuration transport;
+- T20 opt-in protected SSH and SMB credential storage in Windows Credential Manager;
+- T21 completed Windows local and remote administration validation, whose findings were carried into the tasks that own them;
+- T23 completed upstream NUT improvement evaluation;
+- T24 modern responsive shell, design system, and `pt-BR`/`en-US` localization foundation;
+- T24A managed-profile UX with typed validation and explicit connection testing;
+- T24B focused administration and page presentation decomposition;
+- T25 semantic graphical configuration framework over T13/T14;
+- T26 graphical `ups.conf` with driver-aware descriptors and the `runtimecal` assistant;
+- T27 graphical `nut.conf` and `upsd.conf`;
+- T27A approved visual fidelity, shared iconography, restrained motion, and navigation hardening;
+- T28 graphical `upsd.users` and `upsmon.conf` with change-only secrets.
+
+T29, the final graphical-configuration UX hardening, is the remaining task in the current cycle.
 
 ## 4. Platform and quality requirements
 
@@ -58,6 +70,15 @@ The normal NutManager process does not require Administrator privileges. Privile
 
 Configuration changes use a syntax-preserving model and a recoverable write pipeline: review and diff, backup, temporary-file validation, safe replacement, verification, and rollback. Administration is never automatic, and applying configuration does not automatically restart a NUT service. Monitoring remains independent of management actions.
 
+NutManager writes configuration. It does not execute what that configuration describes: it never runs `SHUTDOWNCMD`, `NOTIFYCMD`, or a forced shutdown, and configuring a permission is distinct from exercising it.
+
+### Two secret domains
+
+Transport secrets and NUT configuration secrets are separate and must not be conflated:
+
+- **transport secrets** — SSH passphrases/passwords and explicit SMB passwords. They are session-only by default and may, after an explicit successful connection, be saved in Windows Credential Manager. They authenticate NutManager to a remote host.
+- **NUT configuration secrets** — passwords stored inside `upsd.users` and `upsmon.conf`. They are change-only: an existing value is never read back into interface state, review, or preview, and the product reports only whether one is configured. There is no lookup from one domain into the other.
+
 ## 6. Managed profiles and remote boundary
 
 Managed profiles separate monitoring from management metadata:
@@ -73,43 +94,55 @@ Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can w
 
 ### Implemented
 
-- managed server profiles;
-- syntax-preserving configuration parsing and graphical editing;
+- managed server profiles with typed validation and explicit connection testing;
+- syntax-preserving configuration parsing plus dedicated graphical forms for all five supported files;
 - preview, backup, safe write, recovery, and rollback;
-- Windows local service, UAC, ACL, process, Event Log, COM, and driver diagnostics.
-- SSH/SFTP and SMB remote configuration management with manual directory validation; SSH uses pinned host keys and SMB uses a share-root boundary.
+- Windows local service, UAC, ACL, process, Event Log, COM, and driver diagnostics;
+- SSH/SFTP and SMB remote configuration management with manual directory validation; SSH uses pinned host keys and SMB uses a share-root boundary;
+- responsive shell, shared design system, and `pt-BR`/`en-US` localization.
 
 ### Next
 
-- T21 full local and remote Windows validation.
-- T24–T29 planned modern responsive UI, localization, and graphical-configuration cycle after the current validation stream.
+- T29 graphical configuration UX hardening: responsive, accessibility, keyboard/focus, Windows scaling, bilingual presentation, and local/SFTP/SMB regression validation.
 
 ### Later
 
 - T22 deferred Linux compatibility evaluation;
-- T23 upstream NUT improvement evaluation;
 - multi-server simultaneous runtime, history, notifications, and other future product capabilities as separately scoped.
 
-## 8. Planned graphical-first administration (T24–T29)
+## 8. Graphical-first administration (T24–T28 implemented, T29 remaining)
 
-The current implementation preserves and edits existing configuration entries through T13/T14. T24–T29 are planned, not implemented. Their product objective is that normal administrators can configure supported NUT settings graphically without manually editing supported `.conf` files.
+Normal administrators configure supported NUT settings graphically, without manually editing the supported `.conf` files. Dedicated experiences exist for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`. Generated text is a read-only preview or advanced inspection, never the primary editor.
 
-Dedicated experiences are planned for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`. Generated text remains a read-only preview or advanced inspection, never the primary editor. Forms create a semantic draft, validate it through Core semantic schemas, project it to the T13 syntax-preserving document, and apply only through the existing T14 local/SFTP/SMB safe-write pipeline. Applying a configuration change never silently restarts a service.
+The implemented flow is:
 
-The planned UX includes driver-aware UPS controls, setting-specific Automatic semantics, a `runtimecal` assistant, graphical custom parameters that preserve unknown content, redacted change-only secrets, semantic review, responsive review drawer, and explicit confirmation. Schema sources are primary official NUT manpages and driver documentation/help; runtime internet access and guessed defaults are excluded.
+```text
+Graphical Form
+    → Semantic Draft
+    → Schema / Validation
+    → T13 syntax-preserving document
+    → Semantic Review
+    → Generated Preview
+    → T14 safe-write
+    → Local / SFTP / SMB
+```
 
-T24 also establishes `pt-BR` (default) and `en-US` UI localization. User-facing presentation is localized through stable semantic resource keys, while NUT filenames, directives, drivers, status/configuration tokens, and serialization stay invariant. Display formatting follows culture; NUT serialization is culture-invariant. Both cultures and responsive/accessibility states are planned T29 validation requirements.
+Applying a configuration change never silently restarts a service.
 
-## 9. Planned profile validation and focused administration UX (T24A/T24B)
+The implemented UX includes driver-aware UPS controls, setting-specific Automatic semantics, the `runtimecal` assistant, graphical custom parameters that preserve unknown content, redacted change-only secrets, semantic review, a responsive review drawer, and explicit confirmation. Schema sources are the primary official NUT manpages and driver documentation; runtime internet access and guessed defaults are excluded.
 
-T24A and T24B are planned, not implemented. Structured profile fields validate before Save: monitoring and management host input means only an IP address or hostname, ports remain in range, and remote/local transport requirements are checked across fields. Local/Remote and SFTP/SMB choices are reversible during a draft. Operational Test Connection is separate from syntactic validity and does not disclose secrets.
+T24 also established `pt-BR` (default) and `en-US` UI localization. User-facing presentation is localized through stable semantic resource keys, while NUT filenames, directives, drivers, status/configuration tokens, and serialization stay invariant. Display formatting follows culture; NUT serialization is culture-invariant. Validating both cultures across the responsive and accessibility states remains a T29 requirement.
 
-New normal installations target real data rather than silently enabling simulated mode; existing persisted preference is preserved by a future migration. Active simulation is visibly identified. The current live-validation findings are known observations, not completed T21 acceptance. Before T25 expansion, administration surfaces become focused and responsive while retaining all existing reviewed configuration, service, driver, remote, credential, and privilege boundaries.
+## 9. Profile validation and focused administration UX (T24A/T24B)
 
-## 8. MVP package acceptance
+Structured profile fields validate before Save: monitoring and management host input means only an IP address or hostname, ports remain in range, and remote/local transport requirements are checked across fields. Local/Remote and SFTP/SMB choices are reversible during a draft. Operational Test Connection is separate from syntactic validity and does not disclose secrets.
+
+New installations target real data rather than silently enabling simulated mode, and an existing persisted preference is preserved by the settings migration. Active simulation is visibly identified. Administration is decomposed into focused, responsive surfaces that retain every existing reviewed configuration, service, driver, remote, credential, and privilege boundary.
+
+## 10. MVP package acceptance
 
 The MVP package was accepted after the Windows x64 archive was manually validated against a real NUT server using the read-only checklist in [MVP-VALIDATION.md](MVP-VALIDATION.md). T11 is done; the checklist remains as a regression record.
 
-## 9. Upstream strategy
+## 11. Upstream strategy
 
 NutManager documents and reproduces limitations before proposing upstream NUT work. Approved upstream work uses the official `networkupstools/nut` repository and focused branches in `Marcelo-PX/nut`; the upstream source tree is not embedded in the normal NutManager workspace.
