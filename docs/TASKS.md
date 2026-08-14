@@ -673,9 +673,18 @@ product state, and the Administration surface already has an empty-file-list pat
 would invent a rule the architecture does not need. The form says plainly what an empty selection
 means.
 
-Still open in this task: the explicit "detect available files" action and its per-transport probes,
-repair of the Administration selection when the file currently open is disabled, and the focused
-tests for those two behaviours.
+Detection is a separate, explicit step. `INutManagedFileDetector` reports which supported files are
+actually present and hands back a proposal; nothing is applied without the administrator asking.
+The local detector reads the presence flags the installation detector already produces, and the
+remote one reads what directory validation already established over the existing session — the same
+pinned host key for SFTP, the same exact-share confinement and resolved credential for SMB. Neither
+adds I/O, opens a session, or looks at a name outside the closed set, so the `.sample` files NUT
+ships and directives like `upssched.conf` are never offered.
+
+Administration takes its file list from the profile's selection, and refuses a file outside it, so
+the selection can never point at something the profile does not expose. Because the runtime profile
+context is captured at bootstrap, a change to the selection applies on restart, exactly like every
+other profile edit.
 
 ### Validation record
 

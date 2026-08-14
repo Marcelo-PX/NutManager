@@ -738,6 +738,15 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
+        // A file the profile does not manage is not in this list, so a reference to one can only be
+        // stale. Refusing it here means the selection can never point at something the profile no
+        // longer exposes, whatever produced the reference.
+        if (!ConfigurationFiles.Contains(file))
+        {
+            SetStatus(Strings.Get("Administration.File.NotEnabled"));
+            return;
+        }
+
         if (HasDraftChanges || HasPreview)
         {
             SetStatus("Aplique ou descarte as alterações antes de trocar de arquivo.");

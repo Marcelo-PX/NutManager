@@ -297,7 +297,7 @@ public sealed partial class ManagedNutFileToggleViewModel : ObservableObject
     public ManagedNutFileToggleViewModel(NutConfigurationFileKind kind)
     {
         Kind = kind;
-        FileName = NutConfigurationFileNames.For(kind);
+        FileName = ManagedNutConfigurationFiles.FileNameFor(kind);
     }
 
     public NutConfigurationFileKind Kind { get; }

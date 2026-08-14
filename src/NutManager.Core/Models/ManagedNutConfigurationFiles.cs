@@ -1,4 +1,5 @@
 using NutManager.Core.Configuration;
+using NutManager.Core.Services;
 
 namespace NutManager.Core.Models;
 
@@ -72,6 +73,28 @@ public sealed class ManagedNutConfigurationFiles : IEquatable<ManagedNutConfigur
     public static ManagedNutConfigurationFiles CreateOrAll(IEnumerable<NutConfigurationFileKind>? kinds) =>
         kinds is null ? All : Create(kinds);
 
+    /// <summary>
+    /// The invariant NUT file name for a kind. The mapping itself lives in
+    /// <see cref="RemoteNutConfigurationFiles"/>; this is the one place callers need to know about.
+    /// </summary>
+    public static string FileNameFor(NutConfigurationFileKind kind) => RemoteNutConfigurationFiles.GetFileName(kind);
+
+    /// <summary>Matches a file name against the supported set, case-insensitively.</summary>
+    public static bool TryParseFileName(string? fileName, out NutConfigurationFileKind kind)
+    {
+        foreach (var candidate in SupportedKinds)
+        {
+            if (string.Equals(RemoteNutConfigurationFiles.GetFileName(candidate), fileName, StringComparison.OrdinalIgnoreCase))
+            {
+                kind = candidate;
+                return true;
+            }
+        }
+
+        kind = default;
+        return false;
+    }
+
     public ManagedNutConfigurationFiles With(NutConfigurationFileKind kind, bool enabled)
     {
         if (Contains(kind) == enabled)
@@ -100,34 +123,5 @@ public sealed class ManagedNutConfigurationFiles : IEquatable<ManagedNutConfigur
 
     public override string ToString() => _kinds.Length == 0
         ? "(none)"
-        : string.Join(", ", _kinds.Select(NutConfigurationFileNames.For));
-}
-
-/// <summary>The literal file names. They are NUT's own and are never localized.</summary>
-public static class NutConfigurationFileNames
-{
-    public static string For(NutConfigurationFileKind kind) => kind switch
-    {
-        NutConfigurationFileKind.NutConf => "nut.conf",
-        NutConfigurationFileKind.UpsConf => "ups.conf",
-        NutConfigurationFileKind.UpsdConf => "upsd.conf",
-        NutConfigurationFileKind.UpsdUsers => "upsd.users",
-        NutConfigurationFileKind.UpsmonConf => "upsmon.conf",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "The NUT configuration file kind is not supported.")
-    };
-
-    public static bool TryParse(string? fileName, out NutConfigurationFileKind kind)
-    {
-        foreach (var candidate in ManagedNutConfigurationFiles.SupportedKinds)
-        {
-            if (string.Equals(For(candidate), fileName, StringComparison.OrdinalIgnoreCase))
-            {
-                kind = candidate;
-                return true;
-            }
-        }
-
-        kind = default;
-        return false;
-    }
+        : string.Join(", ", _kinds.Select(FileNameFor));
 }

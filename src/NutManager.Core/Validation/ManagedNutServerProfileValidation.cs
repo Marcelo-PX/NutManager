@@ -210,7 +210,7 @@ public static class ManagedNutServerProfileValidator
         NutManagementProfile? management = null;
         if (input.ManagementMode == NutManagementMode.Local)
         {
-            management = new NutManagementProfile(NutManagementMode.Local);
+            management = new NutManagementProfile(NutManagementMode.Local, managedFiles: input.ManagedFiles);
         }
         else if (input.ManagementMode == NutManagementMode.Remote && input.ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp)
         {

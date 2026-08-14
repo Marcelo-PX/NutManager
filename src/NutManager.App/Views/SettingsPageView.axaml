@@ -308,6 +308,9 @@
                                  TextWrapping="Wrap" />
                     </StackPanel>
 
+                    <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
+                    <Button Content="{Binding ForgetCredentialText}" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
+
                     <!--
                       Which of the five supported files this profile exposes. This is intent, not
                       inventory: a file can be enabled and currently missing, and detection only
@@ -332,9 +335,6 @@
                                  Foreground="{DynamicResource NutWarningBrush}"
                                  TextWrapping="Wrap" />
                     </StackPanel>
-
-                    <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
-                    <Button Content="{Binding ForgetCredentialText}" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
                   </StackPanel>
 
                   <TextBlock Text="{Binding LocalManagementHelp}"
