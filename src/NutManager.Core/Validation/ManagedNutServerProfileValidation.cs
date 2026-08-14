@@ -46,7 +46,8 @@ public sealed record ManagedNutServerProfileInput(
     string? SmbSharePath,
     string? SmbConfigurationDirectory,
     SmbAuthenticationMode SmbAuthenticationMode,
-    string? SmbUsername);
+    string? SmbUsername,
+    ManagedNutConfigurationFiles? ManagedFiles = null);
 
 public sealed record ManagedNutServerProfileValidationResult(
     ManagedNutServerProfile? Profile,
@@ -269,7 +270,8 @@ public static class ManagedNutServerProfileValidator
                     input.TrustedHostKeyAlgorithm,
                     RemoteConfigurationTransportKind.SshSftp,
                     sshAuthenticationMode: input.SshAuthenticationMode,
-                    sshPrivateKeyPath: privateKeyPath.Value);
+                    sshPrivateKeyPath: privateKeyPath.Value,
+                    managedFiles: input.ManagedFiles);
             }
         }
         else if (input.ManagementMode == NutManagementMode.Remote && input.ConfigurationTransport == RemoteConfigurationTransportKind.Smb)
@@ -314,7 +316,8 @@ public static class ManagedNutServerProfileValidator
                     smbSharePath: share.Value,
                     smbConfigurationDirectory: configurationDirectory,
                     smbAuthenticationMode: input.SmbAuthenticationMode,
-                    smbUsername: smbUsername.Value);
+                    smbUsername: smbUsername.Value,
+                    managedFiles: input.ManagedFiles);
             }
         }
         else if (input.ManagementMode == NutManagementMode.Remote)

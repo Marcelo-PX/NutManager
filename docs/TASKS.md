@@ -48,7 +48,7 @@ Only one task should normally be in progress at a time.
 | T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | IN PROGRESS | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
-| T30 | DONE | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
+| T30 | IN PROGRESS | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
 
 ---
 
@@ -605,7 +605,7 @@ Validate and harden the complete graphical configuration experience.
 
 ## T30 — Windows-native SMB credential authentication
 
-**Status:** DONE
+**Status:** IN PROGRESS
 
 ### Objective
 
@@ -659,6 +659,23 @@ needed. Remove the redundant SMB fields that the new model makes meaningless.
   and lifecycle stayed as they were;
 - a connection failure no longer claims read-only access on a management profile, and an unprobed
   management session is no longer described as read-only.
+
+### Per-profile managed NUT files
+
+A profile now records which of the five supported files it exposes, defaulting to all of them so a
+profile saved before the setting existed behaves exactly as it did. Disabling a file only removes it
+from the Administration list for that profile: nothing on disk is created, renamed, or deleted, and a
+file that is enabled but currently absent still appears and reports its missing state when opened.
+Enabled-by-profile and currently-present are deliberately kept as separate facts.
+
+Zero files is allowed rather than blocked. A remote profile used only for monitoring is a legitimate
+product state, and the Administration surface already has an empty-file-list path, so forbidding it
+would invent a rule the architecture does not need. The form says plainly what an empty selection
+means.
+
+Still open in this task: the explicit "detect available files" action and its per-transport probes,
+repair of the Administration selection when the file currently open is disabled, and the focused
+tests for those two behaviours.
 
 ### Validation record
 

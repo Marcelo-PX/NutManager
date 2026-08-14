@@ -308,6 +308,31 @@
                                  TextWrapping="Wrap" />
                     </StackPanel>
 
+                    <!--
+                      Which of the five supported files this profile exposes. This is intent, not
+                      inventory: a file can be enabled and currently missing, and detection only
+                      changes these boxes when the administrator explicitly asks it to.
+                    -->
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="{Binding ManagedFilesLabel}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding ManagedFilesHelp}" FontSize="12"
+                                 Foreground="{DynamicResource NutTextSecondaryBrush}" TextWrapping="Wrap" />
+                      <ItemsControl ItemsSource="{Binding ProfileDraft.ManagedFileToggles}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                      Content="{Binding FileName}"
+                                      AutomationProperties.Name="{Binding FileName}" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="{Binding ManagedFilesNoneWarning}"
+                                 IsVisible="{Binding ProfileDraft.HasNoManagedFiles}"
+                                 FontSize="12"
+                                 Foreground="{DynamicResource NutWarningBrush}"
+                                 TextWrapping="Wrap" />
+                    </StackPanel>
+
                     <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
                     <Button Content="{Binding ForgetCredentialText}" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
                   </StackPanel>

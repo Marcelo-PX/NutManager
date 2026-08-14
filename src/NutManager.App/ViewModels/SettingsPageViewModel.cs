@@ -231,6 +231,9 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string SmbDirectoryLabel => Localizer.Get("Profiles.SmbDirectory");
     public string SmbSecretHelp => Localizer.Get("Profiles.SmbSecretHelp");
     public string SmbLegacyDirectoryText => Localizer.Get("Smb.Legacy.DirectoryAdjustment");
+    public string ManagedFilesLabel => Localizer.Get("Profiles.ManagedFiles");
+    public string ManagedFilesHelp => Localizer.Get("Profiles.ManagedFiles.Help");
+    public string ManagedFilesNoneWarning => Localizer.Get("Profiles.ManagedFiles.None");
     public string StoredCredentialLabel => Localizer.Get("Profiles.StoredCredential");
     public string ForgetCredentialText => Localizer.Get("Profiles.ForgetCredential");
     public string SaveProfileText => Localizer.Get("Common.Save");

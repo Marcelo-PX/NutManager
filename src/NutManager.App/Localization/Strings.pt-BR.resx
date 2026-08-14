@@ -935,4 +935,15 @@
   <data name="Smb.CredentialConflict" xml:space="preserve"><value>O Windows reportou um conflito de credenciais para este servidor. O NutManager não desconecta conexões existentes.</value></data>
   <data name="Smb.Legacy.DirectoryAdjustment" xml:space="preserve"><value>Este perfil aponta para uma subpasta do compartilhamento. Informe o compartilhamento exato que contém os arquivos do NUT.</value></data>
   <data name="Profiles.SmbShareHelp" xml:space="preserve"><value>Informe o compartilhamento exato que contém os arquivos de configuração do NUT.</value></data>
+  <data name="Profiles.ManagedFiles" xml:space="preserve"><value>Arquivos NUT gerenciados</value></data>
+  <data name="Profiles.ManagedFiles.Help" xml:space="preserve"><value>Selecione quais arquivos de configuração NUT este perfil deve exibir e gerenciar.</value></data>
+  <data name="Profiles.ManagedFiles.None" xml:space="preserve"><value>Nenhum arquivo selecionado: este perfil não exibirá configuração em Administração.</value></data>
+  <data name="Profiles.ManagedFiles.Detect" xml:space="preserve"><value>Detectar arquivos disponíveis</value></data>
+  <data name="Profiles.ManagedFiles.Detecting" xml:space="preserve"><value>Detectando…</value></data>
+  <data name="Profiles.ManagedFiles.DetectUnavailable" xml:space="preserve"><value>Conecte e valide o diretório de configuração para detectar os arquivos.</value></data>
+  <data name="Profiles.ManagedFiles.LastDetection" xml:space="preserve"><value>Última detecção</value></data>
+  <data name="Profiles.ManagedFiles.Found" xml:space="preserve"><value>{0} arquivo(s) encontrado(s).</value></data>
+  <data name="Profiles.ManagedFiles.NoneFound" xml:space="preserve"><value>Nenhum dos arquivos suportados foi encontrado.</value></data>
+  <data name="Profiles.ManagedFiles.DetectFailed" xml:space="preserve"><value>Não foi possível verificar o diretório de configuração.</value></data>
+  <data name="Administration.File.NotEnabled" xml:space="preserve"><value>Este arquivo não está habilitado para o perfil atual.</value></data>
 </root>

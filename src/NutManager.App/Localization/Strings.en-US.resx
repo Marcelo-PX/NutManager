@@ -935,4 +935,15 @@
   <data name="Smb.CredentialConflict" xml:space="preserve"><value>Windows reported a credential conflict for this server. NutManager does not disconnect existing connections.</value></data>
   <data name="Smb.Legacy.DirectoryAdjustment" xml:space="preserve"><value>This profile points at a subfolder of the share. Enter the exact share that holds the NUT files.</value></data>
   <data name="Profiles.SmbShareHelp" xml:space="preserve"><value>Enter the exact share that holds the NUT configuration files.</value></data>
+  <data name="Profiles.ManagedFiles" xml:space="preserve"><value>Managed NUT files</value></data>
+  <data name="Profiles.ManagedFiles.Help" xml:space="preserve"><value>Choose which NUT configuration files this profile should expose and manage.</value></data>
+  <data name="Profiles.ManagedFiles.None" xml:space="preserve"><value>No file selected: this profile will show no configuration under Administration.</value></data>
+  <data name="Profiles.ManagedFiles.Detect" xml:space="preserve"><value>Detect available files</value></data>
+  <data name="Profiles.ManagedFiles.Detecting" xml:space="preserve"><value>Detecting…</value></data>
+  <data name="Profiles.ManagedFiles.DetectUnavailable" xml:space="preserve"><value>Connect and validate the configuration directory to detect files.</value></data>
+  <data name="Profiles.ManagedFiles.LastDetection" xml:space="preserve"><value>Last detection</value></data>
+  <data name="Profiles.ManagedFiles.Found" xml:space="preserve"><value>{0} file(s) found.</value></data>
+  <data name="Profiles.ManagedFiles.NoneFound" xml:space="preserve"><value>None of the supported files were found.</value></data>
+  <data name="Profiles.ManagedFiles.DetectFailed" xml:space="preserve"><value>The configuration directory could not be checked.</value></data>
+  <data name="Administration.File.NotEnabled" xml:space="preserve"><value>This file is not enabled for the current profile.</value></data>
 </root>

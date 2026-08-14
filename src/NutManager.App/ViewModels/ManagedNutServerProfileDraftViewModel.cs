@@ -1,3 +1,4 @@
+using NutManager.Core.Configuration;
 using CommunityToolkit.Mvvm.ComponentModel;
 using NutManager.Core.Models;
 using NutManager.Core.Validation;
@@ -8,6 +9,18 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
 {
     public ManagedNutServerProfileDraftViewModel(ManagedNutServerProfile profile)
     {
+        ManagedFileToggles = [.. ManagedNutConfigurationFiles.SupportedKinds.Select(kind => new ManagedNutFileToggleViewModel(kind))];
+        foreach (var toggle in ManagedFileToggles)
+        {
+            // The computed set and the empty-state warning both depend on the toggles, and the
+            // dirty check compares the set, so a flipped box has to reach the draft itself.
+            toggle.PropertyChanged += (_, _) =>
+            {
+                OnPropertyChanged(nameof(ManagedFiles));
+                OnPropertyChanged(nameof(HasNoManagedFiles));
+            };
+        }
+
         Apply(profile);
     }
 
@@ -93,6 +106,30 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
 
     public bool IsSshPrivateKey => IsSshSftp && SshAuthenticationMode == SshAuthenticationMode.PrivateKey;
 
+    // ==================== Managed NUT files ====================
+
+    /// <summary>
+    /// One toggle per supported file, in the fixed presentation order. The draft holds the toggles
+    /// rather than a set so the checkboxes bind directly and dirty tracking works the same way it
+    /// does for every other field.
+    /// </summary>
+    public IReadOnlyList<ManagedNutFileToggleViewModel> ManagedFileToggles { get; }
+
+    public ManagedNutConfigurationFiles ManagedFiles =>
+        ManagedNutConfigurationFiles.Create(ManagedFileToggles.Where(toggle => toggle.IsEnabled).Select(toggle => toggle.Kind));
+
+    public bool HasNoManagedFiles => ManagedFiles.IsEmpty;
+
+    /// <summary>Replaces every toggle at once, used by Apply and by an explicit detection result.</summary>
+    public void SetManagedFiles(ManagedNutConfigurationFiles files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        foreach (var toggle in ManagedFileToggles)
+        {
+            toggle.IsEnabled = files.Contains(toggle.Kind);
+        }
+    }
+
     public static ManagedNutServerProfileDraftViewModel CreateNew()
     {
         var draft = new ManagedNutServerProfileDraftViewModel(new ManagedNutServerProfile(
@@ -134,6 +171,7 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SmbConfigurationDirectory = profile.Management.SmbConfigurationDirectory;
         SmbAuthenticationMode = profile.Management.SmbAuthenticationMode;
         SmbUsername = profile.Management.SmbUsername;
+        SetManagedFiles(profile.Management.ManagedFiles);
     }
 
     public void CopyFrom(ManagedNutServerProfileDraftViewModel source)
@@ -159,6 +197,7 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SmbConfigurationDirectory = source.SmbConfigurationDirectory;
         SmbAuthenticationMode = source.SmbAuthenticationMode;
         SmbUsername = source.SmbUsername;
+        SetManagedFiles(source.ManagedFiles);
     }
 
     public ManagedNutServerProfileInput ToInput() => new(
@@ -181,7 +220,8 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SmbSharePath,
         SmbConfigurationDirectory,
         SmbAuthenticationMode,
-        SmbUsername);
+        SmbUsername,
+        ManagedFiles);
 
     public ManagedNutServerProfileValidationResult Validate(IEnumerable<ManagedNutServerProfile> existingProfiles) =>
         ManagedNutServerProfileValidator.Validate(ToInput(), existingProfiles);
@@ -208,7 +248,8 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
                string.Equals(SmbSharePath, profile.Management.SmbSharePath, StringComparison.Ordinal) &&
                string.Equals(SmbConfigurationDirectory, profile.Management.SmbConfigurationDirectory, StringComparison.Ordinal) &&
                SmbAuthenticationMode == profile.Management.SmbAuthenticationMode &&
-               string.Equals(SmbUsername, profile.Management.SmbUsername, StringComparison.Ordinal);
+               string.Equals(SmbUsername, profile.Management.SmbUsername, StringComparison.Ordinal) &&
+               ManagedFiles.Equals(profile.Management.ManagedFiles);
     }
 
     partial void OnManagementModeChanged(NutManagementMode value)
@@ -246,4 +287,23 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
     {
         OnPropertyChanged(nameof(IsSshPrivateKey));
     }
+}
+
+/// <summary>
+/// A single file's checkbox. It carries the invariant NUT file name, which is never localized.
+/// </summary>
+public sealed partial class ManagedNutFileToggleViewModel : ObservableObject
+{
+    public ManagedNutFileToggleViewModel(NutConfigurationFileKind kind)
+    {
+        Kind = kind;
+        FileName = NutConfigurationFileNames.For(kind);
+    }
+
+    public NutConfigurationFileKind Kind { get; }
+
+    public string FileName { get; }
+
+    [ObservableProperty]
+    private bool _isEnabled = true;
 }
