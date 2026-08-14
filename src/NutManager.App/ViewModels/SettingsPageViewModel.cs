@@ -52,12 +52,14 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         ManagedNutServerProfileUpdateService? profileMutator = null,
         IRemoteCredentialStore? credentialStore = null,
         IManagedNutConnectionTester? connectionTester = null,
-        Guid? runtimeProfileId = null)
+        Guid? runtimeProfileId = null,
+        INutManagedFileDetector? managedFileDetector = null)
         : base(
             Localize(settings, "Settings.Title"),
             Localize(settings, "Settings.Description"))
     {
         ArgumentNullException.ThrowIfNull(settings);
+        _managedFileDetector = managedFileDetector;
         _settingsStore = settingsStore;
         _profileStore = profileStore;
         _profileMutator = profileStore is null ? null : profileMutator ?? new ManagedNutServerProfileUpdateService(profileStore);
@@ -234,6 +236,77 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string ManagedFilesLabel => Localizer.Get("Profiles.ManagedFiles");
     public string ManagedFilesHelp => Localizer.Get("Profiles.ManagedFiles.Help");
     public string ManagedFilesNoneWarning => Localizer.Get("Profiles.ManagedFiles.None");
+    public string ManagedFilesDetectText => Localizer.Get("Profiles.ManagedFiles.Detect");
+
+    private readonly INutManagedFileDetector? _managedFileDetector;
+
+    [ObservableProperty]
+    private bool _isDetectingManagedFiles;
+
+    [ObservableProperty]
+    private string? _managedFilesDetectionMessage;
+
+    /// <summary>
+    /// Detection needs somewhere to look. Without a detector, or with one that has no validated
+    /// location yet, the action stays disabled and says why rather than pretending to check.
+    /// </summary>
+    public bool CanDetectManagedFiles =>
+        !IsDetectingManagedFiles && _managedFileDetector is { CanDetect: true } && ProfileDraft is not null;
+
+    public string ManagedFilesDetectHint => _managedFileDetector is { CanDetect: true }
+        ? string.Empty
+        : Localizer.Get("Profiles.ManagedFiles.DetectUnavailable");
+
+    public bool HasManagedFilesDetectHint => !string.IsNullOrEmpty(ManagedFilesDetectHint);
+
+    /// <summary>
+    /// Looks for the supported files and applies what it found to the draft. This runs only when
+    /// asked: nothing detects on page load, and the result lands in the draft where it still has to
+    /// be saved, so the profile is never changed behind the administrator's back.
+    /// </summary>
+    [RelayCommand]
+    private async Task DetectManagedFilesAsync(CancellationToken cancellationToken)
+    {
+        if (_managedFileDetector is null || ProfileDraft is null)
+        {
+            return;
+        }
+
+        IsDetectingManagedFiles = true;
+        OnPropertyChanged(nameof(CanDetectManagedFiles));
+        ManagedFilesDetectionMessage = Localizer.Get("Profiles.ManagedFiles.Detecting");
+        try
+        {
+            var result = await _managedFileDetector.DetectAsync(cancellationToken);
+            ManagedFilesDetectionMessage = result.Status switch
+            {
+                NutManagedFileDetectionStatus.Success when result.Count == 0 =>
+                    Localizer.Get("Profiles.ManagedFiles.NoneFound"),
+                NutManagedFileDetectionStatus.Success => string.Format(
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    Localizer.Get("Profiles.ManagedFiles.Found"), result.Count),
+                NutManagedFileDetectionStatus.Unavailable =>
+                    Localizer.Get("Profiles.ManagedFiles.DetectUnavailable"),
+                NutManagedFileDetectionStatus.Cancelled => null,
+                _ => Localizer.Get("Profiles.ManagedFiles.DetectFailed")
+            };
+
+            if (result.IsSuccess)
+            {
+                ProfileDraft.SetManagedFiles(result.ToManagedFiles());
+            }
+        }
+        finally
+        {
+            IsDetectingManagedFiles = false;
+            OnPropertyChanged(nameof(CanDetectManagedFiles));
+        }
+    }
+
+    public bool HasManagedFilesDetectionMessage => !string.IsNullOrWhiteSpace(ManagedFilesDetectionMessage);
+
+    partial void OnManagedFilesDetectionMessageChanged(string? value) =>
+        OnPropertyChanged(nameof(HasManagedFilesDetectionMessage));
     public string StoredCredentialLabel => Localizer.Get("Profiles.StoredCredential");
     public string ForgetCredentialText => Localizer.Get("Profiles.ForgetCredential");
     public string SaveProfileText => Localizer.Get("Common.Save");

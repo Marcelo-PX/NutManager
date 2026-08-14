@@ -334,6 +334,21 @@
                                  FontSize="12"
                                  Foreground="{DynamicResource NutWarningBrush}"
                                  TextWrapping="Wrap" />
+                      <!-- Detection runs only when asked, and lands in the draft, which still has to be saved. -->
+                      <Button Content="{Binding ManagedFilesDetectText}"
+                              Command="{Binding DetectManagedFilesCommand}"
+                              IsEnabled="{Binding CanDetectManagedFiles}"
+                              AutomationProperties.Name="{Binding ManagedFilesDetectText}"
+                              HorizontalAlignment="Left" />
+                      <TextBlock Text="{Binding ManagedFilesDetectHint}"
+                                 IsVisible="{Binding HasManagedFilesDetectHint}"
+                                 Classes="nut-metadata"
+                                 TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding ManagedFilesDetectionMessage}"
+                                 IsVisible="{Binding HasManagedFilesDetectionMessage}"
+                                 Classes="nut-metadata"
+                                 TextWrapping="Wrap"
+                                 AutomationProperties.Name="{Binding ManagedFilesDetectionMessage}" />
                     </StackPanel>
                   </StackPanel>
 

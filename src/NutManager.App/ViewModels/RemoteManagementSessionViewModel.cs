@@ -117,6 +117,12 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public bool IsDirectoryValidated => _directoryValidation?.IsValid == true;
 
+    /// <summary>
+    /// The validated directory result, read-only. Validation already lists which recognised NUT
+    /// files are present, so file detection can read it instead of probing the share again.
+    /// </summary>
+    public RemoteNutDirectoryValidationResult? DirectoryValidation => _directoryValidation;
+
     public bool CanConnect => !IsBusy && !IsConnected && (IsSmb || (!string.IsNullOrWhiteSpace(_profile.Management.SshUsername) && (!UsesSshPrivateKey || !string.IsNullOrWhiteSpace(_profile.Management.SshPrivateKeyPath))));
 
     public bool HasStoredCredential => StoredCredentialStatus == RemoteCredentialStoreStatus.Success;
