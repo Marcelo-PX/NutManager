@@ -88,7 +88,11 @@ public sealed class WindowsSmbRemoteNutConfigurationTransport : IRemoteNutConfig
         catch (Exception)
         {
             await identity.DisposeAsync().ConfigureAwait(false);
-            return new RemoteNutConnectionResult(RemoteNutConnectionState.ConnectionFailed, message: "O compartilhamento SMB configurado não pôde ser verificado com acesso somente leitura.");
+            // "Somente leitura" used to appear here to describe the probe, which is a read-only
+            // listing. On screen it sat next to "Acesso: Gerenciar" and read as the profile's
+            // access mode, so a management profile appeared to have been downgraded. The access
+            // mode is a separate fact and no connection failure may imply anything about it.
+            return new RemoteNutConnectionResult(RemoteNutConnectionState.ConnectionFailed, message: "Não foi possível acessar o compartilhamento SMB configurado.");
         }
     }
 

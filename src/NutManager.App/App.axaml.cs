@@ -71,7 +71,13 @@ public partial class App : Application
         };
         var remoteManagement = isLocalManagement
             ? null
-            : new RemoteManagementSessionViewModel(runtimeProfile.Profile, remoteTransport, profileMutator, credentialStore, settings.Language);
+            : new RemoteManagementSessionViewModel(
+                runtimeProfile.Profile,
+                remoteTransport,
+                profileMutator,
+                credentialStore,
+                settings.Language,
+                new WindowsCredentialPrompt());
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,

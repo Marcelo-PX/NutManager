@@ -76,6 +76,21 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
 
     public bool IsSmb => IsRemote && ConfigurationTransport == RemoteConfigurationTransportKind.Smb;
 
+    public bool UsesSmbExplicitCredentials => IsSmb && SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials;
+
+    /// <summary>
+    /// A profile saved before the share became the exact configuration location still carries a
+    /// separate directory. It is neither dropped nor silently retargeted: the value stays in the
+    /// draft and the form asks the administrator to point the share at the right place, so the
+    /// effective location never changes behind their back.
+    /// </summary>
+    public bool HasLegacySmbConfigurationDirectory => IsSmb &&
+        !string.IsNullOrWhiteSpace(SmbConfigurationDirectory) &&
+        !string.Equals(
+            SmbConfigurationDirectory?.TrimEnd('\\'),
+            SmbSharePath?.TrimEnd('\\'),
+            StringComparison.OrdinalIgnoreCase);
+
     public bool IsSshPrivateKey => IsSshSftp && SshAuthenticationMode == SshAuthenticationMode.PrivateKey;
 
     public static ManagedNutServerProfileDraftViewModel CreateNew()
@@ -202,6 +217,21 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         OnPropertyChanged(nameof(IsSshSftp));
         OnPropertyChanged(nameof(IsSmb));
         OnPropertyChanged(nameof(IsSshPrivateKey));
+        NotifySmbDerivedState();
+    }
+
+    partial void OnSmbAuthenticationModeChanged(SmbAuthenticationMode value) => NotifySmbDerivedState();
+
+    partial void OnSmbSharePathChanged(string? value) =>
+        OnPropertyChanged(nameof(HasLegacySmbConfigurationDirectory));
+
+    partial void OnSmbConfigurationDirectoryChanged(string? value) =>
+        OnPropertyChanged(nameof(HasLegacySmbConfigurationDirectory));
+
+    private void NotifySmbDerivedState()
+    {
+        OnPropertyChanged(nameof(UsesSmbExplicitCredentials));
+        OnPropertyChanged(nameof(HasLegacySmbConfigurationDirectory));
     }
 
     partial void OnConfigurationTransportChanged(RemoteConfigurationTransportKind value)
@@ -209,6 +239,7 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         OnPropertyChanged(nameof(IsSshSftp));
         OnPropertyChanged(nameof(IsSmb));
         OnPropertyChanged(nameof(IsSshPrivateKey));
+        NotifySmbDerivedState();
     }
 
     partial void OnSshAuthenticationModeChanged(SshAuthenticationMode value)

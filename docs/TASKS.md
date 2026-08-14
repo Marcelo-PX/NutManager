@@ -48,6 +48,7 @@ Only one task should normally be in progress at a time.
 | T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | IN PROGRESS | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
+| T30 | IN PROGRESS | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
 
 ---
 
@@ -601,6 +602,44 @@ Validate and harden the complete graphical configuration experience.
 ### Completion criteria
 
 - graphical forms remain accessible, bilingual, responsive, and safe across local and supported remote transports.
+
+## T30 — Windows-native SMB credential authentication
+
+**Status:** IN PROGRESS
+
+### Objective
+
+Let an SMB profile authenticate the way Windows already does it: the current session's identity
+when that is enough, and the operating system's own credential dialog when another account is
+needed. Remove the redundant SMB fields that the new model makes meaningless.
+
+### Allowed scope
+
+- SMB profile model, validation, presentation, and the remote session's credential flow;
+- a Windows credential-prompt boundary behind a testable interface;
+- the connection LED's size and healthy colour.
+
+### Requirements
+
+- current Windows identity connects with no user name, no password and no stored credential;
+- another Windows account uses `CredUIPromptForWindowsCredentialsW`, never a NutManager password control;
+- an explicit credential is validated against the share before it is persisted, and a failed attempt leaves the previous one intact;
+- the share is the exact configuration location, so the separate directory field is retired without discarding legacy values;
+- Windows Credential Manager remains the only persistent secret store.
+
+### Do not
+
+- weaken exact-share confinement, map a drive, run `net use`/`cmdkey`, or disconnect global SMB sessions;
+- change SSH authentication, the safe-write pipeline, or any writer boundary;
+- let a password reach ordinary view-model state, profile JSON, logs, or the automation tree.
+
+### Validation
+
+- prompt state, credential-lifecycle, simplified-surface, and Manage/ReadOnly wording tests, plus Windows runtime validation of both authentication modes.
+
+### Completion criteria
+
+- both SMB authentication modes work on Windows with no redundant fields and no NutManager-owned password input.
 
 ## Task execution template
 

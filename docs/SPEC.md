@@ -76,7 +76,7 @@ NutManager writes configuration. It does not execute what that configuration des
 
 Transport secrets and NUT configuration secrets are separate and must not be conflated:
 
-- **transport secrets** — SSH passphrases/passwords and explicit SMB passwords. They are session-only by default and may, after an explicit successful connection, be saved in Windows Credential Manager. They authenticate NutManager to a remote host.
+- **transport secrets** — SSH passphrases/passwords and explicit SMB passwords. They are session-only by default and may, after an explicit successful connection, be saved in Windows Credential Manager. They authenticate NutManager to a remote host. An explicit SMB account is collected by the Windows credential dialog rather than by a NutManager control, and the current Windows identity needs no stored credential at all.
 - **NUT configuration secrets** — passwords stored inside `upsd.users` and `upsmon.conf`. They are change-only: an existing value is never read back into interface state, review, or preview, and the product reports only whether one is configured. There is no lookup from one domain into the other.
 
 ## 6. Managed profiles and remote boundary

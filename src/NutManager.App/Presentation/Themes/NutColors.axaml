@@ -108,6 +108,13 @@
   <SolidColorBrush x:Key="NutCriticalBrightBrush" Color="#FCA5A5" />
   <SolidColorBrush x:Key="NutCriticalSoftHoverBrush" Color="#4DEF4444" />
 
+  <!--
+    The status light's own green. It is a step brighter and more saturated than NutHealthyBrush so a
+    small lit ball still reads as lit; the shared healthy token stays where it is because it also
+    colours badge text and borders, where the same lift would look garish rather than luminous.
+  -->
+  <SolidColorBrush x:Key="NutLedHealthyBrush" Color="#3BEF88" />
+
   <SolidColorBrush x:Key="NutPurpleBrush" Color="#A78BFA" />
   <SolidColorBrush x:Key="NutFocusBrush" Color="#7DA9FF" />
   <SolidColorBrush x:Key="NutUnavailableBrush" Color="#687D95" />

@@ -36,11 +36,12 @@ public sealed record SmbConfigurationProfile
         SharePath = SmbUncPath.NormalizeShareRoot(sharePath);
         ConfigurationDirectory = SmbUncPath.NormalizeConfigurationDirectory(SharePath, configurationDirectory);
         AuthenticationMode = authenticationMode;
+
+        // Optional in both modes. For explicit credentials the account is chosen in the Windows
+        // credential dialog and recorded here afterwards, so a profile that has been set to use
+        // another account but not yet signed in has no username. Requiring one would make that
+        // ordinary intermediate state unrepresentable.
         Username = NutMonitoringProfile.NormalizeOptionalText(username, nameof(username), 255);
-        if (authenticationMode == SmbAuthenticationMode.ExplicitCredentials && Username is null)
-        {
-            throw new ArgumentException("An SMB username is required for explicit credentials.", nameof(username));
-        }
     }
 
     public string SharePath { get; }

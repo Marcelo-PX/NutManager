@@ -288,10 +288,10 @@ public static class ManagedNutServerProfileValidator
                 issues.Add(Error(ManagedProfileFields.SmbAuthenticationMode, "Smb.AuthenticationInvalid", "Validation.Smb.AuthenticationInvalid"));
             }
 
-            if (input.SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials && smbUsername.Value is null)
-            {
-                issues.Add(Error(ManagedProfileFields.SmbUsername, "Smb.UsernameRequired", "Validation.Smb.UsernameRequired"));
-            }
+            // An explicit-credential profile no longer carries a typed username. The account comes
+            // from the Windows credential dialog, so before the administrator has signed in once
+            // there is legitimately nothing here. That is a missing credential, which is an
+            // operational state resolved at connection time, not a syntactically invalid profile.
 
             var configurationDirectory = NormalizeOptional(input.SmbConfigurationDirectory);
             if (share.Value is not null && configurationDirectory is not null)

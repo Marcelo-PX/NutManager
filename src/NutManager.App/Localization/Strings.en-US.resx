@@ -916,4 +916,23 @@
   <data name="Upsmon.NotConfigured" xml:space="preserve"><value>NUT default</value></data>
   <data name="Common.Confirm" xml:space="preserve"><value>Confirm</value></data>
   <data name="Common.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Remote.Capability.ReadOnlyProfile" xml:space="preserve"><value>This profile is read-only; writing is not offered.</value></data>
+  <data name="Credential.Prompt.Caption" xml:space="preserve"><value>SMB credential</value></data>
+  <data name="Credential.Prompt.Message" xml:space="preserve"><value>Enter the Windows credentials used to reach {0}.</value></data>
+  <data name="Credential.Prompt.Cancelled" xml:space="preserve"><value>Authentication cancelled.</value></data>
+  <data name="Credential.Prompt.WindowsOnly" xml:space="preserve"><value>The Windows credential dialog is available on Windows only.</value></data>
+  <data name="Credential.Prompt.Failed" xml:space="preserve"><value>The Windows credential could not be obtained.</value></data>
+  <data name="Credential.Prompt.KeptPrevious" xml:space="preserve"><value>The new credential was not accepted; the previous one was kept.</value></data>
+  <data name="Credential.Prompt.SessionOnly" xml:space="preserve"><value>Credential valid for this session only.</value></data>
+  <data name="Smb.Credential.Title" xml:space="preserve"><value>SMB credential</value></data>
+  <data name="Smb.Credential.SignIn" xml:space="preserve"><value>Sign in with Windows credentials</value></data>
+  <data name="Smb.Credential.Change" xml:space="preserve"><value>Change credential</value></data>
+  <data name="Smb.Credential.Forget" xml:space="preserve"><value>Forget credential</value></data>
+  <data name="Smb.Credential.Stored" xml:space="preserve"><value>Stored securely by Windows</value></data>
+  <data name="Smb.Credential.SessionOnly" xml:space="preserve"><value>Credential valid for this session</value></data>
+  <data name="Smb.Credential.Required" xml:space="preserve"><value>Credential required</value></data>
+  <data name="Smb.CurrentIdentity.NoAccess" xml:space="preserve"><value>The current Windows identity cannot reach the share. Choose “Another Windows account” to use different credentials.</value></data>
+  <data name="Smb.CredentialConflict" xml:space="preserve"><value>Windows reported a credential conflict for this server. NutManager does not disconnect existing connections.</value></data>
+  <data name="Smb.Legacy.DirectoryAdjustment" xml:space="preserve"><value>This profile points at a subfolder of the share. Enter the exact share that holds the NUT files.</value></data>
+  <data name="Profiles.SmbShareHelp" xml:space="preserve"><value>Enter the exact share that holds the NUT configuration files.</value></data>
 </root>
