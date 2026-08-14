@@ -48,7 +48,7 @@ Only one task should normally be in progress at a time.
 | T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | IN PROGRESS | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
-| T30 | IN PROGRESS | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
+| T30 | DONE | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
 
 ---
 
@@ -605,7 +605,7 @@ Validate and harden the complete graphical configuration experience.
 
 ## T30 — Windows-native SMB credential authentication
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Objective
 
@@ -640,6 +640,40 @@ needed. Remove the redundant SMB fields that the new model makes meaningless.
 ### Completion criteria
 
 - both SMB authentication modes work on Windows with no redundant fields and no NutManager-owned password input.
+
+### Implemented
+
+- current Windows identity connects with the session's own token: no user name, no dialog, and no
+  credential read from the store, ignoring one left over from an older profile rather than reusing it;
+- another Windows account is collected by `CredUIPromptForWindowsCredentialsW` behind the
+  platform-neutral `IWindowsCredentialPrompt` contract, with the owner window handle supplied by the
+  App so the dialog belongs to NutManager; NutManager owns no password control for SMB;
+- an explicit credential is proven against the share before it is persisted, and only when the
+  dialog's own remember box was ticked; a refused credential is never stored and a failed
+  replacement leaves the working one in place; cancelling changes nothing;
+- the share became the exact configuration location, retiring the separate directory field; a legacy
+  value is preserved and surfaced for correction instead of being dropped or silently retargeted;
+- Windows Credential Manager remains the only persistent secret store, with the account name kept as
+  ordinary non-secret profile metadata;
+- the connection LED core was reduced and given its own brighter green while its glow, pulse, period
+  and lifecycle stayed as they were;
+- a connection failure no longer claims read-only access on a management profile, and an unprobed
+  management session is no longer described as read-only.
+
+### Validation record
+
+Gates: Release build with 0 warnings and 0 errors; 1150/1150 tests, up from a 1114 baseline;
+vulnerability gate clean; `dotnet format --verify-no-changes` clean; `git diff --check` clean.
+
+Windows runtime, current-identity profile against a real SMB share: no password control present on
+either surface, the management profile is described as such rather than as read-only, and the status
+light renders with its reduced core, glow and pulse intact. No configuration was applied.
+
+Not exercised on the development machine: the native dialog was not opened against a second Windows
+account, because no alternate credential with access to the share was available there. That path —
+prompt, cancel, successful sign-in, and both remember variants — is covered by automated tests
+against a faked native seam rather than by manual validation, and is worth confirming on a machine
+where a test account exists.
 
 ## Task execution template
 
