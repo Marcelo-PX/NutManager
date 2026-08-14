@@ -107,3 +107,26 @@ Icon-only shell controls have `AutomationProperties.Name`, tooltips, and the sha
 Mock/demo state is an unambiguous persistent badge, never merely an incidental checkbox value.
 
 All layouts introduced by T24A–T29 must be validated in both official cultures as those tasks are implemented. See [Localization](LOCALIZATION.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
+
+## Configuration file rail (T31)
+
+The NUT configuration page carries its own collapsible rail for the file list. It is built from the
+same pieces as the shell navigation item — accent bar for selection, `NutSelectedSheenBrush` for the
+selected surface, hover lift — so the two rails read as one idea at two scales rather than as two
+components that happen to sit near each other.
+
+`NutFileRailExpandedWidth` (228 px) matches the shell sidebar; `NutFileRailCollapsedWidth` (64 px) is
+tighter because this rail sits inside a page and only has to hold an 18 px icon. The width animates
+over `NutMotionShell` with `CubicEaseOut`, and the labels fade with it: a rail whose text vanished
+instantly read as content being dropped rather than folded away.
+
+The surface is `NutGlassSurfaceBrush`, a translucent tint over the page rather than a second opaque
+card, so the rail reads as glass above the content. The alpha is deliberately high — at lower opacity
+the file names lost contrast against whatever scrolled underneath, and legibility outranks the
+effect.
+
+Each file keeps its own icon, so a collapsed rail is still readable: `NutIconGeneral`, `NutIconUps`,
+`NutIconServer`, `NutIconUsers`, `NutIconMonitoring`. Collapsed, the row is only that icon, so its
+accessible name and tooltip carry both the purpose and the real file name. Selection is never colour
+alone: the accent bar and a semibold label carry it too. The selected row's icon pops once when it
+becomes current; nothing in the rail loops.

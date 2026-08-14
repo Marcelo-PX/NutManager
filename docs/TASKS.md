@@ -48,7 +48,8 @@ Only one task should normally be in progress at a time.
 | T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | DONE | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
-| T30 | IN PROGRESS | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
+| T30 | DONE | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
+| T31 | IN PROGRESS | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
 
 ---
 
@@ -613,7 +614,7 @@ picking up with the next presentation change that touches that bar.
 
 ## T30 — Windows-native SMB credential authentication
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Current scope
 
@@ -713,6 +714,37 @@ account, because no alternate credential with access to the share was available 
 prompt, cancel, successful sign-in, and both remember variants — is covered by automated tests
 against a faked native seam rather than by manual validation, and is worth confirming on a machine
 where a test account exists.
+
+## T31 — Collapsible NUT file rail
+
+**Status:** IN PROGRESS
+
+### Objective
+
+Turn the fixed file list on Administration → NUT Configuration into a collapsible page rail, so the
+editing form gets the space back, and bring that surface up to the current visual language.
+
+### Allowed scope
+
+- `NutManager.App` presentation for the configuration page, the shared rail styles it needs, and the
+  settings preference that remembers its state.
+
+### Requirements
+
+- expanded and collapsed states, with the collapsed one showing icons and keeping every row named;
+- only the files the profile manages, and a dignified empty state when it manages none;
+- the state persists and is restored on the next launch;
+- folding never changes the selected file, rebuilds an editor, or touches a draft;
+- switching files keeps using the existing guard.
+
+### Do not
+
+- alter T13/T14, the transports, credential handling, or the T30 file-selection logic;
+- add a continuous animation; the connection light stays the only one.
+
+### Validation
+
+- rail state, persistence and migration tests, plus manual Windows validation of the page.
 
 ## Task execution template
 

@@ -16,6 +16,8 @@
       <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#1B2531" />
       <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#131B26" />
       <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#14202F" />
+      <!-- Translucent panel tint: glass over the page, not another opaque card. -->
+      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#E6121A25" />
       <SolidColorBrush x:Key="NutBorderBrush" Color="#222C3B" />
       <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#1A2230" />
       <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#2E3D50" />
@@ -52,6 +54,7 @@
       <SolidColorBrush x:Key="NutSurface1Brush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="NutSurface2Brush" Color="#F7F9FD" />
       <SolidColorBrush x:Key="NutSurface3Brush" Color="#EDF2F9" />
+      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#E6F7F9FD" />
       <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#E4ECF9" />
       <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#F2F6FC" />
       <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#E1EBFD" />

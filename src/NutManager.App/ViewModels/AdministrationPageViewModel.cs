@@ -45,7 +45,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ManagedNutServerRuntimeContext? profileContext = null,
         RemoteManagementSessionViewModel? remoteManagement = null,
         UiLanguagePreference language = UiLanguagePreference.PtBr,
-        ILocalNutDriverCatalogSource? driverCatalogSource = null)
+        ILocalNutDriverCatalogSource? driverCatalogSource = null,
+        SidebarPreference configurationRailPreference = SidebarPreference.Expanded,
+        Action<SidebarPreference>? persistConfigurationRailPreference = null)
         : base(
             new NutManagerLocalizer(language).Get("Administration.Title"),
             profileContext?.Profile.Management.Mode == NutManagementMode.Remote
@@ -77,6 +79,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             IsRemoteManagementProfile,
             _profileContext?.Profile.AccessMode != ManagedNutServerAccessMode.ReadOnly);
         _selectedAdministrationSection = AdministrationSections[0];
+        _isConfigurationRailExpanded = configurationRailPreference == SidebarPreference.Expanded;
+        _persistConfigurationRailPreference = persistConfigurationRailPreference;
     }
 
     public NutManagerLocalizer Strings { get; }
@@ -110,6 +114,51 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public ObservableCollection<NutConfigurationFileItemViewModel> ConfigurationFiles { get; }
 
     public bool IsConfigurationFileListEmpty => ConfigurationFiles.All(file => !file.CanLoad);
+
+    // ==================== Configuration file rail ====================
+
+    private readonly Action<SidebarPreference>? _persistConfigurationRailPreference;
+
+    /// <summary>
+    /// Whether the file rail shows labels or only icons. This is presentation state and nothing
+    /// else: collapsing it never changes the selected file, never rebuilds an editor, and never
+    /// touches a draft. The rail exists to give the form more room, so the only thing it may do is
+    /// change how wide it is.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isConfigurationRailExpanded = true;
+
+    public string ConfigurationRailToggleText => Strings.Get(
+        IsConfigurationRailExpanded ? "Administration.Configuration.CollapseRail" : "Administration.Configuration.ExpandRail");
+
+    /// <summary>
+    /// The rail's width. Bound rather than styled because the width is the thing that animates, and
+    /// the two values are design tokens shared with the shell sidebar's own proportions.
+    /// </summary>
+    public double ConfigurationRailWidth => IsConfigurationRailExpanded ? 228 : 64;
+
+    [RelayCommand]
+    private void ToggleConfigurationRail() => IsConfigurationRailExpanded = !IsConfigurationRailExpanded;
+
+    /// <summary>
+    /// Mirrors the page's selection and draft state onto the rows, so the rail can mark them
+    /// without reaching back into the page for every item.
+    /// </summary>
+    private void RefreshConfigurationRailRows()
+    {
+        foreach (var file in ConfigurationFiles)
+        {
+            file.IsSelected = ReferenceEquals(file, SelectedFile);
+            file.HasPendingChanges = file.IsSelected && HasDraftChanges;
+        }
+    }
+
+    partial void OnIsConfigurationRailExpandedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ConfigurationRailToggleText));
+        OnPropertyChanged(nameof(ConfigurationRailWidth));
+        _persistConfigurationRailPreference?.Invoke(value ? SidebarPreference.Expanded : SidebarPreference.Collapsed);
+    }
 
     [ObservableProperty]
     private IReadOnlyList<NutConfigurationSectionViewModel> _sections;
@@ -1803,6 +1852,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     private void NotifyWorkflowPropertiesChanged()
     {
+        RefreshConfigurationRailRows();
         OnPropertyChanged(nameof(HasDraftChanges));
         OnPropertyChanged(nameof(HasPreview));
         OnPropertyChanged(nameof(IsEditorPlaceholderVisible));
@@ -2136,6 +2186,29 @@ public sealed partial class NutConfigurationFileItemViewModel : ObservableObject
     public string FileName { get; }
 
     public NutConfigurationFileKind FileKind { get; }
+
+    // The rail stacks one icon per file and shows the matching one, which is the pattern the
+    // Administration section list already uses. It avoids a value converter for what is a fixed,
+    // five-way choice known at compile time.
+    public bool IsNutConf => FileKind == NutConfigurationFileKind.NutConf;
+    public bool IsUpsConf => FileKind == NutConfigurationFileKind.UpsConf;
+    public bool IsUpsdConf => FileKind == NutConfigurationFileKind.UpsdConf;
+    public bool IsUpsdUsers => FileKind == NutConfigurationFileKind.UpsdUsers;
+    public bool IsUpsmonConf => FileKind == NutConfigurationFileKind.UpsmonConf;
+
+    /// <summary>
+    /// What a screen reader announces, and what the tooltip says when the rail is collapsed and
+    /// only the icon is visible. It carries the invariant file name because that is the thing an
+    /// administrator is actually looking for.
+    /// </summary>
+    public string AccessibleName => $"{Category} — {FileName}";
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    /// <summary>Set by the page when a draft is pending, so the rail can mark the row.</summary>
+    [ObservableProperty]
+    private bool _hasPendingChanges;
 
     [ObservableProperty]
     private string? _fullPath;
