@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shapes="clr-namespace:Avalonia.Controls.Shapes;assembly=Avalonia.Controls"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              xmlns:views="clr-namespace:NutManager.App.Views"
              x:Class="NutManager.App.Views.AdministrationPageView"
@@ -15,11 +16,17 @@
       <StackPanel Spacing="3">
         <StackPanel Orientation="Horizontal" Spacing="12">
           <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
-          <PathIcon Data="{DynamicResource NutIconAdministration}"
-                    Width="21"
-                    Height="21"
-                    Foreground="{DynamicResource NutAccentBrightBrush}"
-                    VerticalAlignment="Center" />
+          <Grid Width="24" Height="24" VerticalAlignment="Center">
+            <shapes:Path Data="{DynamicResource NutIconAdministrationBase}"
+                         Stretch="None"
+                         Fill="{DynamicResource NutAccentBrightBrush}" />
+            <shapes:Path Data="{DynamicResource NutIconAdministrationBadge}"
+                         Stretch="None"
+                         Fill="{DynamicResource NutAccentBrightBrush}" />
+            <shapes:Path Data="{DynamicResource NutIconAdministrationCheck}"
+                         Stretch="None"
+                         Fill="{DynamicResource NutOnAccentBrush}" />
+          </Grid>
         </StackPanel>
         <TextBlock Text="{Binding Description}" Classes="nut-page-subtitle" MaxWidth="900" TextWrapping="Wrap" />
       </StackPanel>

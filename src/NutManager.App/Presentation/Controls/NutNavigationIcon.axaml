@@ -29,11 +29,11 @@
       <shapes:Path x:Name="DevicesLedBottom" Classes="nut-nav-detail nut-nav-led-bottom" Stretch="None" Data="{DynamicResource NutIconDevicesLedBottom}" />
     </Grid>
 
-    <!-- Administration: the gear turns a fraction of a tooth. A full revolution would read as a
-         progress spinner, which is not what a settings destination means. -->
-    <Grid Classes="nut-icon-motion nut-icon-gear" IsVisible="{Binding IsAdministration, ElementName=Root}">
-      <shapes:Path x:Name="GearBase" Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconGearBase}" />
-      <shapes:Path x:Name="GearHub" Classes="nut-nav-detail nut-nav-hub" Stretch="None" Data="{DynamicResource NutIconGearHub}" />
+    <!-- Administration: a person plus verified badge communicates management and authorization. -->
+    <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsAdministration, ElementName=Root}">
+      <shapes:Path x:Name="AdministrationBase" Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconAdministrationBase}" />
+      <shapes:Path x:Name="AdministrationBadge" Classes="nut-nav-detail nut-nav-admin-badge" Stretch="None" Data="{DynamicResource NutIconAdministrationBadge}" />
+      <shapes:Path x:Name="AdministrationCheck" Classes="nut-nav-detail nut-nav-admin-check" Stretch="None" Data="{DynamicResource NutIconAdministrationCheck}" />
     </Grid>
 
     <!-- Diagnostics: Fluent pulse with an endpoint reading. -->
@@ -42,18 +42,10 @@
       <shapes:Path x:Name="DiagnosticsDot" Classes="nut-nav-detail nut-nav-pulse-dot" Stretch="None" Data="{DynamicResource NutIconDiagnosticsDot}" />
     </Grid>
 
-    <!-- Settings: the tracks stay put and each handle travels as one piece, ring and fill together,
-         the way a control being adjusted would. -->
-    <Grid IsVisible="{Binding IsSettings, ElementName=Root}">
-      <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconSettingsTracks}" />
-      <Grid x:Name="KnobTop">
-        <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconSettingsRingTop}" />
-        <shapes:Path Classes="nut-nav-detail nut-nav-knob-top" Stretch="None" Data="{DynamicResource NutIconSettingsKnobTop}" />
-      </Grid>
-      <Grid x:Name="KnobBottom">
-        <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconSettingsRingBottom}" />
-        <shapes:Path Classes="nut-nav-detail nut-nav-knob-bottom" Stretch="None" Data="{DynamicResource NutIconSettingsKnobBottom}" />
-      </Grid>
+    <!-- Settings owns the existing gear and its restrained rotation. -->
+    <Grid Classes="nut-icon-motion nut-icon-gear" IsVisible="{Binding IsSettings, ElementName=Root}">
+      <shapes:Path x:Name="GearBase" Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconGearBase}" />
+      <shapes:Path x:Name="GearHub" Classes="nut-nav-detail nut-nav-hub" Stretch="None" Data="{DynamicResource NutIconGearHub}" />
     </Grid>
   </Grid>
 </UserControl>

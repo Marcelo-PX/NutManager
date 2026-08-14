@@ -33,6 +33,9 @@ public sealed class PresentationAssetTests
     // Navigation and shell glyphs.
     [InlineData("NutIconOverviewBase")]
     [InlineData("NutIconDevicesBase")]
+    [InlineData("NutIconAdministrationBase")]
+    [InlineData("NutIconAdministrationBadge")]
+    [InlineData("NutIconAdministrationCheck")]
     [InlineData("NutIconGearBase")]
     [InlineData("NutIconDiagnosticsBase")]
     [InlineData("NutIconSettingsBase")]

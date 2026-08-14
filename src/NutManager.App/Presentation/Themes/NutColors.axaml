@@ -86,6 +86,7 @@
 
   <SolidColorBrush x:Key="NutAccentBrush" Color="#3B82F6" />
   <SolidColorBrush x:Key="NutAccentBrightBrush" Color="#60A5FA" />
+  <SolidColorBrush x:Key="NutOnAccentBrush" Color="#FFFFFF" />
   <SolidColorBrush x:Key="NutAccentSoftBrush" Color="#332F6FE0" />
   <SolidColorBrush x:Key="NutCyanBrush" Color="#38BDF8" />
   <SolidColorBrush x:Key="NutHealthyBrush" Color="#4ADE80" />

@@ -128,6 +128,11 @@
               Classes="nut-shell-sidebar"
               IsEnabled="{Binding IsBackgroundInteractionEnabled}"
               ClipToBounds="True">
+        <Border.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
+          </Transitions>
+        </Border.Transitions>
         <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="12,10,12,10">
           <Button Grid.Row="0"
                   Classes="nut-icon"
@@ -164,7 +169,81 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
 
-          <Border Grid.Row="2" Classes="nut-profile-card" IsVisible="{Binding IsSidebarExpanded}" Margin="0,12,0,8">
+          <Button x:Name="ProfileQuickMenuButton"
+                  Grid.Row="2"
+                  Classes="nut-profile-card"
+                  IsVisible="{Binding IsSidebarExpanded}"
+                  Margin="0,12,0,8"
+                  ToolTip.Tip="{Binding OpenProfilesText}"
+                  AutomationProperties.Name="{Binding OpenProfilesText}">
+            <Button.Flyout>
+              <Flyout Placement="Top"
+                      FlyoutPresenterClasses="nut-profile-flyout"
+                      Opened="ProfileQuickMenuFlyout_OnOpened"
+                      Closed="ProfileQuickMenuFlyout_OnClosed">
+                <Border x:Name="ProfileQuickMenuSurface"
+                        Width="{DynamicResource NutSidebarExpandedWidth}"
+                        Padding="12"
+                        Margin="0,8,0,0"
+                        Opacity="0"
+                        Classes="nut-profile-flyout-surface">
+                  <Border.Transitions>
+                    <Transitions>
+                      <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                          <CubicEaseOut />
+                        </DoubleTransition.Easing>
+                      </DoubleTransition>
+                      <ThicknessTransition Property="Margin" Duration="0:0:0.22">
+                        <ThicknessTransition.Easing>
+                          <CubicEaseOut />
+                        </ThicknessTransition.Easing>
+                      </ThicknessTransition>
+                    </Transitions>
+                  </Border.Transitions>
+                  <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
+                    <TextBlock Text="{Binding SavedProfilesText}" Classes="nut-card-title" Margin="8,5,8,0" />
+                    <ScrollViewer Grid.Row="1" MaxHeight="330" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                      <ItemsControl ItemsSource="{Binding ManagedProfileCards}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
+                            <Button Classes="nut-profile-menu-item"
+                                    Click="ProfileQuickMenuItem_OnClick"
+                                    AutomationProperties.Name="{Binding Name}">
+                              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Border Classes="nut-profile-avatar" Width="30" Height="30">
+                                  <PathIcon Data="{DynamicResource NutIconProfile}" Width="15" Height="15" Foreground="{DynamicResource NutTextSecondaryBrush}" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Text="{Binding Endpoint}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Classes="nut-metadata accent" TextTrimming="CharacterEllipsis">
+                                    <Run Text="{Binding ManagementMode}" /><Run Text=" · " /><Run Text="{Binding AccessMode}" />
+                                  </TextBlock>
+                                  <TextBlock Text="{Binding Transport}"
+                                             Classes="nut-metadata"
+                                             IsVisible="{Binding HasTransport}"
+                                             TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" IsVisible="{Binding IsActive}">
+                                  <PathIcon Data="{DynamicResource NutIconCheck}" Width="13" Height="13" Foreground="{DynamicResource NutHealthyBrush}" />
+                                  <TextBlock Text="{Binding ActiveText}" Classes="nut-metadata" Foreground="{DynamicResource NutHealthyBrush}" />
+                                </StackPanel>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                    <Button Grid.Row="2"
+                            Classes="nut-profile-manage"
+                            Content="{Binding ManageProfilesText}"
+                            Click="ManageProfiles_OnClick"
+                            AutomationProperties.Name="{Binding ManageProfilesText}" />
+                  </Grid>
+                </Border>
+              </Flyout>
+            </Button.Flyout>
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
               <Border Classes="nut-profile-avatar">
                 <PathIcon Data="{DynamicResource NutIconProfile}" Width="17" Height="17" Foreground="{DynamicResource NutTextSecondaryBrush}" />
@@ -180,7 +259,7 @@
                         Foreground="{DynamicResource NutTextMutedBrush}"
                         VerticalAlignment="Center" />
             </Grid>
-          </Border>
+          </Button>
 
           <TextBlock Grid.Row="3"
                      Text="{Binding ApplicationVersionText}"
@@ -223,14 +302,28 @@
       </Grid>
 
       <Grid Grid.ColumnSpan="3"
-            IsVisible="{Binding IsOverlayOpen}"
+            IsVisible="{Binding IsSidebarOverlay}"
+            IsEnabled="{Binding IsOverlayOpen}"
+            IsHitTestVisible="{Binding IsOverlayOpen}"
+            Opacity="{Binding NavigationOverlayOpacity}"
             KeyboardNavigation.TabNavigation="Cycle"
             ZIndex="20">
+        <Grid.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+          </Transitions>
+        </Grid.Transitions>
         <Border Background="{DynamicResource NutOverlayScrimBrush}" PointerPressed="NavigationOverlayScrim_OnPointerPressed" />
         <Border Width="288"
                 HorizontalAlignment="Left"
                 Classes="nut-shell-sidebar"
+                Margin="{Binding NavigationOverlayMargin}"
                 Padding="14">
+          <Border.Transitions>
+            <Transitions>
+              <ThicknessTransition Property="Margin" Duration="0:0:0.22" Easing="CubicEaseOut" />
+            </Transitions>
+          </Border.Transitions>
           <Grid RowDefinitions="Auto,*" RowSpacing="12">
             <Button x:Name="OverlayCloseButton"
                     Classes="nut-icon"
@@ -263,12 +356,18 @@
 
     <!-- ==================== Footer ==================== -->
     <Border Grid.Row="2" Classes="nut-footer" Padding="16,0">
-      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-        <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+      <Grid>
+        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
           <PathIcon Data="{DynamicResource NutIconShield}" Width="13" Height="13" Foreground="{DynamicResource NutHealthyBrush}" />
           <TextBlock Text="{Binding AdministrationConfirmationText}" Classes="nut-metadata" VerticalAlignment="Center" />
         </StackPanel>
-        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+        <TextBlock Text="{Binding FooterAuthorshipText}"
+                   Classes="nut-metadata"
+                   Foreground="{DynamicResource NutTextMutedBrush}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding IsFooterAuthorshipVisible}" />
+        <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
           <Ellipse Width="7" Height="7" Fill="{DynamicResource NutHealthyBrush}" IsVisible="{Binding IsConnectionHealthy}" />
           <Ellipse Width="7" Height="7" Fill="{DynamicResource NutWarningBrush}" IsVisible="{Binding IsConnectionPending}" />
           <Ellipse Width="7" Height="7" Fill="{DynamicResource NutCriticalBrush}" IsVisible="{Binding IsConnectionCritical}" />

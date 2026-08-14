@@ -47,7 +47,7 @@ Only one task should normally be in progress at a time.
 | T27 | DONE | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
 | T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
-| T29 | TODO | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
+| T29 | IN PROGRESS | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 
 ---
 
@@ -565,7 +565,13 @@ Windows runtime smoke against a real installation: ten rapid selections across t
 
 ## T29 — Graphical configuration UX hardening
 
-**Status:** TODO
+**Status:** IN PROGRESS
+
+### Current hardening batch
+
+The first in-progress batch covers sidebar motion, profile quick navigation, footer authorship,
+and consistent Administration/Settings icon semantics. Full accessibility, scaling, responsive,
+and Local/SFTP/SMB regression acceptance remains pending; this batch does not complete T29.
 
 ### Objective
 
