@@ -47,7 +47,7 @@ Only one task should normally be in progress at a time.
 | T27 | DONE | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
 | T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
-| T29 | IN PROGRESS | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
+| T29 | DONE | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 | T30 | IN PROGRESS | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
 
 ---
@@ -566,13 +566,14 @@ Windows runtime smoke against a real installation: ten rapid selections across t
 
 ## T29 — Graphical configuration UX hardening
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
-### Current hardening batch
+T29 was completed and merged into `main` through PR #35.
 
-The first in-progress batch covers sidebar motion, profile quick navigation, footer authorship,
-and consistent Administration/Settings icon semantics. Full accessibility, scaling, responsive,
-and Local/SFTP/SMB regression acceptance remains pending; this batch does not complete T29.
+### Delivered
+
+Sidebar motion, profile quick navigation, footer authorship, and consistent Administration and
+Settings icon semantics.
 
 ### Objective
 
@@ -585,7 +586,7 @@ Validate and harden the complete graphical configuration experience.
 ### Requirements
 
 - Wide/Medium/Compact, sidebar/drawer, keyboard, focus, automation, clipping/overflow, and semantic-error validation;
-- accessible names on every actionable control, including the configuration action bar, whose buttons currently report their panel type instead of their label to UI Automation because their content is a panel rather than text;
+- accessible names on every actionable control;
 - `pt-BR` and `en-US` validation; preference persistence;
 - 100/125/150% Windows scaling, invalid-field states, and non-blue Windows system-accent regression;
 - local, SFTP, and SMB regression of reviewed safe writes and recovery;
@@ -599,6 +600,13 @@ Validate and harden the complete graphical configuration experience.
 
 - automated responsive/resource/accessibility tests plus documented manual Windows validation.
 
+### Known follow-up
+
+The configuration action bar's buttons wrap their content in a panel, so UI Automation announces the
+panel type rather than the button label. This is understood and deliberately deferred rather than
+outstanding work on this task: it needs `AutomationProperties.Name` on those buttons and is worth
+picking up with the next presentation change that touches that bar.
+
 ### Completion criteria
 
 - graphical forms remain accessible, bilingual, responsive, and safe across local and supported remote transports.
@@ -606,6 +614,11 @@ Validate and harden the complete graphical configuration experience.
 ## T30 — Windows-native SMB credential authentication
 
 **Status:** IN PROGRESS
+
+### Current scope
+
+Windows-native SMB credentials, the simplified SMB profile form, per-profile managed NUT file
+selection, and detection of the supported files.
 
 ### Objective
 

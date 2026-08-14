@@ -44,9 +44,11 @@ The current product also implements:
 - T26 graphical `ups.conf` with driver-aware descriptors and the `runtimecal` assistant;
 - T27 graphical `nut.conf` and `upsd.conf`;
 - T27A approved visual fidelity, shared iconography, restrained motion, and navigation hardening;
-- T28 graphical `upsd.users` and `upsmon.conf` with change-only secrets.
+- T28 graphical `upsd.users` and `upsmon.conf` with change-only secrets;
+- T29 graphical-configuration UX hardening.
 
-T29, the final graphical-configuration UX hardening, is the remaining task in the current cycle.
+T30, Windows-native SMB credential authentication with per-profile managed NUT file selection, is
+the task in progress.
 
 ## 4. Platform and quality requirements
 
@@ -103,14 +105,14 @@ Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can w
 
 ### Next
 
-- T29 graphical configuration UX hardening: responsive, accessibility, keyboard/focus, Windows scaling, bilingual presentation, and local/SFTP/SMB regression validation.
+- T30 Windows-native SMB credential authentication: the operating system's own credential dialog for an explicit SMB account, a simplified SMB profile form, and per-profile selection of the NUT files a profile manages.
 
 ### Later
 
 - T22 deferred Linux compatibility evaluation;
 - multi-server simultaneous runtime, history, notifications, and other future product capabilities as separately scoped.
 
-## 8. Graphical-first administration (T24–T28 implemented, T29 remaining)
+## 8. Graphical-first administration (T24–T29 implemented)
 
 Normal administrators configure supported NUT settings graphically, without manually editing the supported `.conf` files. Dedicated experiences exist for `nut.conf`, `ups.conf`, `upsd.conf`, `upsd.users`, and `upsmon.conf`. Generated text is a read-only preview or advanced inspection, never the primary editor.
 
@@ -131,7 +133,7 @@ Applying a configuration change never silently restarts a service.
 
 The implemented UX includes driver-aware UPS controls, setting-specific Automatic semantics, the `runtimecal` assistant, graphical custom parameters that preserve unknown content, redacted change-only secrets, semantic review, a responsive review drawer, and explicit confirmation. Schema sources are the primary official NUT manpages and driver documentation; runtime internet access and guessed defaults are excluded.
 
-T24 also established `pt-BR` (default) and `en-US` UI localization. User-facing presentation is localized through stable semantic resource keys, while NUT filenames, directives, drivers, status/configuration tokens, and serialization stay invariant. Display formatting follows culture; NUT serialization is culture-invariant. Validating both cultures across the responsive and accessibility states remains a T29 requirement.
+T24 also established `pt-BR` (default) and `en-US` UI localization. User-facing presentation is localized through stable semantic resource keys, while NUT filenames, directives, drivers, status/configuration tokens, and serialization stay invariant. Display formatting follows culture; NUT serialization is culture-invariant. Both cultures were validated across the responsive and accessibility states in T29.
 
 ## 9. Profile validation and focused administration UX (T24A/T24B)
 

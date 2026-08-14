@@ -2,7 +2,7 @@
 
 NutManager is a Windows-first desktop client and local administration interface for [Network UPS Tools (NUT)](https://github.com/networkupstools/nut), built with Avalonia and .NET.
 
-> Project status: active development. Windows x64 monitoring, local and remote administration, the recoverable configuration pipeline, and dedicated graphical configuration for the supported NUT files are implemented. Final graphical-configuration UX hardening remains T29.
+> Project status: active development. Windows x64 monitoring, local and remote administration, the recoverable configuration pipeline, and dedicated graphical configuration for the supported NUT files are implemented. Windows-native SMB credential authentication is in progress as T30.
 
 ## Purpose
 
