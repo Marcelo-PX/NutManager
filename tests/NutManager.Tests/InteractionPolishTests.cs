@@ -17,7 +17,7 @@ public sealed class InteractionPolishTests
         Repository.Read(Path.Combine("src", "NutManager.App", "Presentation", "Controls", file));
 
     [Theory]
-    [InlineData(NutLedState.Healthy, "NutHealthyBrush")]
+    [InlineData(NutLedState.Healthy, "NutLedHealthyBrush")]
     [InlineData(NutLedState.Pending, "NutWarningBrush")]
     [InlineData(NutLedState.Critical, "NutCriticalBrush")]
     [InlineData(NutLedState.Unavailable, "NutUnavailableBrush")]
@@ -27,6 +27,51 @@ public sealed class InteractionPolishTests
         var led = new NutStatusLed { State = state };
         Assert.Equal(state, led.State);
         Assert.Contains(expected, Controls("NutStatusLed.axaml.cs"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheHealthyLedHasItsOwnGreenSoTheSharedBadgeTokenIsUntouched()
+    {
+        var colors = Themes("NutColors.axaml");
+
+        // Two separate tokens: the ball is lifted, badge text and borders are not.
+        Assert.Contains("x:Key=\"NutLedHealthyBrush\" Color=\"#3BEF88\"", colors, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"NutHealthyBrush\" Color=\"#4ADE80\"", colors, StringComparison.Ordinal);
+
+        // The glow is a shadow, and a shadow colour cannot be bound to a resource, so the literal
+        // has to be kept in step with the token by hand. A mismatch would light the ball in one
+        // green and its halo in another.
+        Assert.Contains("#F23BEF88", Controls("NutStatusLed.axaml"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheLedCoreIsSmallerThanItsHaloConstraintAllowsAtThePeakOfAPulse()
+    {
+        var source = Controls("NutStatusLed.axaml");
+
+        var core = LayerSize(source, "Core");
+        var halo = LayerSize(source, "Halo");
+
+        // The ball was reduced to read as a discreet indicator rather than a lamp.
+        Assert.Equal(8, core);
+        Assert.Equal(4, halo);
+
+        // The invariant that keeps a dark rim from appearing: the shadow's source must still sit
+        // inside the core at the widest point of the breath, not just at rest.
+        const double peakScale = 1.45;
+        Assert.True(halo * peakScale < core, $"halo {halo} scaled by {peakScale} must stay under core {core}");
+
+        // Whole-pixel centring: an odd size straddles a half pixel and the ball looks crooked.
+        Assert.All(new[] { core, halo }, size => Assert.Equal(0, size % 2));
+    }
+
+    private static int LayerSize(string axaml, string layer)
+    {
+        var index = axaml.IndexOf($"x:Name=\"{layer}\"", StringComparison.Ordinal);
+        Assert.True(index >= 0, $"layer {layer} not found");
+        var match = System.Text.RegularExpressions.Regex.Match(axaml[index..], @"Width=""(\d+)""");
+        Assert.True(match.Success, $"layer {layer} has no literal Width");
+        return int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
     }
 
     [Theory]

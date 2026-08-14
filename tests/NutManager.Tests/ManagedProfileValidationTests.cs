@@ -147,7 +147,7 @@ public sealed class ManagedProfileValidationTests
     }
 
     [Fact]
-    public void SmbValidationRequiresShareAndUsernameForExplicitCredentials()
+    public void SmbValidationStillRequiresAnExactShareRoot()
     {
         var invalid = ValidInput() with
         {
@@ -161,6 +161,46 @@ public sealed class ManagedProfileValidationTests
         var result = ManagedNutServerProfileValidator.Validate(invalid, []);
 
         Assert.Contains(result.Issues, issue => issue.Field == ManagedProfileFields.SmbSharePath);
+        Assert.False(result.CanSave);
+    }
+
+    [Fact]
+    public void AnExplicitCredentialSmbProfileSavesBeforeAnAccountHasBeenChosen()
+    {
+        // The account comes from the Windows credential dialog, not from a typed field, so a
+        // profile that has been switched to "another Windows account" but not yet signed in is a
+        // missing credential — an operational state — rather than an invalid profile.
+        var input = ValidInput() with
+        {
+            ManagementMode = NutManagementMode.Remote,
+            ConfigurationTransport = RemoteConfigurationTransportKind.Smb,
+            SmbSharePath = @"\\server\share",
+            SmbAuthenticationMode = SmbAuthenticationMode.ExplicitCredentials,
+            SmbUsername = null
+        };
+
+        var result = ManagedNutServerProfileValidator.Validate(input, []);
+
+        Assert.DoesNotContain(result.Issues, issue => issue.Field == ManagedProfileFields.SmbUsername);
+        Assert.True(result.CanSave);
+        Assert.Equal(SmbAuthenticationMode.ExplicitCredentials, result.Profile!.Management.SmbAuthenticationMode);
+        Assert.Null(result.Profile.Management.SmbUsername);
+    }
+
+    [Fact]
+    public void AMalformedSmbUsernameIsStillRejectedWhenOneIsPresent()
+    {
+        var input = ValidInput() with
+        {
+            ManagementMode = NutManagementMode.Remote,
+            ConfigurationTransport = RemoteConfigurationTransportKind.Smb,
+            SmbSharePath = @"\\server\share",
+            SmbAuthenticationMode = SmbAuthenticationMode.ExplicitCredentials,
+            SmbUsername = new string('u', 300)
+        };
+
+        var result = ManagedNutServerProfileValidator.Validate(input, []);
+
         Assert.Contains(result.Issues, issue => issue.Field == ManagedProfileFields.SmbUsername);
         Assert.False(result.CanSave);
     }

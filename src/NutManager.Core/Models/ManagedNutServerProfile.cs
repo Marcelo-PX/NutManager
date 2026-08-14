@@ -79,8 +79,10 @@ public sealed record NutManagementProfile
         SmbAuthenticationMode smbAuthenticationMode = SmbAuthenticationMode.CurrentWindowsIdentity,
         string? smbUsername = null,
         SshAuthenticationMode sshAuthenticationMode = SshAuthenticationMode.Password,
-        string? sshPrivateKeyPath = null)
+        string? sshPrivateKeyPath = null,
+        ManagedNutConfigurationFiles? managedFiles = null)
     {
+        ManagedFiles = managedFiles ?? ManagedNutConfigurationFiles.All;
         if (!Enum.IsDefined(mode))
         {
             throw new ArgumentOutOfRangeException(nameof(mode), "The management mode is invalid.");
@@ -145,6 +147,12 @@ public sealed record NutManagementProfile
             Smb = null;
         }
     }
+
+    /// <summary>
+    /// Which supported NUT configuration files this profile exposes. Defaults to all of them, so a
+    /// profile written before this setting existed keeps behaving exactly as it did.
+    /// </summary>
+    public ManagedNutConfigurationFiles ManagedFiles { get; }
 
     public NutManagementMode Mode { get; }
 
@@ -276,7 +284,7 @@ public sealed record ManagedNutServerProfile
 
 public sealed record ManagedNutServerProfiles
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public ManagedNutServerProfiles(int schemaVersion, Guid activeProfileId, IReadOnlyList<ManagedNutServerProfile> profiles)
     {

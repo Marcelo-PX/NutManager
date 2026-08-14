@@ -175,6 +175,35 @@ The adapter implements local installation detection, service metadata and contro
 
 Local Windows management is implemented through T17. A Remote profile explicitly selects SSH/SFTP or SMB for configuration files; neither transport accesses a remote NutManager instance. SSH/SFTP uses strict pinned-host-key verification. SMB uses only a manually supplied UNC share and either the current Windows identity or a session-scoped isolated Windows outbound identity created with `LOGON_NEW_CREDENTIALS`; it owns no global WNet connection and never maps a drive, disconnects a redirector connection, or discovers shares. Explicit SMB passwords are converted only for the native logon boundary and the resulting token is disposed when the session ends. A user may opt in after successful authentication to remember SSH or explicit-SMB secrets in Windows Credential Manager; the Core contract exposes only profile ID, fixed credential kind, and disposable secret buffers. Remote profiles may read and prepare configuration changes after validation. Writes remain read-only by default and require both the profile's Manage policy and an exact-directory capability probe: Windows/OpenSSH safe replacement for SSH/SFTP, or verified UNC `File.Replace` semantics for SMB. The transport-neutral remote pipeline preserves T14-style fingerprints, candidate verification, reserved generated backups, post-write verification, rollback, and recovery paths.
 
+### Windows-native SMB credentials (T30)
+
+SMB authentication has two shapes and NutManager owns no password control for either.
+
+**Current Windows identity** uses the session's own token. Nothing is read from the credential
+store, no dialog is shown, and no user name is required — an old profile that still carries one, or
+even a stored SMB password, is ignored rather than quietly reused.
+
+**Another Windows account** goes through the operating system's credential dialog via
+`CredUIPromptForWindowsCredentialsW`, behind the platform-neutral `IWindowsCredentialPrompt`
+contract in Core with its Win32 implementation in Infrastructure. The App supplies the owner window
+handle so the dialog belongs to NutManager. What comes back is a disposable buffer, never a string;
+the account name is ordinary non-secret profile metadata and the password goes to Windows Credential
+Manager only if the dialog's own remember box was ticked.
+
+The order is deliberate: prompt, then prove the credential against the share, then persist. A
+credential the share refuses is never stored, and replacing a credential keeps the working one until
+the new one has succeeded. Cancelling changes nothing at all. Every native and managed buffer is
+zeroed and freed on both the success and failure paths.
+
+The share is now the exact configuration location, so the separate directory field is retired. A
+profile saved with one is neither dropped nor silently retargeted: the value is preserved and the
+form asks for the share to be corrected, because changing where configuration is written without
+saying so would be worse than either. Exact-share confinement, the readiness checks, `File.Replace`
+semantics, backup, verification, and rollback are all unchanged — T30 changes how a session
+authenticates, not how it writes. NutManager still maps no drive, runs no `net use`, and never
+disconnects a Windows SMB session it did not create; a credential conflict is reported and refused
+rather than "fixed" globally.
+
 ## 10. Windows-first CI and packaging
 
 Official CI and package validation run on `windows-latest` only. Windows x64 is the only active, supported package and distribution target. Linux compatibility is deferred; it is not a CI gate and has no active package or administration support.

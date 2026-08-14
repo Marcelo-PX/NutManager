@@ -46,7 +46,8 @@ public sealed record ManagedNutServerProfileInput(
     string? SmbSharePath,
     string? SmbConfigurationDirectory,
     SmbAuthenticationMode SmbAuthenticationMode,
-    string? SmbUsername);
+    string? SmbUsername,
+    ManagedNutConfigurationFiles? ManagedFiles = null);
 
 public sealed record ManagedNutServerProfileValidationResult(
     ManagedNutServerProfile? Profile,
@@ -209,7 +210,7 @@ public static class ManagedNutServerProfileValidator
         NutManagementProfile? management = null;
         if (input.ManagementMode == NutManagementMode.Local)
         {
-            management = new NutManagementProfile(NutManagementMode.Local);
+            management = new NutManagementProfile(NutManagementMode.Local, managedFiles: input.ManagedFiles);
         }
         else if (input.ManagementMode == NutManagementMode.Remote && input.ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp)
         {
@@ -269,7 +270,8 @@ public static class ManagedNutServerProfileValidator
                     input.TrustedHostKeyAlgorithm,
                     RemoteConfigurationTransportKind.SshSftp,
                     sshAuthenticationMode: input.SshAuthenticationMode,
-                    sshPrivateKeyPath: privateKeyPath.Value);
+                    sshPrivateKeyPath: privateKeyPath.Value,
+                    managedFiles: input.ManagedFiles);
             }
         }
         else if (input.ManagementMode == NutManagementMode.Remote && input.ConfigurationTransport == RemoteConfigurationTransportKind.Smb)
@@ -288,10 +290,10 @@ public static class ManagedNutServerProfileValidator
                 issues.Add(Error(ManagedProfileFields.SmbAuthenticationMode, "Smb.AuthenticationInvalid", "Validation.Smb.AuthenticationInvalid"));
             }
 
-            if (input.SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials && smbUsername.Value is null)
-            {
-                issues.Add(Error(ManagedProfileFields.SmbUsername, "Smb.UsernameRequired", "Validation.Smb.UsernameRequired"));
-            }
+            // An explicit-credential profile no longer carries a typed username. The account comes
+            // from the Windows credential dialog, so before the administrator has signed in once
+            // there is legitimately nothing here. That is a missing credential, which is an
+            // operational state resolved at connection time, not a syntactically invalid profile.
 
             var configurationDirectory = NormalizeOptional(input.SmbConfigurationDirectory);
             if (share.Value is not null && configurationDirectory is not null)
@@ -314,7 +316,8 @@ public static class ManagedNutServerProfileValidator
                     smbSharePath: share.Value,
                     smbConfigurationDirectory: configurationDirectory,
                     smbAuthenticationMode: input.SmbAuthenticationMode,
-                    smbUsername: smbUsername.Value);
+                    smbUsername: smbUsername.Value,
+                    managedFiles: input.ManagedFiles);
             }
         }
         else if (input.ManagementMode == NutManagementMode.Remote)

@@ -17,6 +17,10 @@ Implemented groups include `App.*`, `Nav.*`, `Shell.*`, `Management.*`, `Access.
 
 New user-facing T24–T29 strings use stable semantic keys rather than hard-coded text. T24B adds complete key families for `Administration.*`, `Overview.*`, `Devices.*`, and `Diagnostics.*`. T25 adds the generic `Semantic.*` families. T26 adds the `Ups.*` graphical configuration families. T27 adds `Config.General.*`, `Config.Server.*`, `Config.Listen.*`, `Config.Tls.*`, and production descriptor label/help keys under `Config.Field.*`. T28 adds `UpsdUsers.*` and `Upsmon.*` coverage for user accounts, password state, permissions and warnings, repeated monitors, shutdown and timing settings, notification events, validation, and empty states. Every production descriptor has a label and help entry in both official cultures. Exact `pt-BR`/`en-US` key parity is tested. Core descriptors carry only resource keys; keys are never Portuguese display text.
 
+T30 adds the `Credential.Prompt.*` and `Smb.Credential.*` families for the Windows credential
+dialog and the SMB credential state, plus the wording that keeps a management profile from being
+described as read-only. Both official cultures carry every one of them.
+
 Typed validation follows the same convention with implemented keys such as `Validation.Host.Required`, `Validation.Host.Invalid`, `Validation.Port.Range`, `Validation.Profile.NameDuplicate`, `Validation.Ssh.PrivateKeyRequired`, and `Validation.Smb.ShareRootRequired`. Core returns resource keys, never Portuguese or English messages. Option labels are localized presentation values and never final enum names.
 
 Navigation and every new shared-shell label, tooltip, status, and accessibility name are localized. Future page work must also localize headings, fields, buttons, menus, contextual help, validation, warnings, errors, and semantic-review content. Resource fallback cannot alter a NUT value or translate a technical token incorrectly.

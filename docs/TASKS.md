@@ -47,7 +47,8 @@ Only one task should normally be in progress at a time.
 | T27 | DONE | Graphical server and general configuration | Dedicated upsd.conf and nut.conf forms |
 | T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
-| T29 | IN PROGRESS | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
+| T29 | DONE | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
+| T30 | IN PROGRESS | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
 
 ---
 
@@ -565,13 +566,14 @@ Windows runtime smoke against a real installation: ten rapid selections across t
 
 ## T29 — Graphical configuration UX hardening
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
-### Current hardening batch
+T29 was completed and merged into `main` through PR #35.
 
-The first in-progress batch covers sidebar motion, profile quick navigation, footer authorship,
-and consistent Administration/Settings icon semantics. Full accessibility, scaling, responsive,
-and Local/SFTP/SMB regression acceptance remains pending; this batch does not complete T29.
+### Delivered
+
+Sidebar motion, profile quick navigation, footer authorship, and consistent Administration and
+Settings icon semantics.
 
 ### Objective
 
@@ -584,7 +586,7 @@ Validate and harden the complete graphical configuration experience.
 ### Requirements
 
 - Wide/Medium/Compact, sidebar/drawer, keyboard, focus, automation, clipping/overflow, and semantic-error validation;
-- accessible names on every actionable control, including the configuration action bar, whose buttons currently report their panel type instead of their label to UI Automation because their content is a panel rather than text;
+- accessible names on every actionable control;
 - `pt-BR` and `en-US` validation; preference persistence;
 - 100/125/150% Windows scaling, invalid-field states, and non-blue Windows system-accent regression;
 - local, SFTP, and SMB regression of reviewed safe writes and recovery;
@@ -598,9 +600,119 @@ Validate and harden the complete graphical configuration experience.
 
 - automated responsive/resource/accessibility tests plus documented manual Windows validation.
 
+### Known follow-up
+
+The configuration action bar's buttons wrap their content in a panel, so UI Automation announces the
+panel type rather than the button label. This is understood and deliberately deferred rather than
+outstanding work on this task: it needs `AutomationProperties.Name` on those buttons and is worth
+picking up with the next presentation change that touches that bar.
+
 ### Completion criteria
 
 - graphical forms remain accessible, bilingual, responsive, and safe across local and supported remote transports.
+
+## T30 — Windows-native SMB credential authentication
+
+**Status:** IN PROGRESS
+
+### Current scope
+
+Windows-native SMB credentials, the simplified SMB profile form, per-profile managed NUT file
+selection, and detection of the supported files.
+
+### Objective
+
+Let an SMB profile authenticate the way Windows already does it: the current session's identity
+when that is enough, and the operating system's own credential dialog when another account is
+needed. Remove the redundant SMB fields that the new model makes meaningless.
+
+### Allowed scope
+
+- SMB profile model, validation, presentation, and the remote session's credential flow;
+- a Windows credential-prompt boundary behind a testable interface;
+- the connection LED's size and healthy colour.
+
+### Requirements
+
+- current Windows identity connects with no user name, no password and no stored credential;
+- another Windows account uses `CredUIPromptForWindowsCredentialsW`, never a NutManager password control;
+- an explicit credential is validated against the share before it is persisted, and a failed attempt leaves the previous one intact;
+- the share is the exact configuration location, so the separate directory field is retired without discarding legacy values;
+- Windows Credential Manager remains the only persistent secret store.
+
+### Do not
+
+- weaken exact-share confinement, map a drive, run `net use`/`cmdkey`, or disconnect global SMB sessions;
+- change SSH authentication, the safe-write pipeline, or any writer boundary;
+- let a password reach ordinary view-model state, profile JSON, logs, or the automation tree.
+
+### Validation
+
+- prompt state, credential-lifecycle, simplified-surface, and Manage/ReadOnly wording tests, plus Windows runtime validation of both authentication modes.
+
+### Completion criteria
+
+- both SMB authentication modes work on Windows with no redundant fields and no NutManager-owned password input.
+
+### Implemented
+
+- current Windows identity connects with the session's own token: no user name, no dialog, and no
+  credential read from the store, ignoring one left over from an older profile rather than reusing it;
+- another Windows account is collected by `CredUIPromptForWindowsCredentialsW` behind the
+  platform-neutral `IWindowsCredentialPrompt` contract, with the owner window handle supplied by the
+  App so the dialog belongs to NutManager; NutManager owns no password control for SMB;
+- an explicit credential is proven against the share before it is persisted, and only when the
+  dialog's own remember box was ticked; a refused credential is never stored and a failed
+  replacement leaves the working one in place; cancelling changes nothing;
+- the share became the exact configuration location, retiring the separate directory field; a legacy
+  value is preserved and surfaced for correction instead of being dropped or silently retargeted;
+- Windows Credential Manager remains the only persistent secret store, with the account name kept as
+  ordinary non-secret profile metadata;
+- the connection LED core was reduced and given its own brighter green while its glow, pulse, period
+  and lifecycle stayed as they were;
+- a connection failure no longer claims read-only access on a management profile, and an unprobed
+  management session is no longer described as read-only.
+
+### Per-profile managed NUT files
+
+A profile now records which of the five supported files it exposes, defaulting to all of them so a
+profile saved before the setting existed behaves exactly as it did. Disabling a file only removes it
+from the Administration list for that profile: nothing on disk is created, renamed, or deleted, and a
+file that is enabled but currently absent still appears and reports its missing state when opened.
+Enabled-by-profile and currently-present are deliberately kept as separate facts.
+
+Zero files is allowed rather than blocked. A remote profile used only for monitoring is a legitimate
+product state, and the Administration surface already has an empty-file-list path, so forbidding it
+would invent a rule the architecture does not need. The form says plainly what an empty selection
+means.
+
+Detection is a separate, explicit step. `INutManagedFileDetector` reports which supported files are
+actually present and hands back a proposal; nothing is applied without the administrator asking.
+The local detector reads the presence flags the installation detector already produces, and the
+remote one reads what directory validation already established over the existing session — the same
+pinned host key for SFTP, the same exact-share confinement and resolved credential for SMB. Neither
+adds I/O, opens a session, or looks at a name outside the closed set, so the `.sample` files NUT
+ships and directives like `upssched.conf` are never offered.
+
+Administration takes its file list from the profile's selection, and refuses a file outside it, so
+the selection can never point at something the profile does not expose. Because the runtime profile
+context is captured at bootstrap, a change to the selection applies on restart, exactly like every
+other profile edit.
+
+### Validation record
+
+Gates: Release build with 0 warnings and 0 errors; 1150/1150 tests, up from a 1114 baseline;
+vulnerability gate clean; `dotnet format --verify-no-changes` clean; `git diff --check` clean.
+
+Windows runtime, current-identity profile against a real SMB share: no password control present on
+either surface, the management profile is described as such rather than as read-only, and the status
+light renders with its reduced core, glow and pulse intact. No configuration was applied.
+
+Not exercised on the development machine: the native dialog was not opened against a second Windows
+account, because no alternate credential with access to the share was available there. That path —
+prompt, cancel, successful sign-in, and both remember variants — is covered by automated tests
+against a faked native seam rather than by manual validation, and is worth confirming on a machine
+where a test account exists.
 
 ## Task execution template
 

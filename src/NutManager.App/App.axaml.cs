@@ -71,7 +71,13 @@ public partial class App : Application
         };
         var remoteManagement = isLocalManagement
             ? null
-            : new RemoteManagementSessionViewModel(runtimeProfile.Profile, remoteTransport, profileMutator, credentialStore, settings.Language);
+            : new RemoteManagementSessionViewModel(
+                runtimeProfile.Profile,
+                remoteTransport,
+                profileMutator,
+                credentialStore,
+                settings.Language,
+                new WindowsCredentialPrompt());
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
@@ -91,6 +97,9 @@ public partial class App : Application
             remoteManagement,
             settings.Language,
             isLocalManagement ? new WindowsNutDriverCatalogSource() : null);
+        INutManagedFileDetector managedFileDetector = isLocalManagement
+            ? new LocalNutManagedFileDetector(installationDetector ?? new WindowsNutInstallationDetector())
+            : new RemoteNutManagedFileDetector(() => remoteManagement?.DirectoryValidation);
         var settingsPage = new SettingsPageViewModel(
             settings,
             store,
@@ -99,7 +108,8 @@ public partial class App : Application
             profileMutator,
             credentialStore,
             new ManagedNutConnectionTester(new NutTcpClient()),
-            runtimeProfile.Profile.Id);
+            runtimeProfile.Profile.Id,
+            managedFileDetector);
         window.Closed += async (_, _) =>
         {
             if (remoteManagement is not null)

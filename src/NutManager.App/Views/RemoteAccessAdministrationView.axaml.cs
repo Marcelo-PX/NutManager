@@ -29,13 +29,28 @@ public partial class RemoteAccessAdministrationView : UserControl
         }
     }
 
-    private async void RemoteConnectSmbButton_OnClick(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// Hands the window over so the Windows credential dialog is owned by NutManager rather than
+    /// opening behind it. Nothing about the credential passes through this code.
+    /// </summary>
+    private void PrepareCredentialPrompt(RemoteManagementSessionViewModel remote) =>
+        remote.OwnerWindowHandle = TopLevel.GetTopLevel(this)?.TryGetPlatformHandle()?.Handle ?? nint.Zero;
+
+    private async void RemoteSignInWithWindowsCredentialButton_OnClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is AdministrationPageViewModel { RemoteManagement: { UsesSmbExplicitCredentials: true } remote, CanConnectRemote: true })
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { UsesSmbExplicitCredentials: true } remote })
         {
-            var secret = SmbPasswordBox.Text ?? string.Empty;
-            try { await remote.ConnectWithPasswordAsync(secret.AsMemory(), SmbRememberCredentialCheckBox.IsChecked == true); }
-            finally { SmbPasswordBox.Text = string.Empty; }
+            PrepareCredentialPrompt(remote);
+            await remote.SignInWithWindowsCredentialAsync();
+        }
+    }
+
+    private async void RemoteChangeWindowsCredentialButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is AdministrationPageViewModel { RemoteManagement: { UsesSmbExplicitCredentials: true } remote })
+        {
+            PrepareCredentialPrompt(remote);
+            await remote.ChangeWindowsCredentialAsync();
         }
     }
 

@@ -1,3 +1,4 @@
+using NutManager.Core.Configuration;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NutManager.Core.Models;
@@ -193,6 +194,13 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
 
         public string? SmbUsername { get; set; }
 
+        /// <summary>
+        /// Null on any document written before schema 5, which is read as "every supported file"
+        /// so an existing profile keeps the behaviour it had.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<NutConfigurationFileKind>? ManagedFiles { get; set; }
+
         public ManagedNutServerAccessMode AccessMode { get; set; }
 
         public ManagedNutServerProfile ToProfile(int schemaVersion) => new(
@@ -213,7 +221,8 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
                 schemaVersion < 3 ? global::NutManager.Core.Models.SmbAuthenticationMode.CurrentWindowsIdentity : SmbAuthenticationMode ?? global::NutManager.Core.Models.SmbAuthenticationMode.CurrentWindowsIdentity,
                 schemaVersion < 3 ? null : SmbUsername,
                 schemaVersion < 4 ? global::NutManager.Core.Models.SshAuthenticationMode.Password : SshAuthenticationMode ?? global::NutManager.Core.Models.SshAuthenticationMode.Password,
-                schemaVersion < 4 ? null : SshPrivateKeyPath),
+                schemaVersion < 4 ? null : SshPrivateKeyPath,
+                schemaVersion < 5 ? ManagedNutConfigurationFiles.All : ManagedNutConfigurationFiles.CreateOrAll(ManagedFiles)),
             AccessMode);
 
         public static ProfileEntry FromProfile(ManagedNutServerProfile profile) => new()
@@ -239,6 +248,7 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
             SmbConfigurationDirectory = profile.Management.SmbConfigurationDirectory,
             SmbAuthenticationMode = profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb ? profile.Management.SmbAuthenticationMode : null,
             SmbUsername = profile.Management.SmbUsername,
+            ManagedFiles = [.. profile.Management.ManagedFiles.Kinds],
             AccessMode = profile.AccessMode
         };
     }

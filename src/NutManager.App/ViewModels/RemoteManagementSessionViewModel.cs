@@ -15,6 +15,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     private readonly IRemoteNutConfigurationTransport _transport;
     private readonly ManagedNutServerProfileUpdateService? _profileUpdater;
     private readonly IRemoteCredentialStore? _credentialStore;
+    private readonly IWindowsCredentialPrompt? _credentialPrompt;
     private readonly NutManagerLocalizer _strings;
     private IRemoteNutConfigurationSession? _session;
     private RemoteNutDirectoryValidationResult? _directoryValidation;
@@ -24,7 +25,8 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         IRemoteNutConfigurationTransport transport,
         ManagedNutServerProfileUpdateService? profileUpdater = null,
         IRemoteCredentialStore? credentialStore = null,
-        UiLanguagePreference language = UiLanguagePreference.PtBr)
+        UiLanguagePreference language = UiLanguagePreference.PtBr,
+        IWindowsCredentialPrompt? credentialPrompt = null)
     {
         if (profile.Management.Mode != NutManagementMode.Remote)
         {
@@ -35,6 +37,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
         _profileUpdater = profileUpdater;
         _credentialStore = credentialStore;
+        _credentialPrompt = credentialPrompt;
         _strings = new NutManagerLocalizer(language);
         DirectoryEntries = new ObservableCollection<RemoteNutDirectoryEntry>();
         CurrentDirectory = profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
@@ -114,6 +117,12 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public bool IsDirectoryValidated => _directoryValidation?.IsValid == true;
 
+    /// <summary>
+    /// The validated directory result, read-only. Validation already lists which recognised NUT
+    /// files are present, so file detection can read it instead of probing the share again.
+    /// </summary>
+    public RemoteNutDirectoryValidationResult? DirectoryValidation => _directoryValidation;
+
     public bool CanConnect => !IsBusy && !IsConnected && (IsSmb || (!string.IsNullOrWhiteSpace(_profile.Management.SshUsername) && (!UsesSshPrivateKey || !string.IsNullOrWhiteSpace(_profile.Management.SshPrivateKeyPath))));
 
     public bool HasStoredCredential => StoredCredentialStatus == RemoteCredentialStoreStatus.Success;
@@ -178,11 +187,21 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public string ReadCapabilityText => CanReadConfiguration ? L("Common.Available") : L("Remote.Capability.ValidateForRead");
 
+    /// <summary>Whether the profile itself permits writing. Independent of any session state.</summary>
+    public bool IsManageProfile => _profile.AccessMode == ManagedNutServerAccessMode.Manage;
+
+    /// <summary>
+    /// What the write capability currently is, kept strictly distinct from what the profile allows.
+    /// A management profile whose session has not been probed yet is not read-only, and saying so
+    /// contradicted the access mode shown beside it.
+    /// </summary>
     public string WriteCapabilityText => CanEditConfiguration
         ? IsSmb ? L("Remote.Capability.SmbVerified") : L("Remote.Capability.SshVerified")
-        : WriteCapability?.Message ?? (IsSmb
-            ? L("Remote.Capability.SmbProbeRequired")
-            : L("Remote.Capability.SshProbeRequired"));
+        : !IsManageProfile
+            ? L("Remote.Capability.ReadOnlyProfile")
+            : WriteCapability?.Message ?? (IsSmb
+                ? L("Remote.Capability.SmbProbeRequired")
+                : L("Remote.Capability.SshProbeRequired"));
 
     public bool IsWriteCapabilityCritical => !string.IsNullOrWhiteSpace(WriteCapability?.CleanupPath);
 
@@ -204,7 +223,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
                 return;
             }
 
-            var connected = await ConnectSmbAsync(password, cancellationToken);
+            var connected = await ConnectSmbAsync(password, username: null, cancellationToken);
             if (connected && rememberCredential)
             {
                 await SaveCredentialAfterSuccessfulConnectionAsync(RemoteCredentialKind.SmbPassword, password, cancellationToken);
@@ -259,7 +278,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
             return;
         }
 
-        await ConnectSmbAsync(default, cancellationToken);
+        await ConnectSmbAsync(default, username: null, cancellationToken);
     }
 
     public async Task RefreshStoredCredentialStatusAsync(CancellationToken cancellationToken = default)
@@ -306,11 +325,153 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
         if (kind == RemoteCredentialKind.SmbPassword)
         {
-            await ConnectSmbAsync(read.Secret.Memory, cancellationToken);
+            await ConnectSmbAsync(read.Secret.Memory, username: null, cancellationToken);
             return;
         }
 
         await ConnectSshAsync(new RemoteNutPasswordAuthentication(read.Secret.Memory), cancellationToken);
+    }
+
+    // ==================== Windows-native SMB credentials ====================
+
+    /// <summary>
+    /// The window the credential dialog should belong to. Set by the view; a zero handle still
+    /// works, the dialog is simply not owned.
+    /// </summary>
+    public nint OwnerWindowHandle { get; set; }
+
+    public bool CanUseWindowsCredentialPrompt => UsesSmbExplicitCredentials && _credentialPrompt is not null && !IsBusy;
+
+    /// <summary>The signed-in account, or null before one has been chosen. Never a secret.</summary>
+    public string? SmbCredentialIdentity => UsesSmbExplicitCredentials ? _profile.Management.SmbUsername : null;
+
+    public bool HasSmbCredentialIdentity => !string.IsNullOrWhiteSpace(SmbCredentialIdentity);
+
+    /// <summary>
+    /// Connects SMB the way the profile says it should be connected, without ever asking for a
+    /// password in a NutManager control. Current Windows identity goes straight through; an
+    /// explicit account reuses its protected credential when there is one and otherwise opens the
+    /// Windows dialog.
+    /// </summary>
+    public async Task ConnectSmbAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsSmb)
+        {
+            return;
+        }
+
+        if (UsesSmbCurrentWindowsIdentity)
+        {
+            // The current session's token is the credential. Nothing is read from the credential
+            // store, and no prompt is shown, even if an old profile still has a stored secret.
+            await ConnectWithCurrentWindowsIdentityAsync(cancellationToken);
+            return;
+        }
+
+        await RefreshStoredCredentialStatusAsync(cancellationToken);
+        if (HasStoredCredential)
+        {
+            await ConnectWithStoredCredentialAsync(cancellationToken);
+            return;
+        }
+
+        await SignInWithWindowsCredentialAsync(cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Opens the Windows credential dialog and, only if the share actually accepts what came back,
+    /// records the account and honours the dialog's remember choice.
+    ///
+    /// The order matters: a credential is proven before it is kept, so a mistyped password can
+    /// never replace a working stored one. On any failure the existing credential is left exactly
+    /// as it was.
+    /// </summary>
+    public async Task<bool> SignInWithWindowsCredentialAsync(bool replaceExisting = false, CancellationToken cancellationToken = default)
+    {
+        if (!UsesSmbExplicitCredentials || _credentialPrompt is null)
+        {
+            return false;
+        }
+
+        using var prompted = await _credentialPrompt.RequestAsync(
+            new WindowsCredentialPromptRequest(
+                L("Credential.Prompt.Caption"),
+                string.Format(
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    L("Credential.Prompt.Message"),
+                    _profile.Management.SmbSharePath ?? string.Empty),
+                _profile.Management.SmbUsername,
+                OwnerWindowHandle),
+            cancellationToken);
+
+        switch (prompted.Status)
+        {
+            case WindowsCredentialPromptStatus.Cancelled:
+                // Nothing is touched: not the profile, not the stored secret, not the session.
+                StatusMessage = L("Credential.Prompt.Cancelled");
+                return false;
+            case WindowsCredentialPromptStatus.Unsupported:
+                StatusMessage = L("Credential.Prompt.WindowsOnly");
+                return false;
+            case WindowsCredentialPromptStatus.Failed:
+                StatusMessage = L("Credential.Prompt.Failed");
+                return false;
+        }
+
+        var connected = await ConnectSmbAsync(prompted.Secret!.Memory, prompted.Username!, cancellationToken);
+        if (!connected)
+        {
+            // The share refused it. Whatever was stored before is still stored and still valid.
+            if (replaceExisting)
+            {
+                StatusMessage = L("Credential.Prompt.KeptPrevious");
+            }
+
+            return false;
+        }
+
+        await RecordSignedInAccountAsync(prompted.Username!, cancellationToken);
+        if (prompted.Remember)
+        {
+            await SaveCredentialAfterSuccessfulConnectionAsync(
+                RemoteCredentialKind.SmbPassword, prompted.Secret.Memory, cancellationToken);
+        }
+        else
+        {
+            // Deliberately not persisted: the credential lives only as long as this session.
+            StatusMessage = L("Credential.Prompt.SessionOnly");
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Replaces the credential. The dialog runs first and the new credential has to work before
+    /// the old one is discarded.
+    /// </summary>
+    public Task<bool> ChangeWindowsCredentialAsync(CancellationToken cancellationToken = default) =>
+        SignInWithWindowsCredentialAsync(replaceExisting: true, cancellationToken);
+
+    /// <summary>
+    /// Stores the account Windows returned as ordinary profile metadata. Only the name; the
+    /// password stays in the credential store.
+    /// </summary>
+    private async Task RecordSignedInAccountAsync(string username, CancellationToken cancellationToken)
+    {
+        if (_profileUpdater is null ||
+            string.Equals(_profile.Management.SmbUsername, username, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var saved = await _profileUpdater.SaveSmbAccountAsync(_profile, username, cancellationToken);
+        if (saved is not null)
+        {
+            _profile = saved;
+            OnPropertyChanged(nameof(SmbUsername));
+            OnPropertyChanged(nameof(SmbCredentialIdentity));
+            OnPropertyChanged(nameof(HasSmbCredentialIdentity));
+        }
     }
 
     public async Task ForgetStoredCredentialAsync(CancellationToken cancellationToken = default)
@@ -608,7 +769,11 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         }
     }
 
-    private async Task<bool> ConnectSmbAsync(ReadOnlyMemory<char> password, CancellationToken cancellationToken)
+    /// <param name="username">
+    /// The account to authenticate as. It is passed in rather than read from the profile because a
+    /// freshly prompted credential has to be proven before its account is recorded.
+    /// </param>
+    private async Task<bool> ConnectSmbAsync(ReadOnlyMemory<char> password, string? username, CancellationToken cancellationToken)
     {
         if (!CanConnect || !IsSmb)
         {
@@ -626,7 +791,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
                     _profile.Id,
                     management.SmbSharePath!,
                     management.SmbAuthenticationMode,
-                    management.SmbUsername,
+                    username ?? management.SmbUsername,
                     password,
                     _profile.AccessMode == ManagedNutServerAccessMode.Manage),
                 cancellationToken);

@@ -290,17 +290,66 @@
                       <ComboBox ItemsSource="{Binding SmbAuthenticationOptions}" SelectedItem="{Binding SelectedSmbAuthenticationOption, Mode=TwoWay}">
                         <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
                       </ComboBox>
-                      <TextBlock Text="{Binding SmbUsernameLabel}" FontWeight="SemiBold" />
-                      <TextBox Text="{Binding ProfileDraft.SmbUsername, Mode=TwoWay}" AutomationProperties.Name="{Binding SmbUsernameLabel}" />
-                      <ItemsControl ItemsSource="{Binding SmbUsernameValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
-                      <TextBlock Text="{Binding SmbDirectoryLabel}" FontWeight="SemiBold" />
-                      <TextBox Text="{Binding ProfileDraft.SmbConfigurationDirectory, Mode=TwoWay}" AutomationProperties.Name="{Binding SmbDirectoryLabel}" />
-                      <ItemsControl ItemsSource="{Binding SmbDirectoryValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
-                      <TextBlock Text="{Binding SmbSecretHelp}" FontSize="12" Foreground="{DynamicResource NutTextSecondaryBrush}" TextWrapping="Wrap" />
+                      <!--
+                        There is deliberately no user name and no configuration-directory field.
+                        The share is the exact location of the NUT files, and for another Windows
+                        account the identity comes back from the Windows credential dialog rather
+                        than being typed here. Current Windows identity needs nothing further.
+                      -->
+                      <TextBlock Text="{Binding SmbSecretHelp}"
+                                 IsVisible="{Binding ProfileDraft.UsesSmbExplicitCredentials}"
+                                 FontSize="12"
+                                 Foreground="{DynamicResource NutTextSecondaryBrush}"
+                                 TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding SmbLegacyDirectoryText}"
+                                 IsVisible="{Binding ProfileDraft.HasLegacySmbConfigurationDirectory}"
+                                 FontSize="12"
+                                 Foreground="{DynamicResource NutWarningBrush}"
+                                 TextWrapping="Wrap" />
                     </StackPanel>
 
                     <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
                     <Button Content="{Binding ForgetCredentialText}" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
+
+                    <!--
+                      Which of the five supported files this profile exposes. This is intent, not
+                      inventory: a file can be enabled and currently missing, and detection only
+                      changes these boxes when the administrator explicitly asks it to.
+                    -->
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="{Binding ManagedFilesLabel}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding ManagedFilesHelp}" FontSize="12"
+                                 Foreground="{DynamicResource NutTextSecondaryBrush}" TextWrapping="Wrap" />
+                      <ItemsControl ItemsSource="{Binding ProfileDraft.ManagedFileToggles}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                      Content="{Binding FileName}"
+                                      AutomationProperties.Name="{Binding FileName}" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="{Binding ManagedFilesNoneWarning}"
+                                 IsVisible="{Binding ProfileDraft.HasNoManagedFiles}"
+                                 FontSize="12"
+                                 Foreground="{DynamicResource NutWarningBrush}"
+                                 TextWrapping="Wrap" />
+                      <!-- Detection runs only when asked, and lands in the draft, which still has to be saved. -->
+                      <Button Content="{Binding ManagedFilesDetectText}"
+                              Command="{Binding DetectManagedFilesCommand}"
+                              IsEnabled="{Binding CanDetectManagedFiles}"
+                              AutomationProperties.Name="{Binding ManagedFilesDetectText}"
+                              HorizontalAlignment="Left" />
+                      <TextBlock Text="{Binding ManagedFilesDetectHint}"
+                                 IsVisible="{Binding HasManagedFilesDetectHint}"
+                                 Classes="nut-metadata"
+                                 TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding ManagedFilesDetectionMessage}"
+                                 IsVisible="{Binding HasManagedFilesDetectionMessage}"
+                                 Classes="nut-metadata"
+                                 TextWrapping="Wrap"
+                                 AutomationProperties.Name="{Binding ManagedFilesDetectionMessage}" />
+                    </StackPanel>
                   </StackPanel>
 
                   <TextBlock Text="{Binding LocalManagementHelp}"

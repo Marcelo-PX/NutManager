@@ -82,6 +82,6 @@ A serializer must distinguish a text value that contains spaces from a semantic 
 | T26 | production driver-aware `ups.conf` form and documented `runtimecal` assistant | implemented |
 | T27 | NUT 2.8.5 `nut.conf`/`upsd.conf` schemas and forms: `MODE`, repeated `LISTEN`, server behavior, TLS metadata, change-only `CERTIDENT` | implemented |
 | T28 | `upsd.users`/`upsmon.conf` forms, embedded positional secrets, token lists | implemented |
-| T29 | final graphical-configuration UX hardening | remaining |
+| T29 | final graphical-configuration UX hardening | implemented |
 
 Every descriptor uses invariant codecs, omission-specific defaults, activation metadata, and pure validation; no runtime or network probes occur. All five supported files now have a dedicated form, so the T15 entry model is a fallback rather than the normal path, and every graphical candidate converges on the same T14/T19/T19B pipeline.

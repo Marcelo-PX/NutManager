@@ -916,4 +916,34 @@
   <data name="Upsmon.NotConfigured" xml:space="preserve"><value>Padrão do NUT</value></data>
   <data name="Common.Confirm" xml:space="preserve"><value>Confirmar</value></data>
   <data name="Common.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Remote.Capability.ReadOnlyProfile" xml:space="preserve"><value>Este perfil é somente leitura; a escrita não é oferecida.</value></data>
+  <data name="Credential.Prompt.Caption" xml:space="preserve"><value>Credencial SMB</value></data>
+  <data name="Credential.Prompt.Message" xml:space="preserve"><value>Informe as credenciais do Windows para acessar {0}.</value></data>
+  <data name="Credential.Prompt.Cancelled" xml:space="preserve"><value>Autenticação cancelada.</value></data>
+  <data name="Credential.Prompt.WindowsOnly" xml:space="preserve"><value>O diálogo de credenciais do Windows está disponível somente no Windows.</value></data>
+  <data name="Credential.Prompt.Failed" xml:space="preserve"><value>Não foi possível obter a credencial do Windows.</value></data>
+  <data name="Credential.Prompt.KeptPrevious" xml:space="preserve"><value>A nova credencial não foi aceita; a credencial anterior foi mantida.</value></data>
+  <data name="Credential.Prompt.SessionOnly" xml:space="preserve"><value>Credencial válida somente nesta sessão.</value></data>
+  <data name="Smb.Credential.Title" xml:space="preserve"><value>Credencial SMB</value></data>
+  <data name="Smb.Credential.SignIn" xml:space="preserve"><value>Entrar com credenciais do Windows</value></data>
+  <data name="Smb.Credential.Change" xml:space="preserve"><value>Alterar credencial</value></data>
+  <data name="Smb.Credential.Forget" xml:space="preserve"><value>Esquecer credencial</value></data>
+  <data name="Smb.Credential.Stored" xml:space="preserve"><value>Armazenada com segurança pelo Windows</value></data>
+  <data name="Smb.Credential.SessionOnly" xml:space="preserve"><value>Credencial válida para esta sessão</value></data>
+  <data name="Smb.Credential.Required" xml:space="preserve"><value>Credencial necessária</value></data>
+  <data name="Smb.CurrentIdentity.NoAccess" xml:space="preserve"><value>A identidade atual do Windows não possui acesso ao compartilhamento. Selecione “Outra conta do Windows” para usar credenciais diferentes.</value></data>
+  <data name="Smb.CredentialConflict" xml:space="preserve"><value>O Windows reportou um conflito de credenciais para este servidor. O NutManager não desconecta conexões existentes.</value></data>
+  <data name="Smb.Legacy.DirectoryAdjustment" xml:space="preserve"><value>Este perfil aponta para uma subpasta do compartilhamento. Informe o compartilhamento exato que contém os arquivos do NUT.</value></data>
+  <data name="Profiles.SmbShareHelp" xml:space="preserve"><value>Informe o compartilhamento exato que contém os arquivos de configuração do NUT.</value></data>
+  <data name="Profiles.ManagedFiles" xml:space="preserve"><value>Arquivos NUT gerenciados</value></data>
+  <data name="Profiles.ManagedFiles.Help" xml:space="preserve"><value>Selecione quais arquivos de configuração NUT este perfil deve exibir e gerenciar.</value></data>
+  <data name="Profiles.ManagedFiles.None" xml:space="preserve"><value>Nenhum arquivo selecionado: este perfil não exibirá configuração em Administração.</value></data>
+  <data name="Profiles.ManagedFiles.Detect" xml:space="preserve"><value>Detectar arquivos disponíveis</value></data>
+  <data name="Profiles.ManagedFiles.Detecting" xml:space="preserve"><value>Detectando…</value></data>
+  <data name="Profiles.ManagedFiles.DetectUnavailable" xml:space="preserve"><value>Conecte e valide o diretório de configuração para detectar os arquivos.</value></data>
+  <data name="Profiles.ManagedFiles.LastDetection" xml:space="preserve"><value>Última detecção</value></data>
+  <data name="Profiles.ManagedFiles.Found" xml:space="preserve"><value>{0} arquivo(s) encontrado(s).</value></data>
+  <data name="Profiles.ManagedFiles.NoneFound" xml:space="preserve"><value>Nenhum dos arquivos suportados foi encontrado.</value></data>
+  <data name="Profiles.ManagedFiles.DetectFailed" xml:space="preserve"><value>Não foi possível verificar o diretório de configuração.</value></data>
+  <data name="Administration.File.NotEnabled" xml:space="preserve"><value>Este arquivo não está habilitado para o perfil atual.</value></data>
 </root>

@@ -56,6 +56,28 @@ public sealed class ManagedNutServerProfileUpdateService
                 : CreateSshManagement(current.Management, remoteConfigurationDirectory: directory),
             cancellationToken);
 
+    /// <summary>
+    /// Records which Windows account an SMB profile signed in with. This is non-secret metadata
+    /// chosen in the Windows credential dialog rather than typed into NutManager; the password it
+    /// came with stays in the credential store and never reaches this document.
+    /// </summary>
+    public Task<ManagedNutServerProfile?> SaveSmbAccountAsync(ManagedNutServerProfile expectedProfile, string username, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+        return UpdateRemoteProfileAsync(
+            expectedProfile,
+            current => current.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
+                ? new NutManagementProfile(
+                    NutManagementMode.Remote,
+                    configurationTransport: RemoteConfigurationTransportKind.Smb,
+                    smbSharePath: current.Management.SmbSharePath,
+                    smbConfigurationDirectory: current.Management.SmbConfigurationDirectory,
+                    smbAuthenticationMode: current.Management.SmbAuthenticationMode,
+                    smbUsername: username)
+                : current.Management,
+            cancellationToken);
+    }
+
     public Task<ManagedNutServerProfile?> ForgetTrustedHostKeyAsync(ManagedNutServerProfile expectedProfile, CancellationToken cancellationToken = default) =>
         UpdateRemoteProfileAsync(
             expectedProfile,

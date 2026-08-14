@@ -16,24 +16,25 @@
     animating that shadow's opacity and scale from the render thread through the Composition API,
     which costs nothing on the UI thread.
 
-    The halo is deliberately smaller than the 10px core and its shadow carries no spread, so the
+    The halo is deliberately smaller than the 8px core and its shadow carries no spread, so the
     shadow always originates inside the core and the glow emerges from under it. A halo as wide as
     the core, or any spread at all, starts the shadow outside the core's edge and leaves a dark gap
     ringing the ball - which is the ring look this layout exists to avoid.
 
-    That constraint also caps the pulse: the halo is 6px and the core 10px, so the shadow's hole
-    grows with it and at 1.6 the two are within a fraction of a pixel of each other, which brings a
-    dark rim back at the peak of every breath. 1.45 keeps roughly half a pixel of overlap, and the
-    swell is carried mostly by opacity anyway.
+    That constraint also caps the pulse: the halo is 4px and the core 8px, so the shadow's hole
+    grows with it and the two must not meet at the peak of a breath, or a dark rim comes back. At
+    1.45 the halo swells to 5.8px against an 8px core, leaving about a pixel of radial overlap, and
+    the swell is carried mostly by opacity anyway.
 
     Sizes are even numbers inside an even cell so every layer centres on a whole pixel. A
     fractional size leaves the circle straddling a half pixel and the antialiasing comes out
     heavier on one side, which at this diameter reads as the ball sitting crooked.
 
-    The cell is 32px for a 10px ball because the glow has to fit inside it. At full swell the
-    shadow reaches about 15px from the centre, and a cell any tighter than that crops the round
+    The cell stays 32px for an 8px ball because the glow has to fit inside it. At full swell the
+    shadow reaches about 14px from the centre, and a cell any tighter than that crops the round
     glow against its own straight edges - which is where the square outline around the light came
-    from. The extra width is empty space, not a bigger indicator.
+    from. The extra width is empty space, not a bigger indicator; shrinking the ball deliberately
+    did not shrink the cell, so the glow kept its reach while the core became more discreet.
 
     Colour and animation are decorative; the state is always spelled out in the adjacent text and
     in the accessible name.
@@ -44,7 +45,8 @@
       <Setter Property="CornerRadius" Value="999" />
     </Style>
     <Style Selector="Border.nut-led-halo.healthy">
-      <Setter Property="BoxShadow" Value="0 0 11 0 #F24ADE80" />
+      <!-- Matches NutLedHealthyBrush; a shadow colour cannot be bound to a resource. -->
+      <Setter Property="BoxShadow" Value="0 0 11 0 #F23BEF88" />
     </Style>
     <Style Selector="Border.nut-led-halo.pending">
       <Setter Property="BoxShadow" Value="0 0 11 0 #F2FBBF24" />
@@ -57,25 +59,29 @@
   <Grid Width="32" Height="32" Background="Transparent" ClipToBounds="False">
     <Border x:Name="Halo"
             Classes="nut-led-halo"
-            Width="6"
-            Height="6"
+            Width="4"
+            Height="4"
             Opacity="0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             IsHitTestVisible="False" />
     <Ellipse x:Name="Core"
-             Width="10"
-             Height="10"
+             Width="8"
+             Height="8"
              Fill="{Binding StateBrush, ElementName=Root}"
              HorizontalAlignment="Center"
              VerticalAlignment="Center" />
-    <!-- Lens highlight: upper-left quadrant, deliberately faint so it never reads as gloss. -->
+    <!--
+      Lens highlight: upper-left quadrant, deliberately faint so it never reads as gloss. The offset
+      is one whole pixel on each axis rather than the two the larger ball used; on a 4px radius a
+      2px offset would put the highlight's own edge flush against the core's and read as a notch.
+    -->
     <Ellipse x:Name="Highlight"
              Width="2"
              Height="2"
              Fill="White"
              Opacity="0.34"
-             Margin="0,0,4,4"
+             Margin="0,0,2,2"
              HorizontalAlignment="Center"
              VerticalAlignment="Center"
              IsHitTestVisible="False" />

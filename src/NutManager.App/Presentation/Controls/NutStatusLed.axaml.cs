@@ -48,7 +48,9 @@ public partial class NutStatusLed : UserControl
     /// </summary>
     public IBrush? StateBrush => this.FindResource(State switch
     {
-        NutLedState.Healthy => "NutHealthyBrush",
+        // Healthy uses the LED's own green rather than the shared healthy token: a small lit ball
+        // needs more saturation to read as lit than badge text does.
+        NutLedState.Healthy => "NutLedHealthyBrush",
         NutLedState.Pending => "NutWarningBrush",
         NutLedState.Critical => "NutCriticalBrush",
         _ => "NutUnavailableBrush"

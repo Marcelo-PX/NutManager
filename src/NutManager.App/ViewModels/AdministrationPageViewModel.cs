@@ -65,7 +65,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             _remoteManagement.ConfigurationContextChanged += OnRemoteConfigurationContextChanged;
             _remoteManagement.PropertyChanged += OnRemoteManagementPropertyChanged;
         }
-        ConfigurationFiles = new ObservableCollection<NutConfigurationFileItemViewModel>(CreateFileItems());
+        // Only the files this profile is configured to manage reach the list. Disabling a file is a
+        // presentation decision: nothing on disk is touched, and a file that is enabled but absent
+        // still appears here and reports its missing state when opened.
+        ConfigurationFiles = new ObservableCollection<NutConfigurationFileItemViewModel>(
+            CreateFileItems(_profileContext?.Profile.Management.ManagedFiles));
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
         PreviewLines = Array.Empty<NutConfigurationPreviewLineViewModel>();
         AdministrationSections = AdministrationPresentation.CreateSections(
@@ -731,6 +735,15 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
         if (file is null || ReferenceEquals(file, SelectedFile))
         {
+            return;
+        }
+
+        // A file the profile does not manage is not in this list, so a reference to one can only be
+        // stale. Refusing it here means the selection can never point at something the profile no
+        // longer exposes, whatever produced the reference.
+        if (!ConfigurationFiles.Contains(file))
+        {
+            SetStatus(Strings.Get("Administration.File.NotEnabled"));
             return;
         }
 
@@ -1870,7 +1883,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _ => "Diagnóstico do NUT"
     };
 
-    private static IReadOnlyList<NutConfigurationFileItemViewModel> CreateFileItems() =>
+    private static IReadOnlyList<NutConfigurationFileItemViewModel> CreateFileItems(ManagedNutConfigurationFiles? managedFiles)
+    {
+        var enabled = managedFiles ?? ManagedNutConfigurationFiles.All;
+        return [.. AllFileItems().Where(item => enabled.Contains(item.FileKind))];
+    }
+
+    private static IReadOnlyList<NutConfigurationFileItemViewModel> AllFileItems() =>
     [
         new("Geral", "nut.conf", "nut.conf", NutConfigurationFileKind.NutConf),
         new("UPS e drivers", "ups.conf", "ups.conf", NutConfigurationFileKind.UpsConf),

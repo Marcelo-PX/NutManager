@@ -91,12 +91,36 @@
               <CheckBox x:Name="RemoteRememberPassphraseCheckBox" Content="{Binding Strings[Administration.Remote.RememberPassphrase]}" />
             </StackPanel>
 
+            <!--
+              An explicit SMB account is entered in the Windows credential dialog, never here.
+              There is deliberately no password control on this surface: the operating system owns
+              the trusted prompt, and a typed password therefore never passes through the
+              application at all. The signed-in identity is shown afterwards as ordinary metadata.
+            -->
             <StackPanel IsVisible="{Binding RemoteManagement.UsesSmbExplicitCredentials}" Spacing="8">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                <TextBox x:Name="SmbPasswordBox" PasswordChar="●" PlaceholderText="{Binding Strings[Administration.Remote.SmbSessionPassword]}" />
-                <Button Grid.Column="1" Classes="nut-primary" Content="{Binding Strings[Administration.Remote.ConnectSmb]}" Click="RemoteConnectSmbButton_OnClick" IsEnabled="{Binding CanConnectRemote}" />
-              </Grid>
-              <CheckBox x:Name="SmbRememberCredentialCheckBox" Content="{Binding Strings[Administration.Remote.RememberCredential]}" />
+              <TextBlock Text="{Binding Strings[Smb.Credential.Title]}" Classes="nut-label" />
+              <StackPanel Orientation="Horizontal" Spacing="8"
+                          IsVisible="{Binding RemoteManagement.HasSmbCredentialIdentity}">
+                <PathIcon Data="{DynamicResource NutIconSecurity}" Classes="healthy" Width="15" Height="15"
+                          VerticalAlignment="Center" />
+                <TextBlock Text="{Binding RemoteManagement.SmbCredentialIdentity}" FontSize="13"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <TextBlock Text="{Binding RemoteManagement.StoredCredentialText}" Classes="nut-metadata"
+                         TextWrapping="Wrap" />
+              <Button Classes="nut-primary"
+                      Content="{Binding Strings[Smb.Credential.SignIn]}"
+                      AutomationProperties.Name="{Binding Strings[Smb.Credential.SignIn]}"
+                      Click="RemoteSignInWithWindowsCredentialButton_OnClick"
+                      IsEnabled="{Binding RemoteManagement.CanUseWindowsCredentialPrompt}"
+                      IsVisible="{Binding !RemoteManagement.HasSmbCredentialIdentity}"
+                      HorizontalAlignment="Left" />
+              <Button Content="{Binding Strings[Smb.Credential.Change]}"
+                      AutomationProperties.Name="{Binding Strings[Smb.Credential.Change]}"
+                      Click="RemoteChangeWindowsCredentialButton_OnClick"
+                      IsEnabled="{Binding RemoteManagement.CanUseWindowsCredentialPrompt}"
+                      IsVisible="{Binding RemoteManagement.HasSmbCredentialIdentity}"
+                      HorizontalAlignment="Left" />
             </StackPanel>
           </StackPanel>
         </Border>
