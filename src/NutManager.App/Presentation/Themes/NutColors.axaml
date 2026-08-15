@@ -7,7 +7,7 @@
         Surfaces stay near-neutral dark navy and lift only slightly above the window, so colour in
         the product comes from icons, metrics, status and accents rather than from card fills.
       -->
-      <SolidColorBrush x:Key="NutWindowBrush" Color="#090E16" />
+      <SolidColorBrush x:Key="NutWindowBrush" Color="#05080E" />
       <SolidColorBrush x:Key="NutHeaderBrush" Color="#0B111A" />
       <SolidColorBrush x:Key="NutSidebarBrush" Color="#0B111A" />
       <SolidColorBrush x:Key="NutSurface1Brush" Color="#0F1620" />
@@ -21,9 +21,11 @@
         near-opaque value this started with, the effect was invisible and the panel just looked like
         another card. The edge highlight is what sells it: a real pane catches light along its top.
       -->
-      <Color x:Key="NutAcrylicTintColor">#0B1119</Color>
-      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#B21A2433" />
-      <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#3D5B7FB8" />
+      <!-- Tone 1: the pane behind everything, deliberately the darkest thing in the window. -->
+      <Color x:Key="NutAcrylicTintColor">#05080E</Color>
+      <!-- Tone 2: glass surfaces, lifted well clear of tone 1 so their transparency is visible. -->
+      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#8C3A4A66" />
+      <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#40FFFFFF" />
       <LinearGradientBrush x:Key="NutGlassSheenBrush" StartPoint="0%,0%" EndPoint="0%,100%">
         <GradientStop Offset="0" Color="#1FFFFFFF" />
         <GradientStop Offset="0.45" Color="#08FFFFFF" />
@@ -65,9 +67,10 @@
       <SolidColorBrush x:Key="NutSurface1Brush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="NutSurface2Brush" Color="#F7F9FD" />
       <SolidColorBrush x:Key="NutSurface3Brush" Color="#EDF2F9" />
-      <Color x:Key="NutAcrylicTintColor">#F3F6FB</Color>
-      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#B2FFFFFF" />
-      <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#59A8C4E8" />
+      <!-- Same two tones inverted: a tinted pane behind, near-white glass above it. -->
+      <Color x:Key="NutAcrylicTintColor">#DDE4EF</Color>
+      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#A6FFFFFF" />
+      <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#73FFFFFF" />
       <LinearGradientBrush x:Key="NutGlassSheenBrush" StartPoint="0%,0%" EndPoint="0%,100%">
         <GradientStop Offset="0" Color="#B2FFFFFF" />
         <GradientStop Offset="0.45" Color="#3DFFFFFF" />

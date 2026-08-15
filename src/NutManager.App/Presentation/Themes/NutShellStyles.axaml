@@ -436,7 +436,7 @@
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="18" />
     <Setter Property="Padding" Value="8" />
     <Setter Property="Transitions">
       <Transitions>
@@ -449,7 +449,7 @@
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="BorderThickness" Value="3,0,0,0" />
-    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="CornerRadius" Value="13" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="Padding" Value="9,7" />

@@ -115,8 +115,8 @@
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="14" />
-    <Setter Property="Padding" Value="18" />
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="Padding" Value="20" />
   </Style>
 
   <Style Selector="Border.nut-card-elevated">
