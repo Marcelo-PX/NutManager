@@ -38,18 +38,6 @@ public partial class NutConfigurationAdministrationView : UserControl
     }
 
     /// <summary>
-    /// Tells the page how much room it has, so a narrow layout can fold the rail without changing
-    /// what the administrator asked for.
-    /// </summary>
-    private void ConfigurationPage_OnSizeChanged(object? sender, SizeChangedEventArgs eventArgs)
-    {
-        if (DataContext is AdministrationPageViewModel viewModel)
-        {
-            viewModel.SetConfigurationLayoutWidth(eventArgs.NewSize.Width);
-        }
-    }
-
-    /// <summary>
     /// Gives the selected row's icon a single pop when it becomes current. It is deliberately a
     /// one-shot: the connection light is the only thing in this application that loops, and a rail
     /// of five breathing icons would compete with the form beside it for attention.

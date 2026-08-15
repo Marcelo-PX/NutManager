@@ -297,21 +297,23 @@ public sealed class InteractionPolishTests
         var controls = Themes("NutControlStyles.axaml");
         var shell = Themes("NutShellStyles.axaml");
 
-        // One hover response, shared by the surfaces that are actually made of glass: the surface
-        // lightens and its edge comes up. Both halves are required — a surface that brightens with
-        // no edge change reads as a colour bug rather than as light landing on a pane. The card is
-        // a pane and takes the pane tint; a file chip is a row on the page and takes the row tint,
-        // one rung up, so it stays legible against whatever it sits on.
-        foreach (var (source, selector, fill) in new[]
+        // One hover response across the glass, split between two elements where the file strip is
+        // concerned: the card is a single pane and carries both halves itself, while the strip's
+        // frame owns the outline and its tiles own the fill, because the tiles are segments of one
+        // control and cannot each draw their own edge without turning back into five buttons.
+        foreach (var (source, selector, expected) in new[]
         {
-            (controls, "Border.nut-card:pointerover", "NutGlassSurfaceHoverBrush"),
-            (shell, "Button.nut-file-tile:pointerover", "NutGlassRowHoverBrush")
+            (controls, "Border.nut-card:pointerover", new[] { "NutGlassSurfaceHoverBrush", "NutGlassBorderHoverBrush" }),
+            (shell, "Border.nut-file-strip-frame:pointerover", new[] { "NutGlassBorderHoverBrush" }),
+            (shell, "Button.nut-file-tile:pointerover", new[] { "NutGlassRowHoverBrush" })
         })
         {
             var rule = source[source.IndexOf(selector, StringComparison.Ordinal)..];
             rule = rule[..rule.IndexOf("</Style>", StringComparison.Ordinal)];
-            Assert.Contains(fill, rule, StringComparison.Ordinal);
-            Assert.Contains("NutGlassBorderHoverBrush", rule, StringComparison.Ordinal);
+            foreach (var token in expected)
+            {
+                Assert.Contains(token, rule, StringComparison.Ordinal);
+            }
 
             // Nothing that participates in layout, and no transform: a surface reacting under the
             // pointer must not shift the page or clip its own corner against a scroll viewer.
@@ -321,22 +323,24 @@ public sealed class InteractionPolishTests
             }
         }
 
-        // Neither half may snap. Both properties the hover changes are declared as transitions on
-        // the surface's own base style, which is the only place a Brush change can be eased from.
-        foreach (var (source, selector) in new[]
-        {
-            (controls, "Border.nut-card\""),
-            (shell, "Button.nut-file-tile\"")
-        })
-        {
-            var baseRule = source[source.IndexOf(selector, StringComparison.Ordinal)..];
-            baseRule = baseRule[..baseRule.IndexOf("</Style>", StringComparison.Ordinal)];
-            Assert.Contains("<BrushTransition Property=\"Background\"", baseRule, StringComparison.Ordinal);
-            Assert.Contains("<BrushTransition Property=\"BorderBrush\"", baseRule, StringComparison.Ordinal);
-        }
+        // Nothing may snap. Every property a hover changes is declared as a transition on the
+        // element that actually paints it, which is the only place a Brush change can be eased.
+        var card = controls[controls.IndexOf("Border.nut-card\"", StringComparison.Ordinal)..];
+        card = card[..card.IndexOf("</Style>", StringComparison.Ordinal)];
+        Assert.Contains("<BrushTransition Property=\"Background\"", card, StringComparison.Ordinal);
+        Assert.Contains("<BrushTransition Property=\"BorderBrush\"", card, StringComparison.Ordinal);
 
-        // The card is the slower of the two on purpose: a pane the size of a page section reads as
-        // sluggish below about 180 ms, while a chip that size would feel late.
+        var frame = shell[shell.IndexOf("Border.nut-file-strip-frame\"", StringComparison.Ordinal)..];
+        frame = frame[..frame.IndexOf("</Style>", StringComparison.Ordinal)];
+        Assert.Contains("<BrushTransition Property=\"BorderBrush\"", frame, StringComparison.Ordinal);
+
+        // A Button paints through its presenter, so the tile's fill transition lives there.
+        var tile = shell[shell.IndexOf("Button.nut-file-tile /template/ ContentPresenter", StringComparison.Ordinal)..];
+        tile = tile[..tile.IndexOf("</Style>", StringComparison.Ordinal)];
+        Assert.Contains("<BrushTransition Property=\"Background\"", tile, StringComparison.Ordinal);
+
+        // The card is the slowest on purpose: a pane the size of a page section reads as sluggish
+        // below about 180 ms, while a tile that size would feel late.
         Assert.Contains("<BrushTransition Property=\"Background\" Duration=\"0:0:0.18\" Easing=\"CubicEaseOut\" />", controls, StringComparison.Ordinal);
     }
 

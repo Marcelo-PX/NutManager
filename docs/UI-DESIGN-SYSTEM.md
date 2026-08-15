@@ -143,19 +143,37 @@ tabs and the chips read as one idea at three scales. A horizontal strip marks it
 an underline rather than a left bar: a bar down the left of a wide short chip reads as a bullet
 point, not a selection.
 
-The collapse the rail had is kept and repurposed. `ConfigurationFileChipWidth` is 184 px labelled
-and 52 px folded, animating over `NutMotionShell` with `CubicEaseOut`; the labels fade with it,
-because a chip whose text vanished instantly read as content being dropped rather than folded away.
-The preference and the effective state stay separate exactly as before: a window too narrow for five
-labelled chips folds them without touching what the administrator asked for, and widening gives that
-back. The strip is a `WrapPanel`, so a narrow window wraps to a second line rather than putting the
-last file out of reach — which is also why the page no longer rebuilds its own grid on resize.
+### One segmented control, and no fold
 
-Each file keeps its own icon, so a folded chip is still readable: `NutIconGeneral`, `NutIconUps`,
-`NutIconServer`, `NutIconUsers`, `NutIconMonitoring`. Folded, the chip is only that icon, so its
-accessible name and tooltip carry both the purpose and the real file name. Selection is never colour
-alone: the accent outline and a semibold label carry it too. The selected chip's icon pops once when
-it becomes current; nothing in the strip loops.
+The five files are 108 px squares butted against each other inside a single frame, divided by a
+hairline. The frame carries the glass, the outline and the rounding; the tiles are transparent and
+draw only their own right-hand divider, so adjacent tiles share one line rather than drawing two.
+The last divider is removed by the frame's clip — the strip overhangs by exactly the pixel that
+divider occupies, which is tidier than asking a style to know which item is last.
+
+Uniform squares rather than pills fitted to their labels: five equal tiles read as one set of five
+files of equal standing, while five differently sized capsules read as unrelated buttons that happen
+to be adjacent, and the eye has to measure each one to see it is a peer of the others.
+
+**The fold was removed entirely**, and with it the whole of what T31 built for it: the toggle, the
+`ConfigurationRailPreference` persisted in settings, the effective-state property separate from that
+preference, the width threshold that folded the strip regardless, and the resize handler that
+rebuilt the page's grid. A strip is worth collapsing while it is a column eating 283 px of width; as
+one row of squares there is nothing worth reclaiming, and a switcher that can hide the thing you
+switch with is a way to get lost rather than a way to save room. Nothing was kept "just in case" —
+`NothingIsLeftOfTheFoldThatWasRemoved` fails if any piece of it reappears in the view, the styles,
+the view model or the settings record.
+
+Existing settings files that still carry `configurationRailPreference` load unchanged: the
+serializer ignores members it does not know, so no migration was needed for a field that only
+shrank out of the schema.
+
+Each file keeps its own icon: `NutIconGeneral`, `NutIconUps`, `NutIconServer`, `NutIconUsers`,
+`NutIconMonitoring`. The label under it is the category, not the file name, so the accessible name
+and tooltip carry both. Selection is never colour alone — the filled segment, the accent underline
+and a semibold label carry it together, and the underline is a separate layer because the tile's one
+border is already spent on the divider and a single `Border` cannot hold two colours on two sides.
+The selected tile's icon pops once when it becomes current; nothing in the strip loops.
 
 ## Glass surfaces and the two-tone window (T31)
 

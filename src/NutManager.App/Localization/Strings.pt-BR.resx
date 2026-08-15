@@ -946,6 +946,4 @@
   <data name="Profiles.ManagedFiles.NoneFound" xml:space="preserve"><value>Nenhum dos arquivos suportados foi encontrado.</value></data>
   <data name="Profiles.ManagedFiles.DetectFailed" xml:space="preserve"><value>Não foi possível verificar o diretório de configuração.</value></data>
   <data name="Administration.File.NotEnabled" xml:space="preserve"><value>Este arquivo não está habilitado para o perfil atual.</value></data>
-  <data name="Administration.Configuration.CollapseRail" xml:space="preserve"><value>Recolher lista de arquivos</value></data>
-  <data name="Administration.Configuration.ExpandRail" xml:space="preserve"><value>Expandir lista de arquivos</value></data>
 </root>

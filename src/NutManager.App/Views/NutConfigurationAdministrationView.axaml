@@ -1,5 +1,4 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             SizeChanged="ConfigurationPage_OnSizeChanged"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              xmlns:views="clr-namespace:NutManager.App.Views"
@@ -14,31 +13,38 @@
       first editable field sat below the fold. Horizontally the same five files cost one row and
       the form gets the whole width.
 
-      Folding is presentation only, exactly as before: the selected file, its draft and its editor
-      are untouched by it. What changes is the chip's width rather than the column's.
+      One segmented control rather than five separate buttons: the tiles butt against each other
+      inside a single frame and are divided by a hairline, which is what says these five are one
+      choice with five positions. Spaced apart they were five objects the eye has to group.
+
+      There is no fold. The strip was collapsible while it was a column eating width; as one row of
+      squares there is nothing worth reclaiming, and a switcher that can hide the thing you switch
+      with is a way to get lost rather than a way to save room.
     -->
     <Grid x:Name="ConfigurationEditorLayout" RowDefinitions="Auto,Auto" IsVisible="{Binding IsConfigurationEditorVisible}">
-      <Grid x:Name="ConfigurationFilesPanel" Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="10">
-        <!-- WrapPanel, not StackPanel: on a window too narrow for five labelled chips the row wraps
-             rather than clipping the last file out of reach. -->
+      <!--
+        The frame owns the surface, the outline and the rounding; the tiles inside are transparent
+        and draw only their own right-hand divider. ClipToBounds plus the negative right margin is
+        what removes the last tile's divider: it falls on the clip boundary and is cut, which is
+        tidier than asking a style to know which item is last.
+      -->
+      <Border x:Name="ConfigurationFilesPanel" Grid.Row="0" Classes="nut-file-strip-frame">
         <ItemsControl ItemsSource="{Binding ConfigurationFiles}" Classes="nut-file-strip">
           <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="viewModels:NutConfigurationFileItemViewModel">
               <!--
                 A square, and every one the same square. Uniform tiles read as a set of five things
                 of equal standing, which is what these are: five files you switch between. Sized
-                rather than fitted to content, because a row of pills each as wide as its own label
-                reads as five unrelated buttons that happen to be adjacent.
+                rather than fitted to content, because tiles each as wide as their own label read as
+                unrelated buttons that happen to be adjacent.
               -->
               <Button Classes="nut-file-tile"
                       Classes.selected="{Binding IsSelected}"
                       Click="ConfigurationFileRailItem_OnClick"
                       IsEnabled="{Binding CanLoad}"
-                      Width="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).ConfigurationFileTileSize}"
-                      Height="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).ConfigurationFileTileSize}"
                       AutomationProperties.Name="{Binding AccessibleName}"
                       ToolTip.Tip="{Binding AccessibleName}">
                 <Panel>
@@ -53,9 +59,7 @@
                       <PathIcon Data="{DynamicResource NutIconUsers}" Width="24" Height="24" IsVisible="{Binding IsUpsdUsers}" />
                       <PathIcon Data="{DynamicResource NutIconMonitoring}" Width="24" Height="24" IsVisible="{Binding IsUpsmonConf}" />
                     </Panel>
-                    <StackPanel Classes="nut-file-rail-label"
-                                Spacing="1"
-                                IsVisible="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).IsConfigurationRailOpen}">
+                    <StackPanel Classes="nut-file-rail-label" Spacing="1">
                       <TextBlock Text="{Binding Category}" FontSize="12" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
                       <TextBlock Text="{Binding FileName}" Classes="nut-metadata" FontSize="10.5" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
@@ -67,27 +71,15 @@
                            VerticalAlignment="Top"
                            IsVisible="{Binding HasPendingChanges}"
                            ToolTip.Tip="{Binding StatusText}" />
+                  <!-- Selection needs its own layer: the tile's single border is spent on the
+                       divider, and one Border cannot carry two colours on two sides. -->
+                  <Border Classes="nut-file-tile-marker" VerticalAlignment="Bottom" />
                 </Panel>
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-
-        <Button Grid.Column="1"
-                Command="{Binding ToggleConfigurationRailCommand}"
-                AutomationProperties.Name="{Binding ConfigurationRailToggleText}"
-                ToolTip.Tip="{Binding ConfigurationRailToggleText}"
-                Padding="7"
-                MinWidth="0"
-                VerticalAlignment="Top">
-          <Panel Width="14" Height="14">
-            <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="14" Height="14"
-                      IsVisible="{Binding IsConfigurationRailOpen}" />
-            <PathIcon Data="{DynamicResource NutIconChevronRight}" Width="14" Height="14"
-                      IsVisible="{Binding !IsConfigurationRailOpen}" />
-          </Panel>
-        </Button>
-      </Grid>
+      </Border>
 
       <TextBlock Grid.Row="1"
                  Text="{Binding Strings[Administration.Configuration.NoFiles]}"

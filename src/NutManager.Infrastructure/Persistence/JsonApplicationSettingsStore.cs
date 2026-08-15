@@ -80,8 +80,7 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
             settings.Theme,
             settings.MockMode,
             settings.Language,
-            settings.SidebarPreference,
-            configurationRailPreference: settings.ConfigurationRailPreference);
+            settings.SidebarPreference);
 
         var directory = Path.GetDirectoryName(_settingsPath)!;
         var temporaryPath = Path.Combine(directory, $".{FileName}.{Guid.NewGuid():N}.tmp");
@@ -136,9 +135,6 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
         public UiLanguagePreference Language { get; set; } = UiLanguagePreference.PtBr;
         public SidebarPreference SidebarPreference { get; set; } = SidebarPreference.Expanded;
 
-        /// <summary>Absent before schema 4, which reads as expanded — the behaviour that existed then.</summary>
-        public SidebarPreference ConfigurationRailPreference { get; set; } = SidebarPreference.Expanded;
-
         public ApplicationSettings ToSettings()
         {
             if (SchemaVersion is < 1 or > ApplicationSettings.CurrentSchemaVersion)
@@ -162,8 +158,7 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
                 MockMode.Value,
                 SchemaVersion == 1 ? UiLanguagePreference.PtBr : Language,
                 SchemaVersion == 1 ? SidebarPreference.Expanded : SidebarPreference,
-                legacyEndpoint,
-                SchemaVersion < 4 ? SidebarPreference.Expanded : ConfigurationRailPreference);
+                legacyEndpoint);
         }
 
         public static SettingsDocument FromSettings(ApplicationSettings settings) => new()
@@ -174,8 +169,7 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
             Theme = settings.Theme,
             MockMode = settings.MockMode,
             Language = settings.Language,
-            SidebarPreference = settings.SidebarPreference,
-            ConfigurationRailPreference = settings.ConfigurationRailPreference
+            SidebarPreference = settings.SidebarPreference
         };
     }
 }

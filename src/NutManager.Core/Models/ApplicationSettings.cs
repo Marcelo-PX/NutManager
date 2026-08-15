@@ -12,8 +12,7 @@ public sealed record ApplicationSettings
         bool mockMode = false,
         UiLanguagePreference language = UiLanguagePreference.PtBr,
         SidebarPreference sidebarPreference = SidebarPreference.Expanded,
-        LegacyMonitoringEndpoint? legacyMonitoringEndpoint = null,
-        SidebarPreference configurationRailPreference = SidebarPreference.Expanded)
+        LegacyMonitoringEndpoint? legacyMonitoringEndpoint = null)
     {
         if (schemaVersion != CurrentSchemaVersion)
         {
@@ -52,7 +51,6 @@ public sealed record ApplicationSettings
         MockMode = mockMode;
         Language = language;
         SidebarPreference = sidebarPreference;
-        ConfigurationRailPreference = configurationRailPreference;
         LegacyMonitoringEndpoint = legacyMonitoringEndpoint;
     }
 
@@ -63,14 +61,6 @@ public sealed record ApplicationSettings
     public bool MockMode { get; }
     public UiLanguagePreference Language { get; }
     public SidebarPreference SidebarPreference { get; }
-
-    /// <summary>
-    /// Whether the NUT configuration page's file rail is expanded. It reuses the shell sidebar's
-    /// own preference type because it is the same two-state choice, and it is a separate value
-    /// because the two rails are collapsed for different reasons: the shell one to reclaim the
-    /// whole window, this one to give the configuration form more room.
-    /// </summary>
-    public SidebarPreference ConfigurationRailPreference { get; }
     public LegacyMonitoringEndpoint? LegacyMonitoringEndpoint { get; }
 }
 

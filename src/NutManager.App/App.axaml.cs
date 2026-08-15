@@ -100,13 +100,7 @@ public partial class App : Application
             runtimeProfile,
             remoteManagement,
             settings.Language,
-            isLocalManagement ? new WindowsNutDriverCatalogSource() : null,
-            settings.ConfigurationRailPreference,
-            // The rail's own preference is written straight through the settings store. It is
-            // read-modify-write so a change made on the Settings page in the meantime is not lost,
-            // and it is fire-and-forget because a UI preference that fails to persist must not
-            // block folding a panel.
-            preference => _ = PersistConfigurationRailPreferenceAsync(store, preference));
+            isLocalManagement ? new WindowsNutDriverCatalogSource() : null);
         INutManagedFileDetector managedFileDetector = isLocalManagement
             ? new LocalNutManagedFileDetector(installationDetector ?? new WindowsNutInstallationDetector())
             : new RemoteNutManagedFileDetector(() => remoteManagement?.DirectoryValidation);
@@ -178,41 +172,5 @@ public partial class App : Application
             ThemePreference.Dark => ThemeVariant.Dark,
             _ => ThemeVariant.Default
         };
-    }
-
-    /// <summary>
-    /// Saves only the configuration rail's expanded state, leaving every other preference as it is
-    /// on disk. Failures are swallowed on purpose: this is a cosmetic preference, and surfacing a
-    /// storage error while the user is collapsing a panel would be worse than losing the state.
-    /// </summary>
-    private static async Task PersistConfigurationRailPreferenceAsync(
-        IApplicationSettingsStore store,
-        SidebarPreference preference)
-    {
-        try
-        {
-            var current = await store.LoadAsync(CancellationToken.None);
-            if (current.ConfigurationRailPreference == preference)
-            {
-                return;
-            }
-
-            await store.SaveAsync(
-                new ApplicationSettings(
-                    ApplicationSettings.CurrentSchemaVersion,
-                    current.PollingInterval,
-                    current.ConnectionTimeout,
-                    current.Theme,
-                    current.MockMode,
-                    current.Language,
-                    current.SidebarPreference,
-                    current.LegacyMonitoringEndpoint,
-                    preference),
-                CancellationToken.None);
-        }
-        catch
-        {
-            // A preference that cannot be stored simply is not remembered.
-        }
     }
 }
