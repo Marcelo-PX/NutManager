@@ -129,13 +129,47 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private bool _isConfigurationRailExpanded = true;
 
     public string ConfigurationRailToggleText => Strings.Get(
-        IsConfigurationRailExpanded ? "Administration.Configuration.CollapseRail" : "Administration.Configuration.ExpandRail");
+        IsConfigurationRailOpen ? "Administration.Configuration.CollapseRail" : "Administration.Configuration.ExpandRail");
+
+    /// <summary>
+    /// Below this the page cannot afford both a labelled rail and a usable form beside it, so the
+    /// rail folds regardless of the preference.
+    /// </summary>
+    private const double CompactConfigurationWidth = 860;
+
+    private bool _isConfigurationLayoutCompact;
+
+    /// <summary>
+    /// Told by the view how much room the page actually has. Narrow layouts fold the rail without
+    /// touching the stored preference: the administrator asked for it expanded, and widening the
+    /// window again should give them back exactly that rather than a state the layout imposed.
+    /// </summary>
+    public void SetConfigurationLayoutWidth(double width)
+    {
+        var compact = width > 0 && width < CompactConfigurationWidth;
+        if (compact == _isConfigurationLayoutCompact)
+        {
+            return;
+        }
+
+        _isConfigurationLayoutCompact = compact;
+        OnPropertyChanged(nameof(IsConfigurationRailOpen));
+        OnPropertyChanged(nameof(ConfigurationRailWidth));
+        OnPropertyChanged(nameof(ConfigurationRailToggleText));
+    }
+
+    /// <summary>
+    /// Whether the rail is actually showing labels right now. This is the preference and the layout
+    /// together, and it is what the view binds to; <see cref="IsConfigurationRailExpanded"/> stays
+    /// the administrator's own choice.
+    /// </summary>
+    public bool IsConfigurationRailOpen => IsConfigurationRailExpanded && !_isConfigurationLayoutCompact;
 
     /// <summary>
     /// The rail's width. Bound rather than styled because the width is the thing that animates, and
     /// the two values are design tokens shared with the shell sidebar's own proportions.
     /// </summary>
-    public double ConfigurationRailWidth => IsConfigurationRailExpanded ? 228 : 64;
+    public double ConfigurationRailWidth => IsConfigurationRailOpen ? 228 : 64;
 
     [RelayCommand]
     private void ToggleConfigurationRail() => IsConfigurationRailExpanded = !IsConfigurationRailExpanded;
@@ -157,6 +191,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(ConfigurationRailToggleText));
         OnPropertyChanged(nameof(ConfigurationRailWidth));
+        OnPropertyChanged(nameof(IsConfigurationRailOpen));
         _persistConfigurationRailPreference?.Invoke(value ? SidebarPreference.Expanded : SidebarPreference.Collapsed);
     }
 

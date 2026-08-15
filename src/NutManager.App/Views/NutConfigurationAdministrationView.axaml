@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             SizeChanged="ConfigurationPage_OnSizeChanged"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              xmlns:views="clr-namespace:NutManager.App.Views"
@@ -52,7 +53,7 @@
                        Grid.ColumnSpan="2"
                        Text="{Binding Strings[Administration.Configuration.Files]}"
                        Classes="nut-section-title"
-                       IsVisible="{Binding IsConfigurationRailExpanded}"
+                       IsVisible="{Binding IsConfigurationRailOpen}"
                        Margin="2,2,0,0"
                        TextWrapping="Wrap" />
             <Button Grid.Row="0" Grid.Column="1"
@@ -64,9 +65,9 @@
                     HorizontalAlignment="Right">
               <Panel Width="14" Height="14">
                 <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="14" Height="14"
-                          IsVisible="{Binding IsConfigurationRailExpanded}" />
+                          IsVisible="{Binding IsConfigurationRailOpen}" />
                 <PathIcon Data="{DynamicResource NutIconChevronRight}" Width="14" Height="14"
-                          IsVisible="{Binding !IsConfigurationRailExpanded}" />
+                          IsVisible="{Binding !IsConfigurationRailOpen}" />
               </Panel>
             </Button>
           </Grid>
@@ -100,7 +101,7 @@
                                 Classes="nut-file-rail-label"
                                 Spacing="1"
                                 VerticalAlignment="Center"
-                                IsVisible="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).IsConfigurationRailExpanded}">
+                                IsVisible="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).IsConfigurationRailOpen}">
                       <TextBlock Text="{Binding Category}" FontSize="13" TextTrimming="CharacterEllipsis" />
                       <TextBlock Text="{Binding FileName}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
                     </StackPanel>

@@ -742,6 +742,13 @@ editing form gets the space back, and bring that surface up to the current visua
 - alter T13/T14, the transports, credential handling, or the T30 file-selection logic;
 - add a continuous animation; the connection light stays the only one.
 
+### Narrow layouts
+
+Below 860 px the page cannot afford both a labelled rail and a usable form beside it, so the rail
+folds. It folds without touching the stored preference: the administrator asked for it expanded, and
+widening the window again gives back exactly that rather than a state the layout imposed. There is
+no second UX for small windows — the same rail, just folded.
+
 ### Validation
 
 - rail state, persistence and migration tests, plus manual Windows validation of the page.

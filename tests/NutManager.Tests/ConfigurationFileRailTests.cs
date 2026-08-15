@@ -286,4 +286,55 @@ public sealed class ConfigurationFileRailTests
         Assert.Contains("AutomationProperties.Name=\"{Binding AccessibleName}\"", view, StringComparison.Ordinal);
         Assert.Contains("ToolTip.Tip=\"{Binding AccessibleName}\"", view, StringComparison.Ordinal);
     }
+
+    // ==================== Narrow layouts ====================
+
+    [Fact]
+    public void ANarrowPageFoldsTheRailWithoutChangingWhatWasAskedFor()
+    {
+        var viewModel = new AdministrationPageViewModel();
+
+        viewModel.SetConfigurationLayoutWidth(700);
+
+        Assert.False(viewModel.IsConfigurationRailOpen);
+        Assert.Equal(64, viewModel.ConfigurationRailWidth);
+        // The preference is untouched: the layout folded it, the administrator did not.
+        Assert.True(viewModel.IsConfigurationRailExpanded);
+    }
+
+    [Fact]
+    public void WideningThePageGivesBackExactlyThePreferenceThatWasStored()
+    {
+        var viewModel = new AdministrationPageViewModel();
+        viewModel.SetConfigurationLayoutWidth(700);
+
+        viewModel.SetConfigurationLayoutWidth(1400);
+
+        Assert.True(viewModel.IsConfigurationRailOpen);
+        Assert.Equal(228, viewModel.ConfigurationRailWidth);
+    }
+
+    [Fact]
+    public void ARailTheAdministratorCollapsedStaysCollapsedWhenThePageWidens()
+    {
+        var viewModel = new AdministrationPageViewModel(null, null, configurationRailPreference: SidebarPreference.Collapsed);
+
+        viewModel.SetConfigurationLayoutWidth(700);
+        viewModel.SetConfigurationLayoutWidth(1400);
+
+        // Widening restores the preference, and the preference here was collapsed.
+        Assert.False(viewModel.IsConfigurationRailOpen);
+        Assert.False(viewModel.IsConfigurationRailExpanded);
+    }
+
+    [Fact]
+    public void AnUnmeasuredPageIsNotTreatedAsNarrow()
+    {
+        var viewModel = new AdministrationPageViewModel();
+
+        // A zero width is a layout pass that has not happened yet, not a small window.
+        viewModel.SetConfigurationLayoutWidth(0);
+
+        Assert.True(viewModel.IsConfigurationRailOpen);
+    }
 }
