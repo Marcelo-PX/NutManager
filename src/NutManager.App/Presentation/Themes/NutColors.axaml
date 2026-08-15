@@ -7,15 +7,30 @@
         Surfaces stay near-neutral dark navy and lift only slightly above the window, so colour in
         the product comes from icons, metrics, status and accents rather than from card fills.
       -->
-      <SolidColorBrush x:Key="NutWindowBrush" Color="#090E16" />
+      <SolidColorBrush x:Key="NutWindowBrush" Color="#05080E" />
       <SolidColorBrush x:Key="NutHeaderBrush" Color="#0B111A" />
       <SolidColorBrush x:Key="NutSidebarBrush" Color="#0B111A" />
       <SolidColorBrush x:Key="NutSurface1Brush" Color="#0F1620" />
       <SolidColorBrush x:Key="NutSurface2Brush" Color="#121A25" />
       <SolidColorBrush x:Key="NutSurface3Brush" Color="#172029" />
-      <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#1B2531" />
-      <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#131B26" />
-      <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#14202F" />
+      <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#B21B2531" />
+      <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#A6131B26" />
+      <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#BF14202F" />
+      <!--
+        Glass surfaces. The alpha is low enough that what is behind genuinely shows through — at the
+        near-opaque value this started with, the effect was invisible and the panel just looked like
+        another card. The edge highlight is what sells it: a real pane catches light along its top.
+      -->
+      <!-- Tone 1: the pane behind everything, deliberately the darkest thing in the window. -->
+      <Color x:Key="NutAcrylicTintColor">#05080E</Color>
+      <!-- Tone 2: glass surfaces, lifted well clear of tone 1 so their transparency is visible. -->
+      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#8C3A4A66" />
+      <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#40FFFFFF" />
+      <LinearGradientBrush x:Key="NutGlassSheenBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Offset="0" Color="#1FFFFFFF" />
+        <GradientStop Offset="0.45" Color="#08FFFFFF" />
+        <GradientStop Offset="1" Color="#00FFFFFF" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="NutBorderBrush" Color="#222C3B" />
       <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#1A2230" />
       <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#2E3D50" />
@@ -35,8 +50,8 @@
         <GradientStop Offset="1" Color="#101720" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="NutSelectedSheenBrush" StartPoint="0%,0%" EndPoint="100%,0%">
-        <GradientStop Offset="0" Color="#16243A" />
-        <GradientStop Offset="1" Color="#111A26" />
+        <GradientStop Offset="0" Color="#CC16243A" />
+        <GradientStop Offset="1" Color="#99111A26" />
       </LinearGradientBrush>
       <!-- Compatibility aliases keep legacy T24B page surfaces on the NutManager palette. -->
       <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#0F1620" />
@@ -52,6 +67,15 @@
       <SolidColorBrush x:Key="NutSurface1Brush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="NutSurface2Brush" Color="#F7F9FD" />
       <SolidColorBrush x:Key="NutSurface3Brush" Color="#EDF2F9" />
+      <!-- Same two tones inverted: a tinted pane behind, near-white glass above it. -->
+      <Color x:Key="NutAcrylicTintColor">#DDE4EF</Color>
+      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#A6FFFFFF" />
+      <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#73FFFFFF" />
+      <LinearGradientBrush x:Key="NutGlassSheenBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Offset="0" Color="#B2FFFFFF" />
+        <GradientStop Offset="0.45" Color="#3DFFFFFF" />
+        <GradientStop Offset="1" Color="#00FFFFFF" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#E4ECF9" />
       <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#F2F6FC" />
       <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#E1EBFD" />
@@ -73,8 +97,8 @@
         <GradientStop Offset="1" Color="#F2F6FC" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="NutSelectedSheenBrush" StartPoint="0%,0%" EndPoint="100%,0%">
-        <GradientStop Offset="0" Color="#DCE9FD" />
-        <GradientStop Offset="1" Color="#EDF3FD" />
+        <GradientStop Offset="0" Color="#CCDCE9FD" />
+        <GradientStop Offset="1" Color="#99EDF3FD" />
       </LinearGradientBrush>
       <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#EDF2F9" />
@@ -87,26 +111,26 @@
   <SolidColorBrush x:Key="NutAccentBrush" Color="#3B82F6" />
   <SolidColorBrush x:Key="NutAccentBrightBrush" Color="#60A5FA" />
   <SolidColorBrush x:Key="NutOnAccentBrush" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="NutAccentSoftBrush" Color="#332F6FE0" />
+  <SolidColorBrush x:Key="NutAccentSoftBrush" Color="#1F2F6FE0" />
   <SolidColorBrush x:Key="NutCyanBrush" Color="#38BDF8" />
   <SolidColorBrush x:Key="NutHealthyBrush" Color="#4ADE80" />
-  <SolidColorBrush x:Key="NutHealthySoftBrush" Color="#2E22C55E" />
+  <SolidColorBrush x:Key="NutHealthySoftBrush" Color="#1C22C55E" />
   <SolidColorBrush x:Key="NutWarningBrush" Color="#FBBF24" />
-  <SolidColorBrush x:Key="NutWarningSoftBrush" Color="#2EF59E0B" />
+  <SolidColorBrush x:Key="NutWarningSoftBrush" Color="#1CF59E0B" />
   <SolidColorBrush x:Key="NutCriticalBrush" Color="#F87171" />
-  <SolidColorBrush x:Key="NutCriticalSoftBrush" Color="#2EEF4444" />
+  <SolidColorBrush x:Key="NutCriticalSoftBrush" Color="#1CEF4444" />
   <!--
     Hover pairs for the semantic badges. The soft fills are alpha over whatever surface is behind
     them, so one definition reads correctly in both themes; the bright borders are the same hues
     lifted a step, which keeps a hovered badge unmistakably the same state it was.
   -->
-  <SolidColorBrush x:Key="NutAccentSoftHoverBrush" Color="#4D2F6FE0" />
+  <SolidColorBrush x:Key="NutAccentSoftHoverBrush" Color="#332F6FE0" />
   <SolidColorBrush x:Key="NutHealthyBrightBrush" Color="#86EFAC" />
-  <SolidColorBrush x:Key="NutHealthySoftHoverBrush" Color="#4D22C55E" />
+  <SolidColorBrush x:Key="NutHealthySoftHoverBrush" Color="#3322C55E" />
   <SolidColorBrush x:Key="NutWarningBrightBrush" Color="#FCD34D" />
-  <SolidColorBrush x:Key="NutWarningSoftHoverBrush" Color="#4DF59E0B" />
+  <SolidColorBrush x:Key="NutWarningSoftHoverBrush" Color="#33F59E0B" />
   <SolidColorBrush x:Key="NutCriticalBrightBrush" Color="#FCA5A5" />
-  <SolidColorBrush x:Key="NutCriticalSoftHoverBrush" Color="#4DEF4444" />
+  <SolidColorBrush x:Key="NutCriticalSoftHoverBrush" Color="#33EF4444" />
 
   <!--
     The status light's own green. It is a step brighter and more saturated than NutHealthyBrush so a

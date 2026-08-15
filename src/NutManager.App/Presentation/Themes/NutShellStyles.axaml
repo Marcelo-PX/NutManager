@@ -417,4 +417,91 @@
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="BorderThickness" Value="0,1,0,0" />
   </Style>
+
+  <!--
+    Configuration file rail. It is deliberately built from the same pieces as the shell navigation
+    item — accent bar for selection, sheen for the selected surface, hover lift — so the two rails
+    read as one idea at two scales rather than as two different components.
+
+    The width animates rather than snapping, and the labels fade with it; a collapsing rail whose
+    text vanished instantly looked like the content had been dropped rather than folded away.
+  -->
+  <Style Selector="Border.nut-file-rail">
+    <!--
+      The surface is a translucent tint over the page rather than a solid card, so the rail reads as
+      glass sitting above the content instead of a second opaque panel. The alpha is deliberately
+      high: at lower opacity the file names lost contrast against whatever scrolled underneath, and
+      legibility outranks the effect.
+    -->
+    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.nut-file-rail-item">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="3,0,0,0" />
+    <Setter Property="CornerRadius" Value="13" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="9,7" />
+    <Setter Property="Margin" Value="0,1" />
+    <Setter Property="MinHeight" Value="40" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-file-rail-item /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nut-file-rail-item:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-file-rail-item:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceInteractiveBrush}" />
+  </Style>
+  <Style Selector="Button.nut-file-rail-item.selected">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.nut-file-rail-item.selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSelectedSheenBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-file-rail-item:disabled">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+
+  <!-- Labels fade with the width so the fold reads as one motion. -->
+  <Style Selector="StackPanel.nut-file-rail-label">
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <!-- A pending draft is shown as a small accent dot, redundant with the item's own state text. -->
+  <Style Selector="Ellipse.nut-file-rail-dirty">
+    <Setter Property="Width" Value="6" />
+    <Setter Property="Height" Value="6" />
+    <Setter Property="Fill" Value="{DynamicResource NutWarningBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
 </Styles>

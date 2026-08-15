@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using NutManager.App.Presentation.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using NutManager.App.ViewModels;
@@ -43,10 +45,50 @@ public partial class NutConfigurationAdministrationView : UserControl
         if (!string.IsNullOrWhiteSpace(path)) await viewModel.InspectInstallationDirectoryAsync(path);
     }
 
-    private async void ConfigurationFileList_OnSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
+    /// <summary>
+    /// Tells the page how much room it has, so a narrow layout can fold the rail without changing
+    /// what the administrator asked for.
+    /// </summary>
+    private void ConfigurationPage_OnSizeChanged(object? sender, SizeChangedEventArgs eventArgs)
+    {
+        if (DataContext is AdministrationPageViewModel viewModel)
+        {
+            viewModel.SetConfigurationLayoutWidth(eventArgs.NewSize.Width);
+        }
+    }
+
+    /// <summary>
+    /// Gives the selected row's icon a single pop when it becomes current. It is deliberately a
+    /// one-shot: the connection light is the only thing in this application that loops, and a rail
+    /// of five breathing icons would compete with the form beside it for attention.
+    /// </summary>
+    private void ConfigurationFileRailIcon_OnAttached(object? sender, EventArgs eventArgs)
+    {
+        if (sender is not Panel panel || panel.DataContext is not NutConfigurationFileItemViewModel file)
+        {
+            return;
+        }
+
+        if (file.IsSelected)
+        {
+            NutIconMotion.PopOnce(panel, new Size(18, 18), 1.18, TimeSpan.FromMilliseconds(220));
+        }
+        else
+        {
+            NutIconMotion.Reset(panel, 1);
+        }
+    }
+
+    /// <summary>
+    /// The rail's rows are buttons rather than list items, so selection is an explicit click. That
+    /// matters for the dirty-draft guard: a ListBox moves its own selection before anything can
+    /// refuse the change, whereas a button leaves the view model in charge of whether the switch
+    /// happens at all.
+    /// </summary>
+    private async void ConfigurationFileRailItem_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
         if (DataContext is not AdministrationPageViewModel viewModel ||
-            eventArgs.AddedItems.OfType<NutConfigurationFileItemViewModel>().FirstOrDefault() is not { } file)
+            (sender as Button)?.DataContext is not NutConfigurationFileItemViewModel file)
         {
             return;
         }

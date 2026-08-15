@@ -48,7 +48,8 @@ Only one task should normally be in progress at a time.
 | T27A | DONE | Approved visual fidelity, iconography and motion | Windows presentation aligned with the approved visual references |
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | DONE | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
-| T30 | IN PROGRESS | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
+| T30 | DONE | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
+| T31 | DONE | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
 
 ---
 
@@ -613,7 +614,7 @@ picking up with the next presentation change that touches that bar.
 
 ## T30 — Windows-native SMB credential authentication
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Current scope
 
@@ -713,6 +714,75 @@ account, because no alternate credential with access to the share was available 
 prompt, cancel, successful sign-in, and both remember variants — is covered by automated tests
 against a faked native seam rather than by manual validation, and is worth confirming on a machine
 where a test account exists.
+
+## T31 — Collapsible NUT file rail
+
+**Status:** DONE
+
+### Objective
+
+Turn the fixed file list on Administration → NUT Configuration into a collapsible page rail, so the
+editing form gets the space back, and bring that surface up to the current visual language.
+
+### Allowed scope
+
+- `NutManager.App` presentation for the configuration page, the shared rail styles it needs, and the
+  settings preference that remembers its state.
+
+### Requirements
+
+- expanded and collapsed states, with the collapsed one showing icons and keeping every row named;
+- only the files the profile manages, and a dignified empty state when it manages none;
+- the state persists and is restored on the next launch;
+- folding never changes the selected file, rebuilds an editor, or touches a draft;
+- switching files keeps using the existing guard.
+
+### Do not
+
+- alter T13/T14, the transports, credential handling, or the T30 file-selection logic;
+- add a continuous animation; the connection light stays the only one.
+
+### Narrow layouts
+
+Below 860 px the page cannot afford both a labelled rail and a usable form beside it, so the rail
+folds. It folds without touching the stored preference: the administrator asked for it expanded, and
+widening the window again gives back exactly that rather than a state the layout imposed. There is
+no second UX for small windows — the same rail, just folded.
+
+### Implemented
+
+- a rail whose column changes width rather than a panel that is shown and hidden, so collapsing gives
+  the editing form the space back;
+- folding is presentation only: the selected file, its draft and its editor come through untouched,
+  and rows are buttons rather than list items so the existing dirty-draft guard stays in charge of
+  whether a switch happens at all;
+- only the files the profile manages, with a dignified empty state when it manages none;
+- the expanded state persists through the settings store at schema 4, and a document written before
+  the preference existed opens expanded;
+- an acrylic pane behind the shell, two deliberately separated tones, and glass surfaces in Apple's
+  language — frosted and cool, a thin white hairline for an edge, larger continuous radii — with
+  foreground colours untouched so text keeps the contrast it had;
+- narrow layouts fold the rail without altering the stored preference.
+
+### Validation
+
+Gates: Release build with 0 warnings and 0 errors; 1201/1201 tests; vulnerability gate clean;
+format and whitespace clean.
+
+Windows runtime: the shell, the acrylic backdrop and both themes were confirmed on screen, and the
+rail was driven expanded and collapsed with its rows named in both states.
+
+### Known follow-ups
+
+Two items were accepted rather than completed, and neither blocks the surface working:
+
+- the rail was last seen on screen before the two-tone glass landed, so the current appearance of
+  that specific panel is confirmed by the theme captures rather than by a picture of the rail itself.
+  Seeing it needs a local profile or a reachable configuration share;
+- external icon fonts were authorised but not adopted. Doing so means adding a package, recording it
+  in the third-party notices, and reversing the "no icon font, no icon package" decision recorded in
+  the design system and the agent rules. It belongs in a round that changes those documents together
+  rather than leaving the repository asserting one thing and practising another.
 
 ## Task execution template
 

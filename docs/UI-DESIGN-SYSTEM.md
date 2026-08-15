@@ -107,3 +107,61 @@ Icon-only shell controls have `AutomationProperties.Name`, tooltips, and the sha
 Mock/demo state is an unambiguous persistent badge, never merely an incidental checkbox value.
 
 All layouts introduced by T24A–T29 must be validated in both official cultures as those tasks are implemented. See [Localization](LOCALIZATION.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
+
+## Configuration file rail (T31)
+
+The NUT configuration page carries its own collapsible rail for the file list. It is built from the
+same pieces as the shell navigation item — accent bar for selection, `NutSelectedSheenBrush` for the
+selected surface, hover lift — so the two rails read as one idea at two scales rather than as two
+components that happen to sit near each other.
+
+`NutFileRailExpandedWidth` (228 px) matches the shell sidebar; `NutFileRailCollapsedWidth` (64 px) is
+tighter because this rail sits inside a page and only has to hold an 18 px icon. The width animates
+over `NutMotionShell` with `CubicEaseOut`, and the labels fade with it: a rail whose text vanished
+instantly read as content being dropped rather than folded away.
+
+The surface is `NutGlassSurfaceBrush`, a translucent tint over the page rather than a second opaque
+card, so the rail reads as glass above the content. The alpha is deliberately high — at lower opacity
+the file names lost contrast against whatever scrolled underneath, and legibility outranks the
+effect.
+
+Each file keeps its own icon, so a collapsed rail is still readable: `NutIconGeneral`, `NutIconUps`,
+`NutIconServer`, `NutIconUsers`, `NutIconMonitoring`. Collapsed, the row is only that icon, so its
+accessible name and tooltip carry both the purpose and the real file name. Selection is never colour
+alone: the accent bar and a semibold label carry it too. The selected row's icon pops once when it
+becomes current; nothing in the rail loops.
+
+## Glass surfaces and the two-tone window (T31)
+
+The window is transparent with an `ExperimentalAcrylicBorder` behind the entire shell. This is not
+decoration for its own sake: Avalonia cannot blur in-page content, so before the pane existed the
+translucent cards were tinting a flat colour and the effect was invisible. The transparency hint
+degrades from acrylic to Mica to plain blur, and `NutWindowBrush` sits on the same value as the
+tint, so where a compositor offers none of them the fallback keeps the same separation instead of
+collapsing the layers together.
+
+Transparency only reads when the layers differ, which is why the palette is deliberately two-tone:
+
+| Token | Role | Dark | Light |
+| --- | --- | --- | --- |
+| `NutAcrylicTintColor` | the pane behind everything | `#05080E` | `#DDE4EF` |
+| `NutGlassSurfaceBrush` | cards, rail, panels | `#8C3A4A66` | `#A6FFFFFF` |
+| `NutGlassBorderBrush` | the pane's edge | `#40FFFFFF` | `#73FFFFFF` |
+| `NutGlassSheenBrush` | top-edge highlight | — | — |
+
+With the backdrop and the surfaces on the same navy, a 70% panel still looked opaque; the backdrop
+is now the darkest value in the window and the surfaces lift well clear of it.
+
+The language follows Apple's glass rather than a tinted panel: frosted and cool instead of tinted
+navy, a thin white hairline instead of a coloured border — on those panes the rim is light catching
+an edge, not a drawn outline — and larger continuous radii, which is half of what makes a surface
+read as glass at all. Badge fills and the navigation selection sheen carry alpha for the same
+reason, so they read as tinted glass over the pane rather than as painted chips.
+
+Foreground colours are untouched throughout. The alpha on every surface stops where body text would
+start losing contrast: the effect is never allowed to cost legibility.
+
+The acrylic pane breathes over sixteen seconds with a narrow swing. It and the connection light are
+the only two continuous animations in the application, and neither is a control style — a looping
+style would apply to every instance of a control, which remains forbidden and is what the
+interaction tests defend.

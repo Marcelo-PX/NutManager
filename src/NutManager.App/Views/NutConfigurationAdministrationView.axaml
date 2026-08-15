@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             SizeChanged="ConfigurationPage_OnSizeChanged"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              xmlns:views="clr-namespace:NutManager.App.Views"
@@ -29,25 +30,90 @@
       </StackPanel>
     </Border>
 
-    <Grid x:Name="ConfigurationEditorLayout" ColumnDefinitions="260,16,*" RowDefinitions="Auto" IsVisible="{Binding IsConfigurationEditorVisible}">
-      <Border x:Name="ConfigurationFilesPanel" Grid.Column="0" Classes="nut-card">
-        <StackPanel Spacing="10">
-          <TextBlock Text="{Binding Strings[Administration.Configuration.Files]}" Classes="nut-section-title" />
-          <TextBlock Text="{Binding Strings[Administration.Configuration.NoFiles]}" IsVisible="{Binding IsConfigurationFileListEmpty}" TextWrapping="Wrap" />
-          <ListBox ItemsSource="{Binding ConfigurationFiles}"
-                   IsEnabled="{Binding CanSelectConfigurationFile}"
-                   SelectedItem="{Binding SelectedFile, Mode=OneWay}"
-                   SelectionChanged="ConfigurationFileList_OnSelectionChanged">
-            <ListBox.ItemTemplate>
+    <!--
+      The file rail is a column that changes width, not a panel that is shown and hidden: the editor
+      beside it simply gets the space back. Collapsing is presentation only, so the selected file,
+      its draft and its editor are untouched by the fold.
+    -->
+    <Grid x:Name="ConfigurationEditorLayout" ColumnDefinitions="Auto,16,*" RowDefinitions="Auto" IsVisible="{Binding IsConfigurationEditorVisible}">
+      <Border x:Name="ConfigurationFilesPanel"
+              Grid.Column="0"
+              Classes="nut-file-rail"
+              VerticalAlignment="Top"
+              Width="{Binding ConfigurationRailWidth}">
+        <StackPanel Spacing="8">
+          <!-- Title only when there is room for it; the toggle is always reachable. -->
+          <!--
+            The toggle sits on its own row above the title. Side by side, the title had to share
+            228 px with a button and was permanently truncated to "Arquivos de configu…", which
+            defeats the point of showing it at all.
+          -->
+          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+            <TextBlock Grid.Row="1"
+                       Grid.ColumnSpan="2"
+                       Text="{Binding Strings[Administration.Configuration.Files]}"
+                       Classes="nut-section-title"
+                       IsVisible="{Binding IsConfigurationRailOpen}"
+                       Margin="2,2,0,0"
+                       TextWrapping="Wrap" />
+            <Button Grid.Row="0" Grid.Column="1"
+                    Command="{Binding ToggleConfigurationRailCommand}"
+                    AutomationProperties.Name="{Binding ConfigurationRailToggleText}"
+                    ToolTip.Tip="{Binding ConfigurationRailToggleText}"
+                    Padding="7"
+                    MinWidth="0"
+                    HorizontalAlignment="Right">
+              <Panel Width="14" Height="14">
+                <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="14" Height="14"
+                          IsVisible="{Binding IsConfigurationRailOpen}" />
+                <PathIcon Data="{DynamicResource NutIconChevronRight}" Width="14" Height="14"
+                          IsVisible="{Binding !IsConfigurationRailOpen}" />
+              </Panel>
+            </Button>
+          </Grid>
+
+          <TextBlock Text="{Binding Strings[Administration.Configuration.NoFiles]}"
+                     IsVisible="{Binding IsConfigurationFileListEmpty}"
+                     Classes="nut-metadata"
+                     TextWrapping="Wrap" />
+
+          <ItemsControl ItemsSource="{Binding ConfigurationFiles}">
+            <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="viewModels:NutConfigurationFileItemViewModel">
-                <StackPanel Margin="4" Spacing="2">
-                  <TextBlock Text="{Binding Category}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding FileName}" Classes="nut-metadata" />
-                  <TextBlock Text="{Binding StatusText}" Classes="nut-metadata" TextWrapping="Wrap" />
-                </StackPanel>
+                <Button Classes="nut-file-rail-item"
+                        Classes.selected="{Binding IsSelected}"
+                        Click="ConfigurationFileRailItem_OnClick"
+                        IsEnabled="{Binding CanLoad}"
+                        AutomationProperties.Name="{Binding AccessibleName}"
+                        ToolTip.Tip="{Binding AccessibleName}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <!-- The icon pops once when the row becomes the selected one; nothing loops. -->
+                    <Panel Width="18" Height="18" VerticalAlignment="Center"
+                           Classes="nut-file-rail-icon"
+                           DataContextChanged="ConfigurationFileRailIcon_OnAttached">
+                      <PathIcon Data="{DynamicResource NutIconGeneral}" Width="18" Height="18" IsVisible="{Binding IsNutConf}" />
+                      <PathIcon Data="{DynamicResource NutIconUps}" Width="18" Height="18" IsVisible="{Binding IsUpsConf}" />
+                      <PathIcon Data="{DynamicResource NutIconServer}" Width="18" Height="18" IsVisible="{Binding IsUpsdConf}" />
+                      <PathIcon Data="{DynamicResource NutIconUsers}" Width="18" Height="18" IsVisible="{Binding IsUpsdUsers}" />
+                      <PathIcon Data="{DynamicResource NutIconMonitoring}" Width="18" Height="18" IsVisible="{Binding IsUpsmonConf}" />
+                    </Panel>
+                    <StackPanel Grid.Column="1"
+                                Classes="nut-file-rail-label"
+                                Spacing="1"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).IsConfigurationRailOpen}">
+                      <TextBlock Text="{Binding Category}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding FileName}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Ellipse Grid.Column="2"
+                             Classes="nut-file-rail-dirty"
+                             IsVisible="{Binding HasPendingChanges}"
+                             ToolTip.Tip="{Binding StatusText}" />
+                  </Grid>
+                </Button>
               </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
       </Border>
 

@@ -129,14 +129,18 @@ public sealed class InteractionPolishTests
     }
 
     [Fact]
-    public void TheLedPulseIsTheOnlyContinuousAnimationAndItRunsOnTheCompositor()
+    public void TheLedPulseRunsOnTheCompositorAndNoControlStyleLoops()
     {
         var led = Controls("NutStatusLed.axaml.cs");
 
         Assert.Contains("AnimationIterationBehavior.Forever", led, StringComparison.Ordinal);
         Assert.Contains("ElementComposition.GetElementVisual", led, StringComparison.Ordinal);
-        // No timer drives it, and nothing else in the shell loops.
+        // No timer drives it.
         Assert.DoesNotContain("DispatcherTimer", led, StringComparison.Ordinal);
+
+        // Two things in the application loop on purpose: this light, and the window's acrylic pane.
+        // Neither is a control style — a looping style would apply to every instance of a control
+        // and is the thing worth forbidding.
         foreach (var file in new[] { "NutControlStyles.axaml", "NutShellStyles.axaml" })
         {
             Assert.DoesNotContain("IterationCount=\"Infinite\"", Themes(file), StringComparison.Ordinal);

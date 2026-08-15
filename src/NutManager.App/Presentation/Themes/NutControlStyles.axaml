@@ -106,12 +106,17 @@
   </Styles.Resources>
 
   <!-- ==================== Surfaces ==================== -->
+  <!--
+    Cards are glass: a translucent pane over the window rather than an opaque block. The border is
+    lighter than the old subtle one because a pane is defined by its edge, and the alpha stays high
+    enough that body text keeps its contrast — the effect is never allowed to cost legibility.
+  -->
   <Style Selector="Border.nut-card">
-    <Setter Property="Background" Value="{DynamicResource NutCardSheenBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="14" />
-    <Setter Property="Padding" Value="18" />
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="Padding" Value="20" />
   </Style>
 
   <Style Selector="Border.nut-card-elevated">

@@ -24,7 +24,7 @@ public sealed class ApplicationSettingsTests
     [Fact]
     public void InvalidSchemaEnumsAndIntervalsAreRejected()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(schemaVersion: 4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(schemaVersion: 5));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(theme: (ThemePreference)99));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(language: (UiLanguagePreference)99));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(sidebarPreference: (SidebarPreference)99));
@@ -62,7 +62,7 @@ public sealed class ApplicationSettingsTests
         var json = await File.ReadAllTextAsync(store.SettingsPath);
         var actual = await store.LoadAsync(CancellationToken.None);
 
-        Assert.Contains("\"schemaVersion\": 3", json);
+        Assert.Contains("\"schemaVersion\": 4", json);
         Assert.DoesNotContain("\"host\"", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("\"port\"", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("preferredUps", json, StringComparison.OrdinalIgnoreCase);
@@ -116,7 +116,7 @@ public sealed class ApplicationSettingsTests
 
     [Theory]
     [InlineData("{ invalid")]
-    [InlineData("{\"schemaVersion\":4,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":false,\"language\":\"PtBr\",\"sidebarPreference\":\"Expanded\"}")]
+    [InlineData("{\"schemaVersion\":5,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":false,\"language\":\"PtBr\",\"sidebarPreference\":\"Expanded\"}")]
     [InlineData("{\"schemaVersion\":2,\"host\":\"localhost\",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"language\":\"PtBr\",\"sidebarPreference\":\"Expanded\"}")]
     [InlineData("{\"schemaVersion\":2,\"host\":\" \",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true,\"language\":\"PtBr\",\"sidebarPreference\":\"Expanded\"}")]
     public async Task MalformedOrIncompatibleSettingsAreReportedAndPreserved(string json)
