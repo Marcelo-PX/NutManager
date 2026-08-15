@@ -97,23 +97,33 @@ public sealed class IconCatalogTests
     [Fact]
     public void NoViewReachesPastTheCatalogToAnIconLibrary()
     {
-        // The catalog is the single point of resolution. A library may supply a drawing one day, but
-        // it enters here, not through a control dropped into a page — otherwise changing it again
-        // means editing every surface.
+        // Exactly one file may know an icon library exists: the adapter that fills the catalog from
+        // it. Everything else asks for a semantic name, which is what lets the drawing behind that
+        // name be swapped again — or taken back in-house — without editing a single surface.
+        const string adapter = "NutIconLibrary.cs";
         var offenders = new SortedSet<string>();
+        var adapterFound = false;
+
         foreach (var file in ProductionFiles())
         {
             var text = File.ReadAllText(file);
-            foreach (var marker in new[] { "FluentIcons", "Material.Icons", "MaterialIcon", "Projektanker" })
+            var referencesLibrary = new[] { "FluentIcons", "Material.Icons", "MaterialIcon", "Projektanker" }
+                .Any(marker => text.Contains(marker, StringComparison.Ordinal));
+            if (!referencesLibrary) continue;
+
+            if (Path.GetFileName(file) == adapter)
             {
-                if (text.Contains(marker, StringComparison.Ordinal))
-                {
-                    offenders.Add($"{Path.GetFileName(file)} → {marker}");
-                }
+                adapterFound = true;
+                continue;
             }
+
+            offenders.Add(Path.GetFileName(file));
         }
 
         Assert.Empty(offenders);
+        // And the adapter really is where it lives, so this test cannot pass by the library having
+        // quietly disappeared.
+        Assert.True(adapterFound, $"{adapter} should be the one place that references the icon library.");
     }
 
     [Fact]

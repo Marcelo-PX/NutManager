@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
+using NutManager.App.Presentation.Themes;
 using NutManager.App.Services;
 using NutManager.App.ViewModels;
 using NutManager.Core.Models;
@@ -32,6 +33,9 @@ public partial class App : Application
             desktop.MainWindow.Opened += async (_, _) => await BootstrapAsync(desktop.MainWindow);
         }
 
+        // Icon drawings come from the library, applied after the theme dictionaries are composed so
+        // anything it does not supply keeps the geometry drawn for it.
+        NutIconLibrary.Apply(this);
         base.OnFrameworkInitializationCompleted();
     }
 

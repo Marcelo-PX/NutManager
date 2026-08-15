@@ -7,6 +7,7 @@
   <ItemGroup>
     <!-- Decorative illustrations loaded through avares:// URIs; no absolute or working-directory paths. -->
     <AvaloniaResource Include="Assets\**" />
+      <PackageReference Include="Material.Icons.Avalonia" />
   </ItemGroup>
 
   <ItemGroup>

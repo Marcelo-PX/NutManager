@@ -18,5 +18,6 @@
     <PackageVersion Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+      <PackageVersion Include="Material.Icons.Avalonia" Version="3.0.2" />
   </ItemGroup>
 </Project>
