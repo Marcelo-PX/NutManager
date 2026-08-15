@@ -101,7 +101,7 @@
               <TextBlock Text="{Binding Strings[Smb.Credential.Title]}" Classes="nut-label" />
               <StackPanel Orientation="Horizontal" Spacing="8"
                           IsVisible="{Binding RemoteManagement.HasSmbCredentialIdentity}">
-                <PathIcon Data="{DynamicResource NutIconSecurity}" Classes="healthy" Width="15" Height="15"
+                <PathIcon Data="{DynamicResource NutIconShield}" Classes="healthy" Width="15" Height="15"
                           VerticalAlignment="Center" />
                 <TextBlock Text="{Binding RemoteManagement.SmbCredentialIdentity}" FontSize="13"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
