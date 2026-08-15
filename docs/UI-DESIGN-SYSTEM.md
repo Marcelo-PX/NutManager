@@ -162,15 +162,39 @@ it becomes current; nothing in the strip loops.
 The window is transparent with an `ExperimentalAcrylicBorder` behind the entire shell. This is not
 decoration for its own sake: Avalonia cannot blur in-page content, so before the pane existed the
 translucent cards were tinting a flat colour and the effect was invisible. The transparency hint
-degrades from acrylic to Mica to plain blur, and `NutWindowBrush` sits on the same value as the
-tint, so where a compositor offers none of them the fallback keeps the same separation instead of
-collapsing the layers together.
+degrades from acrylic to Mica to plain blur.
+
+### The backdrop actually shows the desktop (T32)
+
+For a while it did not, and the reason is worth recording because nothing about it was visible in
+the markup. The acrylic pane was there and correctly configured, but three things in front of it
+were opaque: `TintColor` was a near-black navy at `TintOpacity="1"`, so the material blurred a solid
+colour rather than anything behind the window, and the content border painted `NutWindowBrush` —
+also opaque — straight over the result. The window was a dark blue slab built out of an acrylic
+brush, and measuring a horizontal strip of background gave the same value at every x, which is the
+proof: real blur of real content varies across the pane.
+
+Three changes fixed it, and they have to be made together — any one alone leaves the pane covered:
+
+| | Was | Is |
+| --- | --- | --- |
+| `NutAcrylicTintColor` | `#05080E` (navy) | `#000000` — black tints nothing |
+| `TintOpacity` / `MaterialOpacity` | `1` / `0.62` | `0.5` / `0.35` |
+| `NutWindowBrush` (dark) | `#05080E` opaque | `#8C000000` — a wash, not a floor |
+
+The alpha on `NutWindowBrush` is not decoration either. A see-through background inherits whatever
+wallpaper the machine has, and body text cannot depend on that being dark, so the wash is what keeps
+contrast survivable under a white one — measured at 237,242,248 on 25,25,25 with a dark desktop
+behind, and the wash is what holds the floor when the desktop is not dark.
+
+The header, footer and sidebar keep their own opaque or near-opaque brushes: the change was scoped
+to the page background, so the chrome around it still reads as chrome.
 
 Transparency only reads when the layers differ, which is why the palette is deliberately two-tone:
 
 | Token | Role | Dark | Light |
 | --- | --- | --- | --- |
-| `NutAcrylicTintColor` | the pane behind everything | `#05080E` | `#DDE4EF` |
+| `NutAcrylicTintColor` | the pane behind everything | `#000000` | `#DDE4EF` |
 | `NutGlassSurfaceBrush` | cards, rail, panels | `#8C3A4A66` | `#A6FFFFFF` |
 | `NutGlassBorderBrush` | the pane's edge | `#40FFFFFF` | `#73FFFFFF` |
 | `NutGlassSheenBrush` | top-edge highlight | — | — |

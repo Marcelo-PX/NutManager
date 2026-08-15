@@ -30,10 +30,20 @@
   <Panel>
     <ExperimentalAcrylicBorder x:Name="AcrylicBackdrop" IsHitTestVisible="False">
       <ExperimentalAcrylicBorder.Material>
+        <!--
+          TintOpacity was 1 and MaterialOpacity 0.62, which meant the tint covered the pane
+          completely: the acrylic blurred a colour rather than the desktop, and the window read as a
+          dark slab. Both are open now, so what is actually behind the window comes through blurred
+          and the tint only darkens it enough to keep the surfaces above legible.
+
+          These two are the whole background. Nothing above them changed: the cards, the sidebar and
+          the file tiles keep their own alphas, which is what stops a see-through backdrop from
+          taking the contrast of the text with it.
+        -->
         <ExperimentalAcrylicMaterial BackgroundSource="Digger"
                                      TintColor="{DynamicResource NutAcrylicTintColor}"
-                                     TintOpacity="1"
-                                     MaterialOpacity="0.62" />
+                                     TintOpacity="0.5"
+                                     MaterialOpacity="0.35" />
       </ExperimentalAcrylicBorder.Material>
       <!--
         The pane breathes. The swing is small and the period long — eight seconds between the two
