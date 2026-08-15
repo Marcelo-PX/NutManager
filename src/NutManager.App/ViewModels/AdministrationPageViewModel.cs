@@ -154,7 +154,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
         _isConfigurationLayoutCompact = compact;
         OnPropertyChanged(nameof(IsConfigurationRailOpen));
-        OnPropertyChanged(nameof(ConfigurationFileChipWidth));
+        OnPropertyChanged(nameof(ConfigurationFileTileSize));
         OnPropertyChanged(nameof(ConfigurationRailToggleText));
     }
 
@@ -166,12 +166,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool IsConfigurationRailOpen => IsConfigurationRailExpanded && !_isConfigurationLayoutCompact;
 
     /// <summary>
-    /// How wide one file chip is. Bound rather than styled because the width is the thing that
-    /// animates, and a fixed width is what keeps the five chips a tidy row rather than five
-    /// different lengths. Labelled it holds a category and a file name; folded it is the icon
-    /// and its hit target.
+    /// The side of one file tile, which is square: the same number drives its width and its height.
+    /// Bound rather than styled because the size is the thing that animates, and one fixed number is
+    /// what keeps the five tiles a uniform row rather than five different shapes. Labelled it holds
+    /// an icon over a category and a file name; folded it is the icon and its hit target.
     /// </summary>
-    public double ConfigurationFileChipWidth => IsConfigurationRailOpen ? 184 : 52;
+    public double ConfigurationFileTileSize => IsConfigurationRailOpen ? 108 : 52;
 
     [RelayCommand]
     private void ToggleConfigurationRail() => IsConfigurationRailExpanded = !IsConfigurationRailExpanded;
@@ -192,7 +192,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     partial void OnIsConfigurationRailExpandedChanged(bool value)
     {
         OnPropertyChanged(nameof(ConfigurationRailToggleText));
-        OnPropertyChanged(nameof(ConfigurationFileChipWidth));
+        OnPropertyChanged(nameof(ConfigurationFileTileSize));
         OnPropertyChanged(nameof(IsConfigurationRailOpen));
         _persistConfigurationRailPreference?.Invoke(value ? SidebarPreference.Expanded : SidebarPreference.Collapsed);
     }

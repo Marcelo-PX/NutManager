@@ -305,7 +305,7 @@ public sealed class InteractionPolishTests
         foreach (var (source, selector, fill) in new[]
         {
             (controls, "Border.nut-card:pointerover", "NutGlassSurfaceHoverBrush"),
-            (shell, "Button.nut-file-chip:pointerover", "NutGlassRowHoverBrush")
+            (shell, "Button.nut-file-tile:pointerover", "NutGlassRowHoverBrush")
         })
         {
             var rule = source[source.IndexOf(selector, StringComparison.Ordinal)..];
@@ -326,7 +326,7 @@ public sealed class InteractionPolishTests
         foreach (var (source, selector) in new[]
         {
             (controls, "Border.nut-card\""),
-            (shell, "Button.nut-file-chip\"")
+            (shell, "Button.nut-file-tile\"")
         })
         {
             var baseRule = source[source.IndexOf(selector, StringComparison.Ordinal)..];
@@ -348,7 +348,7 @@ public sealed class InteractionPolishTests
         // Avalonia resolves equally matching setters by declaration order, so the only thing
         // keeping a hovered row from washing out the state of the row you are already on is that
         // the state rules come later in the file. Nothing about that is visible at the call site.
-        foreach (var row in new[] { "nut-navigation-item", "nut-file-chip" })
+        foreach (var row in new[] { "nut-navigation-item", "nut-file-tile" })
         {
             var hover = shell.IndexOf($"Button.{row}:pointerover /template/ ContentPresenter", StringComparison.Ordinal);
             var pressed = shell.IndexOf($"Button.{row}:pressed /template/ ContentPresenter", StringComparison.Ordinal);

@@ -27,37 +27,47 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="viewModels:NutConfigurationFileItemViewModel">
-              <Button Classes="nut-file-chip"
+              <!--
+                A square, and every one the same square. Uniform tiles read as a set of five things
+                of equal standing, which is what these are: five files you switch between. Sized
+                rather than fitted to content, because a row of pills each as wide as its own label
+                reads as five unrelated buttons that happen to be adjacent.
+              -->
+              <Button Classes="nut-file-tile"
                       Classes.selected="{Binding IsSelected}"
                       Click="ConfigurationFileRailItem_OnClick"
                       IsEnabled="{Binding CanLoad}"
-                      Width="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).ConfigurationFileChipWidth}"
+                      Width="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).ConfigurationFileTileSize}"
+                      Height="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).ConfigurationFileTileSize}"
                       AutomationProperties.Name="{Binding AccessibleName}"
                       ToolTip.Tip="{Binding AccessibleName}">
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                  <!-- The icon pops once when the chip becomes the selected one; nothing loops. -->
-                  <Panel Width="18" Height="18" VerticalAlignment="Center"
-                         Classes="nut-file-rail-icon"
-                         DataContextChanged="ConfigurationFileRailIcon_OnAttached">
-                    <PathIcon Data="{DynamicResource NutIconGeneral}" Width="18" Height="18" IsVisible="{Binding IsNutConf}" />
-                    <PathIcon Data="{DynamicResource NutIconUps}" Width="18" Height="18" IsVisible="{Binding IsUpsConf}" />
-                    <PathIcon Data="{DynamicResource NutIconServer}" Width="18" Height="18" IsVisible="{Binding IsUpsdConf}" />
-                    <PathIcon Data="{DynamicResource NutIconUsers}" Width="18" Height="18" IsVisible="{Binding IsUpsdUsers}" />
-                    <PathIcon Data="{DynamicResource NutIconMonitoring}" Width="18" Height="18" IsVisible="{Binding IsUpsmonConf}" />
-                  </Panel>
-                  <StackPanel Grid.Column="1"
-                              Classes="nut-file-rail-label"
-                              Spacing="1"
-                              VerticalAlignment="Center"
-                              IsVisible="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).IsConfigurationRailOpen}">
-                    <TextBlock Text="{Binding Category}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding FileName}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                <Panel>
+                  <StackPanel Spacing="7" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- The icon pops once when the tile becomes the selected one; nothing loops. -->
+                    <Panel Width="24" Height="24" HorizontalAlignment="Center"
+                           Classes="nut-file-rail-icon"
+                           DataContextChanged="ConfigurationFileRailIcon_OnAttached">
+                      <PathIcon Data="{DynamicResource NutIconGeneral}" Width="24" Height="24" IsVisible="{Binding IsNutConf}" />
+                      <PathIcon Data="{DynamicResource NutIconUps}" Width="24" Height="24" IsVisible="{Binding IsUpsConf}" />
+                      <PathIcon Data="{DynamicResource NutIconServer}" Width="24" Height="24" IsVisible="{Binding IsUpsdConf}" />
+                      <PathIcon Data="{DynamicResource NutIconUsers}" Width="24" Height="24" IsVisible="{Binding IsUpsdUsers}" />
+                      <PathIcon Data="{DynamicResource NutIconMonitoring}" Width="24" Height="24" IsVisible="{Binding IsUpsmonConf}" />
+                    </Panel>
+                    <StackPanel Classes="nut-file-rail-label"
+                                Spacing="1"
+                                IsVisible="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).IsConfigurationRailOpen}">
+                      <TextBlock Text="{Binding Category}" FontSize="12" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding FileName}" Classes="nut-metadata" FontSize="10.5" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
                   </StackPanel>
-                  <Ellipse Grid.Column="2"
-                           Classes="nut-file-rail-dirty"
+                  <!-- A pending draft marks the tile's corner rather than taking a column of its
+                       own, which a square has no room for. -->
+                  <Ellipse Classes="nut-file-rail-dirty"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Top"
                            IsVisible="{Binding HasPendingChanges}"
                            ToolTip.Tip="{Binding StatusText}" />
-                </Grid>
+                </Panel>
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

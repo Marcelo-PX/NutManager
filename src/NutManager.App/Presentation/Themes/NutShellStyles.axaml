@@ -453,37 +453,45 @@
 
   <!--
     ==================== Configuration file strip ====================
-    The five NUT files, as a row of chips above the editor rather than a column beside it. Built
-    from the same pieces as the section tabs above them, so the page reads as one idea at two
+    The five NUT files, as a row of square tiles above the editor rather than a column beside it.
+    Built from the same pieces as the section tabs above them, so the page reads as one idea at two
     levels: pick a section, then pick a file, then work — each step costing one row instead of one
     column.
 
-    A chip's width animates rather than snapping, and its labels fade with it; folding whose text
+    Squares of one fixed size, not pills that fit their own labels. Five equal tiles read as one set
+    of five files of equal standing; five differently sized rounded capsules read as unrelated
+    buttons that happen to be adjacent, and the eye has to measure each one to see it is a peer of
+    the others. The corner radius is modest for the same reason — enough to belong to a product
+    where everything is rounded, not enough to turn the tile back into a balloon.
+
+    A tile's size animates rather than snapping, and its labels fade with it; folding whose text
     vanished instantly looked like the content had been dropped rather than folded away.
   -->
   <Style Selector="ItemsControl.nut-file-strip">
-    <Setter Property="Margin" Value="0,0,0,-6" />
+    <Setter Property="Margin" Value="0,0,0,-8" />
   </Style>
 
-  <Style Selector="Button.nut-file-chip">
+  <Style Selector="Button.nut-file-tile">
     <!--
       Glass, like the rail it replaces: a translucent tint over the page rather than a solid card.
       The alpha is deliberately high — at lower opacity the file names lost contrast against
       whatever scrolled underneath, and legibility outranks the effect. The surface itself is set on
-      the presenter below; what lives here is layout and the width that animates.
+      the presenter below; what lives here is layout and the size that animates.
     -->
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="CornerRadius" Value="10" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Padding" Value="11,8" />
-    <Setter Property="Margin" Value="0,0,8,6" />
-    <Setter Property="MinHeight" Value="46" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="Margin" Value="0,0,10,8" />
+    <Setter Property="MinHeight" Value="0" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
     <Setter Property="Transitions">
       <Transitions>
         <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
+        <DoubleTransition Property="Height" Duration="0:0:0.22" Easing="CubicEaseOut" />
         <BrushTransition Property="Background" Duration="0:0:0.14" />
         <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
         <BrushTransition Property="Foreground" Duration="0:0:0.14" />
@@ -497,11 +505,11 @@
     below therefore sets the presenter, and the Button carries only what the presenter inherits —
     foreground and font weight.
   -->
-  <Style Selector="Button.nut-file-chip /template/ ContentPresenter">
+  <Style Selector="Button.nut-file-tile /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="CornerRadius" Value="10" />
     <Setter Property="Transitions">
       <Transitions>
         <BrushTransition Property="Background" Duration="0:0:0.14" />
@@ -510,27 +518,27 @@
     </Setter>
   </Style>
   <!-- The same glass response the cards and the sidebar rows use. -->
-  <Style Selector="Button.nut-file-chip:pointerover /template/ ContentPresenter">
+  <Style Selector="Button.nut-file-tile:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutGlassRowHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderHoverBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
-  <Style Selector="Button.nut-file-chip:pressed /template/ ContentPresenter">
+  <Style Selector="Button.nut-file-tile:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceInteractiveBrush}" />
   </Style>
   <!-- Selection is the accent outline and the sheen, declared after hover so pointing at the file
        you already have open cannot wash away the fact that it is open. -->
-  <Style Selector="Button.nut-file-chip.selected">
+  <Style Selector="Button.nut-file-tile.selected">
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
-  <Style Selector="Button.nut-file-chip.selected /template/ ContentPresenter">
+  <Style Selector="Button.nut-file-tile.selected /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSelectedSheenBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
     <Setter Property="BorderThickness" Value="1.6" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
-  <Style Selector="Button.nut-file-chip:disabled">
+  <Style Selector="Button.nut-file-tile:disabled">
     <Setter Property="Opacity" Value="0.45" />
   </Style>
 
