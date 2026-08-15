@@ -202,13 +202,35 @@
                         Classes.critical="{Binding IsStatusCritical}"
                         Opacity="0"
                         IsHitTestVisible="False" />
+                <!--
+                  The token gets the power source drawn beside it: a plug on mains, a battery when
+                  the UPS is carrying the load. The token alone is two letters of NUT jargon, and
+                  the one thing anyone wants from this badge at a glance is which of the two it is.
+
+                  Neither icon shows for a state that is neither — bypass, output off, a token NUT
+                  does not define — so the badge never claims a power source the UPS did not report.
+                  The pill then simply sizes to the text, which is why it is not a fixed width.
+                -->
                 <Border Classes="nut-pill"
                         Classes.healthy="{Binding IsStatusHealthy}"
                         Classes.warning="{Binding IsStatusWarning}"
                         Classes.critical="{Binding IsStatusCritical}"
-                        Padding="20,9"
+                        Padding="21,11"
                         VerticalAlignment="Center">
-                  <TextBlock Text="{Binding PrimaryStatusToken}" FontSize="20" FontWeight="Bold" />
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Panel Width="23" Height="23" VerticalAlignment="Center"
+                           IsVisible="{Binding IsRunningOnMains}">
+                      <PathIcon Data="{DynamicResource NutIconOutput}" Width="23" Height="23" />
+                    </Panel>
+                    <Panel Width="23" Height="23" VerticalAlignment="Center"
+                           IsVisible="{Binding IsRunningOnBattery}">
+                      <PathIcon Data="{DynamicResource NutIconBattery}" Width="23" Height="23" />
+                    </Panel>
+                    <TextBlock Text="{Binding PrimaryStatusToken}"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center" />
+                  </StackPanel>
                 </Border>
               </Grid>
               <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">

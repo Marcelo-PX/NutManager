@@ -164,5 +164,52 @@ public sealed class OverviewDashboardPresentationTests
         Assert.True(viewModel.IsStatusCritical);
         Assert.False(viewModel.IsStatusHealthy);
         Assert.Equal("OB", viewModel.PrimaryStatusToken);
+
+        // The badge prints OB, so the icon beside it has to be the battery. Severity is the most
+        // severe token; the power source has to follow the token actually shown, or the badge would
+        // draw a plug next to the word for running on battery.
+        Assert.True(viewModel.IsRunningOnBattery);
+        Assert.False(viewModel.IsRunningOnMains);
+    }
+
+    [Theory]
+    [InlineData("OL", StatusSemanticState.Online, true, false)]
+    [InlineData("OB", StatusSemanticState.OnBattery, false, true)]
+    [InlineData("LB", StatusSemanticState.LowBattery, false, true)]
+    [InlineData("DISCHRG", StatusSemanticState.Discharging, false, true)]
+    // Neither flag is set for a state that is neither, so the badge never claims a power source
+    // the UPS did not report.
+    [InlineData("BYPASS", StatusSemanticState.Bypass, false, false)]
+    [InlineData("OFF", StatusSemanticState.OutputOff, false, false)]
+    [InlineData("WAT", StatusSemanticState.Unknown, false, false)]
+    public void ThePowerSourceIconFollowsTheStateOfTheTokenOnTheBadge(
+        string token,
+        StatusSemanticState state,
+        bool onMains,
+        bool onBattery)
+    {
+        var viewModel = new OverviewPageViewModel
+        {
+            Snapshot = new UpsSnapshot(
+                new UpsIdentity("ups1"),
+                [new UpsStatusToken(token, state, StatusSeverity.Normal, state != StatusSemanticState.Unknown)],
+                new Dictionary<string, UpsVariable>(),
+                ReferenceTime,
+                DataSource.Live)
+        };
+
+        Assert.Equal(onMains, viewModel.IsRunningOnMains);
+        Assert.Equal(onBattery, viewModel.IsRunningOnBattery);
+        // The two are never both true: one badge cannot report two power sources.
+        Assert.False(viewModel.IsRunningOnMains && viewModel.IsRunningOnBattery);
+    }
+
+    [Fact]
+    public void AnEmptyDashboardShowsNoPowerSourceIconAtAll()
+    {
+        var viewModel = new OverviewPageViewModel();
+
+        Assert.False(viewModel.IsRunningOnMains);
+        Assert.False(viewModel.IsRunningOnBattery);
     }
 }
