@@ -31,6 +31,25 @@
         <GradientStop Offset="0.45" Color="#08FFFFFF" />
         <GradientStop Offset="1" Color="#00FFFFFF" />
       </LinearGradientBrush>
+      <!--
+        The same pane under the pointer, catching more light: a lighter, slightly less transparent
+        tint and a brighter edge. Both stay solid colours because BrushTransition interpolates
+        between solid brushes and switches outright between anything else — a gradient here would
+        make the edge snap on, which is the one thing the effect must not do.
+
+        The step is deliberately small. Glass that jumps to near-white under the pointer stops
+        reading as a material and starts reading as a selection, which would compete with the
+        accent bar that actually marks the selected row.
+      -->
+      <SolidColorBrush x:Key="NutGlassSurfaceHoverBrush" Color="#A6485A78" />
+      <SolidColorBrush x:Key="NutGlassBorderHoverBrush" Color="#73FFFFFF" />
+      <!--
+        A row sits inside a pane, and the pointer is on both at once: hovering a navigation item
+        also hovers the sidebar it lives in. So the row needs its own step above the pane's hover,
+        or the two land on the same tint and the row vanishes into the surface exactly when it is
+        being pointed at. Same family, one rung higher.
+      -->
+      <SolidColorBrush x:Key="NutGlassRowHoverBrush" Color="#B35F749B" />
       <SolidColorBrush x:Key="NutBorderBrush" Color="#222C3B" />
       <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#1A2230" />
       <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#2E3D50" />
@@ -76,6 +95,16 @@
         <GradientStop Offset="0.45" Color="#3DFFFFFF" />
         <GradientStop Offset="1" Color="#00FFFFFF" />
       </LinearGradientBrush>
+      <!--
+        Light glass brightens towards opaque white, but its edge cannot: white on near-white is not
+        an edge. The hover border takes the tinted emphasis colour instead, which is what the edge of
+        a real pane does on a light ground — it refracts and reads darker, not lighter.
+      -->
+      <SolidColorBrush x:Key="NutGlassSurfaceHoverBrush" Color="#D9FFFFFF" />
+      <SolidColorBrush x:Key="NutGlassBorderHoverBrush" Color="#B39DB6DA" />
+      <!-- Light glass hovers at nearly opaque white, so the row above it cannot get lighter and
+           takes a tint instead — the same blue the selected surfaces use, one step weaker. -->
+      <SolidColorBrush x:Key="NutGlassRowHoverBrush" Color="#D9DCE9FA" />
       <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#E4ECF9" />
       <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#F2F6FC" />
       <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#E1EBFD" />

@@ -92,7 +92,7 @@ T27A aligns the rendered application with the approved visual references without
 
 `Presentation/Themes` is the single source for the visual language. `NutColors.axaml` defines an explicit surface hierarchy — window, shell, surface, elevated, interactive, selected — plus border, text, accent and semantic families in both themes, so cards no longer carry the same visual weight and navigation selection is a restrained accent bar and low-contrast surface instead of a saturated block. `NutTypography.axaml` separates page title, section title, card title, label, metadata and the dominant metric readout. `NutMetrics.axaml` owns spacing, radii, icon sizes and shell dimensions. `NutControlStyles.axaml` and `NutShellStyles.axaml` restyle cards, buttons, inputs, lists, tabs, badges, the title bar, navigation and the profile card so surfaces stop reading as default Fluent controls.
 
-`NutIcons.axaml` is the only icon source. Glyphs are `StreamGeometry` on a 24×24 grid using the even-odd rule for outlined shapes, covering navigation, configuration domains, metrics, connectivity, security, service control, actions, chevrons, theme and window chrome. Emoji, pictographic text and raster images are not used as icons. Semantic icon colour is always redundant with text.
+`NutIcons.axaml` declares every semantic icon name and a fallback drawing for each, as `StreamGeometry` on a 24×24 grid, covering navigation, configuration domains, metrics, connectivity, security, service control, actions, chevrons, theme and window chrome. `NutIconLibrary.cs` replaces all of them at start-up with geometry from Material Icons, so the library is what the product actually draws and the catalog is what keeps a name resolving if a future version of the library drops a kind. Emoji, pictographic text and raster images are not used as icons. Semantic icon colour is always redundant with text.
 
 The catalog is deliberately the only thing views know about. A view asks for `NutIconServer`, not for
 a library's symbol, so where the drawing comes from can change without touching the interface.
@@ -151,9 +151,44 @@ Transparency only reads when the layers differ, which is why the palette is deli
 | `NutGlassSurfaceBrush` | cards, rail, panels | `#8C3A4A66` | `#A6FFFFFF` |
 | `NutGlassBorderBrush` | the pane's edge | `#40FFFFFF` | `#73FFFFFF` |
 | `NutGlassSheenBrush` | top-edge highlight | — | — |
+| `NutGlassSurfaceHoverBrush` | the pane under the pointer | `#A6485A78` | `#D9FFFFFF` |
+| `NutGlassBorderHoverBrush` | its edge, catching light | `#73FFFFFF` | `#B39DB6DA` |
+| `NutGlassRowHoverBrush` | a row on that pane | `#B35F749B` | `#D9DCE9FA` |
 
 With the backdrop and the surfaces on the same navy, a 70% panel still looked opaque; the backdrop
 is now the darkest value in the window and the surfaces lift well clear of it.
+
+### Hover
+
+Glass responds to the pointer. There is one response, shared by every surface actually made of
+glass — `Border.nut-card` and `Border.nut-file-rail` — and it is only those: the pane lightens and
+its edge comes up over 180 ms with a cubic ease. Nothing moves, resizes or gains a shadow, so a pane
+reacting cannot shift the page around it or clip its own rounded corner against a scroll viewer.
+
+Both halves are needed. A surface that brightens with no edge change reads as a colour bug rather
+than as light landing on a pane; an edge that brightens alone reads as a selection.
+
+Three things it deliberately does **not** do:
+
+- **The step is small.** Glass that jumps to near-white under the pointer stops reading as a material
+  and starts competing with the accent bar that marks the actual selection.
+- **Rows get their own rung.** The pointer is on a row and its pane at the same time, so a row
+  sharing the pane's hover tint would vanish into the surface exactly when pointed at.
+  `NutGlassRowHoverBrush` sits one step above, and rows never take the edge highlight — their left
+  border is the three-pixel selection bar, and lighting it would claim the row is the current page.
+- **Containers stay inert.** The sidebar and the shell chrome are glass but are not hovered as
+  objects; brightening a full-height panel every time the pointer crosses it toward a navigation item
+  is noise, not feedback. Their rows carry the response instead.
+
+In both themes the border hover moves in the direction that makes an edge visible: brighter white on
+dark, and a tinted blue on light, where white on near-white is not an edge at all. Both hover brushes
+are solid colours because `BrushTransition` interpolates between solid brushes and switches outright
+between anything else — a gradient would make the edge snap on, which is the one thing the effect
+must not do.
+
+Hover never overrides state. Pressed and selected are declared after hover in `NutShellStyles.axaml`,
+because Avalonia resolves equally matching setters by declaration order; `RowHoverNeverOverridesSelectedPressedOrDisabled`
+pins that ordering, since nothing about it is visible at the call site.
 
 The language follows Apple's glass rather than a tinted panel: frosted and cool instead of tinted
 navy, a thin white hairline instead of a coloured border — on those panes the rim is light catching
@@ -171,32 +206,49 @@ interaction tests defend.
 
 ## Icon system policy (T32)
 
-An icon library may be used, on the same terms as any other dependency. T32 investigated the
-maintained options and decided against adopting one, for reasons specific to how this application
-draws icons rather than any objection in principle.
+Every icon the application draws comes from `Material.Icons.Avalonia` 3.0.2 (MIT). T32 investigated
+the maintained options and adopted one.
 
 | Option | Licence | Rendering | Outcome |
 | --- | --- | --- | --- |
+| `Material.Icons.Avalonia` 3.0.2 | MIT | vector path | **chosen** |
 | `FluentIcons.Avalonia` 2.1.337 | MIT | font glyph | rejected |
-| `Material.Icons.Avalonia` 3.0.2 | MIT | vector path | rejected |
-| Continue vendoring `fluentui-system-icons` | MIT | vector path | chosen |
+| Continue vendoring `fluentui-system-icons` | MIT | vector path | rejected |
 
-`FluentIcons.Avalonia` is the right visual family and supports Avalonia 12, but it renders through a
-font and exposes no geometry. That fails twice over: a font glyph is a single indivisible shape, and
-twenty-one of this application's icons are split into independently animated parts — the two device
-LEDs blink out of phase, the gear teeth spin around a stationary hub, the diagnostics dot sweeps
-across its base. It would also require `<ic:FluentIcon>` elements in the views, putting a library
-reference in every surface and losing the single point of resolution.
+`FluentIcons.Avalonia` renders through a font and exposes no geometry, so it cannot fill a catalog:
+it would require `<ic:FluentIcon>` elements in the views, putting a library reference in every
+surface and losing the single point of resolution. `Material.Icons.Avalonia` exposes path data
+through `MaterialIconDataProvider.GetData`, which is what lets one adapter fill the catalog while the
+views go on asking for semantic names.
 
-`Material.Icons.Avalonia` is vector and does expose path data, so it would integrate with the
-catalog. It was rejected on visual grounds: Material and Fluent are different families, and mixing
-them across a shell already built on one of them trades coherence for coverage.
+Continuing to vendor was rejected because it could not reach the whole product: hand-copied geometry
+covered the icons somebody had got round to copying, and the rest stayed inconsistent with it.
 
-The choice therefore is to keep vendoring geometry from `fluentui-system-icons`, the MIT source
-already credited in the third-party notices, and to take the official drawing wherever the icon is a
-single shape with nothing to animate. The five configuration-domain glyphs in the file rail were
-replaced that way in T32.
+### One shape per icon
 
-The rules that follow from this: views reference semantic names only; icons are packaged geometry and
-nothing is fetched at runtime; a library remains permissible for a future icon that needs no
-independent parts, provided it enters through the catalog rather than through the views.
+Twenty-one glyphs used to be assembled from several shapes each, so that one piece could move while
+the rest held still — the two device LEDs blinking out of phase, the gear teeth turning around a
+stationary hub, the diagnostics dot sweeping along its base, the sun's rays turning around a fixed
+disc. A library gives one shape per name, so those parts are gone.
+
+That was a deliberate trade, and it went this way: **one drawing system across the whole product
+outranks segmented animation.** A single icon animating more richly than the rest is not worth having
+one icon in the product that is not from the library. The motion was not dropped, it moved up a
+level — each glyph now animates as a block, chosen to keep what the old segmentation meant:
+
+| Destination | Was | Is |
+| --- | --- | --- |
+| Overview | inner dashboard bar pulsed | whole glyph breathes, 1.9 s |
+| Devices | two LEDs blinked out of phase | whole glyph pulses on the same 1.4 s rack cadence |
+| Administration | badge and check popped over a lifting base | whole glyph pops once |
+| Diagnostics | a reading swept along the trace | whole glyph beats, 1.15 s |
+| Settings | teeth turned around a stationary hub | whole cog turns, 7 s |
+| Theme toggle | rays turned around a fixed disc | whole sun turns 45°, one ray pitch |
+
+Amplitudes came down when the motion moved: a detail can travel a long way inside a silhouette that
+holds still, while a whole icon moving that far reads as the row itself twitching.
+
+The rules that follow: views reference semantic names only and never the library; `NutIconLibrary.cs`
+is the single file permitted to know the library exists; nothing is fetched at runtime; and a name
+added to the catalog without a mapping in the adapter is a defect, because it would draw from the
+fallback and quietly leave one icon off the library. `IconCatalogTests` enforces all of it.

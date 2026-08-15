@@ -34,7 +34,7 @@
       <StackPanel Spacing="2">
         <StackPanel Orientation="Horizontal" Spacing="11">
           <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
-          <PathIcon Data="{DynamicResource NutIconGearBase}" Width="20" Height="20" Foreground="{DynamicResource NutAccentBrightBrush}" VerticalAlignment="Center" />
+          <PathIcon Data="{DynamicResource NutIconSettings}" Width="20" Height="20" Foreground="{DynamicResource NutAccentBrightBrush}" VerticalAlignment="Center" />
         </StackPanel>
         <TextBlock Text="{Binding Description}" Classes="nut-page-subtitle" TextWrapping="Wrap" />
       </StackPanel>

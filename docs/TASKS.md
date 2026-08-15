@@ -814,15 +814,31 @@ the glass it actually ships with.
 
 ### Icon decision
 
-Investigated and recorded in the design system. `FluentIcons.Avalonia` (MIT, Avalonia 12) is the
-right family but renders through a font: a glyph is one indivisible shape, and twenty-one icons here
-are split so their parts animate separately. `Material.Icons.Avalonia` (MIT) is vector and would
-integrate through the catalog, but mixes a second visual family into a shell built on Fluent. The
-geometry therefore stays vendored from `fluentui-system-icons`, the source already credited, and the
-five configuration-domain glyphs took their official drawing.
+Investigated and recorded in the design system. `FluentIcons.Avalonia` (MIT, Avalonia 12) renders
+through a font and exposes no geometry, so it cannot fill a catalog without putting a library
+reference in every view. `Material.Icons.Avalonia` (MIT) is vector and exposes path data through
+`MaterialIconDataProvider.GetData`, so one adapter can fill the catalog while the views go on asking
+for semantic names. **It was adopted, and it now supplies all 62 icons in the product.**
 
-The dependency rule in the agent instructions now permits an icon library on the same terms as any
-other dependency, so the repository no longer asserts a rule it had replaced.
+Twenty-one glyphs had been assembled from several shapes each so their parts could animate
+separately — LEDs blinking out of phase, a gear turning around a stationary hub, a dot sweeping a
+trace, a sun's rays turning around a fixed disc. Those parts were removed. The trade was made
+explicitly: one drawing system across the whole product outranks segmented animation, because a
+single icon animating more richly is not worth having one icon that is not from the library. The
+motion moved to the whole glyph — breathe, pulse, pop, beat, turn — and the amplitudes came down with
+it. `NutIcons.axaml` is now a fallback catalog: it defines the valid names and a drawing for each, in
+case a future version of the library drops a kind.
+
+The dependency rule in the agent instructions permits an icon library on the same terms as any other
+dependency, so the repository no longer asserts a rule it had replaced.
+
+### Liquid glass hover
+
+The glass panes react to the pointer: the surface lightens and its edge comes up over 180 ms. Scoped
+to the surfaces that are actually glass — the cards and the configuration file rail — plus a separate
+rung for the rows that sit on them, so a hovered row does not vanish into a hovered pane. Containers
+(the sidebar, the shell chrome) stay inert. Nothing moves or resizes, and pressed, selected and
+disabled all still win over hover.
 
 ### Visual acceptance
 

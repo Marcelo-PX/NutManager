@@ -6,46 +6,44 @@
              Width="24"
              Height="24">
   <!--
-    Layered navigation glyph.
+    One glyph per navigation destination, drawn by the icon library.
 
-    Every layer is a Path with Stretch="None" inside a 24x24 box, so the geometry renders at its
-    authored coordinates. PathIcon would scale each layer to fill the control: a small detail such
-    as a 3-unit LED would be blown up into a disc covering the whole slot and hiding the base
-    silhouette. Drawing at native coordinates keeps the Fluent base fully visible in every state
-    and keeps the details the size they were designed to be.
+    Each kind used to be several shapes stacked in this box so that one piece could move while the
+    rest held still: two LEDs blinking out of phase, a hub sitting motionless inside a turning gear,
+    a reading travelling along a pulse trace. The library gives one silhouette per name, so the
+    motion moved up a level — the glyph itself carries it now, and the Grid around it still supplies
+    the family's hover transform, which is why the two are still separate elements.
+
+    Path with Stretch="None" rather than PathIcon: the library draws on the same 24x24 grid these
+    were authored on, so rendering at native coordinates keeps the size and weight the sidebar
+    already had. It also keeps the glyph clear of the generic "Button PathIcon" opacity rules, whose
+    hover transition would run against the compositor animations below on the same property.
   -->
   <Grid Width="24" Height="24">
 
-    <!-- Overview: Fluent home with an inner dashboard bar. It lifts slightly, the way a card does. -->
+    <!-- Overview: the dashboard breathes, the way a surface with live figures on it would. -->
     <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsOverview, ElementName=Root}">
-      <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconOverviewBase}" />
-      <shapes:Path x:Name="OverviewDetail" Classes="nut-nav-detail nut-nav-overview-detail" Stretch="None" Data="{DynamicResource NutIconOverviewDetail}" />
+      <shapes:Path x:Name="OverviewGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconOverview}" />
     </Grid>
 
-    <!-- Devices: Fluent server tower whose two status LEDs come alive. The rack itself barely moves. -->
+    <!-- Devices: a slow rise and fall in place of the two rack lights that used to blink. -->
     <Grid Classes="nut-icon-motion nut-icon-nudge" IsVisible="{Binding IsDevices, ElementName=Root}">
-      <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconDevicesBase}" />
-      <shapes:Path x:Name="DevicesLedTop" Classes="nut-nav-detail nut-nav-led-top" Stretch="None" Data="{DynamicResource NutIconDevicesLedTop}" />
-      <shapes:Path x:Name="DevicesLedBottom" Classes="nut-nav-detail nut-nav-led-bottom" Stretch="None" Data="{DynamicResource NutIconDevicesLedBottom}" />
+      <shapes:Path x:Name="DevicesGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconDevices}" />
     </Grid>
 
-    <!-- Administration: a person plus verified badge communicates management and authorization. -->
+    <!-- Administration: one pop on arrival, which is what the verified badge used to do. -->
     <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsAdministration, ElementName=Root}">
-      <shapes:Path x:Name="AdministrationBase" Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconAdministrationBase}" />
-      <shapes:Path x:Name="AdministrationBadge" Classes="nut-nav-detail nut-nav-admin-badge" Stretch="None" Data="{DynamicResource NutIconAdministrationBadge}" />
-      <shapes:Path x:Name="AdministrationCheck" Classes="nut-nav-detail nut-nav-admin-check" Stretch="None" Data="{DynamicResource NutIconAdministrationCheck}" />
+      <shapes:Path x:Name="AdministrationGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconAdministration}" />
     </Grid>
 
-    <!-- Diagnostics: Fluent pulse with an endpoint reading. -->
+    <!-- Diagnostics: the trace beats, rather than a dot running along it. -->
     <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsDiagnostics, ElementName=Root}">
-      <shapes:Path Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconDiagnosticsBase}" />
-      <shapes:Path x:Name="DiagnosticsDot" Classes="nut-nav-detail nut-nav-pulse-dot" Stretch="None" Data="{DynamicResource NutIconDiagnosticsDot}" />
+      <shapes:Path x:Name="DiagnosticsGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconDiagnostics}" />
     </Grid>
 
-    <!-- Settings owns the existing gear and its restrained rotation. -->
+    <!-- Settings: the whole cog turns, where before the teeth turned around a fixed hub. -->
     <Grid Classes="nut-icon-motion nut-icon-gear" IsVisible="{Binding IsSettings, ElementName=Root}">
-      <shapes:Path x:Name="GearBase" Classes="nut-nav-base" Stretch="None" Data="{DynamicResource NutIconGearBase}" />
-      <shapes:Path x:Name="GearHub" Classes="nut-nav-detail nut-nav-hub" Stretch="None" Data="{DynamicResource NutIconGearHub}" />
+      <shapes:Path x:Name="SettingsGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconSettings}" />
     </Grid>
   </Grid>
 </UserControl>

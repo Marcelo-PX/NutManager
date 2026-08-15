@@ -102,13 +102,13 @@
                       Click="LightThemeButton_OnClick"
                       ToolTip.Tip="{Binding Localizer[Theme.Light]}"
                       AutomationProperties.Name="{Binding Localizer[Theme.Light]}">
-                <!-- Disc and rays are separate layers so the rays can turn on their own. Stretch
-                     is off so each renders at its authored coordinates in the 24-unit box. -->
+                <!-- One glyph: the library draws the disc and its rays together, so the whole sun
+                     turns rather than the rays turning around a disc that holds still. Stretch is
+                     off so it renders at its authored coordinates in the 24-unit box. -->
                 <Grid Width="18" Height="18">
                   <Viewbox Width="18" Height="18">
                     <Grid Width="24" Height="24">
-                      <Path Classes="nut-theme-glyph nut-sun-rays" Stretch="None" Data="{DynamicResource NutIconSunRays}" />
-                      <Path Classes="nut-theme-glyph nut-sun-core" Stretch="None" Data="{DynamicResource NutIconSunCore}" />
+                      <Path Classes="nut-theme-glyph nut-sun" Stretch="None" Data="{DynamicResource NutIconSun}" />
                     </Grid>
                   </Viewbox>
                 </Grid>

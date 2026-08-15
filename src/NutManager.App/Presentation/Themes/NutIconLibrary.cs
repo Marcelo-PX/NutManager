@@ -12,10 +12,12 @@ namespace NutManager.App.Presentation.Themes;
 /// or taken back in-house — without editing a single surface. The library supplies the geometry; no
 /// path data is transcribed by hand.
 ///
-/// The icons whose parts animate independently are deliberately absent from this map. The two
-/// device LEDs blink out of phase, the gear teeth turn around a stationary hub and the diagnostics
-/// dot sweeps across its base, which only works while each piece is its own shape. A library gives
-/// one shape per name, so those keep the geometry drawn for them in <c>NutIcons.axaml</c>.
+/// The map covers every semantic name any view references, so the whole application is drawn from
+/// the library at runtime. Five icons used to be composed from several shapes each — LEDs that
+/// blinked out of phase, a gear turning around a stationary hub, a dot sweeping along a trace — and
+/// those parts are gone: the library gives one shape per name, and the motion those parts carried
+/// now moves the whole glyph instead. A single silhouette is worth more than segmented motion,
+/// because it is what keeps every icon in the product on one drawing system.
 /// </summary>
 public static class NutIconLibrary
 {
@@ -93,6 +95,9 @@ public static class NutIconLibrary
         ("NutIconBack", MaterialIconKind.ArrowLeft),
         ("NutIconForward", MaterialIconKind.ArrowRight),
         ("NutIconClose", MaterialIconKind.Close),
+        // Theme toggle. The disc-and-rays sun is one shape here, where it used to be a disc with a
+        // separate ray ring so the rays could turn alone; the whole glyph turns now.
+        ("NutIconSun", MaterialIconKind.WhiteBalanceSunny),
         ("NutIconMoon", MaterialIconKind.WeatherNight),
         ("NutIconWindowMinimize", MaterialIconKind.WindowMinimize),
         ("NutIconWindowMaximize", MaterialIconKind.WindowMaximize),
@@ -101,8 +106,8 @@ public static class NutIconLibrary
 
     /// <summary>
     /// Replaces the catalog entries this library covers. Called after the theme dictionaries have
-    /// been composed, so the hand-drawn geometry stays the fallback for anything not mapped here and
-    /// a name that the library cannot supply keeps working rather than disappearing.
+    /// been composed, so a kind the installed version has dropped falls back to the drawing in
+    /// <c>NutIcons.axaml</c> rather than leaving an empty box on screen.
     /// </summary>
     public static void Apply(Application application)
     {

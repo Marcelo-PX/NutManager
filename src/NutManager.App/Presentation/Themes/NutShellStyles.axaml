@@ -90,9 +90,14 @@
 
   <!--
     Theme glyphs. Both take their colour from the button so the selected state keeps working, and
-    both move in a way that suits what they are: the sun's rays turn a notch on their own while its
-    disc holds still, and the moon leans back as if setting. Transitions only, so the toggle costs
-    nothing when nobody is pointing at it.
+    both move in a way that suits what they are: the sun turns a notch, the moon leans back as if
+    setting. Transitions only, so the toggle costs nothing when nobody is pointing at it.
+
+    The sun used to be a disc with its rays on a separate layer, so the rays could turn while the
+    disc held still. The library draws it as one shape, so the turn is the whole sun — which is what
+    a sun does anyway; it was the disc holding still that had to be arranged for. The rotation is
+    45deg because the library's sun has eight rays, so an eighth of a turn lands ray-on-ray and the
+    movement reads as the glyph settling rather than as it being knocked out of true.
   -->
   <Style Selector="Path.nut-theme-glyph">
     <Setter Property="Fill" Value="{Binding $parent[Button].Foreground}" />
@@ -104,14 +109,11 @@
       </Transitions>
     </Setter>
   </Style>
-  <Style Selector="Button.nut-theme-option:pointerover Path.nut-sun-rays">
-    <Setter Property="RenderTransform" Value="rotate(45deg) scale(1.06)" />
+  <Style Selector="Button.nut-theme-option:pointerover Path.nut-sun">
+    <Setter Property="RenderTransform" Value="rotate(45deg) scale(1.08)" />
   </Style>
-  <Style Selector="Button.nut-theme-option.selected Path.nut-sun-rays">
+  <Style Selector="Button.nut-theme-option.selected Path.nut-sun">
     <Setter Property="RenderTransform" Value="rotate(22.5deg)" />
-  </Style>
-  <Style Selector="Button.nut-theme-option:pointerover Path.nut-sun-core">
-    <Setter Property="RenderTransform" Value="scale(1.1)" />
   </Style>
   <Style Selector="Button.nut-theme-option:pointerover Path.nut-moon">
     <Setter Property="RenderTransform" Value="rotate(-18deg) scale(1.06)" />
@@ -203,9 +205,21 @@
   <Style Selector="Button.nut-navigation-item /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
   </Style>
+  <!--
+    A row on glass lightens under the pointer, one rung above whatever pane it sits on. Its left
+    edge is not touched: that three-pixel bar is how selection is marked, and lighting it on hover
+    would say "this is the page you are on" about a row you are merely pointing at.
+
+    The rules below this one are declared after it deliberately. Avalonia resolves equally matching
+    setters by declaration order, so pressed and selected win over hover, and pointing at the row
+    you are already on — or holding the mouse down on one — does not wash its state away.
+  -->
   <Style Selector="Button.nut-navigation-item:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NutGlassRowHoverBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceInteractiveBrush}" />
   </Style>
   <Style Selector="Button.nut-navigation-item.selected">
     <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
@@ -223,9 +237,10 @@
     the motion is reinforcement rather than the signal itself.
   -->
   <!--
-    ==================== Layered navigation glyph states ====================
-    Base silhouette and detail layers animate separately, and each family reacts in a way that
-    suits the object it depicts rather than every icon simply turning accent-coloured.
+    ==================== Navigation glyph states ====================
+    One glyph per destination, from the icon library. Each family still reacts in a way that suits
+    the object it depicts rather than every icon simply turning accent-coloured, but the reaction is
+    now the whole glyph: there are no detail layers left to light up on their own.
 
     Motion uses TransformOperationsTransition, which is the supported way to interpolate
     RenderTransform: the crash seen earlier came from pointing a keyframe Animation at
@@ -266,7 +281,15 @@
   <Style Selector="Button.nut-navigation-item:pointerover controls|NutNavigationIcon">
     <Setter Property="IsActive" Value="True" />
   </Style>
-  <Style Selector="Path.nut-nav-base">
+  <!--
+    The glyph is muted at rest, brightens under the pointer and takes the accent on the selected
+    page. Colour is the whole state signal now: the detail layers that used to light up in their own
+    semantic colours — cyan and green rack LEDs, a badge over a check, a reading at the end of a
+    trace — went with the migration to one shape per icon, and their emphasis would have had to be
+    painted onto the silhouette itself, which recolours the whole destination rather than a detail
+    of it. Selection remains carried by the accent bar, the label weight and this fill together.
+  -->
+  <Style Selector="Path.nut-nav-glyph">
     <Setter Property="Fill" Value="{DynamicResource NutTextMutedBrush}" />
     <Setter Property="Transitions">
       <Transitions>
@@ -274,74 +297,19 @@
       </Transitions>
     </Setter>
   </Style>
-  <Style Selector="Path.nut-nav-detail">
-    <Setter Property="Opacity" Value="0" />
-    <Setter Property="Fill" Value="{DynamicResource NutTextMutedBrush}" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <DoubleTransition Property="Opacity" Duration="0:0:0.20" />
-        <BrushTransition Property="Fill" Duration="0:0:0.20" />
-      </Transitions>
-    </Setter>
-  </Style>
-
-  <!-- Base brightens on hover and takes the accent when the page is selected. It is never
-       replaced or covered: the detail layers only add a few pixels of emphasis on top. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-base">
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-glyph">
     <Setter Property="Fill" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
-  <Style Selector="Button.nut-navigation-item.selected Path.nut-nav-base">
+  <Style Selector="Button.nut-navigation-item.selected Path.nut-nav-glyph">
     <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
   </Style>
-
-  <!-- Overview: the inner dashboard bar lights up. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-overview-detail,
-                   Button.nut-navigation-item.selected Path.nut-nav-overview-detail">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
-  </Style>
-
-  <!-- Devices: the two rack LEDs come alive in different colours. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-led-top,
-                   Button.nut-navigation-item.selected Path.nut-nav-led-top">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutCyanBrush}" />
-  </Style>
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-led-bottom,
-                   Button.nut-navigation-item.selected Path.nut-nav-led-bottom">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
-  </Style>
-
-  <!-- Administration: verified badge and check appear over the managed-profile silhouette. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-admin-badge,
-                   Button.nut-navigation-item.selected Path.nut-nav-admin-badge">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
-  </Style>
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-admin-check,
-                   Button.nut-navigation-item.selected Path.nut-nav-admin-check">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutOnAccentBrush}" />
-  </Style>
-
-  <!-- Diagnostics: an endpoint reading appears at the end of the trace. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-pulse-dot,
-                   Button.nut-navigation-item.selected Path.nut-nav-pulse-dot">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
-  </Style>
-
-  <!-- Settings: the hub engages inside the gear. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-hub,
-                   Button.nut-navigation-item.selected Path.nut-nav-hub">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
-  </Style>
-
-  <!-- Disabled items keep their geometry but drop all semantic emphasis. -->
-  <Style Selector="Button.nut-navigation-item:disabled Path.nut-nav-detail">
-    <Setter Property="Opacity" Value="0" />
+  <!--
+    Disabled items keep their geometry but drop all semantic emphasis. Opacity is not used for this:
+    the compositor owns that property on these glyphs while a row is hovered, and a style writing it
+    at the same time would fight the animation.
+  -->
+  <Style Selector="Button.nut-navigation-item:disabled Path.nut-nav-glyph">
+    <Setter Property="Fill" Value="{DynamicResource NutBorderEmphasisBrush}" />
   </Style>
   <Style Selector="Button.nut-navigation-subitem PathIcon">
     <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
@@ -443,8 +411,15 @@
     <Setter Property="Transitions">
       <Transitions>
         <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
+        <BrushTransition Property="Background" Duration="0:0:0.18" Easing="CubicEaseOut" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="CubicEaseOut" />
       </Transitions>
     </Setter>
+  </Style>
+  <!-- The rail is glass, so it takes the same hover response the cards do. -->
+  <Style Selector="Border.nut-file-rail:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderHoverBrush}" />
   </Style>
 
   <Style Selector="Button.nut-file-rail-item">
@@ -469,8 +444,9 @@
   <Style Selector="Button.nut-file-rail-item /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
   </Style>
+  <!-- The same row response as the sidebar, for the same reason: one glass language at two scales. -->
   <Style Selector="Button.nut-file-rail-item:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NutGlassRowHoverBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
   <Style Selector="Button.nut-file-rail-item:pressed /template/ ContentPresenter">

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using NutManager.App.Presentation.Themes;
 using Xunit;
 
 namespace NutManager.Tests;
@@ -25,6 +26,9 @@ public sealed class IconCatalogTests
 
     private static HashSet<string> DefinedKeys() =>
         [.. Regex.Matches(Catalog(), @"x:Key=""(NutIcon\w+)""").Select(match => match.Groups[1].Value)];
+
+    /// <summary>The names the adapter actually maps, taken from the adapter rather than re-parsed.</summary>
+    private static HashSet<string> SuppliedKeys() => [.. NutIconLibrary.SuppliedKeys];
 
     [Fact]
     public void EverySemanticNameUsedInTheApplicationIsDefinedInTheCatalog()
@@ -127,27 +131,52 @@ public sealed class IconCatalogTests
     }
 
     [Fact]
-    public void TheIconsWhosePartsAnimateAreStillSeparateShapes()
+    public void EverySemanticNameTheApplicationDrawsComesFromTheLibrary()
     {
-        var defined = DefinedKeys();
+        // The point of the whole arrangement. A name defined in the catalog but absent from the
+        // adapter still renders — from the fallback drawing — so nothing breaks and nobody notices
+        // that one icon in the product is no longer on the same drawing system as the rest.
+        var supplied = SuppliedKeys();
+        var unsupplied = new SortedSet<string>(DefinedKeys());
+        unsupplied.ExceptWith(supplied);
 
-        // These exist as separate geometries precisely so one piece can move while another does not:
-        // the LEDs blink out of phase, the gear turns around a stationary hub, the dot sweeps across
-        // its base. Collapsing any pair into one glyph — which is all a font can offer — would take
-        // the animation with it.
-        foreach (var pair in new[]
+        Assert.Empty(unsupplied);
+    }
+
+    [Fact]
+    public void NoIconIsAssembledFromPartsAnyMore()
+    {
+        // Six icons used to be several shapes each, so that one piece could move while the rest
+        // held still: LEDs blinking out of phase, a gear turning around a stationary hub, a dot
+        // sweeping along a trace, rays turning around a sun. A library gives one shape per name, so
+        // those parts are gone and the motion moved to the whole glyph. Naming a part again is how
+        // an icon would quietly leave the library, so the suffixes are refused outright.
+        var offenders = new SortedSet<string>();
+        foreach (var key in DefinedKeys())
         {
-            ("NutIconDevicesLedTop", "NutIconDevicesLedBottom"),
-            ("NutIconGearBase", "NutIconGearHub"),
-            ("NutIconDiagnosticsBase", "NutIconDiagnosticsDot"),
-            ("NutIconOverviewBase", "NutIconOverviewDetail"),
-            ("NutIconAdministrationBase", "NutIconAdministrationBadge"),
-            ("NutIconSunCore", "NutIconSunRays")
-        })
-        {
-            Assert.Contains(pair.Item1, defined);
-            Assert.Contains(pair.Item2, defined);
+            foreach (var suffix in new[]
+            {
+                "Base", "Detail", "LedTop", "LedBottom", "Hub", "Dot", "Badge",
+                "Rays", "Core", "Tracks", "RingTop", "RingBottom", "KnobTop", "KnobBottom"
+            })
+            {
+                if (key.EndsWith(suffix, StringComparison.Ordinal)) offenders.Add(key);
+            }
         }
+
+        Assert.Empty(offenders);
+    }
+
+    [Fact]
+    public void TheCatalogCarriesAFallbackForEveryNameTheLibrarySupplies()
+    {
+        // The reverse direction. Apply() skips a kind the installed version has dropped, which is
+        // only survivable while the catalog still defines that name — otherwise the view asking for
+        // it renders an empty box.
+        var defined = DefinedKeys();
+        var missing = new SortedSet<string>(SuppliedKeys().Where(key => !defined.Contains(key)));
+
+        Assert.Empty(missing);
     }
 
     [Fact]
