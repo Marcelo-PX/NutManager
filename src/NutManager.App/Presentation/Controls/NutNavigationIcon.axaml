@@ -14,36 +14,57 @@
     motion moved up a level — the glyph itself carries it now, and the Grid around it still supplies
     the family's hover transform, which is why the two are still separate elements.
 
-    Path with Stretch="None" rather than PathIcon: the library draws on the same 24x24 grid these
-    were authored on, so rendering at native coordinates keeps the size and weight the sidebar
-    already had. It also keeps the glyph clear of the generic "Button PathIcon" opacity rules, whose
-    hover transition would run against the compositor animations below on the same property.
+    Path rather than PathIcon, so the glyph stays clear of the generic "Button PathIcon" opacity
+    rules, whose hover transition would run against the compositor animations below on the same
+    property.
+
+    Each glyph is normalised into a 20x20 box rather than drawn at its native coordinates. The
+    library's icons do not all occupy the 24 grid equally — measured, these five span 18 to 22 units
+    on their longest side, a 22% spread — so drawing them unscaled made Administration and the cog
+    read as oversized while the diagnostics trace, only 14 units tall, read as small. The cog also
+    starts at x=2.27 where its neighbours start at x=3.00, which pushed it toward the selection bar.
+    Uniform scaling into a fixed box equalises the longest side and centres the ink, so nothing is
+    off-axis and every glyph keeps 2 units of clearance inside the 24 slot. 20 is the live area
+    Material itself specifies for a 24 grid.
+
+    The Panel carries the name, not the Path: it is exactly 20x20 whatever the glyph's aspect ratio
+    turns out to be, so the compositor's centre point is genuinely the centre of what turns.
   -->
   <Grid Width="24" Height="24">
 
     <!-- Overview: the dashboard breathes, the way a surface with live figures on it would. -->
     <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsOverview, ElementName=Root}">
-      <shapes:Path x:Name="OverviewGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconOverview}" />
+      <Panel x:Name="OverviewGlyph" Classes="nut-nav-slot">
+        <shapes:Path Classes="nut-nav-glyph" Data="{DynamicResource NutIconOverview}" />
+      </Panel>
     </Grid>
 
     <!-- Devices: a slow rise and fall in place of the two rack lights that used to blink. -->
     <Grid Classes="nut-icon-motion nut-icon-nudge" IsVisible="{Binding IsDevices, ElementName=Root}">
-      <shapes:Path x:Name="DevicesGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconDevices}" />
+      <Panel x:Name="DevicesGlyph" Classes="nut-nav-slot">
+        <shapes:Path Classes="nut-nav-glyph" Data="{DynamicResource NutIconDevices}" />
+      </Panel>
     </Grid>
 
     <!-- Administration: one pop on arrival, which is what the verified badge used to do. -->
     <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsAdministration, ElementName=Root}">
-      <shapes:Path x:Name="AdministrationGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconAdministration}" />
+      <Panel x:Name="AdministrationGlyph" Classes="nut-nav-slot">
+        <shapes:Path Classes="nut-nav-glyph" Data="{DynamicResource NutIconAdministration}" />
+      </Panel>
     </Grid>
 
     <!-- Diagnostics: the trace beats, rather than a dot running along it. -->
     <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsDiagnostics, ElementName=Root}">
-      <shapes:Path x:Name="DiagnosticsGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconDiagnostics}" />
+      <Panel x:Name="DiagnosticsGlyph" Classes="nut-nav-slot">
+        <shapes:Path Classes="nut-nav-glyph" Data="{DynamicResource NutIconDiagnostics}" />
+      </Panel>
     </Grid>
 
     <!-- Settings: the whole cog turns, where before the teeth turned around a fixed hub. -->
     <Grid Classes="nut-icon-motion nut-icon-gear" IsVisible="{Binding IsSettings, ElementName=Root}">
-      <shapes:Path x:Name="SettingsGlyph" Classes="nut-nav-glyph" Stretch="None" Data="{DynamicResource NutIconSettings}" />
+      <Panel x:Name="SettingsGlyph" Classes="nut-nav-slot">
+        <shapes:Path Classes="nut-nav-glyph" Data="{DynamicResource NutIconSettings}" />
+      </Panel>
     </Grid>
   </Grid>
 </UserControl>

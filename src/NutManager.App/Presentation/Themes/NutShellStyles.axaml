@@ -289,7 +289,25 @@
     painted onto the silhouette itself, which recolours the whole destination rather than a detail
     of it. Selection remains carried by the accent bar, the label weight and this fill together.
   -->
+  <!--
+    The 20x20 slot every navigation glyph is scaled into, centred in the 24 box. Measured, the
+    library's five navigation icons span 18 to 22 units on their longest side and are not all
+    centred on the grid — the cog reaches 0.7 units further left than its neighbours, and the device
+    tower sits half a unit right of the axis. Normalising into one box is what makes the column read
+    as a single set instead of five drawings that happen to be stacked.
+  -->
+  <Style Selector="Panel.nut-nav-slot">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
   <Style Selector="Path.nut-nav-glyph">
+    <!-- Uniform, not None: unscaled the glyphs keep the size differences measured above. The
+         alignment is what centres the ink, since a Shape's desired size is its scaled ink. -->
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Fill" Value="{DynamicResource NutTextMutedBrush}" />
     <Setter Property="Transitions">
       <Transitions>

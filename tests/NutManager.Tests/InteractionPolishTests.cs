@@ -263,6 +263,22 @@ public sealed class InteractionPolishTests
         Assert.DoesNotContain("nut-nav-base", control, StringComparison.Ordinal);
         Assert.DoesNotContain("nut-nav-detail", control, StringComparison.Ordinal);
 
+        // Every glyph is normalised into the shared slot rather than drawn at native coordinates.
+        // Unscaled, the library's five navigation icons span 18 to 22 units on their longest side
+        // and two of them are off the grid's axis, which showed up on screen as the cog crowding
+        // the selection bar and the diagnostics trace reading small.
+        Assert.Equal(5, Regex.Matches(control, @"Classes=""nut-nav-slot""").Count);
+        Assert.DoesNotContain("Stretch=\"None\"", control, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Stretch\" Value=\"Uniform\" />", shell, StringComparison.Ordinal);
+
+        // The slot is a fixed square, which is the whole reason the compositor can treat its centre
+        // as the centre of the glyph.
+        var slot = shell[shell.IndexOf("Panel.nut-nav-slot", StringComparison.Ordinal)..];
+        slot = slot[..slot.IndexOf("</Style>", StringComparison.Ordinal)];
+        Assert.Contains("<Setter Property=\"Width\" Value=\"20\" />", slot, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Height\" Value=\"20\" />", slot, StringComparison.Ordinal);
+        Assert.Contains("GlyphSize = new(20, 20)", Controls("NutNavigationIcon.axaml.cs"), StringComparison.Ordinal);
+
         // And the styles that lit those parts up are gone rather than left dangling.
         foreach (var deadClass in new[]
         {

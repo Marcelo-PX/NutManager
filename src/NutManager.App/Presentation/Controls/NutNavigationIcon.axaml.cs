@@ -53,7 +53,11 @@ public partial class NutNavigationIcon : UserControl
         ApplyMotion();
     }
 
-    /// <summary>The glyph box, which is what every movement below is measured against.</summary>
+    /// <summary>
+    /// The glyph slot, which is what every movement below is measured against. It matches the fixed
+    /// size of the named Panel rather than the ink inside it, so the centre point is the centre of
+    /// the box whatever aspect ratio the library's drawing happens to have.
+    /// </summary>
     private static readonly Size GlyphSize = new(20, 20);
 
     /// <summary>
