@@ -126,9 +126,11 @@
     <Setter Property="BorderThickness" Value="0,0,0,1" />
   </Style>
 
+  <!-- Translucent like the file rail, so the acrylic runs behind the whole window rather than
+       stopping at a solid slab down one side. -->
   <Style Selector="Border.nut-shell-sidebar">
     <Setter Property="Background" Value="{DynamicResource NutSidebarBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="0,0,1,0" />
   </Style>
 
