@@ -130,3 +130,38 @@ Each file keeps its own icon, so a collapsed rail is still readable: `NutIconGen
 accessible name and tooltip carry both the purpose and the real file name. Selection is never colour
 alone: the accent bar and a semibold label carry it too. The selected row's icon pops once when it
 becomes current; nothing in the rail loops.
+
+## Glass surfaces and the two-tone window (T31)
+
+The window is transparent with an `ExperimentalAcrylicBorder` behind the entire shell. This is not
+decoration for its own sake: Avalonia cannot blur in-page content, so before the pane existed the
+translucent cards were tinting a flat colour and the effect was invisible. The transparency hint
+degrades from acrylic to Mica to plain blur, and `NutWindowBrush` sits on the same value as the
+tint, so where a compositor offers none of them the fallback keeps the same separation instead of
+collapsing the layers together.
+
+Transparency only reads when the layers differ, which is why the palette is deliberately two-tone:
+
+| Token | Role | Dark | Light |
+| --- | --- | --- | --- |
+| `NutAcrylicTintColor` | the pane behind everything | `#05080E` | `#DDE4EF` |
+| `NutGlassSurfaceBrush` | cards, rail, panels | `#8C3A4A66` | `#A6FFFFFF` |
+| `NutGlassBorderBrush` | the pane's edge | `#40FFFFFF` | `#73FFFFFF` |
+| `NutGlassSheenBrush` | top-edge highlight | — | — |
+
+With the backdrop and the surfaces on the same navy, a 70% panel still looked opaque; the backdrop
+is now the darkest value in the window and the surfaces lift well clear of it.
+
+The language follows Apple's glass rather than a tinted panel: frosted and cool instead of tinted
+navy, a thin white hairline instead of a coloured border — on those panes the rim is light catching
+an edge, not a drawn outline — and larger continuous radii, which is half of what makes a surface
+read as glass at all. Badge fills and the navigation selection sheen carry alpha for the same
+reason, so they read as tinted glass over the pane rather than as painted chips.
+
+Foreground colours are untouched throughout. The alpha on every surface stops where body text would
+start losing contrast: the effect is never allowed to cost legibility.
+
+The acrylic pane breathes over sixteen seconds with a narrow swing. It and the connection light are
+the only two continuous animations in the application, and neither is a control style — a looping
+style would apply to every instance of a control, which remains forbidden and is what the
+interaction tests defend.
