@@ -15,11 +15,18 @@ manager. Only assets copied into this repository are recorded.
 - **Why it is vendored:** the application must run entirely offline, so the geometry is stored
   locally instead of being fetched or pulled in as a runtime dependency. No icon font, icon package
   or remote asset is referenced.
-- **Icons imported:** Home, Server, Settings (gear), Pulse.
+- **Icons imported:** Home, Server, Settings (gear), Pulse, and the five configuration-domain glyphs
+  used by the NUT file rail — document list, battery checkmark, server, people team and pulse.
 - **Not imported:** the options/sliders glyph was previously taken from the same source but is now
   drawn in this repository. Fluent packs the tracks and both handle rings into a single path, which
   makes the handles impossible to move independently; the local version reproduces the same drawing
   at the same coordinates as three pieces so each handle can travel its track as one unit.
+
+No icon package or icon font is referenced. That is a consequence of how this application draws
+icons rather than a preference: twenty-one of its glyphs are split into independently animated parts
+— the two device LEDs blink out of phase, the gear teeth spin while the hub stays still, the
+diagnostics dot sweeps across its base — and a font glyph is a single indivisible shape. Vendoring
+the geometry is what makes those animations possible at all.
 
 The MIT licence permits this use provided the copyright notice and permission notice are retained.
 The notice is reproduced below.
