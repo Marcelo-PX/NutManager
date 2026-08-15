@@ -51,22 +51,25 @@
           <!-- Four columns declared here as well as in the responsive pass: the pass only runs on
                the first SizeChanged, and until then a panel placed in a column the grid does not
                have is clamped onto its neighbour and the two draw on top of each other. -->
+          <!-- The boxes are a fixed 200 rather than stretched: filling a quarter of the card made
+               a three-word choice look like a text field, and one fixed width keeps the four
+               controls on a common left edge instead of ending wherever their content does. -->
           <Grid x:Name="AppearanceLayout" ColumnDefinitions="*,*,*,*" ColumnSpacing="26">
             <StackPanel x:Name="ThemePreferencePanel" Grid.Column="0" Spacing="5">
               <TextBlock Text="{Binding AppearanceThemeLabel}" Classes="nut-label" />
-              <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}" HorizontalAlignment="Stretch">
+              <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}" HorizontalAlignment="Left" Width="200">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </StackPanel>
             <StackPanel x:Name="LanguagePreferencePanel" Grid.Column="1" Spacing="5">
               <TextBlock Text="{Binding AppearanceLanguageLabel}" Classes="nut-label" />
-              <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}" HorizontalAlignment="Stretch">
+              <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}" HorizontalAlignment="Left" Width="200">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </StackPanel>
             <StackPanel x:Name="SidebarPreferencePanel" Grid.Column="2" Spacing="5">
               <TextBlock Text="{Binding AppearanceSidebarLabel}" Classes="nut-label" />
-              <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}" HorizontalAlignment="Stretch">
+              <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}" HorizontalAlignment="Left" Width="200">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </StackPanel>
