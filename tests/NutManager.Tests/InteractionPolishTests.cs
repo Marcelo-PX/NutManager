@@ -353,6 +353,25 @@ public sealed class InteractionPolishTests
 
 internal static class Repository
 {
+    /// <summary>
+    /// The repository root, found by walking up until a known landmark appears. Needed by anything
+    /// that has to enumerate the source tree rather than read one known file.
+    /// </summary>
+    public static string Root
+    {
+        get
+        {
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory is not null)
+            {
+                if (File.Exists(Path.Combine(directory.FullName, "NutManager.sln"))) return directory.FullName;
+                directory = directory.Parent;
+            }
+
+            throw new DirectoryNotFoundException($"Could not locate the repository root from {AppContext.BaseDirectory}.");
+        }
+    }
+
     /// <summary>Reads a repository source file by walking up from the test assembly location.</summary>
     public static string Read(string relativePath)
     {
