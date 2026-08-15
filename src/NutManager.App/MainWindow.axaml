@@ -42,8 +42,8 @@
         -->
         <ExperimentalAcrylicMaterial BackgroundSource="Digger"
                                      TintColor="{DynamicResource NutAcrylicTintColor}"
-                                     TintOpacity="0.5"
-                                     MaterialOpacity="0.35" />
+                                     TintOpacity="0.25"
+                                     MaterialOpacity="0.12" />
       </ExperimentalAcrylicBorder.Material>
       <!--
         The pane breathes. The swing is small and the period long — eight seconds between the two

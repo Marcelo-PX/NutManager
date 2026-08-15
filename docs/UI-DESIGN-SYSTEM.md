@@ -197,13 +197,23 @@ Three changes fixed it, and they have to be made together — any one alone leav
 | | Was | Is |
 | --- | --- | --- |
 | `NutAcrylicTintColor` | `#05080E` (navy) | `#000000` — black tints nothing |
-| `TintOpacity` / `MaterialOpacity` | `1` / `0.62` | `0.5` / `0.35` |
-| `NutWindowBrush` (dark) | `#05080E` opaque | `#8C000000` — a wash, not a floor |
+| `TintOpacity` / `MaterialOpacity` | `1` / `0.62` | `0.25` / `0.12` |
+| `NutWindowBrush` (dark) | `#05080E` opaque | `#73000000` — a wash, not a floor |
+
+**What shows through is the desktop wallpaper, and only that.** Windows composes this backdrop from
+the wallpaper, not from the windows behind ours: DWM does not hand one process the pixels of
+another. So the effect is invisible whenever something else is maximised behind the window, which is
+exactly the case that makes it look broken — and it is not. Measured with the desktop showing, a
+horizontal strip of background varies by 35 levels across the pane; measured with the same window
+over another application, it is flat.
 
 The alpha on `NutWindowBrush` is not decoration either. A see-through background inherits whatever
-wallpaper the machine has, and body text cannot depend on that being dark, so the wash is what keeps
-contrast survivable under a white one — measured at 237,242,248 on 25,25,25 with a dark desktop
-behind, and the wash is what holds the floor when the desktop is not dark.
+wallpaper the machine has, and body text cannot depend on that being dark, so the wash is the
+contrast floor. It is tuned rather than guessed: against the brightest point the wallpaper pushed
+into the pane, primary text measures 10.6:1 and secondary 5.1:1, both clear of WCAG AA's 4.5. At the
+value tried before it (`#40000000`) secondary fell to 3.7:1, which is why the wash sits where it
+does. `NutTextMutedBrush` reaches only 2.8:1 there and is therefore never used directly on the page
+background — it belongs inside cards, whose own alpha supplies the contrast.
 
 The header, footer and sidebar keep their own opaque or near-opaque brushes: the change was scoped
 to the page background, so the chrome around it still reads as chrome.
