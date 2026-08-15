@@ -49,7 +49,7 @@ Only one task should normally be in progress at a time.
 | T28 | DONE | Graphical users and monitoring configuration | Dedicated upsd.users and upsmon.conf forms |
 | T29 | DONE | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 | T30 | DONE | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
-| T31 | IN PROGRESS | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
+| T31 | DONE | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
 
 ---
 
@@ -717,7 +717,7 @@ where a test account exists.
 
 ## T31 — Collapsible NUT file rail
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Objective
 
@@ -749,9 +749,40 @@ folds. It folds without touching the stored preference: the administrator asked 
 widening the window again gives back exactly that rather than a state the layout imposed. There is
 no second UX for small windows — the same rail, just folded.
 
+### Implemented
+
+- a rail whose column changes width rather than a panel that is shown and hidden, so collapsing gives
+  the editing form the space back;
+- folding is presentation only: the selected file, its draft and its editor come through untouched,
+  and rows are buttons rather than list items so the existing dirty-draft guard stays in charge of
+  whether a switch happens at all;
+- only the files the profile manages, with a dignified empty state when it manages none;
+- the expanded state persists through the settings store at schema 4, and a document written before
+  the preference existed opens expanded;
+- an acrylic pane behind the shell, two deliberately separated tones, and glass surfaces in Apple's
+  language — frosted and cool, a thin white hairline for an edge, larger continuous radii — with
+  foreground colours untouched so text keeps the contrast it had;
+- narrow layouts fold the rail without altering the stored preference.
+
 ### Validation
 
-- rail state, persistence and migration tests, plus manual Windows validation of the page.
+Gates: Release build with 0 warnings and 0 errors; 1201/1201 tests; vulnerability gate clean;
+format and whitespace clean.
+
+Windows runtime: the shell, the acrylic backdrop and both themes were confirmed on screen, and the
+rail was driven expanded and collapsed with its rows named in both states.
+
+### Known follow-ups
+
+Two items were accepted rather than completed, and neither blocks the surface working:
+
+- the rail was last seen on screen before the two-tone glass landed, so the current appearance of
+  that specific panel is confirmed by the theme captures rather than by a picture of the rail itself.
+  Seeing it needs a local profile or a reachable configuration share;
+- external icon fonts were authorised but not adopted. Doing so means adding a package, recording it
+  in the third-party notices, and reversing the "no icon font, no icon package" decision recorded in
+  the design system and the agent rules. It belongs in a round that changes those documents together
+  rather than leaving the repository asserting one thing and practising another.
 
 ## Task execution template
 
