@@ -9,7 +9,8 @@
         Height="800"
         MinWidth="680"
         MinHeight="480"
-        Background="{DynamicResource NutWindowBrush}"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur,Mica,Blur"
         WindowDecorations="BorderOnly"
         SizeChanged="Window_OnSizeChanged"
         KeyDown="Window_OnKeyDown">
@@ -18,6 +19,40 @@
     in one integrated bar instead of a separate Windows title strip. OffScreenMargin keeps content
     inside the work area when the window is maximised.
   -->
+  <!--
+    The window itself is transparent and an acrylic pane sits behind everything, so the glass
+    surfaces above it have something real to be glass over. Avalonia cannot blur in-page content, so
+    without this the translucent cards were tinting a flat colour and the effect was invisible.
+
+    The fallback chain matters: where the compositor offers no acrylic the hint degrades to Mica and
+    then to plain blur, and the opaque tint underneath keeps the shell readable either way.
+  -->
+  <Panel>
+    <ExperimentalAcrylicBorder x:Name="AcrylicBackdrop" IsHitTestVisible="False">
+      <ExperimentalAcrylicBorder.Material>
+        <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                     TintColor="{DynamicResource NutAcrylicTintColor}"
+                                     TintOpacity="1"
+                                     MaterialOpacity="0.62" />
+      </ExperimentalAcrylicBorder.Material>
+      <!--
+        The pane breathes. The swing is small and the period long — eight seconds between the two
+        extremes — so it reads as depth rather than as something blinking for attention; at a faster
+        rate or a wider swing it competes with the readings the page exists to show.
+      -->
+      <ExperimentalAcrylicBorder.Styles>
+        <Style Selector="ExperimentalAcrylicBorder#AcrylicBackdrop">
+          <Style.Animations>
+            <Animation Duration="0:0:16" IterationCount="Infinite" Easing="SineEaseInOut">
+              <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.92" /></KeyFrame>
+              <KeyFrame Cue="50%"><Setter Property="Opacity" Value="1.0" /></KeyFrame>
+              <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.92" /></KeyFrame>
+            </Animation>
+          </Style.Animations>
+        </Style>
+      </ExperimentalAcrylicBorder.Styles>
+    </ExperimentalAcrylicBorder>
+
   <Grid Margin="{Binding OffScreenMargin, RelativeSource={RelativeSource AncestorType=Window}}">
     <Grid.RowDefinitions>
       <RowDefinition Height="{DynamicResource NutHeaderHeight}" />
@@ -377,4 +412,5 @@
       </Grid>
     </Border>
   </Grid>
+  </Panel>
 </Window>
