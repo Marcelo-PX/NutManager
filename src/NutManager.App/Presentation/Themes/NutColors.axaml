@@ -16,8 +16,18 @@
       <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#1B2531" />
       <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#131B26" />
       <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#14202F" />
-      <!-- Translucent panel tint: glass over the page, not another opaque card. -->
-      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#E6121A25" />
+      <!--
+        Glass surfaces. The alpha is low enough that what is behind genuinely shows through — at the
+        near-opaque value this started with, the effect was invisible and the panel just looked like
+        another card. The edge highlight is what sells it: a real pane catches light along its top.
+      -->
+      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#B21A2433" />
+      <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#3D5B7FB8" />
+      <LinearGradientBrush x:Key="NutGlassSheenBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Offset="0" Color="#1FFFFFFF" />
+        <GradientStop Offset="0.45" Color="#08FFFFFF" />
+        <GradientStop Offset="1" Color="#00FFFFFF" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="NutBorderBrush" Color="#222C3B" />
       <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#1A2230" />
       <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#2E3D50" />
@@ -54,7 +64,13 @@
       <SolidColorBrush x:Key="NutSurface1Brush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="NutSurface2Brush" Color="#F7F9FD" />
       <SolidColorBrush x:Key="NutSurface3Brush" Color="#EDF2F9" />
-      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#E6F7F9FD" />
+      <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#B2FFFFFF" />
+      <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#59A8C4E8" />
+      <LinearGradientBrush x:Key="NutGlassSheenBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Offset="0" Color="#B2FFFFFF" />
+        <GradientStop Offset="0.45" Color="#3DFFFFFF" />
+        <GradientStop Offset="1" Color="#00FFFFFF" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#E4ECF9" />
       <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#F2F6FC" />
       <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#E1EBFD" />

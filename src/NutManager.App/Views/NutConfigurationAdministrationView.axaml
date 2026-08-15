@@ -42,13 +42,20 @@
               Width="{Binding ConfigurationRailWidth}">
         <StackPanel Spacing="8">
           <!-- Title only when there is room for it; the toggle is always reachable. -->
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{Binding Strings[Administration.Configuration.Files]}"
+          <!--
+            The toggle sits on its own row above the title. Side by side, the title had to share
+            228 px with a button and was permanently truncated to "Arquivos de configu…", which
+            defeats the point of showing it at all.
+          -->
+          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+            <TextBlock Grid.Row="1"
+                       Grid.ColumnSpan="2"
+                       Text="{Binding Strings[Administration.Configuration.Files]}"
                        Classes="nut-section-title"
                        IsVisible="{Binding IsConfigurationRailExpanded}"
-                       VerticalAlignment="Center"
-                       TextTrimming="CharacterEllipsis" />
-            <Button Grid.Column="1"
+                       Margin="2,2,0,0"
+                       TextWrapping="Wrap" />
+            <Button Grid.Row="0" Grid.Column="1"
                     Command="{Binding ToggleConfigurationRailCommand}"
                     AutomationProperties.Name="{Binding ConfigurationRailToggleText}"
                     ToolTip.Tip="{Binding ConfigurationRailToggleText}"
