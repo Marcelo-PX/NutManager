@@ -111,28 +111,51 @@ Mock/demo state is an unambiguous persistent badge, never merely an incidental c
 
 All layouts introduced by T24A–T29 must be validated in both official cultures as those tasks are implemented. See [Localization](LOCALIZATION.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
 
-## Configuration file rail (T31)
+## Administration navigation: two rows, not three columns (T32)
 
-The NUT configuration page carries its own collapsible rail for the file list. It is built from the
-same pieces as the shell navigation item — accent bar for selection, `NutSelectedSheenBrush` for the
-selected surface, hover lift — so the two rails read as one idea at two scales rather than as two
-components that happen to sit near each other.
+The administration page navigates horizontally. Section tabs across the top, a file strip under
+them, and the editor below at full width.
 
-`NutFileRailExpandedWidth` (228 px) matches the shell sidebar; `NutFileRailCollapsedWidth` (64 px) is
-tighter because this rail sits inside a page and only has to hold an 18 px icon. The width animates
-over `NutMotionShell` with `CubicEaseOut`, and the labels fade with it: a rail whose text vanished
-instantly read as content being dropped rather than folded away.
+It was three parallel vertical rails before — the shell sidebar at 274 px, the section rail at
+343 px and the file rail at 283 px — so **900 px, 46% of a 1938 px window, was navigation chrome
+before any content**, and the editor got 942 px. Worse vertically: with a file open, the page spent
+its height on a title, a context card, an installation card, a breadcrumb, a file header and a
+metadata strip, so **not one editable field was visible without scrolling**. The thing you came to
+do was the last thing on screen.
 
-The surface is `NutGlassSurfaceBrush`, a translucent tint over the page rather than a second opaque
-card, so the rail reads as glass above the content. The alpha is deliberately high — at lower opacity
-the file names lost contrast against whatever scrolled underneath, and legibility outranks the
-effect.
+Horizontally the same navigation costs two rows and the editor gets about 1571 px, a 67% gain, with
+the first controls on screen when the file loads.
 
-Each file keeps its own icon, so a collapsed rail is still readable: `NutIconGeneral`, `NutIconUps`,
-`NutIconServer`, `NutIconUsers`, `NutIconMonitoring`. Collapsed, the row is only that icon, so its
+Three cuts came with it:
+
+- **The installation card became one line.** Install directory, config directory and version are
+  facts you confirm once and stop reading; they had no business holding the top of the page.
+- **The breadcrumb went.** Page, section and file name repeated what the section tab and the
+  selected file chip already said, immediately above the file's own title. Three statements of one
+  fact is noise, not orientation.
+- **The availability line under each section moved into its tooltip.** It is a sentence, and a
+  sentence under every tab turns a strip into a second rail lying on its side. Each section states
+  its own availability inside its panel.
+
+Both strips are built from the same pieces as the shell navigation item — `NutAccentBrush` for
+selection, `NutSelectedSheenBrush` for the selected surface, the glass hover — so the sidebar, the
+tabs and the chips read as one idea at three scales. A horizontal strip marks its current item with
+an underline rather than a left bar: a bar down the left of a wide short chip reads as a bullet
+point, not a selection.
+
+The collapse the rail had is kept and repurposed. `ConfigurationFileChipWidth` is 184 px labelled
+and 52 px folded, animating over `NutMotionShell` with `CubicEaseOut`; the labels fade with it,
+because a chip whose text vanished instantly read as content being dropped rather than folded away.
+The preference and the effective state stay separate exactly as before: a window too narrow for five
+labelled chips folds them without touching what the administrator asked for, and widening gives that
+back. The strip is a `WrapPanel`, so a narrow window wraps to a second line rather than putting the
+last file out of reach — which is also why the page no longer rebuilds its own grid on resize.
+
+Each file keeps its own icon, so a folded chip is still readable: `NutIconGeneral`, `NutIconUps`,
+`NutIconServer`, `NutIconUsers`, `NutIconMonitoring`. Folded, the chip is only that icon, so its
 accessible name and tooltip carry both the purpose and the real file name. Selection is never colour
-alone: the accent bar and a semibold label carry it too. The selected row's icon pops once when it
-becomes current; nothing in the rail loops.
+alone: the accent outline and a semibold label carry it too. The selected chip's icon pops once when
+it becomes current; nothing in the strip loops.
 
 ## Glass surfaces and the two-tone window (T31)
 
@@ -161,7 +184,7 @@ is now the darkest value in the window and the surfaces lift well clear of it.
 ### Hover
 
 Glass responds to the pointer. There is one response, shared by every surface actually made of
-glass — `Border.nut-card` and `Border.nut-file-rail` — and it is only those: the pane lightens and
+glass — `Border.nut-card` and `Button.nut-file-chip` — and it is only those: the surface lightens and
 its edge comes up over 180 ms with a cubic ease. Nothing moves, resizes or gains a shadow, so a pane
 reacting cannot shift the page around it or clip its own rounded corner against a scroll viewer.
 

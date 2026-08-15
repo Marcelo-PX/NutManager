@@ -407,79 +407,130 @@
   </Style>
 
   <!--
-    Configuration file rail. It is deliberately built from the same pieces as the shell navigation
-    item — accent bar for selection, sheen for the selected surface, hover lift — so the two rails
-    read as one idea at two scales rather than as two different components.
-
-    The width animates rather than snapping, and the labels fade with it; a collapsing rail whose
-    text vanished instantly looked like the content had been dropped rather than folded away.
+    ==================== Administration section tabs ====================
+    The four administration sections, across the top rather than down a column. They keep the
+    shell's selection language — accent, sheen, semibold — but turned on its side: a horizontal
+    strip marks the current item with an underline, because a bar down the left of a wide short
+    chip reads as a bullet point rather than as a selection.
   -->
-  <Style Selector="Border.nut-file-rail">
+  <Style Selector="ListBox.nut-section-tabs">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem">
+    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="Padding" Value="13,9" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0,0,0,2" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutGlassRowHoverBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSelectedSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem:selected PathIcon">
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+
+  <!--
+    ==================== Configuration file strip ====================
+    The five NUT files, as a row of chips above the editor rather than a column beside it. Built
+    from the same pieces as the section tabs above them, so the page reads as one idea at two
+    levels: pick a section, then pick a file, then work — each step costing one row instead of one
+    column.
+
+    A chip's width animates rather than snapping, and its labels fade with it; folding whose text
+    vanished instantly looked like the content had been dropped rather than folded away.
+  -->
+  <Style Selector="ItemsControl.nut-file-strip">
+    <Setter Property="Margin" Value="0,0,0,-6" />
+  </Style>
+
+  <Style Selector="Button.nut-file-chip">
     <!--
-      The surface is a translucent tint over the page rather than a solid card, so the rail reads as
-      glass sitting above the content instead of a second opaque panel. The alpha is deliberately
-      high: at lower opacity the file names lost contrast against whatever scrolled underneath, and
-      legibility outranks the effect.
+      Glass, like the rail it replaces: a translucent tint over the page rather than a solid card.
+      The alpha is deliberately high — at lower opacity the file names lost contrast against
+      whatever scrolled underneath, and legibility outranks the effect. The surface itself is set on
+      the presenter below; what lives here is layout and the width that animates.
     -->
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="18" />
-    <Setter Property="Padding" Value="8" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
-        <BrushTransition Property="Background" Duration="0:0:0.18" Easing="CubicEaseOut" />
-        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="CubicEaseOut" />
-      </Transitions>
-    </Setter>
-  </Style>
-  <!-- The rail is glass, so it takes the same hover response the cards do. -->
-  <Style Selector="Border.nut-file-rail:pointerover">
-    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceHoverBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderHoverBrush}" />
-  </Style>
-
-  <Style Selector="Button.nut-file-rail-item">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="3,0,0,0" />
-    <Setter Property="CornerRadius" Value="13" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="CornerRadius" Value="14" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Padding" Value="9,7" />
-    <Setter Property="Margin" Value="0,1" />
-    <Setter Property="MinHeight" Value="40" />
+    <Setter Property="Padding" Value="11,8" />
+    <Setter Property="Margin" Value="0,0,8,6" />
+    <Setter Property="MinHeight" Value="46" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
     <Setter Property="Transitions">
       <Transitions>
+        <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
         <BrushTransition Property="Background" Duration="0:0:0.14" />
         <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
         <BrushTransition Property="Foreground" Duration="0:0:0.14" />
       </Transitions>
     </Setter>
   </Style>
-  <Style Selector="Button.nut-file-rail-item /template/ ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
+  <!--
+    A Button paints through its ContentPresenter, so the surface has to be set there rather than on
+    the Button: the stock template binds the presenter's Background and BorderBrush to the Button's,
+    and overriding the presenter breaks that binding and leaves the chip invisible. Every state
+    below therefore sets the presenter, and the Button carries only what the presenter inherits —
+    foreground and font weight.
+  -->
+  <Style Selector="Button.nut-file-chip /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
   </Style>
-  <!-- The same row response as the sidebar, for the same reason: one glass language at two scales. -->
-  <Style Selector="Button.nut-file-rail-item:pointerover /template/ ContentPresenter">
+  <!-- The same glass response the cards and the sidebar rows use. -->
+  <Style Selector="Button.nut-file-chip:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutGlassRowHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderHoverBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
-  <Style Selector="Button.nut-file-rail-item:pressed /template/ ContentPresenter">
+  <Style Selector="Button.nut-file-chip:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceInteractiveBrush}" />
   </Style>
-  <Style Selector="Button.nut-file-rail-item.selected">
-    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+  <!-- Selection is the accent outline and the sheen, declared after hover so pointing at the file
+       you already have open cannot wash away the fact that it is open. -->
+  <Style Selector="Button.nut-file-chip.selected">
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
-  <Style Selector="Button.nut-file-rail-item.selected /template/ ContentPresenter">
+  <Style Selector="Button.nut-file-chip.selected /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSelectedSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="BorderThickness" Value="1.6" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
-  <Style Selector="Button.nut-file-rail-item:disabled">
+  <Style Selector="Button.nut-file-chip:disabled">
     <Setter Property="Opacity" Value="0.45" />
   </Style>
 

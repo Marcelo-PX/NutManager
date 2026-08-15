@@ -45,23 +45,23 @@ public sealed class ConfigurationFileRailTests
         var viewModel = new AdministrationPageViewModel();
 
         Assert.True(viewModel.IsConfigurationRailExpanded);
-        Assert.Equal(228, viewModel.ConfigurationRailWidth);
+        Assert.Equal(184, viewModel.ConfigurationFileChipWidth);
     }
 
     [Fact]
-    public void TogglingSwitchesBetweenTheTwoWidths()
+    public void TogglingSwitchesBetweenTheTwoChipWidths()
     {
         var viewModel = new AdministrationPageViewModel();
 
         viewModel.ToggleConfigurationRailCommand.Execute(null);
 
         Assert.False(viewModel.IsConfigurationRailExpanded);
-        Assert.Equal(64, viewModel.ConfigurationRailWidth);
+        Assert.Equal(52, viewModel.ConfigurationFileChipWidth);
 
         viewModel.ToggleConfigurationRailCommand.Execute(null);
 
         Assert.True(viewModel.IsConfigurationRailExpanded);
-        Assert.Equal(228, viewModel.ConfigurationRailWidth);
+        Assert.Equal(184, viewModel.ConfigurationFileChipWidth);
     }
 
     [Fact]
@@ -240,11 +240,13 @@ public sealed class ConfigurationFileRailTests
     // ==================== Presentation ====================
 
     [Fact]
-    public void TheRailAnimatesItsWidthWithinTheShellsOwnMotionBudget()
+    public void AChipAnimatesItsWidthWithinTheShellsOwnMotionBudget()
     {
         var styles = RailStyles();
 
-        var rail = styles[styles.IndexOf("Border.nut-file-rail\"", StringComparison.Ordinal)..];
+        // The width that animates is the chip's now, not a column's: the strip is horizontal, so
+        // folding narrows each file rather than the panel they used to sit in.
+        var rail = styles[styles.IndexOf("Button.nut-file-chip\"", StringComparison.Ordinal)..];
         rail = rail[..rail.IndexOf("</Style>", StringComparison.Ordinal)];
 
         Assert.Contains("DoubleTransition Property=\"Width\"", rail, StringComparison.Ordinal);
@@ -258,12 +260,14 @@ public sealed class ConfigurationFileRailTests
     {
         var styles = RailStyles();
 
-        // Same accent bar and sheen the navigation item uses, so the two rails read as one idea.
-        Assert.Contains("Button.nut-file-rail-item.selected", styles, StringComparison.Ordinal);
+        // Same accent and sheen the shell's own selection uses, so the section tabs, the file chips
+        // and the sidebar read as one idea rather than three components that happen to be nearby.
+        Assert.Contains("Button.nut-file-chip.selected", styles, StringComparison.Ordinal);
+        Assert.Contains("ListBox.nut-section-tabs ListBoxItem:selected", styles, StringComparison.Ordinal);
         Assert.Contains("NutSelectedSheenBrush", styles, StringComparison.Ordinal);
         Assert.Contains("NutAccentBrush", styles, StringComparison.Ordinal);
         // Selection is never colour alone: the label also goes semibold.
-        var selected = styles[styles.IndexOf("Button.nut-file-rail-item.selected\"", StringComparison.Ordinal)..];
+        var selected = styles[styles.IndexOf("Button.nut-file-chip.selected\"", StringComparison.Ordinal)..];
         Assert.Contains("FontWeight", selected[..selected.IndexOf("</Style>", StringComparison.Ordinal)], StringComparison.Ordinal);
     }
 
@@ -297,7 +301,7 @@ public sealed class ConfigurationFileRailTests
         viewModel.SetConfigurationLayoutWidth(700);
 
         Assert.False(viewModel.IsConfigurationRailOpen);
-        Assert.Equal(64, viewModel.ConfigurationRailWidth);
+        Assert.Equal(52, viewModel.ConfigurationFileChipWidth);
         // The preference is untouched: the layout folded it, the administrator did not.
         Assert.True(viewModel.IsConfigurationRailExpanded);
     }
@@ -311,7 +315,7 @@ public sealed class ConfigurationFileRailTests
         viewModel.SetConfigurationLayoutWidth(1400);
 
         Assert.True(viewModel.IsConfigurationRailOpen);
-        Assert.Equal(228, viewModel.ConfigurationRailWidth);
+        Assert.Equal(184, viewModel.ConfigurationFileChipWidth);
     }
 
     [Fact]

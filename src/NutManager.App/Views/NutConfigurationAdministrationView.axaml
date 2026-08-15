@@ -7,111 +7,118 @@
              x:DataType="viewModels:AdministrationPageViewModel">
   <StackPanel Spacing="16">
     <!--
-      The file rail is a column that changes width, not a panel that is shown and hidden: the editor
-      beside it simply gets the space back. Collapsing is presentation only, so the selected file,
-      its draft and its editor are untouched by the fold.
+      The file switcher is a row above the editor, not a column beside it.
+
+      As a column it cost 283 px of width while the section rail beside it cost another 343, so
+      three parallel navigation columns were taking 46% of the window before any content, and the
+      first editable field sat below the fold. Horizontally the same five files cost one row and
+      the form gets the whole width.
+
+      Folding is presentation only, exactly as before: the selected file, its draft and its editor
+      are untouched by it. What changes is the chip's width rather than the column's.
     -->
-    <Grid x:Name="ConfigurationEditorLayout" ColumnDefinitions="Auto,16,*" RowDefinitions="Auto">
-      <Border x:Name="ConfigurationFilesPanel"
-              Grid.Column="0"
-              Classes="nut-file-rail"
-              IsVisible="{Binding IsConfigurationEditorVisible}"
-              VerticalAlignment="Top"
-              Width="{Binding ConfigurationRailWidth}">
-        <StackPanel Spacing="8">
-          <!-- Title only when there is room for it; the toggle is always reachable. -->
-          <!--
-            The toggle sits on its own row above the title. Side by side, the title had to share
-            228 px with a button and was permanently truncated to "Arquivos de configu…", which
-            defeats the point of showing it at all.
-          -->
-          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-            <TextBlock Grid.Row="1"
-                       Grid.ColumnSpan="2"
-                       Text="{Binding Strings[Administration.Configuration.Files]}"
-                       Classes="nut-section-title"
-                       IsVisible="{Binding IsConfigurationRailOpen}"
-                       Margin="2,2,0,0"
-                       TextWrapping="Wrap" />
-            <Button Grid.Row="0" Grid.Column="1"
-                    Command="{Binding ToggleConfigurationRailCommand}"
-                    AutomationProperties.Name="{Binding ConfigurationRailToggleText}"
-                    ToolTip.Tip="{Binding ConfigurationRailToggleText}"
-                    Padding="7"
-                    MinWidth="0"
-                    HorizontalAlignment="Right">
-              <Panel Width="14" Height="14">
-                <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="14" Height="14"
-                          IsVisible="{Binding IsConfigurationRailOpen}" />
-                <PathIcon Data="{DynamicResource NutIconChevronRight}" Width="14" Height="14"
-                          IsVisible="{Binding !IsConfigurationRailOpen}" />
-              </Panel>
-            </Button>
-          </Grid>
+    <Grid x:Name="ConfigurationEditorLayout" RowDefinitions="Auto,Auto" IsVisible="{Binding IsConfigurationEditorVisible}">
+      <Grid x:Name="ConfigurationFilesPanel" Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <!-- WrapPanel, not StackPanel: on a window too narrow for five labelled chips the row wraps
+             rather than clipping the last file out of reach. -->
+        <ItemsControl ItemsSource="{Binding ConfigurationFiles}" Classes="nut-file-strip">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:NutConfigurationFileItemViewModel">
+              <Button Classes="nut-file-chip"
+                      Classes.selected="{Binding IsSelected}"
+                      Click="ConfigurationFileRailItem_OnClick"
+                      IsEnabled="{Binding CanLoad}"
+                      Width="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).ConfigurationFileChipWidth}"
+                      AutomationProperties.Name="{Binding AccessibleName}"
+                      ToolTip.Tip="{Binding AccessibleName}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <!-- The icon pops once when the chip becomes the selected one; nothing loops. -->
+                  <Panel Width="18" Height="18" VerticalAlignment="Center"
+                         Classes="nut-file-rail-icon"
+                         DataContextChanged="ConfigurationFileRailIcon_OnAttached">
+                    <PathIcon Data="{DynamicResource NutIconGeneral}" Width="18" Height="18" IsVisible="{Binding IsNutConf}" />
+                    <PathIcon Data="{DynamicResource NutIconUps}" Width="18" Height="18" IsVisible="{Binding IsUpsConf}" />
+                    <PathIcon Data="{DynamicResource NutIconServer}" Width="18" Height="18" IsVisible="{Binding IsUpsdConf}" />
+                    <PathIcon Data="{DynamicResource NutIconUsers}" Width="18" Height="18" IsVisible="{Binding IsUpsdUsers}" />
+                    <PathIcon Data="{DynamicResource NutIconMonitoring}" Width="18" Height="18" IsVisible="{Binding IsUpsmonConf}" />
+                  </Panel>
+                  <StackPanel Grid.Column="1"
+                              Classes="nut-file-rail-label"
+                              Spacing="1"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).IsConfigurationRailOpen}">
+                    <TextBlock Text="{Binding Category}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding FileName}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <Ellipse Grid.Column="2"
+                           Classes="nut-file-rail-dirty"
+                           IsVisible="{Binding HasPendingChanges}"
+                           ToolTip.Tip="{Binding StatusText}" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
-          <TextBlock Text="{Binding Strings[Administration.Configuration.NoFiles]}"
-                     IsVisible="{Binding IsConfigurationFileListEmpty}"
-                     Classes="nut-metadata"
-                     TextWrapping="Wrap" />
+        <Button Grid.Column="1"
+                Command="{Binding ToggleConfigurationRailCommand}"
+                AutomationProperties.Name="{Binding ConfigurationRailToggleText}"
+                ToolTip.Tip="{Binding ConfigurationRailToggleText}"
+                Padding="7"
+                MinWidth="0"
+                VerticalAlignment="Top">
+          <Panel Width="14" Height="14">
+            <PathIcon Data="{DynamicResource NutIconChevronLeft}" Width="14" Height="14"
+                      IsVisible="{Binding IsConfigurationRailOpen}" />
+            <PathIcon Data="{DynamicResource NutIconChevronRight}" Width="14" Height="14"
+                      IsVisible="{Binding !IsConfigurationRailOpen}" />
+          </Panel>
+        </Button>
+      </Grid>
 
-          <ItemsControl ItemsSource="{Binding ConfigurationFiles}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="viewModels:NutConfigurationFileItemViewModel">
-                <Button Classes="nut-file-rail-item"
-                        Classes.selected="{Binding IsSelected}"
-                        Click="ConfigurationFileRailItem_OnClick"
-                        IsEnabled="{Binding CanLoad}"
-                        AutomationProperties.Name="{Binding AccessibleName}"
-                        ToolTip.Tip="{Binding AccessibleName}">
-                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                    <!-- The icon pops once when the row becomes the selected one; nothing loops. -->
-                    <Panel Width="18" Height="18" VerticalAlignment="Center"
-                           Classes="nut-file-rail-icon"
-                           DataContextChanged="ConfigurationFileRailIcon_OnAttached">
-                      <PathIcon Data="{DynamicResource NutIconGeneral}" Width="18" Height="18" IsVisible="{Binding IsNutConf}" />
-                      <PathIcon Data="{DynamicResource NutIconUps}" Width="18" Height="18" IsVisible="{Binding IsUpsConf}" />
-                      <PathIcon Data="{DynamicResource NutIconServer}" Width="18" Height="18" IsVisible="{Binding IsUpsdConf}" />
-                      <PathIcon Data="{DynamicResource NutIconUsers}" Width="18" Height="18" IsVisible="{Binding IsUpsdUsers}" />
-                      <PathIcon Data="{DynamicResource NutIconMonitoring}" Width="18" Height="18" IsVisible="{Binding IsUpsmonConf}" />
-                    </Panel>
-                    <StackPanel Grid.Column="1"
-                                Classes="nut-file-rail-label"
-                                Spacing="1"
-                                VerticalAlignment="Center"
-                                IsVisible="{Binding $parent[ItemsControl].((viewModels:AdministrationPageViewModel)DataContext).IsConfigurationRailOpen}">
-                      <TextBlock Text="{Binding Category}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Text="{Binding FileName}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                    <Ellipse Grid.Column="2"
-                             Classes="nut-file-rail-dirty"
-                             IsVisible="{Binding HasPendingChanges}"
-                             ToolTip.Tip="{Binding StatusText}" />
-                  </Grid>
-                </Button>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-      </Border>
+      <TextBlock Grid.Row="1"
+                 Text="{Binding Strings[Administration.Configuration.NoFiles]}"
+                 IsVisible="{Binding IsConfigurationFileListEmpty}"
+                 Classes="nut-metadata"
+                 Margin="0,8,0,0"
+                 TextWrapping="Wrap" />
+    </Grid>
 
-      <!-- The editor panel is a plain container: the form supplies its own sections, so nesting a
-           card here would stack surfaces without adding hierarchy. -->
-      <Border x:Name="ConfigurationEditorPanel" Grid.Column="2">
-        <StackPanel Spacing="14">
-        <Border Classes="nut-card" IsVisible="{Binding IsLocalManagementProfile}">
-          <StackPanel Spacing="10">
-            <TextBlock Text="{Binding Strings[Administration.Configuration.LocalInstallation]}" Classes="nut-section-title" />
-            <TextBlock Text="{Binding InstallationStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-            <WrapPanel ItemWidth="280" ItemHeight="54">
-              <StackPanel Margin="0,0,16,8"><TextBlock Text="{Binding Strings[Common.InstallationDirectory]}" Classes="nut-metadata" /><TextBlock Text="{Binding InstallationDirectoryText}" TextWrapping="Wrap" /></StackPanel>
-              <StackPanel Margin="0,0,16,8"><TextBlock Text="{Binding Strings[Common.ConfigurationDirectory]}" Classes="nut-metadata" /><TextBlock Text="{Binding ConfigurationDirectoryText}" TextWrapping="Wrap" /></StackPanel>
-              <StackPanel Margin="0,0,16,8"><TextBlock Text="{Binding Strings[Common.Version]}" Classes="nut-metadata" /><TextBlock Text="{Binding InstallationVersionText}" TextWrapping="Wrap" /></StackPanel>
-            </WrapPanel>
-            <WrapPanel>
-              <Button Content="{Binding Strings[Common.RefreshDetection]}" Command="{Binding DetectInstallationCommand}" IsEnabled="{Binding CanChangeInstallation}" Margin="0,0,8,8" />
-              <Button Content="{Binding Strings[Common.SelectFolder]}" Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanChangeInstallation}" Margin="0,0,8,8" />
-            </WrapPanel>
-          </StackPanel>
+    <!-- The editor panel is a plain container: the form supplies its own sections, so nesting a
+         card here would stack surfaces without adding hierarchy. -->
+    <Border x:Name="ConfigurationEditorPanel">
+      <StackPanel Spacing="14">
+        <!--
+          Where the installation used to be a card above the editor. It is a fact you confirm once
+          and then stop reading, so it had no business holding the top of the page while the form
+          you came for sat below the fold. One line, and the paths carry it.
+        -->
+        <Border Classes="nut-inset" IsVisible="{Binding IsLocalManagementProfile}" Padding="14,10">
+          <WrapPanel>
+            <StackPanel Margin="0,0,22,4" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Strings[Administration.Configuration.LocalInstallation]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding InstallationStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Margin="0,0,22,4" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Strings[Common.ConfigurationDirectory]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding ConfigurationDirectoryText}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Margin="0,0,22,4" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Strings[Common.InstallationDirectory]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding InstallationDirectoryText}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Margin="0,0,22,4" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Strings[Common.Version]}" Classes="nut-metadata" />
+              <TextBlock Text="{Binding InstallationVersionText}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,0,4">
+              <Button Content="{Binding Strings[Common.RefreshDetection]}" Command="{Binding DetectInstallationCommand}" IsEnabled="{Binding CanChangeInstallation}" />
+              <Button Content="{Binding Strings[Common.SelectFolder]}" Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanChangeInstallation}" />
+            </StackPanel>
+          </WrapPanel>
         </Border>
 
         <Border Classes="nut-card" IsVisible="{Binding IsRemoteManagementProfile}">
@@ -133,16 +140,13 @@
             <TextBlock Text="{Binding Strings[Administration.Configuration.Loading]}" Classes="nut-metadata" VerticalAlignment="Center" />
           </StackPanel>
           <StackPanel Spacing="16" IsVisible="{Binding HasLoadedFile}">
-            <!-- Breadcrumb and file header -->
+            <!--
+              File header. The breadcrumb that used to sit above it — page, section, file name —
+              said exactly what the section tab and the selected file chip a few rows up already
+              say, and it said it a third time right under the file's own title. Three statements
+              of one fact is not orientation, it is noise.
+            -->
             <StackPanel Spacing="10">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="{Binding Title}" Classes="nut-metadata" />
-                <PathIcon Data="{DynamicResource NutIconChevronRight}" Classes="muted" Width="10" Height="10" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding Strings[Administration.Section.Configuration]}" Classes="nut-metadata" />
-                <PathIcon Data="{DynamicResource NutIconChevronRight}" Classes="muted" Width="10" Height="10" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding SelectedFileName}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource NutTextPrimaryBrush}" />
-              </StackPanel>
-
               <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="13">
                 <Border Width="40"
                         Height="40"
@@ -253,8 +257,7 @@
             </Border>
           </StackPanel>
         </StackPanel>
-      </Border>
-    </Grid>
+    </Border>
 
     <Border Classes="nut-card-elevated" IsVisible="{Binding HasPreview}">
       <StackPanel Spacing="10">

@@ -297,21 +297,23 @@ public sealed class InteractionPolishTests
         var controls = Themes("NutControlStyles.axaml");
         var shell = Themes("NutShellStyles.axaml");
 
-        // One hover response, shared by the surfaces that are actually made of glass: the pane
+        // One hover response, shared by the surfaces that are actually made of glass: the surface
         // lightens and its edge comes up. Both halves are required — a surface that brightens with
-        // no edge change reads as a colour bug rather than as light landing on a pane.
-        foreach (var (source, selector) in new[]
+        // no edge change reads as a colour bug rather than as light landing on a pane. The card is
+        // a pane and takes the pane tint; a file chip is a row on the page and takes the row tint,
+        // one rung up, so it stays legible against whatever it sits on.
+        foreach (var (source, selector, fill) in new[]
         {
-            (controls, "Border.nut-card:pointerover"),
-            (shell, "Border.nut-file-rail:pointerover")
+            (controls, "Border.nut-card:pointerover", "NutGlassSurfaceHoverBrush"),
+            (shell, "Button.nut-file-chip:pointerover", "NutGlassRowHoverBrush")
         })
         {
             var rule = source[source.IndexOf(selector, StringComparison.Ordinal)..];
             rule = rule[..rule.IndexOf("</Style>", StringComparison.Ordinal)];
-            Assert.Contains("NutGlassSurfaceHoverBrush", rule, StringComparison.Ordinal);
+            Assert.Contains(fill, rule, StringComparison.Ordinal);
             Assert.Contains("NutGlassBorderHoverBrush", rule, StringComparison.Ordinal);
 
-            // Nothing that participates in layout, and no transform: a pane reacting under the
+            // Nothing that participates in layout, and no transform: a surface reacting under the
             // pointer must not shift the page or clip its own corner against a scroll viewer.
             foreach (var forbidden in new[] { "RenderTransform", "\"Width\"", "\"Height\"", "\"Padding\"", "\"Margin\"" })
             {
@@ -319,12 +321,23 @@ public sealed class InteractionPolishTests
             }
         }
 
-        // Short and eased, on both halves, so the change arrives rather than snapping on.
-        foreach (var source in new[] { controls, shell })
+        // Neither half may snap. Both properties the hover changes are declared as transitions on
+        // the surface's own base style, which is the only place a Brush change can be eased from.
+        foreach (var (source, selector) in new[]
         {
-            Assert.Contains("<BrushTransition Property=\"Background\" Duration=\"0:0:0.18\" Easing=\"CubicEaseOut\" />", source, StringComparison.Ordinal);
-            Assert.Contains("<BrushTransition Property=\"BorderBrush\" Duration=\"0:0:0.18\" Easing=\"CubicEaseOut\" />", source, StringComparison.Ordinal);
+            (controls, "Border.nut-card\""),
+            (shell, "Button.nut-file-chip\"")
+        })
+        {
+            var baseRule = source[source.IndexOf(selector, StringComparison.Ordinal)..];
+            baseRule = baseRule[..baseRule.IndexOf("</Style>", StringComparison.Ordinal)];
+            Assert.Contains("<BrushTransition Property=\"Background\"", baseRule, StringComparison.Ordinal);
+            Assert.Contains("<BrushTransition Property=\"BorderBrush\"", baseRule, StringComparison.Ordinal);
         }
+
+        // The card is the slower of the two on purpose: a pane the size of a page section reads as
+        // sluggish below about 180 ms, while a chip that size would feel late.
+        Assert.Contains("<BrushTransition Property=\"Background\" Duration=\"0:0:0.18\" Easing=\"CubicEaseOut\" />", controls, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -335,7 +348,7 @@ public sealed class InteractionPolishTests
         // Avalonia resolves equally matching setters by declaration order, so the only thing
         // keeping a hovered row from washing out the state of the row you are already on is that
         // the state rules come later in the file. Nothing about that is visible at the call site.
-        foreach (var row in new[] { "nut-navigation-item", "nut-file-rail-item" })
+        foreach (var row in new[] { "nut-navigation-item", "nut-file-chip" })
         {
             var hover = shell.IndexOf($"Button.{row}:pointerover /template/ ContentPresenter", StringComparison.Ordinal);
             var pressed = shell.IndexOf($"Button.{row}:pressed /template/ ContentPresenter", StringComparison.Ordinal);

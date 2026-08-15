@@ -132,8 +132,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         IsConfigurationRailOpen ? "Administration.Configuration.CollapseRail" : "Administration.Configuration.ExpandRail");
 
     /// <summary>
-    /// Below this the page cannot afford both a labelled rail and a usable form beside it, so the
-    /// rail folds regardless of the preference.
+    /// Below this the page cannot fit five labelled file chips on one row, so they fold to icons
+    /// regardless of the preference.
     /// </summary>
     private const double CompactConfigurationWidth = 860;
 
@@ -154,22 +154,24 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
         _isConfigurationLayoutCompact = compact;
         OnPropertyChanged(nameof(IsConfigurationRailOpen));
-        OnPropertyChanged(nameof(ConfigurationRailWidth));
+        OnPropertyChanged(nameof(ConfigurationFileChipWidth));
         OnPropertyChanged(nameof(ConfigurationRailToggleText));
     }
 
     /// <summary>
-    /// Whether the rail is actually showing labels right now. This is the preference and the layout
-    /// together, and it is what the view binds to; <see cref="IsConfigurationRailExpanded"/> stays
-    /// the administrator's own choice.
+    /// Whether the file chips are actually showing labels right now. This is the preference and the
+    /// layout together, and it is what the view binds to; <see cref="IsConfigurationRailExpanded"/>
+    /// stays the administrator's own choice.
     /// </summary>
     public bool IsConfigurationRailOpen => IsConfigurationRailExpanded && !_isConfigurationLayoutCompact;
 
     /// <summary>
-    /// The rail's width. Bound rather than styled because the width is the thing that animates, and
-    /// the two values are design tokens shared with the shell sidebar's own proportions.
+    /// How wide one file chip is. Bound rather than styled because the width is the thing that
+    /// animates, and a fixed width is what keeps the five chips a tidy row rather than five
+    /// different lengths. Labelled it holds a category and a file name; folded it is the icon
+    /// and its hit target.
     /// </summary>
-    public double ConfigurationRailWidth => IsConfigurationRailOpen ? 228 : 64;
+    public double ConfigurationFileChipWidth => IsConfigurationRailOpen ? 184 : 52;
 
     [RelayCommand]
     private void ToggleConfigurationRail() => IsConfigurationRailExpanded = !IsConfigurationRailExpanded;
@@ -190,7 +192,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     partial void OnIsConfigurationRailExpandedChanged(bool value)
     {
         OnPropertyChanged(nameof(ConfigurationRailToggleText));
-        OnPropertyChanged(nameof(ConfigurationRailWidth));
+        OnPropertyChanged(nameof(ConfigurationFileChipWidth));
         OnPropertyChanged(nameof(IsConfigurationRailOpen));
         _persistConfigurationRailPreference?.Invoke(value ? SidebarPreference.Expanded : SidebarPreference.Collapsed);
     }
