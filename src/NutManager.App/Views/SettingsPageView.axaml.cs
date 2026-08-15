@@ -19,13 +19,14 @@ public partial class SettingsPageView : UserControl
 
         AppearanceLayout.ColumnDefinitions = compact
             ? new ColumnDefinitions("*")
-            : new ColumnDefinitions("*,*,*");
+            : new ColumnDefinitions("*,*,*,*");
         AppearanceLayout.RowDefinitions = compact
-            ? new RowDefinitions("Auto,12,Auto,12,Auto")
+            ? new RowDefinitions("Auto,18,Auto,18,Auto,18,Auto")
             : new RowDefinitions("Auto");
         Position(ThemePreferencePanel, 0, 0);
         Position(LanguagePreferencePanel, compact ? 0 : 1, compact ? 2 : 0);
         Position(SidebarPreferencePanel, compact ? 0 : 2, compact ? 4 : 0);
+        Position(TransparencyPreferencePanel, compact ? 0 : 3, compact ? 6 : 0);
 
         ManagedProfilesLayout.ColumnDefinitions = compact
             ? new ColumnDefinitions("*")

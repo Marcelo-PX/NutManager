@@ -80,7 +80,8 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
             settings.Theme,
             settings.MockMode,
             settings.Language,
-            settings.SidebarPreference);
+            settings.SidebarPreference,
+            backgroundTransparency: settings.BackgroundTransparency);
 
         var directory = Path.GetDirectoryName(_settingsPath)!;
         var temporaryPath = Path.Combine(directory, $".{FileName}.{Guid.NewGuid():N}.tmp");
@@ -135,6 +136,9 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
         public UiLanguagePreference Language { get; set; } = UiLanguagePreference.PtBr;
         public SidebarPreference SidebarPreference { get; set; } = SidebarPreference.Expanded;
 
+        /// <summary>Absent before schema 5, which reads as on — the behaviour that existed then.</summary>
+        public bool BackgroundTransparency { get; set; } = true;
+
         public ApplicationSettings ToSettings()
         {
             if (SchemaVersion is < 1 or > ApplicationSettings.CurrentSchemaVersion)
@@ -158,7 +162,8 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
                 MockMode.Value,
                 SchemaVersion == 1 ? UiLanguagePreference.PtBr : Language,
                 SchemaVersion == 1 ? SidebarPreference.Expanded : SidebarPreference,
-                legacyEndpoint);
+                legacyEndpoint,
+                SchemaVersion < 5 || BackgroundTransparency);
         }
 
         public static SettingsDocument FromSettings(ApplicationSettings settings) => new()
@@ -169,7 +174,8 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
             Theme = settings.Theme,
             MockMode = settings.MockMode,
             Language = settings.Language,
-            SidebarPreference = settings.SidebarPreference
+            SidebarPreference = settings.SidebarPreference,
+            BackgroundTransparency = settings.BackgroundTransparency
         };
     }
 }

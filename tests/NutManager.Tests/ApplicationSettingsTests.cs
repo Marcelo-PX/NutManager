@@ -24,7 +24,7 @@ public sealed class ApplicationSettingsTests
     [Fact]
     public void InvalidSchemaEnumsAndIntervalsAreRejected()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(schemaVersion: 5));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(schemaVersion: 6));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(theme: (ThemePreference)99));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(language: (UiLanguagePreference)99));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ApplicationSettings(sidebarPreference: (SidebarPreference)99));
@@ -56,13 +56,17 @@ public sealed class ApplicationSettingsTests
             theme: ThemePreference.Dark,
             mockMode: true,
             language: UiLanguagePreference.EnUs,
-            sidebarPreference: SidebarPreference.Collapsed);
+            sidebarPreference: SidebarPreference.Collapsed,
+            backgroundTransparency: false);
 
         await store.SaveAsync(expected, CancellationToken.None);
         var json = await File.ReadAllTextAsync(store.SettingsPath);
         var actual = await store.LoadAsync(CancellationToken.None);
 
-        Assert.Contains("\"schemaVersion\": 4", json);
+        Assert.Contains("\"schemaVersion\": 5", json);
+        // The value that is not the default has to survive the round trip, or switching the
+        // backdrop off would silently come back on at the next start.
+        Assert.False(actual.BackgroundTransparency);
         Assert.DoesNotContain("\"host\"", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("\"port\"", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("preferredUps", json, StringComparison.OrdinalIgnoreCase);
@@ -114,9 +118,30 @@ public sealed class ApplicationSettingsTests
         Assert.False((await store.LoadAsync(CancellationToken.None)).MockMode);
     }
 
+    [Fact]
+    public async Task SettingsWrittenBeforeTheTransparencyPreferenceExistedOpenWithItOn()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new JsonApplicationSettingsStore(directory.Path);
+        Directory.CreateDirectory(directory.Path);
+        await File.WriteAllTextAsync(
+            store.SettingsPath,
+            """
+            {"schemaVersion":4,"pollingIntervalSeconds":5,"connectionTimeoutSeconds":5,
+             "theme":"System","mockMode":false,"language":"PtBr","sidebarPreference":"Expanded"}
+            """);
+
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        // The backdrop was always on before the switch existed, so a file that predates it must not
+        // open with the effect silently turned off.
+        Assert.True(loaded.BackgroundTransparency);
+        Assert.Equal(ApplicationSettings.CurrentSchemaVersion, loaded.SchemaVersion);
+    }
+
     [Theory]
     [InlineData("{ invalid")]
-    [InlineData("{\"schemaVersion\":5,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":false,\"language\":\"PtBr\",\"sidebarPreference\":\"Expanded\"}")]
+    [InlineData("{\"schemaVersion\":6,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":false,\"language\":\"PtBr\",\"sidebarPreference\":\"Expanded\"}")]
     [InlineData("{\"schemaVersion\":2,\"host\":\"localhost\",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"language\":\"PtBr\",\"sidebarPreference\":\"Expanded\"}")]
     [InlineData("{\"schemaVersion\":2,\"host\":\" \",\"port\":3493,\"pollingIntervalSeconds\":5,\"connectionTimeoutSeconds\":5,\"theme\":\"System\",\"mockMode\":true,\"language\":\"PtBr\",\"sidebarPreference\":\"Expanded\"}")]
     public async Task MalformedOrIncompatibleSettingsAreReportedAndPreserved(string json)

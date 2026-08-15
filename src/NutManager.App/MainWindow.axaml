@@ -28,7 +28,16 @@
     then to plain blur, and the opaque tint underneath keeps the shell readable either way.
   -->
   <Panel>
-    <ExperimentalAcrylicBorder x:Name="AcrylicBackdrop" IsHitTestVisible="False">
+    <!--
+      Two backdrops, one drawn at a time. Turning transparency off swaps the acrylic for a solid
+      surface rather than dimming it towards invisibility: the effect inherits whatever wallpaper
+      the machine has, and on a busy or light one the page gets harder to read, so the answer has to
+      be unambiguous. The opaque panel sits between the acrylic and the shell, so when it is drawn
+      nothing behind the window reaches the content.
+    -->
+    <ExperimentalAcrylicBorder x:Name="AcrylicBackdrop"
+                               IsHitTestVisible="False"
+                               IsVisible="{Binding IsBackgroundTransparent}">
       <ExperimentalAcrylicBorder.Material>
         <!--
           TintOpacity was 1 and MaterialOpacity 0.62, which meant the tint covered the pane
@@ -62,6 +71,11 @@
         </Style>
       </ExperimentalAcrylicBorder.Styles>
     </ExperimentalAcrylicBorder>
+
+    <Border x:Name="OpaqueBackdrop"
+            IsHitTestVisible="False"
+            IsVisible="{Binding !IsBackgroundTransparent}"
+            Background="{DynamicResource NutWindowOpaqueBrush}" />
 
   <Grid Margin="{Binding OffScreenMargin, RelativeSource={RelativeSource AncestorType=Window}}">
     <Grid.RowDefinitions>

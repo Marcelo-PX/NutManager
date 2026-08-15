@@ -169,6 +169,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private ThemeOption? _selectedThemeOption;
     [ObservableProperty] private UiLanguagePreference _language;
     [ObservableProperty] private SidebarPreference _sidebarPreference;
+
+    /// <summary>
+    /// Whether the window paints its acrylic backdrop or a solid one. The window binds both the
+    /// acrylic pane and the opaque panel behind the shell to this, so switching it swaps which of
+    /// the two is drawn rather than dimming the effect towards invisibility.
+    /// </summary>
+    [ObservableProperty] private bool _isBackgroundTransparent = true;
     [ObservableProperty] private ShellLayoutState _shellLayout = ShellLayoutState.Wide;
     [ObservableProperty] private bool _isEffectiveDark;
 

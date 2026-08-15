@@ -2,7 +2,7 @@ namespace NutManager.Core.Models;
 
 public sealed record ApplicationSettings
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public ApplicationSettings(
         int schemaVersion = CurrentSchemaVersion,
@@ -12,7 +12,8 @@ public sealed record ApplicationSettings
         bool mockMode = false,
         UiLanguagePreference language = UiLanguagePreference.PtBr,
         SidebarPreference sidebarPreference = SidebarPreference.Expanded,
-        LegacyMonitoringEndpoint? legacyMonitoringEndpoint = null)
+        LegacyMonitoringEndpoint? legacyMonitoringEndpoint = null,
+        bool backgroundTransparency = true)
     {
         if (schemaVersion != CurrentSchemaVersion)
         {
@@ -51,6 +52,7 @@ public sealed record ApplicationSettings
         MockMode = mockMode;
         Language = language;
         SidebarPreference = sidebarPreference;
+        BackgroundTransparency = backgroundTransparency;
         LegacyMonitoringEndpoint = legacyMonitoringEndpoint;
     }
 
@@ -61,6 +63,14 @@ public sealed record ApplicationSettings
     public bool MockMode { get; }
     public UiLanguagePreference Language { get; }
     public SidebarPreference SidebarPreference { get; }
+
+    /// <summary>
+    /// Whether the window's backdrop is see-through. It exists because the effect is not free: a
+    /// translucent background inherits whatever wallpaper the machine has, and on a busy or light
+    /// one the page gets harder to read. Turning it off replaces the acrylic with a solid surface
+    /// rather than dimming it, so the answer is unambiguous on any desktop.
+    /// </summary>
+    public bool BackgroundTransparency { get; }
     public LegacyMonitoringEndpoint? LegacyMonitoringEndpoint { get; }
 }
 
