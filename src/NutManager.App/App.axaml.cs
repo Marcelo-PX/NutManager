@@ -82,6 +82,16 @@ public partial class App : Application
                 credentialStore,
                 settings.Language,
                 new WindowsCredentialPrompt());
+        // The host comes from the profile's own NUT endpoint, not from the SMB share path: the share
+        // is a configuration transport that may point anywhere, while the endpoint is the machine
+        // whose NUT is being monitored. The probe uses the current Windows identity and no credential
+        // from any store, so it is created for a remote profile regardless of how SMB is faring.
+        var remoteWindowsService = isLocalManagement
+            ? null
+            : new RemoteWindowsServiceViewModel(
+                runtimeProfile.Endpoint.Host,
+                new WindowsRemoteNutServiceProbe(),
+                settings.Language);
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
@@ -100,7 +110,8 @@ public partial class App : Application
             runtimeProfile,
             remoteManagement,
             settings.Language,
-            isLocalManagement ? new WindowsNutDriverCatalogSource() : null);
+            isLocalManagement ? new WindowsNutDriverCatalogSource() : null,
+            remoteWindowsService);
         INutManagedFileDetector managedFileDetector = isLocalManagement
             ? new LocalNutManagedFileDetector(installationDetector ?? new WindowsNutInstallationDetector())
             : new RemoteNutManagedFileDetector(() => remoteManagement?.DirectoryValidation);
@@ -116,6 +127,11 @@ public partial class App : Application
             managedFileDetector);
         window.Closed += async (_, _) =>
         {
+            if (remoteWindowsService is not null)
+            {
+                await remoteWindowsService.DisposeAsync();
+            }
+
             if (remoteManagement is not null)
             {
                 await remoteManagement.DisposeAsync();

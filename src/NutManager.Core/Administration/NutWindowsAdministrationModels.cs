@@ -1,6 +1,10 @@
 namespace NutManager.Core.Administration;
 
-public enum NutServiceState { Unknown, Stopped, StartPending, StopPending, Running, Paused, Failed }
+// PausePending and ContinuePending are appended rather than slotted in beside Paused: the values are
+// compared, never persisted, but keeping the existing ones at their numbers costs nothing. Windows
+// reports all four transitional states and the remote probe passes them through, so collapsing them
+// into Unknown would throw away the difference between a service settling and a service in trouble.
+public enum NutServiceState { Unknown, Stopped, StartPending, StopPending, Running, Paused, Failed, PausePending, ContinuePending }
 public enum NutServiceStartMode { Unknown, Automatic, Manual, Disabled }
 public enum NutAssociationConfidence { None, NameFallback, BinaryPath }
 
