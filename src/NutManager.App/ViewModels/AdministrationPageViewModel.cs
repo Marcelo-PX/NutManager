@@ -45,9 +45,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ManagedNutServerRuntimeContext? profileContext = null,
         RemoteManagementSessionViewModel? remoteManagement = null,
         UiLanguagePreference language = UiLanguagePreference.PtBr,
-        ILocalNutDriverCatalogSource? driverCatalogSource = null,
-        SidebarPreference configurationRailPreference = SidebarPreference.Expanded,
-        Action<SidebarPreference>? persistConfigurationRailPreference = null)
+        ILocalNutDriverCatalogSource? driverCatalogSource = null)
         : base(
             new NutManagerLocalizer(language).Get("Administration.Title"),
             profileContext?.Profile.Management.Mode == NutManagementMode.Remote
@@ -79,8 +77,6 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             IsRemoteManagementProfile,
             _profileContext?.Profile.AccessMode != ManagedNutServerAccessMode.ReadOnly);
         _selectedAdministrationSection = AdministrationSections[0];
-        _isConfigurationRailExpanded = configurationRailPreference == SidebarPreference.Expanded;
-        _persistConfigurationRailPreference = persistConfigurationRailPreference;
     }
 
     public NutManagerLocalizer Strings { get; }
@@ -117,82 +113,23 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     // ==================== Configuration file rail ====================
 
-    private readonly Action<SidebarPreference>? _persistConfigurationRailPreference;
-
     /// <summary>
-    /// Whether the file rail shows labels or only icons. This is presentation state and nothing
-    /// else: collapsing it never changes the selected file, never rebuilds an editor, and never
-    /// touches a draft. The rail exists to give the form more room, so the only thing it may do is
-    /// change how wide it is.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isConfigurationRailExpanded = true;
-
-    public string ConfigurationRailToggleText => Strings.Get(
-        IsConfigurationRailOpen ? "Administration.Configuration.CollapseRail" : "Administration.Configuration.ExpandRail");
-
-    /// <summary>
-    /// Below this the page cannot afford both a labelled rail and a usable form beside it, so the
-    /// rail folds regardless of the preference.
-    /// </summary>
-    private const double CompactConfigurationWidth = 860;
-
-    private bool _isConfigurationLayoutCompact;
-
-    /// <summary>
-    /// Told by the view how much room the page actually has. Narrow layouts fold the rail without
-    /// touching the stored preference: the administrator asked for it expanded, and widening the
-    /// window again should give them back exactly that rather than a state the layout imposed.
-    /// </summary>
-    public void SetConfigurationLayoutWidth(double width)
-    {
-        var compact = width > 0 && width < CompactConfigurationWidth;
-        if (compact == _isConfigurationLayoutCompact)
-        {
-            return;
-        }
-
-        _isConfigurationLayoutCompact = compact;
-        OnPropertyChanged(nameof(IsConfigurationRailOpen));
-        OnPropertyChanged(nameof(ConfigurationRailWidth));
-        OnPropertyChanged(nameof(ConfigurationRailToggleText));
-    }
-
-    /// <summary>
-    /// Whether the rail is actually showing labels right now. This is the preference and the layout
-    /// together, and it is what the view binds to; <see cref="IsConfigurationRailExpanded"/> stays
-    /// the administrator's own choice.
-    /// </summary>
-    public bool IsConfigurationRailOpen => IsConfigurationRailExpanded && !_isConfigurationLayoutCompact;
-
-    /// <summary>
-    /// The rail's width. Bound rather than styled because the width is the thing that animates, and
-    /// the two values are design tokens shared with the shell sidebar's own proportions.
-    /// </summary>
-    public double ConfigurationRailWidth => IsConfigurationRailOpen ? 228 : 64;
-
-    [RelayCommand]
-    private void ToggleConfigurationRail() => IsConfigurationRailExpanded = !IsConfigurationRailExpanded;
-
-    /// <summary>
-    /// Mirrors the page's selection and draft state onto the rows, so the rail can mark them
+    /// Mirrors the page's selection and draft state onto the tiles, so the file strip can mark them
     /// without reaching back into the page for every item.
+    ///
+    /// The strip used to fold: a toggle, a persisted preference, an effective state separate from
+    /// that preference, and a width threshold that folded it regardless. All of it went. The tiles
+    /// are one fixed size in one row, which is small enough that hiding it was never worth a
+    /// control of its own — and a switcher that can hide the thing you switch with is a way to get
+    /// lost, not a way to save room.
     /// </summary>
-    private void RefreshConfigurationRailRows()
+    private void RefreshConfigurationFileTiles()
     {
         foreach (var file in ConfigurationFiles)
         {
             file.IsSelected = ReferenceEquals(file, SelectedFile);
             file.HasPendingChanges = file.IsSelected && HasDraftChanges;
         }
-    }
-
-    partial void OnIsConfigurationRailExpandedChanged(bool value)
-    {
-        OnPropertyChanged(nameof(ConfigurationRailToggleText));
-        OnPropertyChanged(nameof(ConfigurationRailWidth));
-        OnPropertyChanged(nameof(IsConfigurationRailOpen));
-        _persistConfigurationRailPreference?.Invoke(value ? SidebarPreference.Expanded : SidebarPreference.Collapsed);
     }
 
     [ObservableProperty]
@@ -1887,7 +1824,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     private void NotifyWorkflowPropertiesChanged()
     {
-        RefreshConfigurationRailRows();
+        RefreshConfigurationFileTiles();
         OnPropertyChanged(nameof(HasDraftChanges));
         OnPropertyChanged(nameof(HasPreview));
         OnPropertyChanged(nameof(IsEditorPlaceholderVisible));

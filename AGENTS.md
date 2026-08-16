@@ -51,6 +51,7 @@ Real mutations require an explicit task and confirmation or scope specific to th
 ## Dependencies
 
 - Do not add a NuGet package without a requirement that cannot reasonably be met by the existing stack or .NET libraries.
+- UI and icon libraries are allowed on the same terms as any other dependency: a clear design requirement, a compatible licence, acceptable maintenance, and a benefit over what the project already has. Investigate before adopting and record why the alternatives were rejected.
 - When a dependency is necessary, state the reason in the completion summary.
 - Keep package versions centrally managed when `Directory.Packages.props` exists.
 

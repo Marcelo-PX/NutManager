@@ -30,15 +30,13 @@ public sealed class PresentationAssetTests
     }
 
     [Theory]
-    // Navigation and shell glyphs.
-    [InlineData("NutIconOverviewBase")]
-    [InlineData("NutIconDevicesBase")]
-    [InlineData("NutIconAdministrationBase")]
-    [InlineData("NutIconAdministrationBadge")]
-    [InlineData("NutIconAdministrationCheck")]
-    [InlineData("NutIconGearBase")]
-    [InlineData("NutIconDiagnosticsBase")]
-    [InlineData("NutIconSettingsBase")]
+    // Navigation and shell glyphs. One name per destination: the Base/Detail/Led/Badge/Hub parts
+    // these used to be split into went when the icons moved onto the library.
+    [InlineData("NutIconOverview")]
+    [InlineData("NutIconDevices")]
+    [InlineData("NutIconAdministration")]
+    [InlineData("NutIconDiagnostics")]
+    [InlineData("NutIconSettings")]
     [InlineData("NutIconProfile")]
     [InlineData("NutIconSun")]
     [InlineData("NutIconMoon")]

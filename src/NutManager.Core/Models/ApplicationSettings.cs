@@ -2,7 +2,7 @@ namespace NutManager.Core.Models;
 
 public sealed record ApplicationSettings
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public ApplicationSettings(
         int schemaVersion = CurrentSchemaVersion,
@@ -13,7 +13,7 @@ public sealed record ApplicationSettings
         UiLanguagePreference language = UiLanguagePreference.PtBr,
         SidebarPreference sidebarPreference = SidebarPreference.Expanded,
         LegacyMonitoringEndpoint? legacyMonitoringEndpoint = null,
-        SidebarPreference configurationRailPreference = SidebarPreference.Expanded)
+        bool backgroundTransparency = true)
     {
         if (schemaVersion != CurrentSchemaVersion)
         {
@@ -52,7 +52,7 @@ public sealed record ApplicationSettings
         MockMode = mockMode;
         Language = language;
         SidebarPreference = sidebarPreference;
-        ConfigurationRailPreference = configurationRailPreference;
+        BackgroundTransparency = backgroundTransparency;
         LegacyMonitoringEndpoint = legacyMonitoringEndpoint;
     }
 
@@ -65,12 +65,12 @@ public sealed record ApplicationSettings
     public SidebarPreference SidebarPreference { get; }
 
     /// <summary>
-    /// Whether the NUT configuration page's file rail is expanded. It reuses the shell sidebar's
-    /// own preference type because it is the same two-state choice, and it is a separate value
-    /// because the two rails are collapsed for different reasons: the shell one to reclaim the
-    /// whole window, this one to give the configuration form more room.
+    /// Whether the window's backdrop is see-through. It exists because the effect is not free: a
+    /// translucent background inherits whatever wallpaper the machine has, and on a busy or light
+    /// one the page gets harder to read. Turning it off replaces the acrylic with a solid surface
+    /// rather than dimming it, so the answer is unambiguous on any desktop.
     /// </summary>
-    public SidebarPreference ConfigurationRailPreference { get; }
+    public bool BackgroundTransparency { get; }
     public LegacyMonitoringEndpoint? LegacyMonitoringEndpoint { get; }
 }
 

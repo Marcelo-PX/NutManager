@@ -126,6 +126,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         SelectedThemeOption = ThemeOptions.Single(option => option.Preference == settings.Theme);
         SelectedLanguageOption = LanguageOptions.Single(option => option.Value == settings.Language);
         SelectedSidebarOption = SidebarOptions.Single(option => option.Value == settings.SidebarPreference);
+        _isBackgroundTransparent = settings.BackgroundTransparency;
         _isApplyingVisualPreferences = false;
         RebuildProfileCards();
         RefreshProfileValidation();
@@ -201,6 +202,9 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string AppearanceThemeLabel => Localizer.Get("Appearance.Theme");
     public string AppearanceLanguageLabel => Localizer.Get("Appearance.Language");
     public string AppearanceSidebarLabel => Localizer.Get("Appearance.Sidebar");
+    public string AppearanceTransparencyLabel => Localizer.Get("Appearance.Transparency");
+    public string AppearanceTransparencyOn => Localizer.Get("Appearance.Transparency.On");
+    public string AppearanceTransparencyOff => Localizer.Get("Appearance.Transparency.Off");
     public string RestartLanguageMessage => Localizer.Get("Appearance.RestartRequired");
     public string ManagedServersTitle => Localizer.Get("Profiles.Title");
     public string NewServerText => Localizer.Get("Profiles.NewServer");
@@ -341,6 +345,13 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     [ObservableProperty] private ThemeOption? _selectedThemeOption;
     [ObservableProperty] private PresentationOption<UiLanguagePreference>? _selectedLanguageOption;
     [ObservableProperty] private PresentationOption<SidebarPreference>? _selectedSidebarOption;
+
+    /// <summary>
+    /// Whether the window's backdrop is see-through. A plain switch rather than another dropdown:
+    /// the other three preferences pick one of several values, this one is on or off, and
+    /// PresentationOption is constrained to enums anyway.
+    /// </summary>
+    [ObservableProperty] private bool _isBackgroundTransparent = true;
     [ObservableProperty] private bool _isSaving;
     [ObservableProperty] private string? _saveError;
     [ObservableProperty] private string? _loadError;
@@ -431,6 +442,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     public event Action<ThemePreference>? ThemeChanged;
     public event Action<SidebarPreference>? SidebarPreferenceChanged;
+    public event Action<bool>? BackgroundTransparencyChanged;
 
     [RelayCommand]
     private async Task SaveAsync(CancellationToken cancellationToken = default)
@@ -896,6 +908,19 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         _ = PersistVisualPreferencesAsync(value.Value, SelectedSidebarOption?.Value ?? SidebarPreference.Expanded);
     }
 
+    partial void OnIsBackgroundTransparentChanged(bool value)
+    {
+        if (_isApplyingVisualPreferences)
+        {
+            return;
+        }
+
+        BackgroundTransparencyChanged?.Invoke(value);
+        _ = PersistVisualPreferencesAsync(
+            SelectedLanguageOption?.Value ?? UiLanguagePreference.PtBr,
+            SelectedSidebarOption?.Value ?? SidebarPreference.Expanded);
+    }
+
     partial void OnSelectedSidebarOptionChanged(PresentationOption<SidebarPreference>? value)
     {
         if (value is null || _isApplyingVisualPreferences)
@@ -917,7 +942,10 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             return;
         }
 
-        var settings = CopyConfirmedSettings(language: language, sidebarPreference: sidebarPreference);
+        var settings = CopyConfirmedSettings(
+            language: language,
+            sidebarPreference: sidebarPreference,
+            backgroundTransparency: IsBackgroundTransparent);
         try
         {
             await _settingsStore.SaveAsync(settings, cancellationToken);
@@ -936,14 +964,16 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     private ApplicationSettings CopyConfirmedSettings(
         ThemePreference? theme = null,
         UiLanguagePreference? language = null,
-        SidebarPreference? sidebarPreference = null) => new(
+        SidebarPreference? sidebarPreference = null,
+        bool? backgroundTransparency = null) => new(
             _confirmedSettings.SchemaVersion,
             _confirmedSettings.PollingInterval,
             _confirmedSettings.ConnectionTimeout,
             theme ?? _confirmedSettings.Theme,
             _confirmedSettings.MockMode,
             language ?? _confirmedSettings.Language,
-            sidebarPreference ?? _confirmedSettings.SidebarPreference);
+            sidebarPreference ?? _confirmedSettings.SidebarPreference,
+            backgroundTransparency: backgroundTransparency ?? _confirmedSettings.BackgroundTransparency);
 
     private void RequestProfileSelection(ManagedNutServerProfile? value)
     {

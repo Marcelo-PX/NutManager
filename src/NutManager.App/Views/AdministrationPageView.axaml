@@ -1,6 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:shapes="clr-namespace:Avalonia.Controls.Shapes;assembly=Avalonia.Controls"
              xmlns:viewModels="clr-namespace:NutManager.App.ViewModels"
              xmlns:views="clr-namespace:NutManager.App.Views"
              x:Class="NutManager.App.Views.AdministrationPageView"
@@ -16,17 +15,11 @@
       <StackPanel Spacing="3">
         <StackPanel Orientation="Horizontal" Spacing="12">
           <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
-          <Grid Width="24" Height="24" VerticalAlignment="Center">
-            <shapes:Path Data="{DynamicResource NutIconAdministrationBase}"
-                         Stretch="None"
-                         Fill="{DynamicResource NutAccentBrightBrush}" />
-            <shapes:Path Data="{DynamicResource NutIconAdministrationBadge}"
-                         Stretch="None"
-                         Fill="{DynamicResource NutAccentBrightBrush}" />
-            <shapes:Path Data="{DynamicResource NutIconAdministrationCheck}"
-                         Stretch="None"
-                         Fill="{DynamicResource NutOnAccentBrush}" />
-          </Grid>
+          <PathIcon Data="{DynamicResource NutIconAdministration}"
+                    Classes="accent"
+                    Width="22"
+                    Height="22"
+                    VerticalAlignment="Center" />
         </StackPanel>
         <TextBlock Text="{Binding Description}" Classes="nut-page-subtitle" MaxWidth="900" TextWrapping="Wrap" />
       </StackPanel>
@@ -80,42 +73,48 @@
         </StackPanel>
       </Border>
 
-      <!-- Section rail + active surface -->
-      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="18">
-        <ListBox Grid.Column="0"
-                 Width="212"
-                 VerticalAlignment="Top"
-                 Background="Transparent"
-                 BorderThickness="0"
-                 Padding="0"
+      <!--
+        Section tabs above the active surface, rather than a rail beside it.
+
+        As a 212 px column this sat between the shell sidebar and the configuration file rail, so a
+        page whose job is editing a form spent three parallel columns on navigation before showing
+        any of it. Across the top the four sections cost one row and the surface below gets the full
+        width. The availability line moved into the tooltip: it is a sentence, and a sentence under
+        every tab turns a strip into a second rail lying on its side. Each section states its own
+        availability inside its panel anyway.
+      -->
+      <StackPanel Spacing="18">
+        <ListBox Classes="nut-section-tabs"
                  ItemsSource="{Binding AdministrationSections}"
                  SelectedItem="{Binding SelectedAdministrationSection, Mode=TwoWay}"
                  AutomationProperties.Name="{Binding Strings[Administration.Context.Title]}">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="viewModels:AdministrationSectionItemViewModel">
-              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="11">
-                <Grid Width="18" Height="18" VerticalAlignment="Top" Margin="0,2,0,0">
+              <StackPanel Orientation="Horizontal"
+                          Spacing="9"
+                          ToolTip.Tip="{Binding AvailabilityText}">
+                <Grid Width="18" Height="18" VerticalAlignment="Center">
                   <PathIcon Data="{DynamicResource NutIconGeneral}" Width="18" Height="18" IsVisible="{Binding IsNutConfiguration}" />
                   <PathIcon Data="{DynamicResource NutIconService}" Width="18" Height="18" IsVisible="{Binding IsWindowsService}" />
                   <PathIcon Data="{DynamicResource NutIconDriver}" Width="18" Height="18" IsVisible="{Binding IsDevicesAndDrivers}" />
                   <PathIcon Data="{DynamicResource NutIconRemote}" Width="18" Height="18" IsVisible="{Binding IsRemoteAccess}" />
                 </Grid>
-                <StackPanel Grid.Column="1" Spacing="2">
-                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding AvailabilityText}" Classes="nut-metadata" TextWrapping="Wrap" />
-                </StackPanel>
-              </Grid>
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
+              </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
 
-        <StackPanel Grid.Column="1" Spacing="16">
+        <StackPanel Spacing="16">
           <views:NutConfigurationAdministrationView IsVisible="{Binding IsNutConfigurationSectionSelected}" />
           <views:WindowsServiceAdministrationView IsVisible="{Binding IsWindowsServiceSectionSelected}" />
           <views:DevicesDriversAdministrationView IsVisible="{Binding IsDevicesDriversSectionSelected}" />
           <views:RemoteAccessAdministrationView IsVisible="{Binding IsRemoteAccessSectionSelected}" />
         </StackPanel>
-      </Grid>
+      </StackPanel>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

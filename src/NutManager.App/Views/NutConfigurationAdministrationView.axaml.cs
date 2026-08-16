@@ -9,22 +9,14 @@ namespace NutManager.App.Views;
 
 public partial class NutConfigurationAdministrationView : UserControl
 {
-    public NutConfigurationAdministrationView()
-    {
-        InitializeComponent();
-        SizeChanged += (_, _) => UpdateResponsiveLayout();
-    }
-
-    private void UpdateResponsiveLayout()
-    {
-        var compact = Bounds.Width < 760;
-        ConfigurationEditorLayout.ColumnDefinitions = compact ? new ColumnDefinitions("*") : new ColumnDefinitions("260,16,*");
-        ConfigurationEditorLayout.RowDefinitions = compact ? new RowDefinitions("Auto,16,Auto") : new RowDefinitions("Auto");
-        Grid.SetColumn(ConfigurationFilesPanel, 0);
-        Grid.SetRow(ConfigurationFilesPanel, 0);
-        Grid.SetColumn(ConfigurationEditorPanel, compact ? 0 : 2);
-        Grid.SetRow(ConfigurationEditorPanel, compact ? 2 : 0);
-    }
+    /// <summary>
+    /// The page used to rebuild its own grid on every resize, moving the file rail from beside the
+    /// editor to above it once the window got too narrow to hold both. The strip is above the editor
+    /// at every width now, so there is nothing left to reflow: narrowing wraps the chips onto a
+    /// second line and folds their labels, which the panel and the view model already handle
+    /// between them.
+    /// </summary>
+    public NutConfigurationAdministrationView() => InitializeComponent();
 
     private async void SelectDirectoryButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
@@ -43,18 +35,6 @@ public partial class NutConfigurationAdministrationView : UserControl
         });
         var path = folders.FirstOrDefault()?.TryGetLocalPath();
         if (!string.IsNullOrWhiteSpace(path)) await viewModel.InspectInstallationDirectoryAsync(path);
-    }
-
-    /// <summary>
-    /// Tells the page how much room it has, so a narrow layout can fold the rail without changing
-    /// what the administrator asked for.
-    /// </summary>
-    private void ConfigurationPage_OnSizeChanged(object? sender, SizeChangedEventArgs eventArgs)
-    {
-        if (DataContext is AdministrationPageViewModel viewModel)
-        {
-            viewModel.SetConfigurationLayoutWidth(eventArgs.NewSize.Width);
-        }
     }
 
     /// <summary>

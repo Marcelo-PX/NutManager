@@ -81,7 +81,7 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
             settings.MockMode,
             settings.Language,
             settings.SidebarPreference,
-            configurationRailPreference: settings.ConfigurationRailPreference);
+            backgroundTransparency: settings.BackgroundTransparency);
 
         var directory = Path.GetDirectoryName(_settingsPath)!;
         var temporaryPath = Path.Combine(directory, $".{FileName}.{Guid.NewGuid():N}.tmp");
@@ -136,8 +136,8 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
         public UiLanguagePreference Language { get; set; } = UiLanguagePreference.PtBr;
         public SidebarPreference SidebarPreference { get; set; } = SidebarPreference.Expanded;
 
-        /// <summary>Absent before schema 4, which reads as expanded — the behaviour that existed then.</summary>
-        public SidebarPreference ConfigurationRailPreference { get; set; } = SidebarPreference.Expanded;
+        /// <summary>Absent before schema 5, which reads as on — the behaviour that existed then.</summary>
+        public bool BackgroundTransparency { get; set; } = true;
 
         public ApplicationSettings ToSettings()
         {
@@ -163,7 +163,7 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
                 SchemaVersion == 1 ? UiLanguagePreference.PtBr : Language,
                 SchemaVersion == 1 ? SidebarPreference.Expanded : SidebarPreference,
                 legacyEndpoint,
-                SchemaVersion < 4 ? SidebarPreference.Expanded : ConfigurationRailPreference);
+                SchemaVersion < 5 || BackgroundTransparency);
         }
 
         public static SettingsDocument FromSettings(ApplicationSettings settings) => new()
@@ -175,7 +175,7 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
             MockMode = settings.MockMode,
             Language = settings.Language,
             SidebarPreference = settings.SidebarPreference,
-            ConfigurationRailPreference = settings.ConfigurationRailPreference
+            BackgroundTransparency = settings.BackgroundTransparency
         };
     }
 }

@@ -50,6 +50,7 @@ Only one task should normally be in progress at a time.
 | T29 | DONE | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 | T30 | DONE | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
 | T31 | DONE | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
+| T32 | IN PROGRESS | Icon library adoption and T31 visual acceptance | An explicit icon-system decision and the rail seen with its final glass |
 
 ---
 
@@ -783,6 +784,75 @@ Two items were accepted rather than completed, and neither blocks the surface wo
   in the third-party notices, and reversing the "no icon font, no icon package" decision recorded in
   the design system and the agent rules. It belongs in a round that changes those documents together
   rather than leaving the repository asserting one thing and practising another.
+
+## T32 — Icon library adoption and T31 visual acceptance
+
+**Status:** IN PROGRESS
+
+### Objective
+
+Settle the icon system with an explicit, investigated decision, and see the T31 rail on screen with
+the glass it actually ships with.
+
+### Allowed scope
+
+- the icon catalog and whatever dependency the decision requires, the three documents that record the
+  icon policy, and focused tests;
+- manual Windows validation of the configuration rail.
+
+### Requirements
+
+- a real comparison of maintained options, recorded with licences and reasons;
+- the semantic catalog stays authoritative — views must not reference an icon library directly;
+- no icon fetched over the network at runtime;
+- the rail observed in dark and light, expanded and collapsed, plus the narrow-layout fold.
+
+### Do not
+
+- start operational functionality, reimplement the rail, or change any transport, writer or
+  credential boundary.
+
+### Icon decision
+
+Investigated and recorded in the design system. `FluentIcons.Avalonia` (MIT, Avalonia 12) renders
+through a font and exposes no geometry, so it cannot fill a catalog without putting a library
+reference in every view. `Material.Icons.Avalonia` (MIT) is vector and exposes path data through
+`MaterialIconDataProvider.GetData`, so one adapter can fill the catalog while the views go on asking
+for semantic names. **It was adopted, and it now supplies all 62 icons in the product.**
+
+Twenty-one glyphs had been assembled from several shapes each so their parts could animate
+separately — LEDs blinking out of phase, a gear turning around a stationary hub, a dot sweeping a
+trace, a sun's rays turning around a fixed disc. Those parts were removed. The trade was made
+explicitly: one drawing system across the whole product outranks segmented animation, because a
+single icon animating more richly is not worth having one icon that is not from the library. The
+motion moved to the whole glyph — breathe, pulse, pop, beat, turn — and the amplitudes came down with
+it. `NutIcons.axaml` is now a fallback catalog: it defines the valid names and a drawing for each, in
+case a future version of the library drops a kind.
+
+The dependency rule in the agent instructions permits an icon library on the same terms as any other
+dependency, so the repository no longer asserts a rule it had replaced.
+
+### Liquid glass hover
+
+The glass panes react to the pointer: the surface lightens and its edge comes up over 180 ms. Scoped
+to the surfaces that are actually glass — the cards and the configuration file rail — plus a separate
+rung for the rows that sit on them, so a hovered row does not vanish into a hovered pane. Containers
+(the sidebar, the shell chrome) stay inert. Nothing moves or resizes, and pressed, selected and
+disabled all still win over hover.
+
+### Visual acceptance
+
+Observed on Windows with a temporary local profile, restored afterwards and verified by hash. Rail
+seen expanded (263 px rows) and collapsed (57 px) in both dark and light, with the accent bar, the
+selected sheen, the per-file icons and the glass surface against the acrylic backdrop.
+
+Narrow layout is **not** confirmed on screen: at a window small enough to trigger the fold the shell
+enters compact mode and the rail scrolls out of view, so the observation was inconclusive. The
+behaviour is covered by four tests that drive the width directly.
+
+### Validation
+
+- icon catalog and policy tests, plus documented manual Windows observation of the rail.
 
 ## Task execution template
 

@@ -30,11 +30,11 @@
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
-    <StackPanel Spacing="20" MaxWidth="1180">
+    <StackPanel Spacing="26" MaxWidth="1180">
       <StackPanel Spacing="2">
         <StackPanel Orientation="Horizontal" Spacing="11">
           <TextBlock Text="{Binding Title}" Classes="nut-page-title" />
-          <PathIcon Data="{DynamicResource NutIconGearBase}" Width="20" Height="20" Foreground="{DynamicResource NutAccentBrightBrush}" VerticalAlignment="Center" />
+          <PathIcon Data="{DynamicResource NutIconSettings}" Width="20" Height="20" Foreground="{DynamicResource NutAccentBrightBrush}" VerticalAlignment="Center" />
         </StackPanel>
         <TextBlock Text="{Binding Description}" Classes="nut-page-subtitle" TextWrapping="Wrap" />
       </StackPanel>
@@ -42,30 +42,47 @@
       <!-- Appearance and language preferences. The full theme preference (System/Light/Dark) stays
            here; the header toggle is a shortcut, not a replacement. -->
       <Border Classes="nut-card">
-        <StackPanel Spacing="12">
+        <StackPanel Spacing="18">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <PathIcon Data="{DynamicResource NutIconSun}" Classes="warning" Width="17" Height="17" />
             <TextBlock Text="{Binding AppearanceTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
           </StackPanel>
           <Border Classes="nut-divider" />
-          <Grid x:Name="AppearanceLayout" ColumnDefinitions="*,*,*" ColumnSpacing="14">
+          <!-- Four columns declared here as well as in the responsive pass: the pass only runs on
+               the first SizeChanged, and until then a panel placed in a column the grid does not
+               have is clamped onto its neighbour and the two draw on top of each other. -->
+          <!-- The boxes are a fixed 200 rather than stretched: filling a quarter of the card made
+               a three-word choice look like a text field, and one fixed width keeps the four
+               controls on a common left edge instead of ending wherever their content does. -->
+          <Grid x:Name="AppearanceLayout" ColumnDefinitions="*,*,*,*" ColumnSpacing="26">
             <StackPanel x:Name="ThemePreferencePanel" Grid.Column="0" Spacing="5">
               <TextBlock Text="{Binding AppearanceThemeLabel}" Classes="nut-label" />
-              <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}" HorizontalAlignment="Stretch">
+              <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}" HorizontalAlignment="Left" Width="200">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </StackPanel>
             <StackPanel x:Name="LanguagePreferencePanel" Grid.Column="1" Spacing="5">
               <TextBlock Text="{Binding AppearanceLanguageLabel}" Classes="nut-label" />
-              <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}" HorizontalAlignment="Stretch">
+              <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguageOption}" HorizontalAlignment="Left" Width="200">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
             </StackPanel>
             <StackPanel x:Name="SidebarPreferencePanel" Grid.Column="2" Spacing="5">
               <TextBlock Text="{Binding AppearanceSidebarLabel}" Classes="nut-label" />
-              <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}" HorizontalAlignment="Stretch">
+              <ComboBox ItemsSource="{Binding SidebarOptions}" SelectedItem="{Binding SelectedSidebarOption}" HorizontalAlignment="Left" Width="200">
                 <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
               </ComboBox>
+            </StackPanel>
+            <!--
+              A switch, not a fourth dropdown. The three beside it pick one of several values; this
+              one is on or off, and a two-item list is a worse control for that than a switch is.
+            -->
+            <StackPanel x:Name="TransparencyPreferencePanel" Grid.Column="3" Spacing="5">
+              <TextBlock Text="{Binding AppearanceTransparencyLabel}" Classes="nut-label" />
+              <ToggleSwitch IsChecked="{Binding IsBackgroundTransparent}"
+                            OnContent="{Binding AppearanceTransparencyOn}"
+                            OffContent="{Binding AppearanceTransparencyOff}"
+                            AutomationProperties.Name="{Binding AppearanceTransparencyLabel}" />
             </StackPanel>
           </Grid>
           <StackPanel Orientation="Horizontal" Spacing="9" IsVisible="{Binding IsLanguageRestartRequired}">

@@ -117,6 +117,26 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="20" />
     <Setter Property="Padding" Value="20" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.18" Easing="CubicEaseOut" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <!--
+    Glass under the pointer. The pane lifts towards the light and its edge comes up with it; nothing
+    moves, resizes or gains a shadow, so a card reacting cannot shift the page around it or clip its
+    own rounded corner against a scroll viewer.
+
+    This is the one glass hover response in the product, and it is shared by every surface actually
+    made of glass — this card and the configuration file rail. Surfaces that are not glass keep the
+    reaction they had: applying it to everything would make the effect meaningless and would put a
+    pane highlight on controls that are not panes.
+  -->
+  <Style Selector="Border.nut-card:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderHoverBrush}" />
   </Style>
 
   <Style Selector="Border.nut-card-elevated">

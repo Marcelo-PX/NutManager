@@ -8,10 +8,13 @@ using Xunit;
 namespace NutManager.Tests;
 
 /// <summary>
-/// The collapsible file rail. The property worth defending is that folding it is presentation and
-/// nothing else: the selected file, its draft and its editor must come through a collapse
-/// untouched, because the rail exists to give the form more room, not to change what is being
-/// edited.
+/// The configuration file switcher: one segmented strip of square tiles above the editor.
+///
+/// It used to be a collapsible column, and most of this file used to defend the fold — that
+/// collapsing was presentation and nothing else. The fold is gone, along with its toggle, its
+/// persisted preference and the width threshold that folded it regardless, so what is left to
+/// defend is what the strip still owes: one tile per managed file, each announcing itself, joined
+/// into a single control rather than scattered into five.
 /// </summary>
 public sealed class ConfigurationFileRailTests
 {
@@ -21,151 +24,7 @@ public sealed class ConfigurationFileRailTests
     private static string RailView() =>
         Repository.Read(Path.Combine("src", "NutManager.App", "Views", "NutConfigurationAdministrationView.axaml"));
 
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "nutmanager-rail-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            try { Directory.Delete(Path, recursive: true); } catch { }
-        }
-    }
-
-    // ==================== State ====================
-
-    [Fact]
-    public void TheRailStartsExpanded()
-    {
-        var viewModel = new AdministrationPageViewModel();
-
-        Assert.True(viewModel.IsConfigurationRailExpanded);
-        Assert.Equal(228, viewModel.ConfigurationRailWidth);
-    }
-
-    [Fact]
-    public void TogglingSwitchesBetweenTheTwoWidths()
-    {
-        var viewModel = new AdministrationPageViewModel();
-
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-
-        Assert.False(viewModel.IsConfigurationRailExpanded);
-        Assert.Equal(64, viewModel.ConfigurationRailWidth);
-
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-
-        Assert.True(viewModel.IsConfigurationRailExpanded);
-        Assert.Equal(228, viewModel.ConfigurationRailWidth);
-    }
-
-    [Fact]
-    public void TheToggleIsDescribedByWhatItWillDo()
-    {
-        var viewModel = new AdministrationPageViewModel();
-        var whenExpanded = viewModel.ConfigurationRailToggleText;
-
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-
-        Assert.NotEqual(whenExpanded, viewModel.ConfigurationRailToggleText);
-        Assert.False(string.IsNullOrWhiteSpace(viewModel.ConfigurationRailToggleText));
-    }
-
-    [Fact]
-    public void CollapsingTellsWhoeverIsPersistingTheChoice()
-    {
-        var written = new List<SidebarPreference>();
-        var viewModel = new AdministrationPageViewModel(
-            null, null, persistConfigurationRailPreference: written.Add);
-
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-
-        Assert.Equal([SidebarPreference.Collapsed, SidebarPreference.Expanded], written);
-    }
-
-    [Theory]
-    [InlineData(SidebarPreference.Expanded, true)]
-    [InlineData(SidebarPreference.Collapsed, false)]
-    public void ThePersistedChoiceIsHonouredOnOpen(SidebarPreference preference, bool expanded)
-    {
-        var viewModel = new AdministrationPageViewModel(null, null, configurationRailPreference: preference);
-
-        Assert.Equal(expanded, viewModel.IsConfigurationRailExpanded);
-    }
-
-    // ==================== Persistence ====================
-
-    [Fact]
-    public async Task TheRailChoiceSurvivesARoundTripThroughSettings()
-    {
-        using var directory = new TemporaryDirectory();
-        var store = new JsonApplicationSettingsStore(directory.Path);
-
-        await store.SaveAsync(
-            new ApplicationSettings(configurationRailPreference: SidebarPreference.Collapsed),
-            CancellationToken.None);
-        var loaded = await store.LoadAsync(CancellationToken.None);
-
-        Assert.Equal(SidebarPreference.Collapsed, loaded.ConfigurationRailPreference);
-    }
-
-    [Fact]
-    public async Task SettingsWrittenBeforeThisPreferenceExistedOpenExpanded()
-    {
-        using var directory = new TemporaryDirectory();
-        await File.WriteAllTextAsync(
-            Path.Combine(directory.Path, "settings.json"),
-            """
-            {"schemaVersion":3,"pollingIntervalSeconds":5,"connectionTimeoutSeconds":5,
-             "theme":"System","mockMode":false,"language":"PtBr","sidebarPreference":"Collapsed"}
-            """);
-
-        var loaded = await new JsonApplicationSettingsStore(directory.Path).LoadAsync(CancellationToken.None);
-
-        // The shell sidebar keeps its own collapsed choice; the rail, which did not exist then,
-        // opens expanded rather than inheriting an unrelated preference.
-        Assert.Equal(SidebarPreference.Collapsed, loaded.SidebarPreference);
-        Assert.Equal(SidebarPreference.Expanded, loaded.ConfigurationRailPreference);
-    }
-
-    // ==================== Folding changes nothing else ====================
-
-    [Fact]
-    public void FoldingTheRailLeavesTheFileListExactlyAsItWas()
-    {
-        var viewModel = new AdministrationPageViewModel();
-        var before = viewModel.ConfigurationFiles.ToArray();
-        var selected = viewModel.SelectedFile;
-
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-
-        Assert.Equal(before, viewModel.ConfigurationFiles);
-        Assert.Same(selected, viewModel.SelectedFile);
-        Assert.False(viewModel.HasDraftChanges);
-    }
-
-    [Fact]
-    public void FoldingTheRailNeverTouchesTheEditorOrAPendingDraft()
-    {
-        var viewModel = new AdministrationPageViewModel();
-
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-
-        // Collapsing is a width change. Nothing about the editing surface may react to it.
-        Assert.Null(viewModel.UpsConfigurationEditor);
-        Assert.Null(viewModel.NutGeneralConfigurationEditor);
-        Assert.False(viewModel.HasPreview);
-        Assert.False(viewModel.HasDraftChanges);
-    }
-
-    // ==================== Rows ====================
+    // ==================== Tiles ====================
 
     [Fact]
     public void EveryRowCarriesItsOwnIconFlagSoNoTwoFilesLookAlike()
@@ -186,7 +45,8 @@ public sealed class ConfigurationFileRailTests
 
         foreach (var file in viewModel.ConfigurationFiles)
         {
-            // Collapsed, the row is only an icon, so the accessible name is the whole answer.
+            // The tile shows the category under its icon, not the file name, so the accessible
+            // name is what carries both.
             Assert.Contains(file.FileName, file.AccessibleName, StringComparison.Ordinal);
             Assert.Contains(file.Category, file.AccessibleName, StringComparison.Ordinal);
         }
@@ -232,38 +92,23 @@ public sealed class ConfigurationFileRailTests
 
         Assert.Empty(viewModel.ConfigurationFiles);
         Assert.True(viewModel.IsConfigurationFileListEmpty);
-        // The rail still folds; an empty list is not a broken screen.
-        viewModel.ToggleConfigurationRailCommand.Execute(null);
-        Assert.False(viewModel.IsConfigurationRailExpanded);
     }
 
     // ==================== Presentation ====================
-
-    [Fact]
-    public void TheRailAnimatesItsWidthWithinTheShellsOwnMotionBudget()
-    {
-        var styles = RailStyles();
-
-        var rail = styles[styles.IndexOf("Border.nut-file-rail\"", StringComparison.Ordinal)..];
-        rail = rail[..rail.IndexOf("</Style>", StringComparison.Ordinal)];
-
-        Assert.Contains("DoubleTransition Property=\"Width\"", rail, StringComparison.Ordinal);
-        Assert.Contains("CubicEaseOut", rail, StringComparison.Ordinal);
-        // 0.22s matches NutMotionShell; anything longer starts to feel like the panel is stuck.
-        Assert.Contains("0:0:0.22", rail, StringComparison.Ordinal);
-    }
 
     [Fact]
     public void TheRailReusesTheShellsSelectionLanguageRatherThanInventingItsOwn()
     {
         var styles = RailStyles();
 
-        // Same accent bar and sheen the navigation item uses, so the two rails read as one idea.
-        Assert.Contains("Button.nut-file-rail-item.selected", styles, StringComparison.Ordinal);
+        // Same accent and sheen the shell's own selection uses, so the section tabs, the file chips
+        // and the sidebar read as one idea rather than three components that happen to be nearby.
+        Assert.Contains("Button.nut-file-tile.selected", styles, StringComparison.Ordinal);
+        Assert.Contains("ListBox.nut-section-tabs ListBoxItem:selected", styles, StringComparison.Ordinal);
         Assert.Contains("NutSelectedSheenBrush", styles, StringComparison.Ordinal);
         Assert.Contains("NutAccentBrush", styles, StringComparison.Ordinal);
         // Selection is never colour alone: the label also goes semibold.
-        var selected = styles[styles.IndexOf("Button.nut-file-rail-item.selected\"", StringComparison.Ordinal)..];
+        var selected = styles[styles.IndexOf("Button.nut-file-tile.selected\"", StringComparison.Ordinal)..];
         Assert.Contains("FontWeight", selected[..selected.IndexOf("</Style>", StringComparison.Ordinal)], StringComparison.Ordinal);
     }
 
@@ -276,65 +121,68 @@ public sealed class ConfigurationFileRailTests
     }
 
     [Fact]
-    public void TheToggleAndEveryRowAreReachableAndNamed()
+    public void EveryTileIsReachableAndNamed()
     {
         var view = RailView();
 
-        Assert.Contains("Command=\"{Binding ToggleConfigurationRailCommand}\"", view, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"{Binding ConfigurationRailToggleText}\"", view, StringComparison.Ordinal);
-        // Rows are buttons, so they take keyboard focus, and each announces its file.
+        // Tiles are buttons, so they take keyboard focus, and each announces its file. The label
+        // under the icon is not enough on its own: it is the category, not the file name.
         Assert.Contains("AutomationProperties.Name=\"{Binding AccessibleName}\"", view, StringComparison.Ordinal);
         Assert.Contains("ToolTip.Tip=\"{Binding AccessibleName}\"", view, StringComparison.Ordinal);
     }
 
-    // ==================== Narrow layouts ====================
-
     [Fact]
-    public void ANarrowPageFoldsTheRailWithoutChangingWhatWasAskedFor()
+    public void TheTilesAreOneJoinedControlRatherThanFiveSeparateButtons()
     {
-        var viewModel = new AdministrationPageViewModel();
+        var view = RailView();
+        var styles = RailStyles();
 
-        viewModel.SetConfigurationLayoutWidth(700);
+        // One frame around a horizontal run of tiles. A WrapPanel would break the joined edge the
+        // moment it wrapped, so the strip is a StackPanel inside a clipping frame.
+        Assert.Contains("Classes=\"nut-file-strip-frame\"", view, StringComparison.Ordinal);
+        Assert.Contains("<ItemsPanelTemplate><StackPanel Orientation=\"Horizontal\" /></ItemsPanelTemplate>", view, StringComparison.Ordinal);
 
-        Assert.False(viewModel.IsConfigurationRailOpen);
-        Assert.Equal(64, viewModel.ConfigurationRailWidth);
-        // The preference is untouched: the layout folded it, the administrator did not.
-        Assert.True(viewModel.IsConfigurationRailExpanded);
+        var tile = styles[styles.IndexOf("Button.nut-file-tile\"", StringComparison.Ordinal)..];
+        tile = tile[..tile.IndexOf("</Style>", StringComparison.Ordinal)];
+        // Butted together: no gap between neighbours, no rounding of their own, and a hairline on
+        // one side only so adjacent tiles share a single divider rather than drawing two.
+        Assert.Contains("<Setter Property=\"Margin\" Value=\"0\" />", tile, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"CornerRadius\" Value=\"0\" />", tile, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"BorderThickness\" Value=\"0,0,1,0\" />", tile, StringComparison.Ordinal);
+
+        // The frame clips, and the strip overhangs by the one pixel the last divider occupies, so
+        // the run ends on the frame's own edge rather than on a stray hairline.
+        var frame = styles[styles.IndexOf("Border.nut-file-strip-frame\"", StringComparison.Ordinal)..];
+        frame = frame[..frame.IndexOf("</Style>", StringComparison.Ordinal)];
+        Assert.Contains("<Setter Property=\"ClipToBounds\" Value=\"True\" />", frame, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Margin\" Value=\"0,0,-1,0\" />", styles, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void WideningThePageGivesBackExactlyThePreferenceThatWasStored()
+    public void NothingIsLeftOfTheFoldThatWasRemoved()
     {
-        var viewModel = new AdministrationPageViewModel();
-        viewModel.SetConfigurationLayoutWidth(700);
+        var view = RailView();
+        var styles = RailStyles();
+        var viewModel = Repository.Read(Path.Combine("src", "NutManager.App", "ViewModels", "AdministrationPageViewModel.cs"));
 
-        viewModel.SetConfigurationLayoutWidth(1400);
+        // The toggle, the preference and the width threshold went together. Any one of them left
+        // behind is dead state that still has to be reasoned about when reading the page.
+        foreach (var gone in new[]
+        {
+            "ToggleConfigurationRail", "IsConfigurationRailExpanded", "IsConfigurationRailOpen",
+            "ConfigurationRailToggleText", "SetConfigurationLayoutWidth", "ConfigurationFileTileSize"
+        })
+        {
+            Assert.DoesNotContain(gone, view, StringComparison.Ordinal);
+            Assert.DoesNotContain(gone, styles, StringComparison.Ordinal);
+            Assert.DoesNotContain(gone, viewModel, StringComparison.Ordinal);
+        }
 
-        Assert.True(viewModel.IsConfigurationRailOpen);
-        Assert.Equal(228, viewModel.ConfigurationRailWidth);
-    }
-
-    [Fact]
-    public void ARailTheAdministratorCollapsedStaysCollapsedWhenThePageWidens()
-    {
-        var viewModel = new AdministrationPageViewModel(null, null, configurationRailPreference: SidebarPreference.Collapsed);
-
-        viewModel.SetConfigurationLayoutWidth(700);
-        viewModel.SetConfigurationLayoutWidth(1400);
-
-        // Widening restores the preference, and the preference here was collapsed.
-        Assert.False(viewModel.IsConfigurationRailOpen);
-        Assert.False(viewModel.IsConfigurationRailExpanded);
-    }
-
-    [Fact]
-    public void AnUnmeasuredPageIsNotTreatedAsNarrow()
-    {
-        var viewModel = new AdministrationPageViewModel();
-
-        // A zero width is a layout pass that has not happened yet, not a small window.
-        viewModel.SetConfigurationLayoutWidth(0);
-
-        Assert.True(viewModel.IsConfigurationRailOpen);
+        // And it is no longer written to disk either, so a settings file stops carrying a
+        // preference for a control that does not exist.
+        Assert.DoesNotContain(
+            "ConfigurationRailPreference",
+            Repository.Read(Path.Combine("src", "NutManager.Core", "Models", "ApplicationSettings.cs")),
+            StringComparison.Ordinal);
     }
 }

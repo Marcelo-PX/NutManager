@@ -92,7 +92,10 @@ T27A aligns the rendered application with the approved visual references without
 
 `Presentation/Themes` is the single source for the visual language. `NutColors.axaml` defines an explicit surface hierarchy — window, shell, surface, elevated, interactive, selected — plus border, text, accent and semantic families in both themes, so cards no longer carry the same visual weight and navigation selection is a restrained accent bar and low-contrast surface instead of a saturated block. `NutTypography.axaml` separates page title, section title, card title, label, metadata and the dominant metric readout. `NutMetrics.axaml` owns spacing, radii, icon sizes and shell dimensions. `NutControlStyles.axaml` and `NutShellStyles.axaml` restyle cards, buttons, inputs, lists, tabs, badges, the title bar, navigation and the profile card so surfaces stop reading as default Fluent controls.
 
-`NutIcons.axaml` is the only icon source. Glyphs are `StreamGeometry` on a 24×24 grid using the even-odd rule for outlined shapes, covering navigation, configuration domains, metrics, connectivity, security, service control, actions, chevrons, theme and window chrome. Emoji, pictographic text and raster images are not used as icons, and no icon package is referenced. Semantic icon colour is always redundant with text.
+`NutIcons.axaml` declares every semantic icon name and a fallback drawing for each, as `StreamGeometry` on a 24×24 grid, covering navigation, configuration domains, metrics, connectivity, security, service control, actions, chevrons, theme and window chrome. `NutIconLibrary.cs` replaces all of them at start-up with geometry from Material Icons, so the library is what the product actually draws and the catalog is what keeps a name resolving if a future version of the library drops a kind. Emoji, pictographic text and raster images are not used as icons. Semantic icon colour is always redundant with text.
+
+The catalog is deliberately the only thing views know about. A view asks for `NutIconServer`, not for
+a library's symbol, so where the drawing comes from can change without touching the interface.
 
 The window uses `WindowDecorations="BorderOnly"` so product identity, connection state, the theme control and the window buttons share one integrated bar instead of a separate Windows title strip. Drag, double-click maximise, minimise, restore and close remain standard Avalonia window operations with no platform interop.
 
@@ -108,49 +111,159 @@ Mock/demo state is an unambiguous persistent badge, never merely an incidental c
 
 All layouts introduced by T24A–T29 must be validated in both official cultures as those tasks are implemented. See [Localization](LOCALIZATION.md) and [Graphical NUT configuration](GRAPHICAL-NUT-CONFIGURATION.md).
 
-## Configuration file rail (T31)
+## Administration navigation: two rows, not three columns (T32)
 
-The NUT configuration page carries its own collapsible rail for the file list. It is built from the
-same pieces as the shell navigation item — accent bar for selection, `NutSelectedSheenBrush` for the
-selected surface, hover lift — so the two rails read as one idea at two scales rather than as two
-components that happen to sit near each other.
+The administration page navigates horizontally. Section tabs across the top, a file strip under
+them, and the editor below at full width.
 
-`NutFileRailExpandedWidth` (228 px) matches the shell sidebar; `NutFileRailCollapsedWidth` (64 px) is
-tighter because this rail sits inside a page and only has to hold an 18 px icon. The width animates
-over `NutMotionShell` with `CubicEaseOut`, and the labels fade with it: a rail whose text vanished
-instantly read as content being dropped rather than folded away.
+It was three parallel vertical rails before — the shell sidebar at 274 px, the section rail at
+343 px and the file rail at 283 px — so **900 px, 46% of a 1938 px window, was navigation chrome
+before any content**, and the editor got 942 px. Worse vertically: with a file open, the page spent
+its height on a title, a context card, an installation card, a breadcrumb, a file header and a
+metadata strip, so **not one editable field was visible without scrolling**. The thing you came to
+do was the last thing on screen.
 
-The surface is `NutGlassSurfaceBrush`, a translucent tint over the page rather than a second opaque
-card, so the rail reads as glass above the content. The alpha is deliberately high — at lower opacity
-the file names lost contrast against whatever scrolled underneath, and legibility outranks the
-effect.
+Horizontally the same navigation costs two rows and the editor gets about 1571 px, a 67% gain, with
+the first controls on screen when the file loads.
 
-Each file keeps its own icon, so a collapsed rail is still readable: `NutIconGeneral`, `NutIconUps`,
-`NutIconServer`, `NutIconUsers`, `NutIconMonitoring`. Collapsed, the row is only that icon, so its
-accessible name and tooltip carry both the purpose and the real file name. Selection is never colour
-alone: the accent bar and a semibold label carry it too. The selected row's icon pops once when it
-becomes current; nothing in the rail loops.
+Three cuts came with it:
+
+- **The installation card became one line.** Install directory, config directory and version are
+  facts you confirm once and stop reading; they had no business holding the top of the page.
+- **The breadcrumb went.** Page, section and file name repeated what the section tab and the
+  selected file chip already said, immediately above the file's own title. Three statements of one
+  fact is noise, not orientation.
+- **The availability line under each section moved into its tooltip.** It is a sentence, and a
+  sentence under every tab turns a strip into a second rail lying on its side. Each section states
+  its own availability inside its panel.
+
+Both strips are built from the same pieces as the shell navigation item — `NutAccentBrush` for
+selection, `NutSelectedSheenBrush` for the selected surface, the glass hover — so the sidebar, the
+tabs and the chips read as one idea at three scales. A horizontal strip marks its current item with
+an underline rather than a left bar: a bar down the left of a wide short chip reads as a bullet
+point, not a selection.
+
+### One segmented control, and no fold
+
+The five files are 108 px squares butted against each other inside a single frame, divided by a
+hairline. The frame carries the glass, the outline and the rounding; the tiles are transparent and
+draw only their own right-hand divider, so adjacent tiles share one line rather than drawing two.
+The last divider is removed by the frame's clip — the strip overhangs by exactly the pixel that
+divider occupies, which is tidier than asking a style to know which item is last.
+
+Uniform squares rather than pills fitted to their labels: five equal tiles read as one set of five
+files of equal standing, while five differently sized capsules read as unrelated buttons that happen
+to be adjacent, and the eye has to measure each one to see it is a peer of the others.
+
+**The fold was removed entirely**, and with it the whole of what T31 built for it: the toggle, the
+`ConfigurationRailPreference` persisted in settings, the effective-state property separate from that
+preference, the width threshold that folded the strip regardless, and the resize handler that
+rebuilt the page's grid. A strip is worth collapsing while it is a column eating 283 px of width; as
+one row of squares there is nothing worth reclaiming, and a switcher that can hide the thing you
+switch with is a way to get lost rather than a way to save room. Nothing was kept "just in case" —
+`NothingIsLeftOfTheFoldThatWasRemoved` fails if any piece of it reappears in the view, the styles,
+the view model or the settings record.
+
+Existing settings files that still carry `configurationRailPreference` load unchanged: the
+serializer ignores members it does not know, so no migration was needed for a field that only
+shrank out of the schema.
+
+Each file keeps its own icon: `NutIconGeneral`, `NutIconUps`, `NutIconServer`, `NutIconUsers`,
+`NutIconMonitoring`. The label under it is the category, not the file name, so the accessible name
+and tooltip carry both. Selection is never colour alone — the filled segment, the accent underline
+and a semibold label carry it together, and the underline is a separate layer because the tile's one
+border is already spent on the divider and a single `Border` cannot hold two colours on two sides.
+The selected tile's icon pops once when it becomes current; nothing in the strip loops.
 
 ## Glass surfaces and the two-tone window (T31)
 
 The window is transparent with an `ExperimentalAcrylicBorder` behind the entire shell. This is not
 decoration for its own sake: Avalonia cannot blur in-page content, so before the pane existed the
 translucent cards were tinting a flat colour and the effect was invisible. The transparency hint
-degrades from acrylic to Mica to plain blur, and `NutWindowBrush` sits on the same value as the
-tint, so where a compositor offers none of them the fallback keeps the same separation instead of
-collapsing the layers together.
+degrades from acrylic to Mica to plain blur.
+
+### The backdrop actually shows the desktop (T32)
+
+For a while it did not, and the reason is worth recording because nothing about it was visible in
+the markup. The acrylic pane was there and correctly configured, but three things in front of it
+were opaque: `TintColor` was a near-black navy at `TintOpacity="1"`, so the material blurred a solid
+colour rather than anything behind the window, and the content border painted `NutWindowBrush` —
+also opaque — straight over the result. The window was a dark blue slab built out of an acrylic
+brush, and measuring a horizontal strip of background gave the same value at every x, which is the
+proof: real blur of real content varies across the pane.
+
+Three changes fixed it, and they have to be made together — any one alone leaves the pane covered:
+
+| | Was | Is |
+| --- | --- | --- |
+| `NutAcrylicTintColor` | `#05080E` (navy) | `#000000` — black tints nothing |
+| `TintOpacity` / `MaterialOpacity` | `1` / `0.62` | `0.25` / `0.12` |
+| `NutWindowBrush` (dark) | `#05080E` opaque | `#73000000` — a wash, not a floor |
+
+**What shows through is the desktop wallpaper, and only that.** Windows composes this backdrop from
+the wallpaper, not from the windows behind ours: DWM does not hand one process the pixels of
+another. So the effect is invisible whenever something else is maximised behind the window, which is
+exactly the case that makes it look broken — and it is not. Measured with the desktop showing, a
+horizontal strip of background varies by 35 levels across the pane; measured with the same window
+over another application, it is flat.
+
+The alpha on `NutWindowBrush` is not decoration either. A see-through background inherits whatever
+wallpaper the machine has, and body text cannot depend on that being dark, so the wash is the
+contrast floor. It is tuned rather than guessed: against the brightest point the wallpaper pushed
+into the pane, primary text measures 10.6:1 and secondary 5.1:1, both clear of WCAG AA's 4.5. At the
+value tried before it (`#40000000`) secondary fell to 3.7:1, which is why the wash sits where it
+does. `NutTextMutedBrush` reaches only 2.8:1 there and is therefore never used directly on the page
+background — it belongs inside cards, whose own alpha supplies the contrast.
+
+The header, footer and sidebar keep their own opaque or near-opaque brushes: the change was scoped
+to the page background, so the chrome around it still reads as chrome.
 
 Transparency only reads when the layers differ, which is why the palette is deliberately two-tone:
 
 | Token | Role | Dark | Light |
 | --- | --- | --- | --- |
-| `NutAcrylicTintColor` | the pane behind everything | `#05080E` | `#DDE4EF` |
+| `NutAcrylicTintColor` | the pane behind everything | `#000000` | `#DDE4EF` |
 | `NutGlassSurfaceBrush` | cards, rail, panels | `#8C3A4A66` | `#A6FFFFFF` |
 | `NutGlassBorderBrush` | the pane's edge | `#40FFFFFF` | `#73FFFFFF` |
 | `NutGlassSheenBrush` | top-edge highlight | — | — |
+| `NutGlassSurfaceHoverBrush` | the pane under the pointer | `#A6485A78` | `#D9FFFFFF` |
+| `NutGlassBorderHoverBrush` | its edge, catching light | `#73FFFFFF` | `#B39DB6DA` |
+| `NutGlassRowHoverBrush` | a row on that pane | `#B35F749B` | `#D9DCE9FA` |
 
 With the backdrop and the surfaces on the same navy, a 70% panel still looked opaque; the backdrop
 is now the darkest value in the window and the surfaces lift well clear of it.
+
+### Hover
+
+Glass responds to the pointer. There is one response, shared by every surface actually made of
+glass — `Border.nut-card` and `Button.nut-file-chip` — and it is only those: the surface lightens and
+its edge comes up over 180 ms with a cubic ease. Nothing moves, resizes or gains a shadow, so a pane
+reacting cannot shift the page around it or clip its own rounded corner against a scroll viewer.
+
+Both halves are needed. A surface that brightens with no edge change reads as a colour bug rather
+than as light landing on a pane; an edge that brightens alone reads as a selection.
+
+Three things it deliberately does **not** do:
+
+- **The step is small.** Glass that jumps to near-white under the pointer stops reading as a material
+  and starts competing with the accent bar that marks the actual selection.
+- **Rows get their own rung.** The pointer is on a row and its pane at the same time, so a row
+  sharing the pane's hover tint would vanish into the surface exactly when pointed at.
+  `NutGlassRowHoverBrush` sits one step above, and rows never take the edge highlight — their left
+  border is the three-pixel selection bar, and lighting it would claim the row is the current page.
+- **Containers stay inert.** The sidebar and the shell chrome are glass but are not hovered as
+  objects; brightening a full-height panel every time the pointer crosses it toward a navigation item
+  is noise, not feedback. Their rows carry the response instead.
+
+In both themes the border hover moves in the direction that makes an edge visible: brighter white on
+dark, and a tinted blue on light, where white on near-white is not an edge at all. Both hover brushes
+are solid colours because `BrushTransition` interpolates between solid brushes and switches outright
+between anything else — a gradient would make the edge snap on, which is the one thing the effect
+must not do.
+
+Hover never overrides state. Pressed and selected are declared after hover in `NutShellStyles.axaml`,
+because Avalonia resolves equally matching setters by declaration order; `RowHoverNeverOverridesSelectedPressedOrDisabled`
+pins that ordering, since nothing about it is visible at the call site.
 
 The language follows Apple's glass rather than a tinted panel: frosted and cool instead of tinted
 navy, a thin white hairline instead of a coloured border — on those panes the rim is light catching
@@ -165,3 +278,52 @@ The acrylic pane breathes over sixteen seconds with a narrow swing. It and the c
 the only two continuous animations in the application, and neither is a control style — a looping
 style would apply to every instance of a control, which remains forbidden and is what the
 interaction tests defend.
+
+## Icon system policy (T32)
+
+Every icon the application draws comes from `Material.Icons.Avalonia` 3.0.2 (MIT). T32 investigated
+the maintained options and adopted one.
+
+| Option | Licence | Rendering | Outcome |
+| --- | --- | --- | --- |
+| `Material.Icons.Avalonia` 3.0.2 | MIT | vector path | **chosen** |
+| `FluentIcons.Avalonia` 2.1.337 | MIT | font glyph | rejected |
+| Continue vendoring `fluentui-system-icons` | MIT | vector path | rejected |
+
+`FluentIcons.Avalonia` renders through a font and exposes no geometry, so it cannot fill a catalog:
+it would require `<ic:FluentIcon>` elements in the views, putting a library reference in every
+surface and losing the single point of resolution. `Material.Icons.Avalonia` exposes path data
+through `MaterialIconDataProvider.GetData`, which is what lets one adapter fill the catalog while the
+views go on asking for semantic names.
+
+Continuing to vendor was rejected because it could not reach the whole product: hand-copied geometry
+covered the icons somebody had got round to copying, and the rest stayed inconsistent with it.
+
+### One shape per icon
+
+Twenty-one glyphs used to be assembled from several shapes each, so that one piece could move while
+the rest held still — the two device LEDs blinking out of phase, the gear teeth turning around a
+stationary hub, the diagnostics dot sweeping along its base, the sun's rays turning around a fixed
+disc. A library gives one shape per name, so those parts are gone.
+
+That was a deliberate trade, and it went this way: **one drawing system across the whole product
+outranks segmented animation.** A single icon animating more richly than the rest is not worth having
+one icon in the product that is not from the library. The motion was not dropped, it moved up a
+level — each glyph now animates as a block, chosen to keep what the old segmentation meant:
+
+| Destination | Was | Is |
+| --- | --- | --- |
+| Overview | inner dashboard bar pulsed | whole glyph breathes, 1.9 s |
+| Devices | two LEDs blinked out of phase | whole glyph pulses on the same 1.4 s rack cadence |
+| Administration | badge and check popped over a lifting base | whole glyph pops once |
+| Diagnostics | a reading swept along the trace | whole glyph beats, 1.15 s |
+| Settings | teeth turned around a stationary hub | whole cog turns, 7 s |
+| Theme toggle | rays turned around a fixed disc | whole sun turns 45°, one ray pitch |
+
+Amplitudes came down when the motion moved: a detail can travel a long way inside a silhouette that
+holds still, while a whole icon moving that far reads as the row itself twitching.
+
+The rules that follow: views reference semantic names only and never the library; `NutIconLibrary.cs`
+is the single file permitted to know the library exists; nothing is fetched at runtime; and a name
+added to the catalog without a mapping in the adapter is a defect, because it would draw from the
+fallback and quietly leave one icon off the library. `IconCatalogTests` enforces all of it.

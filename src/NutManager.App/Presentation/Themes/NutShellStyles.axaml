@@ -90,9 +90,14 @@
 
   <!--
     Theme glyphs. Both take their colour from the button so the selected state keeps working, and
-    both move in a way that suits what they are: the sun's rays turn a notch on their own while its
-    disc holds still, and the moon leans back as if setting. Transitions only, so the toggle costs
-    nothing when nobody is pointing at it.
+    both move in a way that suits what they are: the sun turns a notch, the moon leans back as if
+    setting. Transitions only, so the toggle costs nothing when nobody is pointing at it.
+
+    The sun used to be a disc with its rays on a separate layer, so the rays could turn while the
+    disc held still. The library draws it as one shape, so the turn is the whole sun — which is what
+    a sun does anyway; it was the disc holding still that had to be arranged for. The rotation is
+    45deg because the library's sun has eight rays, so an eighth of a turn lands ray-on-ray and the
+    movement reads as the glyph settling rather than as it being knocked out of true.
   -->
   <Style Selector="Path.nut-theme-glyph">
     <Setter Property="Fill" Value="{Binding $parent[Button].Foreground}" />
@@ -104,14 +109,11 @@
       </Transitions>
     </Setter>
   </Style>
-  <Style Selector="Button.nut-theme-option:pointerover Path.nut-sun-rays">
-    <Setter Property="RenderTransform" Value="rotate(45deg) scale(1.06)" />
+  <Style Selector="Button.nut-theme-option:pointerover Path.nut-sun">
+    <Setter Property="RenderTransform" Value="rotate(45deg) scale(1.08)" />
   </Style>
-  <Style Selector="Button.nut-theme-option.selected Path.nut-sun-rays">
+  <Style Selector="Button.nut-theme-option.selected Path.nut-sun">
     <Setter Property="RenderTransform" Value="rotate(22.5deg)" />
-  </Style>
-  <Style Selector="Button.nut-theme-option:pointerover Path.nut-sun-core">
-    <Setter Property="RenderTransform" Value="scale(1.1)" />
   </Style>
   <Style Selector="Button.nut-theme-option:pointerover Path.nut-moon">
     <Setter Property="RenderTransform" Value="rotate(-18deg) scale(1.06)" />
@@ -126,9 +128,11 @@
     <Setter Property="BorderThickness" Value="0,0,0,1" />
   </Style>
 
+  <!-- Translucent like the file rail, so the acrylic runs behind the whole window rather than
+       stopping at a solid slab down one side. -->
   <Style Selector="Border.nut-shell-sidebar">
     <Setter Property="Background" Value="{DynamicResource NutSidebarBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="0,0,1,0" />
   </Style>
 
@@ -201,9 +205,21 @@
   <Style Selector="Button.nut-navigation-item /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
   </Style>
+  <!--
+    A row on glass lightens under the pointer, one rung above whatever pane it sits on. Its left
+    edge is not touched: that three-pixel bar is how selection is marked, and lighting it on hover
+    would say "this is the page you are on" about a row you are merely pointing at.
+
+    The rules below this one are declared after it deliberately. Avalonia resolves equally matching
+    setters by declaration order, so pressed and selected win over hover, and pointing at the row
+    you are already on — or holding the mouse down on one — does not wash its state away.
+  -->
   <Style Selector="Button.nut-navigation-item:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NutGlassRowHoverBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.nut-navigation-item:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceInteractiveBrush}" />
   </Style>
   <Style Selector="Button.nut-navigation-item.selected">
     <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
@@ -221,9 +237,10 @@
     the motion is reinforcement rather than the signal itself.
   -->
   <!--
-    ==================== Layered navigation glyph states ====================
-    Base silhouette and detail layers animate separately, and each family reacts in a way that
-    suits the object it depicts rather than every icon simply turning accent-coloured.
+    ==================== Navigation glyph states ====================
+    One glyph per destination, from the icon library. Each family still reacts in a way that suits
+    the object it depicts rather than every icon simply turning accent-coloured, but the reaction is
+    now the whole glyph: there are no detail layers left to light up on their own.
 
     Motion uses TransformOperationsTransition, which is the supported way to interpolate
     RenderTransform: the crash seen earlier came from pointing a keyframe Animation at
@@ -264,7 +281,33 @@
   <Style Selector="Button.nut-navigation-item:pointerover controls|NutNavigationIcon">
     <Setter Property="IsActive" Value="True" />
   </Style>
-  <Style Selector="Path.nut-nav-base">
+  <!--
+    The glyph is muted at rest, brightens under the pointer and takes the accent on the selected
+    page. Colour is the whole state signal now: the detail layers that used to light up in their own
+    semantic colours — cyan and green rack LEDs, a badge over a check, a reading at the end of a
+    trace — went with the migration to one shape per icon, and their emphasis would have had to be
+    painted onto the silhouette itself, which recolours the whole destination rather than a detail
+    of it. Selection remains carried by the accent bar, the label weight and this fill together.
+  -->
+  <!--
+    The 20x20 slot every navigation glyph is scaled into, centred in the 24 box. Measured, the
+    library's five navigation icons span 18 to 22 units on their longest side and are not all
+    centred on the grid — the cog reaches 0.7 units further left than its neighbours, and the device
+    tower sits half a unit right of the axis. Normalising into one box is what makes the column read
+    as a single set instead of five drawings that happen to be stacked.
+  -->
+  <Style Selector="Panel.nut-nav-slot">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Path.nut-nav-glyph">
+    <!-- Uniform, not None: unscaled the glyphs keep the size differences measured above. The
+         alignment is what centres the ink, since a Shape's desired size is its scaled ink. -->
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Fill" Value="{DynamicResource NutTextMutedBrush}" />
     <Setter Property="Transitions">
       <Transitions>
@@ -272,74 +315,19 @@
       </Transitions>
     </Setter>
   </Style>
-  <Style Selector="Path.nut-nav-detail">
-    <Setter Property="Opacity" Value="0" />
-    <Setter Property="Fill" Value="{DynamicResource NutTextMutedBrush}" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <DoubleTransition Property="Opacity" Duration="0:0:0.20" />
-        <BrushTransition Property="Fill" Duration="0:0:0.20" />
-      </Transitions>
-    </Setter>
-  </Style>
-
-  <!-- Base brightens on hover and takes the accent when the page is selected. It is never
-       replaced or covered: the detail layers only add a few pixels of emphasis on top. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-base">
+  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-glyph">
     <Setter Property="Fill" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
-  <Style Selector="Button.nut-navigation-item.selected Path.nut-nav-base">
+  <Style Selector="Button.nut-navigation-item.selected Path.nut-nav-glyph">
     <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
   </Style>
-
-  <!-- Overview: the inner dashboard bar lights up. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-overview-detail,
-                   Button.nut-navigation-item.selected Path.nut-nav-overview-detail">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
-  </Style>
-
-  <!-- Devices: the two rack LEDs come alive in different colours. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-led-top,
-                   Button.nut-navigation-item.selected Path.nut-nav-led-top">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutCyanBrush}" />
-  </Style>
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-led-bottom,
-                   Button.nut-navigation-item.selected Path.nut-nav-led-bottom">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
-  </Style>
-
-  <!-- Administration: verified badge and check appear over the managed-profile silhouette. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-admin-badge,
-                   Button.nut-navigation-item.selected Path.nut-nav-admin-badge">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
-  </Style>
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-admin-check,
-                   Button.nut-navigation-item.selected Path.nut-nav-admin-check">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutOnAccentBrush}" />
-  </Style>
-
-  <!-- Diagnostics: an endpoint reading appears at the end of the trace. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-pulse-dot,
-                   Button.nut-navigation-item.selected Path.nut-nav-pulse-dot">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
-  </Style>
-
-  <!-- Settings: the hub engages inside the gear. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Path.nut-nav-hub,
-                   Button.nut-navigation-item.selected Path.nut-nav-hub">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="Fill" Value="{DynamicResource NutAccentBrightBrush}" />
-  </Style>
-
-  <!-- Disabled items keep their geometry but drop all semantic emphasis. -->
-  <Style Selector="Button.nut-navigation-item:disabled Path.nut-nav-detail">
-    <Setter Property="Opacity" Value="0" />
+  <!--
+    Disabled items keep their geometry but drop all semantic emphasis. Opacity is not used for this:
+    the compositor owns that property on these glyphs while a row is hovered, and a style writing it
+    at the same time would fight the animation.
+  -->
+  <Style Selector="Button.nut-navigation-item:disabled Path.nut-nav-glyph">
+    <Setter Property="Fill" Value="{DynamicResource NutBorderEmphasisBrush}" />
   </Style>
   <Style Selector="Button.nut-navigation-subitem PathIcon">
     <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
@@ -419,75 +407,164 @@
   </Style>
 
   <!--
-    Configuration file rail. It is deliberately built from the same pieces as the shell navigation
-    item — accent bar for selection, sheen for the selected surface, hover lift — so the two rails
-    read as one idea at two scales rather than as two different components.
-
-    The width animates rather than snapping, and the labels fade with it; a collapsing rail whose
-    text vanished instantly looked like the content had been dropped rather than folded away.
+    ==================== Administration section tabs ====================
+    The four administration sections, across the top rather than down a column. They keep the
+    shell's selection language — accent, sheen, semibold — but turned on its side: a horizontal
+    strip marks the current item with an underline, because a bar down the left of a wide short
+    chip reads as a bullet point rather than as a selection.
   -->
-  <Style Selector="Border.nut-file-rail">
-    <!--
-      The surface is a translucent tint over the page rather than a solid card, so the rail reads as
-      glass sitting above the content instead of a second opaque panel. The alpha is deliberately
-      high: at lower opacity the file names lost contrast against whatever scrolled underneath, and
-      legibility outranks the effect.
-    -->
-    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="18" />
-    <Setter Property="Padding" Value="8" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
-      </Transitions>
-    </Setter>
-  </Style>
-
-  <Style Selector="Button.nut-file-rail-item">
+  <Style Selector="ListBox.nut-section-tabs">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="3,0,0,0" />
-    <Setter Property="CornerRadius" Value="13" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Padding" Value="9,7" />
-    <Setter Property="Margin" Value="0,1" />
-    <Setter Property="MinHeight" Value="40" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem">
+    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="Padding" Value="13,9" />
+    <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0,0,0,2" />
+    <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Transitions">
       <Transitions>
         <BrushTransition Property="Background" Duration="0:0:0.14" />
         <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutGlassRowHoverBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutSelectedSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.nut-section-tabs ListBoxItem:selected PathIcon">
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+
+  <!--
+    ==================== Configuration file strip ====================
+    The five NUT files, as a row of square tiles above the editor rather than a column beside it.
+    Built from the same pieces as the section tabs above them, so the page reads as one idea at two
+    levels: pick a section, then pick a file, then work — each step costing one row instead of one
+    column.
+
+    Squares of one fixed size, not pills that fit their own labels. Five equal tiles read as one set
+    of five files of equal standing; five differently sized rounded capsules read as unrelated
+    buttons that happen to be adjacent, and the eye has to measure each one to see it is a peer of
+    the others.
+  -->
+  <!--
+    The strip is one frame, not five buttons. The frame carries the glass, the outline and the
+    rounding; the tiles inside are transparent and draw only a hairline down their right edge, so
+    the row reads as a single control with five positions rather than five things placed near each
+    other. The last divider is removed by the frame's clip: the strip overhangs by exactly the one
+    pixel that divider occupies, which is tidier than asking a style to know which item is last.
+  -->
+  <Style Selector="Border.nut-file-strip-frame">
+    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <!-- The frame is glass, so pointing anywhere in the strip lifts its edge the way a card's does. -->
+  <Style Selector="Border.nut-file-strip-frame:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderHoverBrush}" />
+  </Style>
+  <Style Selector="ItemsControl.nut-file-strip">
+    <Setter Property="Margin" Value="0,0,-1,0" />
+  </Style>
+
+  <!--
+    One square per file, all the same square, butted against their neighbours. Sized here rather
+    than bound, because there is no fold left to animate between two sizes.
+  -->
+  <Style Selector="Button.nut-file-tile">
+    <Setter Property="Width" Value="108" />
+    <Setter Property="Height" Value="108" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+    <Setter Property="Transitions">
+      <Transitions>
         <BrushTransition Property="Foreground" Duration="0:0:0.14" />
       </Transitions>
     </Setter>
   </Style>
-  <Style Selector="Button.nut-file-rail-item /template/ ContentPresenter">
+  <!--
+    A Button paints through its ContentPresenter, so every surface state is set there: the stock
+    template binds the presenter's Background to the Button's, and overriding the presenter breaks
+    that binding and leaves the tile invisible.
+  -->
+  <Style Selector="Button.nut-file-tile /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
   </Style>
-  <Style Selector="Button.nut-file-rail-item:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+  <!-- The same glass response the cards and the sidebar rows use. -->
+  <Style Selector="Button.nut-file-tile:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutGlassRowHoverBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
-  <Style Selector="Button.nut-file-rail-item:pressed /template/ ContentPresenter">
+  <Style Selector="Button.nut-file-tile:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceInteractiveBrush}" />
   </Style>
-  <Style Selector="Button.nut-file-rail-item.selected">
-    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+  <!-- Selection is the filled segment plus the accent underline, declared after hover so pointing
+       at the file you already have open cannot wash away the fact that it is open. -->
+  <Style Selector="Button.nut-file-tile.selected">
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
-  <Style Selector="Button.nut-file-rail-item.selected /template/ ContentPresenter">
+  <Style Selector="Button.nut-file-tile.selected /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSelectedSheenBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
   </Style>
-  <Style Selector="Button.nut-file-rail-item:disabled">
+  <Style Selector="Border.nut-file-tile-marker">
+    <Setter Property="Height" Value="3" />
+    <Setter Property="Margin" Value="-8" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-file-tile.selected Border.nut-file-tile-marker">
+    <Setter Property="Background" Value="{DynamicResource NutAccentBrush}" />
+  </Style>
+  <Style Selector="Button.nut-file-tile:disabled">
     <Setter Property="Opacity" Value="0.45" />
   </Style>
 
-  <!-- Labels fade with the width so the fold reads as one motion. -->
+  <!-- Kept as a class so the two label lines are addressable as one unit. -->
   <Style Selector="StackPanel.nut-file-rail-label">
     <Setter Property="Transitions">
       <Transitions>

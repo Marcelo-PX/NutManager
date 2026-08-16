@@ -369,6 +369,27 @@ public sealed partial class OverviewPageViewModel : PageViewModel
     public bool IsStatusUnavailable => PrimarySeverity is null;
 
     /// <summary>
+    /// The semantic state of the token the badge is actually showing. Deliberately the first token
+    /// rather than the most severe one: the badge prints the first token's name, and an icon that
+    /// described a different token would contradict the text beside it.
+    /// </summary>
+    private StatusSemanticState? PrimarySemanticState =>
+        Snapshot?.StatusTokens.Count > 0 ? Snapshot.StatusTokens[0].State : null;
+
+    /// <summary>
+    /// Whether the badge should show a mains plug or a battery. Neither is true for a state that is
+    /// neither — bypass, output off, a token NUT does not define — because the power source is then
+    /// genuinely not one of the two, and drawing a plug there would report something the UPS never
+    /// said.
+    /// </summary>
+    public bool IsRunningOnMains => PrimarySemanticState == StatusSemanticState.Online;
+
+    public bool IsRunningOnBattery => PrimarySemanticState
+        is StatusSemanticState.OnBattery
+        or StatusSemanticState.LowBattery
+        or StatusSemanticState.Discharging;
+
+    /// <summary>
     /// Plain-language meaning of the reported status token. This explains a real NUT state; it is
     /// not a derived health score and is absent when the state is unknown.
     /// </summary>
@@ -444,6 +465,7 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         nameof(HasDriverVersion), nameof(UpsTypeText), nameof(HasUpsType),
         nameof(PrimaryStatus), nameof(HasPrimaryStatus), nameof(PrimaryStatusToken), nameof(PrimaryStatusText),
         nameof(IsStatusHealthy), nameof(IsStatusWarning), nameof(IsStatusCritical), nameof(IsStatusUnavailable),
+        nameof(IsRunningOnMains), nameof(IsRunningOnBattery),
         nameof(IsConnected), nameof(EndpointText), nameof(SelectedUpsText)
     ];
 

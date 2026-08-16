@@ -28,12 +28,31 @@
     then to plain blur, and the opaque tint underneath keeps the shell readable either way.
   -->
   <Panel>
-    <ExperimentalAcrylicBorder x:Name="AcrylicBackdrop" IsHitTestVisible="False">
+    <!--
+      Two backdrops, one drawn at a time. Turning transparency off swaps the acrylic for a solid
+      surface rather than dimming it towards invisibility: the effect inherits whatever wallpaper
+      the machine has, and on a busy or light one the page gets harder to read, so the answer has to
+      be unambiguous. The opaque panel sits between the acrylic and the shell, so when it is drawn
+      nothing behind the window reaches the content.
+    -->
+    <ExperimentalAcrylicBorder x:Name="AcrylicBackdrop"
+                               IsHitTestVisible="False"
+                               IsVisible="{Binding IsBackgroundTransparent}">
       <ExperimentalAcrylicBorder.Material>
+        <!--
+          TintOpacity was 1 and MaterialOpacity 0.62, which meant the tint covered the pane
+          completely: the acrylic blurred a colour rather than the desktop, and the window read as a
+          dark slab. Both are open now, so what is actually behind the window comes through blurred
+          and the tint only darkens it enough to keep the surfaces above legible.
+
+          These two are the whole background. Nothing above them changed: the cards, the sidebar and
+          the file tiles keep their own alphas, which is what stops a see-through backdrop from
+          taking the contrast of the text with it.
+        -->
         <ExperimentalAcrylicMaterial BackgroundSource="Digger"
                                      TintColor="{DynamicResource NutAcrylicTintColor}"
-                                     TintOpacity="1"
-                                     MaterialOpacity="0.62" />
+                                     TintOpacity="0.25"
+                                     MaterialOpacity="0.12" />
       </ExperimentalAcrylicBorder.Material>
       <!--
         The pane breathes. The swing is small and the period long — eight seconds between the two
@@ -52,6 +71,11 @@
         </Style>
       </ExperimentalAcrylicBorder.Styles>
     </ExperimentalAcrylicBorder>
+
+    <Border x:Name="OpaqueBackdrop"
+            IsHitTestVisible="False"
+            IsVisible="{Binding !IsBackgroundTransparent}"
+            Background="{DynamicResource NutWindowOpaqueBrush}" />
 
   <Grid Margin="{Binding OffScreenMargin, RelativeSource={RelativeSource AncestorType=Window}}">
     <Grid.RowDefinitions>
@@ -102,13 +126,13 @@
                       Click="LightThemeButton_OnClick"
                       ToolTip.Tip="{Binding Localizer[Theme.Light]}"
                       AutomationProperties.Name="{Binding Localizer[Theme.Light]}">
-                <!-- Disc and rays are separate layers so the rays can turn on their own. Stretch
-                     is off so each renders at its authored coordinates in the 24-unit box. -->
+                <!-- One glyph: the library draws the disc and its rays together, so the whole sun
+                     turns rather than the rays turning around a disc that holds still. Stretch is
+                     off so it renders at its authored coordinates in the 24-unit box. -->
                 <Grid Width="18" Height="18">
                   <Viewbox Width="18" Height="18">
                     <Grid Width="24" Height="24">
-                      <Path Classes="nut-theme-glyph nut-sun-rays" Stretch="None" Data="{DynamicResource NutIconSunRays}" />
-                      <Path Classes="nut-theme-glyph nut-sun-core" Stretch="None" Data="{DynamicResource NutIconSunCore}" />
+                      <Path Classes="nut-theme-glyph nut-sun" Stretch="None" Data="{DynamicResource NutIconSun}" />
                     </Grid>
                   </Viewbox>
                 </Grid>

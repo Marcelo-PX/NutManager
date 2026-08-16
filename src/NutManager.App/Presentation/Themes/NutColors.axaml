@@ -7,9 +7,22 @@
         Surfaces stay near-neutral dark navy and lift only slightly above the window, so colour in
         the product comes from icons, metrics, status and accents rather than from card fills.
       -->
-      <SolidColorBrush x:Key="NutWindowBrush" Color="#05080E" />
+      <!--
+        The page's own wash, over the acrylic rather than instead of it. This was an opaque
+        near-black navy painted by the content border, which covered the backdrop completely: the
+        acrylic pane existed but nothing was ever seen through it. It is black with alpha now, so
+        the desktop reads through the blur.
+
+        The alpha is not decoration. A see-through background inherits whatever wallpaper the
+        machine has, and body text cannot depend on that being dark, so this wash is the floor that
+        keeps contrast survivable under a white one.
+      -->
+      <SolidColorBrush x:Key="NutWindowBrush" Color="#73000000" />
+      <!-- What the window paints instead of the acrylic when transparency is switched off. The
+           value the shell used before the backdrop existed, so the opaque look is the old one. -->
+      <SolidColorBrush x:Key="NutWindowOpaqueBrush" Color="#05080E" />
       <SolidColorBrush x:Key="NutHeaderBrush" Color="#0B111A" />
-      <SolidColorBrush x:Key="NutSidebarBrush" Color="#0B111A" />
+      <SolidColorBrush x:Key="NutSidebarBrush" Color="#A60B111A" />
       <SolidColorBrush x:Key="NutSurface1Brush" Color="#0F1620" />
       <SolidColorBrush x:Key="NutSurface2Brush" Color="#121A25" />
       <SolidColorBrush x:Key="NutSurface3Brush" Color="#172029" />
@@ -21,8 +34,16 @@
         near-opaque value this started with, the effect was invisible and the panel just looked like
         another card. The edge highlight is what sells it: a real pane catches light along its top.
       -->
-      <!-- Tone 1: the pane behind everything, deliberately the darkest thing in the window. -->
-      <Color x:Key="NutAcrylicTintColor">#05080E</Color>
+      <!--
+        Tone 1: the pane behind everything, deliberately the darkest thing in the window.
+
+        Black rather than the near-black navy this used to be. With a tint of its own the backdrop
+        was a colour, and the acrylic only ever blurred that colour: what was behind the window
+        never came through, so the effect was a dark blue slab that happened to be built out of an
+        acrylic brush. Black tints nothing, which is what lets the desktop behind the window read as
+        the background — see MainWindow, where the opacities that hold it back were opened up.
+      -->
+      <Color x:Key="NutAcrylicTintColor">#000000</Color>
       <!-- Tone 2: glass surfaces, lifted well clear of tone 1 so their transparency is visible. -->
       <SolidColorBrush x:Key="NutGlassSurfaceBrush" Color="#8C3A4A66" />
       <SolidColorBrush x:Key="NutGlassBorderBrush" Color="#40FFFFFF" />
@@ -31,6 +52,25 @@
         <GradientStop Offset="0.45" Color="#08FFFFFF" />
         <GradientStop Offset="1" Color="#00FFFFFF" />
       </LinearGradientBrush>
+      <!--
+        The same pane under the pointer, catching more light: a lighter, slightly less transparent
+        tint and a brighter edge. Both stay solid colours because BrushTransition interpolates
+        between solid brushes and switches outright between anything else — a gradient here would
+        make the edge snap on, which is the one thing the effect must not do.
+
+        The step is deliberately small. Glass that jumps to near-white under the pointer stops
+        reading as a material and starts reading as a selection, which would compete with the
+        accent bar that actually marks the selected row.
+      -->
+      <SolidColorBrush x:Key="NutGlassSurfaceHoverBrush" Color="#A6485A78" />
+      <SolidColorBrush x:Key="NutGlassBorderHoverBrush" Color="#73FFFFFF" />
+      <!--
+        A row sits inside a pane, and the pointer is on both at once: hovering a navigation item
+        also hovers the sidebar it lives in. So the row needs its own step above the pane's hover,
+        or the two land on the same tint and the row vanishes into the surface exactly when it is
+        being pointed at. Same family, one rung higher.
+      -->
+      <SolidColorBrush x:Key="NutGlassRowHoverBrush" Color="#B35F749B" />
       <SolidColorBrush x:Key="NutBorderBrush" Color="#222C3B" />
       <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#1A2230" />
       <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#2E3D50" />
@@ -62,8 +102,9 @@
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="NutWindowBrush" Color="#EEF2F8" />
+      <SolidColorBrush x:Key="NutWindowOpaqueBrush" Color="#EEF2F8" />
       <SolidColorBrush x:Key="NutHeaderBrush" Color="#FFFFFF" />
-      <SolidColorBrush x:Key="NutSidebarBrush" Color="#F7F9FD" />
+      <SolidColorBrush x:Key="NutSidebarBrush" Color="#A6F7F9FD" />
       <SolidColorBrush x:Key="NutSurface1Brush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="NutSurface2Brush" Color="#F7F9FD" />
       <SolidColorBrush x:Key="NutSurface3Brush" Color="#EDF2F9" />
@@ -76,6 +117,16 @@
         <GradientStop Offset="0.45" Color="#3DFFFFFF" />
         <GradientStop Offset="1" Color="#00FFFFFF" />
       </LinearGradientBrush>
+      <!--
+        Light glass brightens towards opaque white, but its edge cannot: white on near-white is not
+        an edge. The hover border takes the tinted emphasis colour instead, which is what the edge of
+        a real pane does on a light ground — it refracts and reads darker, not lighter.
+      -->
+      <SolidColorBrush x:Key="NutGlassSurfaceHoverBrush" Color="#D9FFFFFF" />
+      <SolidColorBrush x:Key="NutGlassBorderHoverBrush" Color="#B39DB6DA" />
+      <!-- Light glass hovers at nearly opaque white, so the row above it cannot get lighter and
+           takes a tint instead — the same blue the selected surfaces use, one step weaker. -->
+      <SolidColorBrush x:Key="NutGlassRowHoverBrush" Color="#D9DCE9FA" />
       <SolidColorBrush x:Key="NutSurfaceHoverBrush" Color="#E4ECF9" />
       <SolidColorBrush x:Key="NutSurfaceInteractiveBrush" Color="#F2F6FC" />
       <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#E1EBFD" />

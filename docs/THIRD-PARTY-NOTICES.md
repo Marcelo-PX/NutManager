@@ -12,14 +12,20 @@ manager. Only assets copied into this repository are recorded.
 - **What is used:** the path data of a small number of 24 px "regular" icons, copied verbatim from
   the official repository into `src/NutManager.App/Presentation/Themes/NutIcons.axaml` as Avalonia
   `StreamGeometry` resources.
-- **Why it is vendored:** the application must run entirely offline, so the geometry is stored
-  locally instead of being fetched or pulled in as a runtime dependency. No icon font, icon package
-  or remote asset is referenced.
-- **Icons imported:** Home, Server, Settings (gear), Pulse.
-- **Not imported:** the options/sliders glyph was previously taken from the same source but is now
-  drawn in this repository. Fluent packs the tracks and both handle rings into a single path, which
-  makes the handles impossible to move independently; the local version reproduces the same drawing
-  at the same coordinates as three pieces so each handle can travel its track as one unit.
+- **Status:** fallback only. Since T32 the application draws its icons from
+  `Material.Icons.Avalonia`, a NuGet dependency that carries its own MIT licence through the package
+  manager and is therefore not recorded in this file. `NutIconLibrary.cs` replaces every catalog
+  entry at start-up, so nothing vendored here is rendered while the library supplies the kind mapped
+  to that name. The geometry is retained so a name still resolves to a glyph if a future version of
+  the library drops a kind, rather than leaving an empty box in a view.
+- **Icons imported:** the configuration-domain glyphs used by the NUT file rail — document list,
+  battery checkmark, server, people team and pulse.
+- **No longer present:** the navigation silhouettes and the options/sliders glyph, which were split
+  into independently animated parts. Those parts were removed in T32 when the icons moved onto the
+  library, which supplies one shape per name.
+
+The application is offline regardless: the library ships the geometry inside the package and nothing
+is fetched at runtime.
 
 The MIT licence permits this use provided the copyright notice and permission notice are retained.
 The notice is reproduced below.
