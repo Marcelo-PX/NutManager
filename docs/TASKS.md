@@ -52,6 +52,7 @@ Only one task should normally be in progress at a time.
 | T31 | DONE | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
 | T32 | DONE | Icon library adoption and T31 visual acceptance | Every icon drawn from Material Icons, glass that responds to the pointer, and horizontal administration navigation |
 | T33 | DONE | Code health, dead-code cleanup and focused refactoring | Proven-dead code removed, doubtful code preserved, behaviour and visuals unchanged |
+| T34 | IN PROGRESS | Remote Windows NUT service monitoring | Read-only monitoring of the Windows NUT service and its process from a remote NutManager instance, independently from NUT protocol health |
 
 ---
 
@@ -976,6 +977,79 @@ made it safe to do without being able to render the strip.
 Both were missed by the T33 audit for the same reason: that pass covered resources declared with
 `x:Key` and never enumerated **style class selectors**, so a class defined but never used, or used
 but never defined, fell outside every search it ran.
+
+## T34 — Remote Windows NUT service monitoring
+
+**Status:** IN PROGRESS
+
+### Objective
+
+Read-only monitoring of the Windows NUT service and its process from a remote NutManager instance,
+independently from NUT protocol health.
+
+### The separation this task is built around
+
+NUT protocol health, Windows service health and Windows process presence are three different facts,
+and the whole point of T34 is that the product stops implying they are one:
+
+```
+Remote managed profile
+    ├── NUT protocol probe ──→ Gandalf.sbra.local:3493
+    └── Windows service probe ──→ SCM ──→ service ──→ process id
+```
+
+A refused SCM query says nothing about whether upsd is answering, so it must never turn into "server
+offline". The monitor holds no connection, endpoint or protocol state at all — there is nothing it
+could mark offline, and a test asserts that absence rather than trusting the intention.
+
+### What was built
+
+`IRemoteWindowsNutServiceProbe` in Core has exactly one verb, and it observes. A mutation would need
+a new member on the interface, which is a reviewable change rather than a silent one.
+
+`WindowsRemoteNutServiceProbe` uses `ServiceController` for enumeration, identity and state, because
+that is managed code and needs no interop. It does not expose a process id or a binary path, so those
+come from two query-only Win32 calls isolated in `WindowsServiceControlManagerInterop`: the whole
+declared rights list is `SC_MANAGER_CONNECT`, `SERVICE_QUERY_STATUS` and `SERVICE_QUERY_CONFIG`, and a
+test refuses the file if any mutating right or API name appears in it.
+
+Identification reuses `WindowsNutServiceAssociation`, the same rules the local detector applies. What
+cannot follow is the containment check: locally the binary is verified to sit inside the detected
+installation root, and there is no trusted root for a host whose filesystem this task may not touch.
+So remote identification rests on service identity, the binary path is reported rather than used as
+proof, and more than one plausible candidate returns `AmbiguousService` instead of a guess.
+
+`NutServiceState` gained `PausePending` and `ContinuePending`. Windows reports four transitional
+states and the probe passes all four through; collapsing them would lose the difference between a
+service settling and a service in trouble. The local mapping is untouched.
+
+### Authentication
+
+The current Windows identity, and nothing else. No credential is collected, prompted for or read from
+any store, and the SMB and SSH credentials of T19/T19B/T20 are deliberately not reused: they belong to
+different boundaries. A refused query shows an informative state and never opens a prompt.
+
+### Lifetime
+
+One probe in flight per monitor, ever. A blocked RPC can outlive its interval, and starting another
+call each tick is how a monitor becomes a thread leak against a host that is already not answering, so
+a second refresh joins the running one instead. Stopping or disposing invalidates a generation counter
+first and unconditionally, because cancellation cannot recall a call already inside Win32 — the guard
+is what stops a late answer writing into a view model nobody is watching. Polling follows the
+section's visibility rather than its attachment, since administration sections are switched by
+`IsVisible` and an attached-but-hidden panel would otherwise poll forever.
+
+### What T34 does not do
+
+No start, stop or restart of a remote service, and not as a disabled button either: the view model
+publishes one command and it refreshes. No firewall change, no service ACL change, no impersonation,
+no remote process enumeration, no WMI, no remote registry, no WinRM, no `Process.Start`. No NUT
+configuration file is read or written.
+
+### Validation
+
+- the full gate set including a warnings-as-errors build, plus a runtime smoke over every page;
+- acceptance against the real GANDALF profile, recorded exactly as observed.
 
 ## Task execution template
 

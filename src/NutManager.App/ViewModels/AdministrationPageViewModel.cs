@@ -45,7 +45,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ManagedNutServerRuntimeContext? profileContext = null,
         RemoteManagementSessionViewModel? remoteManagement = null,
         UiLanguagePreference language = UiLanguagePreference.PtBr,
-        ILocalNutDriverCatalogSource? driverCatalogSource = null)
+        ILocalNutDriverCatalogSource? driverCatalogSource = null,
+        RemoteWindowsServiceViewModel? remoteWindowsService = null)
         : base(
             new NutManagerLocalizer(language).Get("Administration.Title"),
             profileContext?.Profile.Management.Mode == NutManagementMode.Remote
@@ -59,6 +60,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _driverCatalogSource = driverCatalogSource;
         _profileContext = profileContext;
         _remoteManagement = remoteManagement;
+        RemoteWindowsService = remoteWindowsService;
         Strings = new NutManagerLocalizer(language);
         if (_remoteManagement is not null)
         {
@@ -309,6 +311,15 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public string ManagedProfileMonitoringEndpoint => _profileContext is null
         ? "localhost:3493"
         : $"{_profileContext.Endpoint.Host}:{_profileContext.Endpoint.Port}";
+
+    /// <summary>
+    /// Read-only view of the Windows service running NUT on the remote host, present only for a
+    /// remote profile. It carries no action: the local service commands on this page act on this
+    /// machine, and letting them reach a remote host is exactly the mistake this separation prevents.
+    /// </summary>
+    public RemoteWindowsServiceViewModel? RemoteWindowsService { get; }
+
+    public bool HasRemoteWindowsService => RemoteWindowsService is not null;
 
     public bool IsRemoteManagementProfile => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote;
 

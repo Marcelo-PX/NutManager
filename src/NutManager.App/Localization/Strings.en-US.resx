@@ -271,6 +271,32 @@
   <data name="ServiceState.StopPending" xml:space="preserve"><value>Stopping</value></data>
   <data name="ServiceState.Paused" xml:space="preserve"><value>Paused</value></data>
   <data name="ServiceState.Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="ServiceState.PausePending" xml:space="preserve"><value>Pausing</value></data>
+  <data name="ServiceState.ContinuePending" xml:space="preserve"><value>Resuming</value></data>
+  <data name="RemoteService.Title" xml:space="preserve"><value>Windows NUT service</value></data>
+  <data name="RemoteService.Host" xml:space="preserve"><value>Host</value></data>
+  <data name="RemoteService.Service" xml:space="preserve"><value>Service</value></data>
+  <data name="RemoteService.State" xml:space="preserve"><value>State</value></data>
+  <data name="RemoteService.Process" xml:space="preserve"><value>Process</value></data>
+  <data name="RemoteService.ProcessId" xml:space="preserve"><value>PID</value></data>
+  <data name="RemoteService.Query" xml:space="preserve"><value>Windows query</value></data>
+  <data name="RemoteService.Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="RemoteService.Refreshing" xml:space="preserve"><value>Querying the remote service…</value></data>
+  <data name="RemoteService.ReadOnlyNotice" xml:space="preserve"><value>Read-only monitoring. NutManager observes the remote service and does not control it.</value></data>
+  <data name="RemoteService.ControlUnavailable" xml:space="preserve"><value>Remote service control is not enabled.</value></data>
+  <data name="RemoteService.ObservedAt" xml:space="preserve"><value>Updated at {0}</value></data>
+  <data name="RemoteService.Process.NotRunning" xml:space="preserve"><value>Not running</value></data>
+  <data name="RemoteService.Process.Unnamed" xml:space="preserve"><value>Running</value></data>
+  <data name="RemoteService.Query.Available" xml:space="preserve"><value>Available</value></data>
+  <data name="RemoteService.Query.AccessDenied" xml:space="preserve"><value>Access denied</value></data>
+  <data name="RemoteService.Query.RpcUnavailable" xml:space="preserve"><value>RPC/SCM unavailable</value></data>
+  <data name="RemoteService.Query.ServiceNotFound" xml:space="preserve"><value>Service not found</value></data>
+  <data name="RemoteService.Query.Ambiguous" xml:space="preserve"><value>More than one candidate service</value></data>
+  <data name="RemoteService.Query.AmbiguousDetail" xml:space="preserve"><value>Candidates: {0}</value></data>
+  <data name="RemoteService.Query.TimedOut" xml:space="preserve"><value>Timed out</value></data>
+  <data name="RemoteService.Query.Unsupported" xml:space="preserve"><value>Query not available for this profile</value></data>
+  <data name="RemoteService.Query.Failed" xml:space="preserve"><value>Query failed</value></data>
+  <data name="RemoteService.Query.Win32Code" xml:space="preserve"><value>Windows code: {0}</value></data>
   <data name="StartMode.Automatic" xml:space="preserve"><value>Automatic</value></data>
   <data name="StartMode.Manual" xml:space="preserve"><value>Manual</value></data>
   <data name="StartMode.Disabled" xml:space="preserve"><value>Disabled</value></data>

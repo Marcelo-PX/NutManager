@@ -9,15 +9,100 @@
     started, stopped or repaired automatically, and controls disable when the real capability says so.
   -->
   <StackPanel Spacing="16">
-    <Border Classes="nut-card" IsVisible="{Binding IsRemoteManagementProfile}">
-      <StackPanel Orientation="Horizontal" Spacing="11">
-        <PathIcon Data="{DynamicResource NutIconInfo}" Classes="muted" Width="18" Height="18" VerticalAlignment="Top" />
-        <StackPanel Spacing="3">
-          <TextBlock Text="{Binding Strings[Administration.Windows.Unavailable]}" Classes="nut-card-title" />
-          <TextBlock Text="{Binding Strings[Administration.Windows.LocalOnly]}" Classes="nut-metadata" TextWrapping="Wrap" />
+    <!--
+      Remote profile (T34). Read-only monitoring of the service on the other machine, and the notice
+      that says so. There is no Start, Stop or Restart anywhere in this block — not disabled ones,
+      none at all — because the view model behind it exposes no such command. The local actions below
+      stay behind IsLocalManagementProfile, so nothing on this page can act on a remote host.
+    -->
+    <StackPanel Spacing="14" IsVisible="{Binding IsRemoteManagementProfile}">
+      <Border Classes="nut-card">
+        <StackPanel Orientation="Horizontal" Spacing="11">
+          <PathIcon Data="{DynamicResource NutIconInfo}" Classes="muted" Width="18" Height="18" VerticalAlignment="Top" />
+          <StackPanel Spacing="3">
+            <TextBlock Text="{Binding Strings[Administration.Windows.Unavailable]}" Classes="nut-card-title" />
+            <TextBlock Text="{Binding RemoteWindowsService.ControlUnavailableText}" Classes="nut-metadata" TextWrapping="Wrap" />
+          </StackPanel>
         </StackPanel>
+      </Border>
+
+      <!-- The visibility is decided by the page; the card inside binds to the monitor itself. -->
+      <StackPanel IsVisible="{Binding HasRemoteWindowsService}">
+      <Border Classes="nut-card-elevated" DataContext="{Binding RemoteWindowsService}">
+        <StackPanel Spacing="13">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+            <Border Width="38" Height="38" CornerRadius="10"
+                    Background="{DynamicResource NutSurface3Brush}"
+                    BorderBrush="{DynamicResource NutBorderSubtleBrush}"
+                    BorderThickness="1">
+              <PathIcon Data="{DynamicResource NutIconService}" Classes="accent" Width="18" Height="18" />
+            </Border>
+            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+              <TextBlock Text="{Binding TitleText}" Classes="nut-card-title" />
+              <TextBlock Text="{Binding ReadOnlyNoticeText}" Classes="nut-metadata" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="2" Classes="nut-secondary"
+                    Command="{Binding RefreshCommand}"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="{Binding RefreshText}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Data="{DynamicResource NutIconRefresh}" Width="15" Height="15" />
+                <TextBlock Text="{Binding RefreshText}" />
+              </StackPanel>
+            </Button>
+          </Grid>
+
+          <!--
+            Six readings, each labelled in text. The service state and the Windows query state are
+            deliberately separate rows: a refused query says nothing about the service, and folding
+            them into one line is what would let a permission problem read as an outage.
+          -->
+          <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{Binding HostLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding HostText}" Classes="nut-body" TextTrimming="CharacterEllipsis"
+                         AutomationProperties.Name="{Binding HostText}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="2">
+              <TextBlock Text="{Binding ServiceLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding ServiceIdentityText}" Classes="nut-body" TextTrimming="CharacterEllipsis"
+                         AutomationProperties.Name="{Binding ServiceIdentityText}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="2">
+              <TextBlock Text="{Binding StateLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding ServiceStateText}" Classes="nut-body"
+                         AutomationProperties.Name="{Binding ServiceStateText}" />
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Spacing="2">
+              <TextBlock Text="{Binding ProcessLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding ProcessText}" Classes="nut-body" TextTrimming="CharacterEllipsis"
+                         AutomationProperties.Name="{Binding ProcessText}" />
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="1" Spacing="2">
+              <TextBlock Text="{Binding ProcessIdLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding ProcessIdText}" Classes="nut-body"
+                         AutomationProperties.Name="{Binding ProcessIdText}" />
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="2" Spacing="2">
+              <TextBlock Text="{Binding QueryLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding QueryStateText}" Classes="nut-body" TextWrapping="Wrap"
+                         AutomationProperties.Name="{Binding QueryStateText}" />
+            </StackPanel>
+          </Grid>
+
+          <TextBlock Text="{Binding DiagnosticText}" Classes="nut-metadata" TextWrapping="Wrap"
+                     IsVisible="{Binding HasDiagnostic}" />
+
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <TextBlock Text="{Binding ObservedAtText}" Classes="nut-metadata" IsVisible="{Binding HasObservation}" />
+            <!-- A reading kept on screen during a refresh is labelled, never passed off as current. -->
+            <TextBlock Text="{Binding RefreshingText}" Classes="nut-metadata" IsVisible="{Binding IsRefreshing}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
       </StackPanel>
-    </Border>
+    </StackPanel>
 
     <StackPanel Spacing="14" IsVisible="{Binding IsLocalManagementProfile}">
 
