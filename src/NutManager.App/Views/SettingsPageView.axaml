@@ -78,8 +78,23 @@
               one is on or off, and a two-item list is a worse control for that than a switch is.
             -->
             <StackPanel x:Name="TransparencyPreferencePanel" Grid.Column="3" Spacing="5">
-              <TextBlock Text="{Binding AppearanceTransparencyLabel}" Classes="nut-label" />
-              <ToggleSwitch IsChecked="{Binding IsBackgroundTransparent}"
+              <!--
+                The hint appears only while the switch is disabled. A permanent question mark next to
+                a control that works is noise; one that shows up exactly when the control stops
+                responding answers the question the user is about to ask.
+              -->
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="{Binding AppearanceTransparencyLabel}" Classes="nut-label" />
+                <PathIcon Data="{DynamicResource NutIconHelp}"
+                          Classes="muted"
+                          Width="13" Height="13"
+                          VerticalAlignment="Center"
+                          IsVisible="{Binding !IsTransparencyAvailable}"
+                          ToolTip.Tip="{Binding AppearanceTransparencyDarkOnly}"
+                          AutomationProperties.Name="{Binding AppearanceTransparencyDarkOnly}" />
+              </StackPanel>
+              <ToggleSwitch IsChecked="{Binding IsTransparencyEffective}"
+                            IsEnabled="{Binding IsTransparencyAvailable}"
                             OnContent="{Binding AppearanceTransparencyOn}"
                             OffContent="{Binding AppearanceTransparencyOff}"
                             AutomationProperties.Name="{Binding AppearanceTransparencyLabel}" />

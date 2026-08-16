@@ -205,6 +205,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string AppearanceTransparencyLabel => Localizer.Get("Appearance.Transparency");
     public string AppearanceTransparencyOn => Localizer.Get("Appearance.Transparency.On");
     public string AppearanceTransparencyOff => Localizer.Get("Appearance.Transparency.Off");
+    public string AppearanceTransparencyDarkOnly => Localizer.Get("Appearance.Transparency.DarkOnly");
     public string RestartLanguageMessage => Localizer.Get("Appearance.RestartRequired");
     public string ManagedServersTitle => Localizer.Get("Profiles.Title");
     public string NewServerText => Localizer.Get("Profiles.NewServer");
@@ -233,8 +234,6 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string ProtectedSecretHelp => Localizer.Get("Profiles.ProtectedSecretHelp");
     public string SmbShareLabel => Localizer.Get("Profiles.SmbShare");
     public string SmbAuthenticationLabel => Localizer.Get("Profiles.SmbAuthentication");
-    public string SmbUsernameLabel => Localizer.Get("Profiles.SmbUsername");
-    public string SmbDirectoryLabel => Localizer.Get("Profiles.SmbDirectory");
     public string SmbSecretHelp => Localizer.Get("Profiles.SmbSecretHelp");
     public string SmbLegacyDirectoryText => Localizer.Get("Smb.Legacy.DirectoryAdjustment");
     public string ManagedFilesLabel => Localizer.Get("Profiles.ManagedFiles");
@@ -311,7 +310,6 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     partial void OnManagedFilesDetectionMessageChanged(string? value) =>
         OnPropertyChanged(nameof(HasManagedFilesDetectionMessage));
-    public string StoredCredentialLabel => Localizer.Get("Profiles.StoredCredential");
     public string ForgetCredentialText => Localizer.Get("Profiles.ForgetCredential");
     public string SaveProfileText => Localizer.Get("Common.Save");
     public string DiscardProfileText => Localizer.Get("Common.Discard");
@@ -352,6 +350,34 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     /// PresentationOption is constrained to enums anyway.
     /// </summary>
     [ObservableProperty] private bool _isBackgroundTransparent = true;
+
+    /// <summary>
+    /// Whether the switch can be operated at all. The acrylic backdrop is only meaningful under the
+    /// dark palette, so under the light one the control is disabled rather than silently doing
+    /// nothing — and the hint beside it says why.
+    /// </summary>
+    [ObservableProperty] private bool _isTransparencyAvailable = true;
+
+    /// <summary>
+    /// What the switch shows, which is the backdrop actually in use rather than the stored choice.
+    /// Under the light palette a disabled switch reading "on" would claim a transparency the window
+    /// is not drawing, so it reads "off" there while <see cref="IsBackgroundTransparent"/> quietly
+    /// keeps the preference for the return to dark. The setter is inert while the control is
+    /// disabled, so nothing the user cannot reach can overwrite that preference.
+    /// </summary>
+    public bool IsTransparencyEffective
+    {
+        get => IsBackgroundTransparent && IsTransparencyAvailable;
+        set
+        {
+            if (!IsTransparencyAvailable || value == IsTransparencyEffective) return;
+            IsBackgroundTransparent = value;
+        }
+    }
+
+    partial void OnIsTransparencyAvailableChanged(bool value) => OnPropertyChanged(nameof(IsTransparencyEffective));
+
+    public void ApplyTransparencyAvailability(bool isEffectiveDark) => IsTransparencyAvailable = isEffectiveDark;
     [ObservableProperty] private bool _isSaving;
     [ObservableProperty] private string? _saveError;
     [ObservableProperty] private string? _loadError;
@@ -910,6 +936,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     partial void OnIsBackgroundTransparentChanged(bool value)
     {
+        OnPropertyChanged(nameof(IsTransparencyEffective));
         if (_isApplyingVisualPreferences)
         {
             return;

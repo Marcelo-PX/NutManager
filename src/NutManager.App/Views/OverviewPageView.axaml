@@ -62,7 +62,7 @@
       <!-- ==================== Metric band ==================== -->
       <WrapPanel>
         <!-- Battery -->
-        <Border Classes="nut-metric-card">
+        <Border Classes="nut-metric-card healthy">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="9">
               <PathIcon Data="{DynamicResource NutIconBattery}" Classes="nut-icon-battery healthy" Width="18" Height="18" />
@@ -95,7 +95,7 @@
         </Border>
 
         <!-- Load -->
-        <Border Classes="nut-metric-card">
+        <Border Classes="nut-metric-card cyan">
           <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="9">
               <PathIcon Data="{DynamicResource NutIconGauge}" Classes="nut-icon-gauge cyan" Width="18" Height="18" />
@@ -118,7 +118,7 @@
         </Border>
 
         <!-- Runtime -->
-        <Border Classes="nut-metric-card">
+        <Border Classes="nut-metric-card purple">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="9">
               <PathIcon Data="{DynamicResource NutIconRuntime}" Classes="nut-icon-runtime purple" Width="18" Height="18" />
@@ -138,7 +138,7 @@
         </Border>
 
         <!-- Input -->
-        <Border Classes="nut-metric-card">
+        <Border Classes="nut-metric-card warning">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="9">
               <PathIcon Data="{DynamicResource NutIconInput}" Classes="nut-icon-input warning" Width="18" Height="18" />
@@ -155,7 +155,7 @@
         </Border>
 
         <!-- Output -->
-        <Border Classes="nut-metric-card">
+        <Border Classes="nut-metric-card healthy">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="9">
               <PathIcon Data="{DynamicResource NutIconOutput}" Classes="nut-icon-output healthy" Width="18" Height="18" />

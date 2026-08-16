@@ -177,7 +177,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private bool _isBackgroundTransparent = true;
     [ObservableProperty] private ShellLayoutState _shellLayout = ShellLayoutState.Wide;
-    [ObservableProperty] private bool _isEffectiveDark;
+    // Dark is the product's default, so starting here keeps the window from drawing one opaque
+    // frame before the shell reports which variant actually resolved.
+    [ObservableProperty] private bool _isEffectiveDark = true;
+
+    /// <summary>
+    /// What the user chose, kept apart from what the window draws. Acrylic only reads as glass under
+    /// the dark palette; over the near-white light one the same backdrop washes the page out instead
+    /// of revealing anything. So light theme forces the opaque backdrop while this preference waits,
+    /// and going back to dark restores the choice rather than resetting it.
+    /// </summary>
+    private bool _transparencyPreference = true;
+
+    public event Action<bool>? EffectiveThemeChanged;
+
+    public void SetTransparencyPreference(bool value)
+    {
+        _transparencyPreference = value;
+        IsBackgroundTransparent = value && IsEffectiveDark;
+    }
 
     public ThemePreference SelectedTheme => SelectedThemeOption?.Preference ?? ThemePreference.System;
     public SidebarDisplayState SidebarDisplay => ShellPresentationMapper.SidebarFor(ShellLayout, SidebarPreference);
@@ -201,16 +219,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _ => new Thickness(14)
     };
     public bool IsMockMode => _isMockModeConfigured || _overviewPage.IsSimulated;
-    public string? ActiveEndpoint => _activeEndpoint;
-    public bool HasActiveEndpoint => _activeEndpoint is not null;
     public string? ActiveUpsName => _overviewPage.Snapshot?.Identity.Name ?? _preferredUpsName;
     public string ConnectionDetailText => _activeEndpoint is null
         ? Localizer.Get("Shell.NoActiveProfile")
         : ActiveUpsName is null ? _activeEndpoint : $"{ActiveUpsName}@{_activeEndpoint}";
-    public bool HasActiveProfile => _activeProfileName is not null;
     public string ActiveProfileName => _activeProfileName ?? Localizer.Get("Shell.NoActiveProfile");
-    public string ActiveProfileLabel => Localizer.Get("Shell.ActiveProfile");
-    public string ActiveProfileStatus => Localizer.Get("Shell.ProfileActive");
     public string ActiveProfileModeText => _managementMode switch
     {
         NutManagementMode.Local => Localizer.Get("Management.Local"),
@@ -249,7 +262,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public bool IsConnectionUnavailable => ConnectionPresentation == ConnectionPresentationState.Unavailable;
     public bool ShowLightThemeAction => SelectedTheme == ThemePreference.Dark || (SelectedTheme == ThemePreference.System && IsEffectiveDark);
     public bool ShowDarkThemeAction => !ShowLightThemeAction;
-    public string ThemeToggleName => Localizer.Get("Shell.ToggleTheme");
     public string NavigationToggleName => IsSidebarExpanded || IsOverlayOpen
         ? Localizer.Get("Shell.CollapseNavigation")
         : Localizer.Get("Shell.ExpandNavigation");
@@ -359,6 +371,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ShowLightThemeAction));
         OnPropertyChanged(nameof(ShowDarkThemeAction));
+        IsBackgroundTransparent = _transparencyPreference && value;
+        EffectiveThemeChanged?.Invoke(value);
     }
 
     partial void OnSidebarPreferenceChanged(SidebarPreference value)

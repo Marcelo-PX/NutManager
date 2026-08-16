@@ -316,4 +316,84 @@ public sealed class MainWindowViewModelTests
         new OverviewPageViewModel(),
         new DevicesPageViewModel(),
         sidebarPreference: sidebarPreference);
+
+    [Fact]
+    public void LightThemeDrawsTheOpaqueBackdropWithoutDiscardingTheTransparencyChoice()
+    {
+        var viewModel = new MainWindowViewModel();
+        viewModel.SetTransparencyPreference(true);
+        viewModel.UpdateEffectiveTheme(true);
+
+        Assert.True(viewModel.IsBackgroundTransparent);
+
+        // Acrylic only reads as glass under the dark palette. Over the near-white light one the same
+        // backdrop washes the page out instead of revealing anything, so the opaque panel is drawn.
+        viewModel.UpdateEffectiveTheme(false);
+        Assert.False(viewModel.IsBackgroundTransparent);
+
+        // The choice was suppressed for the duration, not forgotten: coming back restores it, so a
+        // trip through light theme does not silently reset a preference the user set once.
+        viewModel.UpdateEffectiveTheme(true);
+        Assert.True(viewModel.IsBackgroundTransparent);
+    }
+
+    [Fact]
+    public void TransparencyTurnedOffStaysOffAcrossThemeChanges()
+    {
+        var viewModel = new MainWindowViewModel();
+        viewModel.SetTransparencyPreference(false);
+
+        Assert.False(viewModel.IsBackgroundTransparent);
+
+        viewModel.UpdateEffectiveTheme(false);
+        Assert.False(viewModel.IsBackgroundTransparent);
+
+        // Returning to dark must not switch transparency back on by itself.
+        viewModel.UpdateEffectiveTheme(true);
+        Assert.False(viewModel.IsBackgroundTransparent);
+    }
+
+    [Fact]
+    public void TheTransparencySwitchIsOperableOnlyUnderTheDarkPalette()
+    {
+        var settings = new SettingsPageViewModel();
+
+        // Disabled rather than silently doing nothing, which is what the hint beside it explains.
+        settings.ApplyTransparencyAvailability(false);
+        Assert.False(settings.IsTransparencyAvailable);
+
+        settings.ApplyTransparencyAvailability(true);
+        Assert.True(settings.IsTransparencyAvailable);
+    }
+
+    [Fact]
+    public void TheBlockedSwitchReadsOffWhileTheStoredChoiceStaysOn()
+    {
+        var settings = new SettingsPageViewModel { IsBackgroundTransparent = true };
+
+        // Under the light palette the window draws the opaque backdrop, so a switch still reading
+        // "on" would claim a transparency that is not there.
+        settings.ApplyTransparencyAvailability(false);
+        Assert.False(settings.IsTransparencyEffective);
+        Assert.True(settings.IsBackgroundTransparent);
+
+        // And the choice is intact when the palette can honour it again.
+        settings.ApplyTransparencyAvailability(true);
+        Assert.True(settings.IsTransparencyEffective);
+    }
+
+    [Fact]
+    public void TheBlockedSwitchCannotOverwriteTheStoredChoice()
+    {
+        var settings = new SettingsPageViewModel { IsBackgroundTransparent = true };
+        settings.ApplyTransparencyAvailability(false);
+
+        // Nothing the user can reach writes here while the control is disabled, but the setter
+        // refuses anyway: a stray binding write must not erase a preference the user cannot see.
+        settings.IsTransparencyEffective = true;
+        Assert.True(settings.IsBackgroundTransparent);
+
+        settings.IsTransparencyEffective = false;
+        Assert.True(settings.IsBackgroundTransparent);
+    }
 }

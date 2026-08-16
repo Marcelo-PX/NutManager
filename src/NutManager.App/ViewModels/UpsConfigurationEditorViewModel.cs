@@ -464,7 +464,6 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
     public string AutomaticText { get; }
     public string SensitiveStateText { get; }
     public bool IsAdvanced { get; }
-    public bool IsBasic => !IsAdvanced;
     public bool IsRisky { get; }
     public bool IsFlag { get; }
     public bool IsValue => !IsFlag && !IsSensitive && (!HasChoices || AllowsTechnicalInput);

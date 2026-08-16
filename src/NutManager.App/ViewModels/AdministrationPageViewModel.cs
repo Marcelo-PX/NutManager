@@ -310,15 +310,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         ? "localhost:3493"
         : $"{_profileContext.Endpoint.Host}:{_profileContext.Endpoint.Port}";
 
-    public string ManagedProfileManagementMode => IsRemoteManagementProfile ? Strings.Get("Management.Remote") : Strings.Get("Management.Local");
-
-    public string ManagedProfileAccessMode => _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.ReadOnly ? Strings.Get("Access.ReadOnly") : Strings.Get("Access.Manage");
-
     public bool IsRemoteManagementProfile => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote;
 
     public bool IsLocalManagementProfile => !IsRemoteManagementProfile;
-
-    public string RemoteManagementHost => _profileContext?.Profile.Management.ManagementHost ?? UnavailableText;
 
     public string RemoteConfigurationDirectory => _profileContext?.Profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb
         ? _profileContext.Profile.Management.SmbConfigurationDirectory ?? _profileContext.Profile.Management.SmbSharePath ?? Strings.Get("Common.NotConfigured")

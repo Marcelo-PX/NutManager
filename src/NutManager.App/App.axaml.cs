@@ -141,10 +141,8 @@ public partial class App : Application
             runtimeProfile.Profile.Name,
             runtimeProfile.Profile.Management.Mode,
             runtimeProfile.Profile.AccessMode,
-            runtimeProfile.Profile.Monitoring.PreferredUpsName)
-        {
-            IsBackgroundTransparent = settings.BackgroundTransparency
-        };
+            runtimeProfile.Profile.Monitoring.PreferredUpsName);
+        viewModel.SetTransparencyPreference(settings.BackgroundTransparency);
         administration.SemanticReviewChanged += viewModel.SetSemanticReview;
         viewModel.ThemeChanged += async preference =>
         {
@@ -155,7 +153,9 @@ public partial class App : Application
         settingsPage.ThemeChanged += viewModel.SetTheme;
         settingsPage.SidebarPreferenceChanged += preference => viewModel.SidebarPreference = preference;
         viewModel.SidebarPreferenceChanged += settingsPage.ApplySidebarPreference;
-        settingsPage.BackgroundTransparencyChanged += value => viewModel.IsBackgroundTransparent = value;
+        settingsPage.BackgroundTransparencyChanged += viewModel.SetTransparencyPreference;
+        viewModel.EffectiveThemeChanged += settingsPage.ApplyTransparencyAvailability;
+        settingsPage.ApplyTransparencyAvailability(viewModel.IsEffectiveDark);
         ApplyTheme(settings.Theme);
         window.DataContext = viewModel;
         await devices.InitializeAsync();
