@@ -50,7 +50,8 @@ Only one task should normally be in progress at a time.
 | T29 | DONE | Graphical configuration UX hardening | Responsive, accessibility, bilingual, and transport regression validation |
 | T30 | DONE | Windows-native SMB credential authentication | Native Windows credential UI, simplified SMB profile UX, and protected explicit credentials |
 | T31 | DONE | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
-| T32 | IN PROGRESS | Icon library adoption and T31 visual acceptance | An explicit icon-system decision and the rail seen with its final glass |
+| T32 | DONE | Icon library adoption and T31 visual acceptance | Every icon drawn from Material Icons, glass that responds to the pointer, and horizontal administration navigation |
+| T33 | DONE | Code health, dead-code cleanup and focused refactoring | Proven-dead code removed, doubtful code preserved, behaviour and visuals unchanged |
 
 ---
 
@@ -787,7 +788,7 @@ Two items were accepted rather than completed, and neither blocks the surface wo
 
 ## T32 — Icon library adoption and T31 visual acceptance
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Objective
 
@@ -835,24 +836,102 @@ dependency, so the repository no longer asserts a rule it had replaced.
 ### Liquid glass hover
 
 The glass panes react to the pointer: the surface lightens and its edge comes up over 180 ms. Scoped
-to the surfaces that are actually glass — the cards and the configuration file rail — plus a separate
+to the surfaces that are actually glass — the cards and the configuration file strip — plus a separate
 rung for the rows that sit on them, so a hovered row does not vanish into a hovered pane. Containers
 (the sidebar, the shell chrome) stay inert. Nothing moves or resizes, and pressed, selected and
 disabled all still win over hover.
 
 ### Visual acceptance
 
-Observed on Windows with a temporary local profile, restored afterwards and verified by hash. Rail
-seen expanded (263 px rows) and collapsed (57 px) in both dark and light, with the accent bar, the
-selected sheen, the per-file icons and the glass surface against the acrylic backdrop.
+Observed on Windows with a temporary local profile, restored afterwards and verified by hash: the
+navigation icons and their block motion, the glass hover measured in pixels on both themes, the
+horizontal section tabs and file strip, the segmented file tiles, the acrylic backdrop against the
+desktop, and the power source on the status badge.
 
-Narrow layout is **not** confirmed on screen: at a window small enough to trigger the fold the shell
-enters compact mode and the rail scrolls out of view, so the observation was inconclusive. The
-behaviour is covered by four tests that drive the width directly.
+The rail's fold was observed while it existed and then removed outright later in the task, so the
+narrow-layout fold that this section originally recorded as inconclusive no longer has anything to
+confirm.
+
+Not confirmed on screen, and carried into T33's follow-ups: the file strip loaded from
+`\\Gandalf\etc` rather than a local profile, and the battery variant of the status badge, which
+needs the UPS actually running on battery.
 
 ### Validation
 
-- icon catalog and policy tests, plus documented manual Windows observation of the rail.
+- icon catalog and policy tests, plus documented manual Windows observation.
+
+## T33 — Code health, dead-code cleanup and focused refactoring
+
+**Status:** DONE
+
+### Objective
+
+Remove what T27A–T32 left behind, and nothing else. This is internal quality only: no redesign, no
+feature, no architectural rewrite.
+
+### Allowed scope
+
+- code, resources, localization keys and documentation proven to have no consumer;
+- duplication with genuinely identical semantics;
+- concrete async, lifetime and disposal defects;
+- names that became misleading after T32;
+- focused tests defending a real boundary.
+
+### Requirements
+
+- prove a problem before changing anything, then change the minimum;
+- anything doubtful is kept, and the reason recorded;
+- absence of a textual reference does not prove a public member is dead — Avalonia resolves views,
+  bindings and resources by name, template and convention;
+- behaviour and approved visuals stay exactly as they are;
+- every boundary listed under "Do not" stays intact.
+
+### Do not
+
+- simplify T13, T14, T16, T17, T19, T19B, T20, T25, T27A navigation ownership, T28 embedded secrets,
+  T30 managed files, or the T32 icon boundary;
+- remove serialized members that older settings files still depend on;
+- treat missing coverage as proof that code is dead;
+- optimise speculatively.
+
+### Validation
+
+- the full gate set including a warnings-as-errors build, plus a runtime smoke over every page.
+
+### Outcome
+
+The audit ran before any edit, and most of what it flagged was kept. Three searches produced almost
+all of the false positives, and each one is worth remembering because a less careful pass would have
+deleted working code:
+
+- **Source generators.** A first scan called 131 C# declarations dead. Nearly all were
+  `[ObservableProperty]` backing fields and `[RelayCommand]` methods, whose public members are
+  generated rather than written. Excluding them left 23 real candidates.
+- **Keys composed at run time.** 244 localization keys had no textual consumer, but 209 of them are
+  built by interpolation — `Config.Field.{id}.Label`, `{id}.Help`, `Semantic.Operation.{operation}`
+  and seven more families. Only 35 were genuinely unreferenced, and those were still kept: an
+  unused string costs nothing, and a wrong removal is a blank label in a rarely-visited screen.
+- **Word boundaries.** Substring matching hid `NutSpacing2` inside `NutSpacing20` and `NutIconSize`
+  inside `NutIconSizeLarge`, so the first resource audit under-reported.
+
+What was removed is what a removed *concept* left behind: fourteen view-model members with no
+binding and no caller, including two byte-identical duplicates of the properties the administration
+view actually binds; the two `NutFileRail*` metrics belonging to the rail T32 replaced; and the six
+localization keys whose only consumers were the members deleted here. The design-token palettes in
+`NutMetrics.axaml` and `NutMotion.axaml` stayed even where unreferenced, because the design system
+documents them as its source; so did the Core `*Repeated*` mutator overloads, `NutEmbeddedSecret`
+and the catalog vocabularies, which sit on the T13 and T28 boundaries.
+
+One name was corrected rather than removed: the administration view styles its buttons
+`nut-file-tile` and its own class comment describes a strip, while its handlers still said rail, so
+`ConfigurationFileRailItem_OnClick` and `ConfigurationFileRailIcon_OnAttached` became
+`ConfigurationFileTile_OnClick` and `ConfigurationFileTileIcon_OnAttached`. The leftover
+`nut-file-rail-icon` style class was left alone: a mismatch there fails silently rather than at
+compile time, and the file strip cannot be rendered under this agent's identity to confirm it.
+
+No subscription leak was found: in all ten cases with unbalanced `+=`, the subscriber owns the
+publisher or is the control itself. No sync-over-async was found either — every `.Result` hit was a
+property on a result record, not a blocked task.
 
 ## Task execution template
 

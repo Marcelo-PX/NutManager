@@ -201,16 +201,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _ => new Thickness(14)
     };
     public bool IsMockMode => _isMockModeConfigured || _overviewPage.IsSimulated;
-    public string? ActiveEndpoint => _activeEndpoint;
-    public bool HasActiveEndpoint => _activeEndpoint is not null;
     public string? ActiveUpsName => _overviewPage.Snapshot?.Identity.Name ?? _preferredUpsName;
     public string ConnectionDetailText => _activeEndpoint is null
         ? Localizer.Get("Shell.NoActiveProfile")
         : ActiveUpsName is null ? _activeEndpoint : $"{ActiveUpsName}@{_activeEndpoint}";
-    public bool HasActiveProfile => _activeProfileName is not null;
     public string ActiveProfileName => _activeProfileName ?? Localizer.Get("Shell.NoActiveProfile");
-    public string ActiveProfileLabel => Localizer.Get("Shell.ActiveProfile");
-    public string ActiveProfileStatus => Localizer.Get("Shell.ProfileActive");
     public string ActiveProfileModeText => _managementMode switch
     {
         NutManagementMode.Local => Localizer.Get("Management.Local"),
@@ -249,7 +244,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public bool IsConnectionUnavailable => ConnectionPresentation == ConnectionPresentationState.Unavailable;
     public bool ShowLightThemeAction => SelectedTheme == ThemePreference.Dark || (SelectedTheme == ThemePreference.System && IsEffectiveDark);
     public bool ShowDarkThemeAction => !ShowLightThemeAction;
-    public string ThemeToggleName => Localizer.Get("Shell.ToggleTheme");
     public string NavigationToggleName => IsSidebarExpanded || IsOverlayOpen
         ? Localizer.Get("Shell.CollapseNavigation")
         : Localizer.Get("Shell.ExpandNavigation");

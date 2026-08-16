@@ -38,11 +38,11 @@ public partial class NutConfigurationAdministrationView : UserControl
     }
 
     /// <summary>
-    /// Gives the selected row's icon a single pop when it becomes current. It is deliberately a
-    /// one-shot: the connection light is the only thing in this application that loops, and a rail
-    /// of five breathing icons would compete with the form beside it for attention.
+    /// Gives the selected tile's icon a single pop when it becomes current. It is deliberately a
+    /// one-shot: the connection light is the only thing in this application that loops, and a strip
+    /// of five breathing icons would compete with the form below it for attention.
     /// </summary>
-    private void ConfigurationFileRailIcon_OnAttached(object? sender, EventArgs eventArgs)
+    private void ConfigurationFileTileIcon_OnAttached(object? sender, EventArgs eventArgs)
     {
         if (sender is not Panel panel || panel.DataContext is not NutConfigurationFileItemViewModel file)
         {
@@ -60,12 +60,12 @@ public partial class NutConfigurationAdministrationView : UserControl
     }
 
     /// <summary>
-    /// The rail's rows are buttons rather than list items, so selection is an explicit click. That
+    /// The strip's tiles are buttons rather than list items, so selection is an explicit click. That
     /// matters for the dirty-draft guard: a ListBox moves its own selection before anything can
     /// refuse the change, whereas a button leaves the view model in charge of whether the switch
     /// happens at all.
     /// </summary>
-    private async void ConfigurationFileRailItem_OnClick(object? sender, RoutedEventArgs eventArgs)
+    private async void ConfigurationFileTile_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
         if (DataContext is not AdministrationPageViewModel viewModel ||
             (sender as Button)?.DataContext is not NutConfigurationFileItemViewModel file)

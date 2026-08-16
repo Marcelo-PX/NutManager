@@ -43,7 +43,7 @@
               -->
               <Button Classes="nut-file-tile"
                       Classes.selected="{Binding IsSelected}"
-                      Click="ConfigurationFileRailItem_OnClick"
+                      Click="ConfigurationFileTile_OnClick"
                       IsEnabled="{Binding CanLoad}"
                       AutomationProperties.Name="{Binding AccessibleName}"
                       ToolTip.Tip="{Binding AccessibleName}">
@@ -52,7 +52,7 @@
                     <!-- The icon pops once when the tile becomes the selected one; nothing loops. -->
                     <Panel Width="24" Height="24" HorizontalAlignment="Center"
                            Classes="nut-file-rail-icon"
-                           DataContextChanged="ConfigurationFileRailIcon_OnAttached">
+                           DataContextChanged="ConfigurationFileTileIcon_OnAttached">
                       <PathIcon Data="{DynamicResource NutIconGeneral}" Width="24" Height="24" IsVisible="{Binding IsNutConf}" />
                       <PathIcon Data="{DynamicResource NutIconUps}" Width="24" Height="24" IsVisible="{Binding IsUpsConf}" />
                       <PathIcon Data="{DynamicResource NutIconServer}" Width="24" Height="24" IsVisible="{Binding IsUpsdConf}" />

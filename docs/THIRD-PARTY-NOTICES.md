@@ -18,7 +18,7 @@ manager. Only assets copied into this repository are recorded.
   entry at start-up, so nothing vendored here is rendered while the library supplies the kind mapped
   to that name. The geometry is retained so a name still resolves to a glyph if a future version of
   the library drops a kind, rather than leaving an empty box in a view.
-- **Icons imported:** the configuration-domain glyphs used by the NUT file rail — document list,
+- **Icons imported:** the configuration-domain glyphs used by the NUT file strip — document list,
   battery checkmark, server, people team and pulse.
 - **No longer present:** the navigation silhouettes and the options/sliders glyph, which were split
   into independently animated parts. Those parts were removed in T32 when the icons moved onto the

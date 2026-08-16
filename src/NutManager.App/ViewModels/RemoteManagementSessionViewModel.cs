@@ -178,13 +178,6 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         _ => L("Remote.Connection.Failed")
     };
 
-    public string PlatformText => Platform switch
-    {
-        RemoteNutPlatform.Windows => "Windows",
-        RemoteNutPlatform.NonWindows => L("Platform.NonWindows"),
-        _ => L("Common.Unavailable")
-    };
-
     public string ReadCapabilityText => CanReadConfiguration ? L("Common.Available") : L("Remote.Capability.ValidateForRead");
 
     /// <summary>Whether the profile itself permits writing. Independent of any session state.</summary>
