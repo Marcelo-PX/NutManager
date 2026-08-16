@@ -52,7 +52,8 @@ Only one task should normally be in progress at a time.
 | T31 | DONE | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
 | T32 | DONE | Icon library adoption and T31 visual acceptance | Every icon drawn from Material Icons, glass that responds to the pointer, and horizontal administration navigation |
 | T33 | DONE | Code health, dead-code cleanup and focused refactoring | Proven-dead code removed, doubtful code preserved, behaviour and visuals unchanged |
-| T34 | IN PROGRESS | Remote Windows NUT service monitoring | Read-only monitoring of the Windows NUT service and its process from a remote NutManager instance, independently from NUT protocol health |
+| T34 | DONE | Remote Windows NUT service monitoring | Read-only monitoring of the Windows NUT service and its process from a remote NutManager instance, independently from NUT protocol health |
+| T35 | IN PROGRESS | Windows Agent for secure remote NUT service control | A privileged agent on the server that monitors and controls only the validated NUT service, over an authenticated transport |
 
 ---
 
@@ -980,7 +981,7 @@ but never defined, fell outside every search it ran.
 
 ## T34 — Remote Windows NUT service monitoring
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Objective
 
@@ -1045,6 +1046,23 @@ No start, stop or restart of a remote service, and not as a disabled button eith
 publishes one command and it refreshes. No firewall change, no service ACL change, no impersonation,
 no remote process enumeration, no WMI, no remote registry, no WinRM, no `Process.Start`. No NUT
 configuration file is read or written.
+
+### Acceptance as observed
+
+The query reached GANDALF and GANDALF refused it: `ERROR_ACCESS_DENIED` (5), which is authorization
+failing rather than the network — a blocked RPC returns 1722. NutManager runs as `PT90N\Marcelo`, a
+local account on a machine that is not joined to `SBRA.LOCAL`, so the remote SCM has no identity to
+recognise. That is a property of the machine, not of any particular session.
+
+What the run did prove is the thing this task exists for. Throughout the refused query the shell kept
+reporting the UPS as connected on `Gandalf.sbra.local:3493`: an administrative failure did not become
+an outage. The panel showed "Acesso negado" with the numeric code beside a NUT that was plainly fine,
+which is case D of the state matrix, observed live rather than argued.
+
+What stayed unproven is the positive path — a successful SCM authentication showing Running with a
+process id — and it stayed unproven for environmental reasons this task is forbidden to change. T35
+supersedes the approach rather than fixing it: an agent on the server queries its own SCM locally, so
+the cross-machine authentication that failed here stops being on the path at all.
 
 ### Validation
 
