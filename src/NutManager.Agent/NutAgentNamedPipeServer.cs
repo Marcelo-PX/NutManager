@@ -100,7 +100,7 @@ internal sealed class NutAgentNamedPipeServer
     }
 
     private NamedPipeServerStream CreateServer() => NamedPipeServerStreamAcl.Create(
-        WindowsNutAgentPipe.PipeName,
+        NutAgentNamedPipe.PipeName,
         PipeDirection.InOut,
         NamedPipeServerStream.MaxAllowedServerInstances,
         PipeTransmissionMode.Byte,
@@ -162,10 +162,10 @@ internal sealed class NutAgentNamedPipeServer
         catch (Exception)
         {
             // An identity that could not be established is not authorized.
-            return NutAgentCallerContext.Denied(identity, WindowsNutAgentPipe.TransportName);
+            return NutAgentCallerContext.Denied(identity, NutAgentNamedPipe.TransportName);
         }
 
-        return new NutAgentCallerContext(identity, authorized, WindowsNutAgentPipe.TransportName);
+        return new NutAgentCallerContext(identity, authorized, NutAgentNamedPipe.TransportName);
     }
 
     private static async Task RespondAsync(NamedPipeServerStream server, NutAgentResponse response, CancellationToken cancellationToken)

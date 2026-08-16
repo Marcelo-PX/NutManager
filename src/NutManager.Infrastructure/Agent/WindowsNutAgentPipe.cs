@@ -6,20 +6,15 @@ using System.Security.Principal;
 namespace NutManager.Infrastructure.Agent;
 
 /// <summary>
-/// The named pipe both ends agree on: its name, and who is allowed to reach it.
+/// Who is allowed to reach the agent's pipe.
 ///
-/// It lives here rather than in the agent executable because the client has to name the same pipe,
-/// and a transport whose two halves each hold their own copy of the name is a transport that will one
-/// day be renamed in one of them.
+/// The name itself lives in Core, with the rest of the protocol, because both halves of the
+/// transport have to agree on it and a name held twice is a name that will one day be changed once.
+/// What belongs here is the part that is genuinely Windows: the access control.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class WindowsNutAgentPipe
 {
-    /// <summary>Versioned in the name, so a future incompatible protocol is a different pipe.</summary>
-    public const string PipeName = "NutManager.Agent.v1";
-
-    public const string TransportName = "NamedPipe";
-
     /// <summary>
     /// The pipe's access control.
     ///

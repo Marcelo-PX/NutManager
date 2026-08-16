@@ -33,6 +33,21 @@ public sealed record NutAgentResponse(
         new(NutAgentOptions.ProtocolVersion, code, Detail: detail);
 }
 
+/// <summary>
+/// How the default transport is named on the wire.
+///
+/// These are protocol identifiers rather than Windows APIs, so they live here on the neutral side.
+/// A constant kept inside a platform-annotated class reports every neutral caller that reads it as
+/// platform-specific, which is a warning about nothing.
+/// </summary>
+public static class NutAgentNamedPipe
+{
+    /// <summary>Versioned in the name, so a future incompatible protocol is a different pipe.</summary>
+    public const string PipeName = "NutManager.Agent.v1";
+
+    public const string TransportName = "NamedPipe";
+}
+
 /// <summary>Why a frame could not be read. A short read is never confused with a closed connection.</summary>
 public enum NutAgentFrameStatus
 {
