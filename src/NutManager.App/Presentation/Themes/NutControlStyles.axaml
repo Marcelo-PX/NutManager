@@ -190,9 +190,14 @@
     <Setter Property="Margin" Value="0,0,13,13" />
     <Setter Property="RenderTransformOrigin" Value="50%,50%" />
     <Setter Property="RenderTransform" Value="none" />
+    <!--
+      The resting glow is two fully transparent shadows at zero radius rather than no shadow at all.
+      BoxShadowsTransition interpolates shadow by shadow, so the resting and hovered values have to
+      carry the same count or the neon appears in one frame instead of growing into place.
+    -->
+    <Setter Property="BoxShadow" Value="0 0 0 0 #00000000, 0 0 0 0 #00000000" />
     <Setter Property="Transitions">
       <Transitions>
-        <BrushTransition Property="Background" Duration="0:0:0.2" />
         <BrushTransition Property="BorderBrush" Duration="0:0:0.2" />
         <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.24" Easing="CubicEaseOut" />
         <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.24" />
@@ -209,11 +214,44 @@
     left edge, so a scale — even a 1.5% one — pushed the card's left border outside the clip region
     and the rounded corner came back shaved. A lift has nowhere to be cut off.
   -->
+  <!--
+    The fill is deliberately absent here. NutSurfaceHoverBrush carries a 70% alpha, so using it made
+    the card translucent under the pointer and the wallpaper came through a surface that is matte at
+    rest — the one place the cards contradicted their own material. The lift, the lit edge and the
+    glow are the whole response now, and the card keeps its sheen at every moment.
+  -->
   <Style Selector="Border.nut-metric-card:pointerover">
     <Setter Property="RenderTransform" Value="translateY(-4px)" />
-    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
-    <Setter Property="BoxShadow" Value="0 10 26 -8 #7A000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #6660A5FA, 0 0 30 6 #3360A5FA" />
+  </Style>
+
+  <!--
+    The neon takes the colour of whatever the card measures, the same way its glyph already does, so
+    the band lights up in five different colours instead of one. These rules are declared after the
+    generic one on purpose: Avalonia resolves equally matching setters by declaration order, so a
+    per-metric colour only wins if it comes later.
+
+    The colours are written as literals because BoxShadow is a parsed value, not a brush, and cannot
+    take a DynamicResource. They are the theme-invariant semantic colours from NutColors.axaml —
+    NutHealthyBrush, NutCyanBrush, NutPurpleBrush and NutWarningBrush — and have to be changed in
+    both places together.
+  -->
+  <Style Selector="Border.nut-metric-card.healthy:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #664ADE80, 0 0 30 6 #334ADE80" />
+  </Style>
+  <Style Selector="Border.nut-metric-card.cyan:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutCyanBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #6638BDF8, 0 0 30 6 #3338BDF8" />
+  </Style>
+  <Style Selector="Border.nut-metric-card.purple:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutPurpleBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #66A78BFA, 0 0 30 6 #33A78BFA" />
+  </Style>
+  <Style Selector="Border.nut-metric-card.warning:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource NutWarningBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #66FBBF24, 0 0 30 6 #33FBBF24" />
   </Style>
 
   <!--

@@ -205,6 +205,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string AppearanceTransparencyLabel => Localizer.Get("Appearance.Transparency");
     public string AppearanceTransparencyOn => Localizer.Get("Appearance.Transparency.On");
     public string AppearanceTransparencyOff => Localizer.Get("Appearance.Transparency.Off");
+    public string AppearanceTransparencyDarkOnly => Localizer.Get("Appearance.Transparency.DarkOnly");
     public string RestartLanguageMessage => Localizer.Get("Appearance.RestartRequired");
     public string ManagedServersTitle => Localizer.Get("Profiles.Title");
     public string NewServerText => Localizer.Get("Profiles.NewServer");
@@ -349,6 +350,15 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     /// PresentationOption is constrained to enums anyway.
     /// </summary>
     [ObservableProperty] private bool _isBackgroundTransparent = true;
+
+    /// <summary>
+    /// Whether the switch can be operated at all. The acrylic backdrop is only meaningful under the
+    /// dark palette, so under the light one the control is disabled rather than silently doing
+    /// nothing — and the hint beside it says why.
+    /// </summary>
+    [ObservableProperty] private bool _isTransparencyAvailable = true;
+
+    public void ApplyTransparencyAvailability(bool isEffectiveDark) => IsTransparencyAvailable = isEffectiveDark;
     [ObservableProperty] private bool _isSaving;
     [ObservableProperty] private string? _saveError;
     [ObservableProperty] private string? _loadError;

@@ -933,6 +933,34 @@ No subscription leak was found: in all ten cases with unbalanced `+=`, the subsc
 publisher or is the control itself. No sync-over-async was found either — every `.Result` hit was a
 property on a result record, not a blocked task.
 
+### Visual follow-up requested after T33 closed
+
+T33 itself changed no visuals. What follows was asked for afterwards, on the same branch, and is
+recorded here so the section above is not read as covering it.
+
+**Neon hover on the metric cards.** Each card now lights up in the colour of what it measures, the
+way its glyph already did: green for charge, blue for load, purple for runtime, amber for input. The
+glow is two shadows rather than one — a short ring that reads as the lit tube and a wide halo that
+reads as its spill. Two Avalonia constraints shaped it. `BoxShadowsTransition` interpolates shadow by
+shadow, so the resting style carries two fully transparent shadows at zero radius; without them the
+neon would appear in a single frame instead of growing. And `BoxShadow` is a parsed value rather than
+a brush, so it cannot take a `DynamicResource` — the colours are literals that mirror
+`NutHealthyBrush`, `NutCyanBrush`, `NutPurpleBrush` and `NutWarningBrush` and have to change with
+them. Nothing loops; the connected halo is still the only looping animation in the product.
+
+**The cards became matte at every moment.** `NutSurfaceHoverBrush` carries a 70% alpha, so a card
+that was opaque at rest turned translucent under the pointer and let the wallpaper through — the one
+place the cards contradicted their own material. The fix was to drop the hover fill entirely rather
+than swap the brush: the card keeps its sheen throughout, and the lift, the lit edge and the glow are
+the whole response. That also removed a fade that never ran, since the resting fill is a gradient and
+the hovered one was solid, and `BrushTransition` only interpolates between solid brushes.
+
+**Transparency is now bound to the palette.** Acrylic only reads as glass under the dark theme, so
+under the light one the switch is disabled and a question mark beside it explains why, appearing only
+while the control is unusable. The user's choice is held apart from what the window draws:
+`MainWindowViewModel` keeps the preference and computes the backdrop as preference AND dark, so a
+trip through light theme suppresses transparency without resetting it. Three tests pin that.
+
 ## Task execution template
 
 Use this structure when assigning a task to a coding agent:
