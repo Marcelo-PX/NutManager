@@ -365,4 +365,35 @@ public sealed class MainWindowViewModelTests
         settings.ApplyTransparencyAvailability(true);
         Assert.True(settings.IsTransparencyAvailable);
     }
+
+    [Fact]
+    public void TheBlockedSwitchReadsOffWhileTheStoredChoiceStaysOn()
+    {
+        var settings = new SettingsPageViewModel { IsBackgroundTransparent = true };
+
+        // Under the light palette the window draws the opaque backdrop, so a switch still reading
+        // "on" would claim a transparency that is not there.
+        settings.ApplyTransparencyAvailability(false);
+        Assert.False(settings.IsTransparencyEffective);
+        Assert.True(settings.IsBackgroundTransparent);
+
+        // And the choice is intact when the palette can honour it again.
+        settings.ApplyTransparencyAvailability(true);
+        Assert.True(settings.IsTransparencyEffective);
+    }
+
+    [Fact]
+    public void TheBlockedSwitchCannotOverwriteTheStoredChoice()
+    {
+        var settings = new SettingsPageViewModel { IsBackgroundTransparent = true };
+        settings.ApplyTransparencyAvailability(false);
+
+        // Nothing the user can reach writes here while the control is disabled, but the setter
+        // refuses anyway: a stray binding write must not erase a preference the user cannot see.
+        settings.IsTransparencyEffective = true;
+        Assert.True(settings.IsBackgroundTransparent);
+
+        settings.IsTransparencyEffective = false;
+        Assert.True(settings.IsBackgroundTransparent);
+    }
 }

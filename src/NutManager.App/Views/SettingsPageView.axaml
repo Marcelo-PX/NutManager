@@ -93,7 +93,7 @@
                           ToolTip.Tip="{Binding AppearanceTransparencyDarkOnly}"
                           AutomationProperties.Name="{Binding AppearanceTransparencyDarkOnly}" />
               </StackPanel>
-              <ToggleSwitch IsChecked="{Binding IsBackgroundTransparent}"
+              <ToggleSwitch IsChecked="{Binding IsTransparencyEffective}"
                             IsEnabled="{Binding IsTransparencyAvailable}"
                             OnContent="{Binding AppearanceTransparencyOn}"
                             OffContent="{Binding AppearanceTransparencyOff}"

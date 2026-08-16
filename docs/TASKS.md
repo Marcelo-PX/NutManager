@@ -926,8 +926,8 @@ One name was corrected rather than removed: the administration view styles its b
 `nut-file-tile` and its own class comment describes a strip, while its handlers still said rail, so
 `ConfigurationFileRailItem_OnClick` and `ConfigurationFileRailIcon_OnAttached` became
 `ConfigurationFileTile_OnClick` and `ConfigurationFileTileIcon_OnAttached`. The leftover
-`nut-file-rail-icon` style class was left alone: a mismatch there fails silently rather than at
-compile time, and the file strip cannot be rendered under this agent's identity to confirm it.
+`nut-file-rail-icon` class went in the follow-up below, once it turned out not to need renaming at
+all: no selector anywhere referenced it, so the attribute styled nothing and could simply go.
 
 No subscription leak was found: in all ten cases with unbalanced `+=`, the subscriber owns the
 publisher or is the control itself. No sync-over-async was found either — every `.Result` hit was a
@@ -960,6 +960,22 @@ under the light one the switch is disabled and a question mark beside it explain
 while the control is unusable. The user's choice is held apart from what the window draws:
 `MainWindowViewModel` keeps the preference and computes the backdrop as preference AND dark, so a
 trip through light theme suppresses transparency without resetting it. Three tests pin that.
+
+The switch reports the backdrop in use rather than the stored choice, so under the light palette a
+disabled control reads "off" instead of claiming a transparency the window is not drawing. The
+preference survives underneath, and the setter is inert while the control is disabled so no stray
+binding write can erase a value the user cannot see.
+
+Two dead things went with it. `Border.nut-card-interactive` and its hover rule had no consumer in the
+application at all — seventeen lines whose comment described a policy ("only for surfaces that
+actually navigate or activate something") that nothing followed. And the `nut-file-rail-icon` class
+on the file tile's icon panel was matched by no selector in any styles file, so it applied nothing;
+removing the attribute is behaviour-neutral by construction rather than by inspection, which is what
+made it safe to do without being able to render the strip.
+
+Both were missed by the T33 audit for the same reason: that pass covered resources declared with
+`x:Key` and never enumerated **style class selectors**, so a class defined but never used, or used
+but never defined, fell outside every search it ran.
 
 ## Task execution template
 

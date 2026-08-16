@@ -156,25 +156,6 @@
     <Setter Property="Padding" Value="14" />
   </Style>
 
-  <!-- Only for surfaces that actually navigate or activate something. -->
-  <Style Selector="Border.nut-card-interactive">
-    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="Padding" Value="14" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="Background" Duration="0:0:0.14" />
-        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
-      </Transitions>
-    </Setter>
-  </Style>
-  <Style Selector="Border.nut-card-interactive:pointerover">
-    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
-  </Style>
-
   <!--
     Metric cards share one width and minimum height so the dashboard reads as a single compact
     band. MinHeight (not Height) keeps a longer localized label from clipping.

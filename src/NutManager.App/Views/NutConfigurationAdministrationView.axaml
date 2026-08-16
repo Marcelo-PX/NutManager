@@ -51,7 +51,6 @@
                   <StackPanel Spacing="7" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <!-- The icon pops once when the tile becomes the selected one; nothing loops. -->
                     <Panel Width="24" Height="24" HorizontalAlignment="Center"
-                           Classes="nut-file-rail-icon"
                            DataContextChanged="ConfigurationFileTileIcon_OnAttached">
                       <PathIcon Data="{DynamicResource NutIconGeneral}" Width="24" Height="24" IsVisible="{Binding IsNutConf}" />
                       <PathIcon Data="{DynamicResource NutIconUps}" Width="24" Height="24" IsVisible="{Binding IsUpsConf}" />

@@ -358,6 +358,25 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     /// </summary>
     [ObservableProperty] private bool _isTransparencyAvailable = true;
 
+    /// <summary>
+    /// What the switch shows, which is the backdrop actually in use rather than the stored choice.
+    /// Under the light palette a disabled switch reading "on" would claim a transparency the window
+    /// is not drawing, so it reads "off" there while <see cref="IsBackgroundTransparent"/> quietly
+    /// keeps the preference for the return to dark. The setter is inert while the control is
+    /// disabled, so nothing the user cannot reach can overwrite that preference.
+    /// </summary>
+    public bool IsTransparencyEffective
+    {
+        get => IsBackgroundTransparent && IsTransparencyAvailable;
+        set
+        {
+            if (!IsTransparencyAvailable || value == IsTransparencyEffective) return;
+            IsBackgroundTransparent = value;
+        }
+    }
+
+    partial void OnIsTransparencyAvailableChanged(bool value) => OnPropertyChanged(nameof(IsTransparencyEffective));
+
     public void ApplyTransparencyAvailability(bool isEffectiveDark) => IsTransparencyAvailable = isEffectiveDark;
     [ObservableProperty] private bool _isSaving;
     [ObservableProperty] private string? _saveError;
@@ -917,6 +936,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     partial void OnIsBackgroundTransparentChanged(bool value)
     {
+        OnPropertyChanged(nameof(IsTransparencyEffective));
         if (_isApplyingVisualPreferences)
         {
             return;
