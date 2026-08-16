@@ -1069,6 +1069,83 @@ the cross-machine authentication that failed here stops being on the path at all
 - the full gate set including a warnings-as-errors build, plus a runtime smoke over every page;
 - acceptance against the real GANDALF profile, recorded exactly as observed.
 
+## T35 — Windows agent for secure remote NUT service control
+
+**Status:** IN PROGRESS — agent and transport complete, client UI pending, real server acceptance
+pending.
+
+### Objective
+
+An agent on the NUT server that monitors and controls the one NUT service it has validated for
+itself, over a transport Windows authenticates.
+
+### Why the approach changed rather than the code
+
+T34 reached GANDALF and GANDALF refused it: `ERROR_ACCESS_DENIED`, a cross-machine authentication
+that a non-domain client with a local account cannot satisfy. Moving the SCM call to the machine that
+owns the service takes that authentication off the path to controlling a service. It does not remove
+authentication from the product — the agent authenticates its callers — it removes the hop that had
+no identity to offer.
+
+### What the agent will not accept
+
+Nothing in the protocol names a service, a path or a command. The request is three scalars, so a
+caller cannot redirect the agent at a target it did not choose. That is the confused-deputy defence,
+and it is structural: implementing a redirect would require adding a field, which is a reviewable
+change rather than a silent one.
+
+### The containment T34 could not perform
+
+The agent runs on the server, so it can require what a remote observer cannot: the service binary
+must live inside the detected NUT installation. Name-based association is not sufficient here, and a
+service that borrows the name "Network UPS Tools" while pointing elsewhere is refused. Revalidation
+before every mutation re-runs the whole selection and compares the binary path as well as the name,
+which closes the window between "we checked" and "we acted".
+
+### Fail-closed, in the specific places it matters
+
+- No operators group means no control, for the lifetime of the process. There is no fallback to
+  Administrators; the group is resolved machine-qualified so a domain group of the same name cannot
+  become the authority.
+- No usable audit sink means no mutation. A privileged action nobody can account for is worse than no
+  action.
+- No unambiguous NUT service means no authority to act.
+- Not running as LocalSystem means the service refuses to start.
+- The group, the event source and the service registration are deployment acts. An agent that can
+  create them is an agent that can be made to.
+
+### Transport
+
+A named pipe, versioned in its name. The ACL grants LocalSystem and the operators group and names
+nobody else, because a pipe grants nothing it was not told to grant. There is deliberately no deny
+entry for Everyone: a deny outranks every allow and every operator is also a member of Everyone.
+
+Framing is length-prefixed, bounded, and checks the declared length before allocating. Reads are
+exact. A peer closing on a frame boundary is not an error; stopping half-way through one is.
+
+Connections are handled concurrently so a status poll keeps being answered while a restart holds the
+mutation gate.
+
+### What the client keeps from T34
+
+No transport failure is ever reported as a NUT outage, and a test refuses the status enum if a name
+like `Offline` or `ServerDown` appears in it. An agent that is missing from a server whose upsd is
+answering is an administrative gap, and the product says so.
+
+### What is still open
+
+- the client UI: `RemoteWindowsServiceViewModel` still monitors only, and the confirmation flow for
+  Stop and Restart is not built;
+- the profile setting selecting the agent transport;
+- the optional HTTPS transport, disabled by default;
+- acceptance against the real GANDALF, which is a human step and is what closes this task.
+
+### Known limitations
+
+The published agent carries the SSH and WMI libraries because it references
+`NutManager.Infrastructure` as a whole. No agent code path reaches them. Narrowing the payload is a
+packaging change; the platform-specific code cannot move into `NutManager.Core`.
+
 ## Task execution template
 
 Use this structure when assigning a task to a coding agent:
