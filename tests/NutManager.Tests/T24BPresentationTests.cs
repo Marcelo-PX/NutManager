@@ -41,7 +41,10 @@ public sealed class T24BPresentationTests
     [InlineData(false, AdministrationSection.WindowsService, true)]
     [InlineData(false, AdministrationSection.DevicesAndDrivers, true)]
     [InlineData(false, AdministrationSection.RemoteAccess, false)]
-    [InlineData(true, AdministrationSection.WindowsService, false)]
+    // The Windows service is applicable on a remote profile since T35: the agent reaches it. The
+    // other two are unchanged — COM ports and local tools genuinely do not project onto a remote
+    // host, and remote access has nothing to configure locally.
+    [InlineData(true, AdministrationSection.WindowsService, true)]
     [InlineData(true, AdministrationSection.DevicesAndDrivers, false)]
     [InlineData(true, AdministrationSection.RemoteAccess, true)]
     public void AdministrationApplicabilityIsBoundToLocalOrRemoteContext(bool remote, AdministrationSection section, bool expected)
@@ -49,6 +52,48 @@ public sealed class T24BPresentationTests
         var sections = AdministrationPresentation.CreateSections(new NutManagerLocalizer(UiLanguagePreference.PtBr), remote, canManage: true);
 
         Assert.Equal(expected, sections.Single(item => item.Section == section).IsApplicable);
+    }
+
+    [Fact]
+    public void TheRemoteWindowsServiceSectionIsNotDescribedAsLocalOnly()
+    {
+        // Observed on a working installation: the agent was connected over HTTPS and reporting the
+        // remote service's state and pid, with start, stop and restart offered, while the header
+        // said the section was available only for local management. The text predates the agent.
+        foreach (var language in new[] { UiLanguagePreference.PtBr, UiLanguagePreference.EnUs })
+        {
+            var strings = new NutManagerLocalizer(language);
+            var remote = AdministrationPresentation.CreateSections(strings, isRemote: true, canManage: true)
+                .Single(item => item.Section == AdministrationSection.WindowsService);
+
+            Assert.NotEqual(strings.Get("Administration.Availability.LocalOnly"), remote.AvailabilityText);
+            Assert.Equal(strings.Get("Administration.Availability.ViaAgent"), remote.AvailabilityText);
+        }
+    }
+
+    [Fact]
+    public void DevicesAndDriversStaysLocalOnlyOnARemoteProfile()
+    {
+        // The agent controls a service; it does not project COM ports or local tooling. Widening
+        // the service section must not quietly widen this one with it.
+        var strings = new NutManagerLocalizer(UiLanguagePreference.PtBr);
+        var drivers = AdministrationPresentation.CreateSections(strings, isRemote: true, canManage: true)
+            .Single(item => item.Section == AdministrationSection.DevicesAndDrivers);
+
+        Assert.False(drivers.IsApplicable);
+        Assert.Equal(strings.Get("Administration.Availability.LocalOnly"), drivers.AvailabilityText);
+    }
+
+    [Fact]
+    public void TheLocalProfileStillReportsTheServiceAsPlainlyAvailable()
+    {
+        var strings = new NutManagerLocalizer(UiLanguagePreference.PtBr);
+        var local = AdministrationPresentation.CreateSections(strings, isRemote: false, canManage: true)
+            .Single(item => item.Section == AdministrationSection.WindowsService);
+
+        // No agent is involved locally, so naming one would be wrong in the other direction.
+        Assert.True(local.IsApplicable);
+        Assert.Equal(strings.Get("Administration.Availability.Available"), local.AvailabilityText);
     }
 
     [Fact]
