@@ -303,11 +303,13 @@ public sealed class RemoteWindowsServiceControlTests
     public void TheApplicationNeverFallsBackToTheDirectScmWhenTheAgentFails()
     {
         var source = Repository.Read(Path.Combine("src", "NutManager.App", "App.axaml.cs"));
+        var factory = Repository.Read(Path.Combine("src", "NutManager.App", "Services", "NutAgentClientFactory.cs"));
 
         // The monitor is built from the agent client and nothing else. A second path would make
         // "control is unavailable" unexplainable: an operator could not tell which route answered.
         Assert.DoesNotContain("WindowsRemoteNutServiceProbe", source, StringComparison.Ordinal);
-        Assert.Contains("WindowsNamedPipeNutAgentClient", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("WindowsRemoteNutServiceProbe", factory, StringComparison.Ordinal);
+        Assert.Contains("WindowsNamedPipeNutAgentClient", factory, StringComparison.Ordinal);
 
         var control = Repository.Read(Path.Combine("src", "NutManager.App", "ViewModels", "RemoteWindowsServiceControlViewModel.cs"));
         foreach (var forbidden in new[] { "IRemoteWindowsNutServiceProbe", "ServiceController", "Process.Start", "sc.exe", "net use" })

@@ -1071,8 +1071,9 @@ the cross-machine authentication that failed here stops being on the path at all
 
 ## T35 — Windows agent for secure remote NUT service control
 
-**Status:** IN PROGRESS — agent, named-pipe transport and desktop integration complete; the alternate
-Windows account and the optional HTTPS transport are not implemented; real server acceptance pending.
+**Status:** IN PROGRESS — agent, both transports, the alternate Windows account and the desktop
+integration are complete; the profile editor has no controls for the agent settings yet; real server
+acceptance pending.
 
 ### Objective
 
@@ -1177,24 +1178,53 @@ normalisation and executable-name helpers the agent uses, and
 remote probe path means relocating those helpers, which is a separate change with its own risk, so
 the finding is recorded and the removal left as a follow-up.
 
+### HTTPS
+
+Implemented on HTTP.sys through `HttpListener`, which is the HTTP.sys wrapper available without
+taking the whole ASP.NET Core framework into a privileged agent. Microsoft marks `HttpListener` as
+not recommended for new development, and that was weighed: the alternative pulls a far larger
+dependency surface into a LocalSystem process for a server that answers one route, and every property
+this task needs — kernel-mode TLS, Negotiate, anonymous disabled — is present and supported. The
+trade is recorded here rather than made silently.
+
+It is off unless a deployment turned it on, so installing the agent opens no port.
+`AuthenticationSchemes.Negotiate` means HTTP.sys authenticates before the request reaches the agent:
+an anonymous caller never arrives at the code that would refuse it. Membership of the operators group
+is then required, through the same check the pipe uses, and the request goes to the same dispatcher —
+neither transport has its own opinion about what an operation means.
+
+One route, `POST /v1/agent`, and nothing else. There is no endpoint that names an operation and no
+unauthenticated health probe. The body is bounded before it is deserialized, with the same ceilings
+the pipe uses.
+
+Every way the configuration can be wrong stops the listener rather than degrading it: a plain-text
+prefix, a wildcard host, a thumbprint that is not hexadecimal, a certificate that is missing or has no
+private key. The named pipe keeps working in every one of those cases, so a mistake in the HTTPS
+configuration cannot take away the transport that was already secure. The certificate is named by
+thumbprint and lives in `LocalMachine\My`; the agent never creates, installs or trusts one, and the
+TLS binding and any URL reservation are `netsh` steps the administrator performs.
+
+### The alternate Windows account
+
+The client authenticates as the current Windows identity, or as an explicit account handed to
+Negotiate through the handler — no `LogonUser`, no process-wide impersonation, and nothing that
+changes the identity of anything else the application is doing. That is what makes a client outside
+the server's domain usable without establishing a session first, which is the environmental problem
+T34 ran into.
+
+The password is stored under the agent's own Credential Manager target and kind. Same server and same
+user name do not make the secrets equivalent: the SMB one authorizes reading configuration files and
+this one authorizes controlling a service, so a test asserts that the agent path never reads the SMB
+credential. Certificate validation is the platform default; a test refuses either transport file if a
+validation callback ever appears in it.
+
 ### What is still open
 
-- **HTTPS.** Not implemented, and deliberately so. It is persisted and validated as a profile
-  setting, but delivering the listener means HTTP.sys, a certificate binding, Negotiate with
-  anonymous disabled and the same operators-group check the pipe enforces — and a partial version of
-  that is a weaker door into a privileged service. The profile can express it; the application
-  refuses it by name rather than quietly using the pipe instead.
-- **The settings selector for the agent transport.** Deferred with HTTPS: the named pipe is the only
-  working transport and is already the default, so a selector today would offer one real option and
-  one that reports itself unavailable. The panel names the transport in use.
-- **The alternate Windows account.** The client authenticates as the current Windows identity only.
-  Supporting a different account over a named pipe means opening a scoped Windows network session to
-  the server's IPC share, which is credential-handling infrastructure with its own rules — the T19B
-  boundary, the 1219 session-conflict policy, and the T20 credential store — and none of it may be
-  approximated. It is the natural companion to the HTTPS work, where Negotiate can carry an explicit
-  credential without a session at all, and it is left for that change rather than half-built here.
-  Until then the operator supplies the identity outside the product, which the deployment guide
-  documents.
+- **The settings editor for the agent transport.** The profile persists, validates and migrates the
+  transport, endpoint, authentication mode and account name, and the composition builds the right
+  client from them — but the profile editor has no controls for them yet, so selecting HTTPS today
+  means editing the profile document. That is the remaining piece of user-facing work.
+- **Acceptance against the real GANDALF**, which is a human step and is what closes this task.
 - **Acceptance against the real GANDALF**, which is a human step and is what closes this task.
 
 ### Known limitations

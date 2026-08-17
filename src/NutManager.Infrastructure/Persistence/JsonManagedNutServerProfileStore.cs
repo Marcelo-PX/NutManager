@@ -1,6 +1,7 @@
 using NutManager.Core.Configuration;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NutManager.Core.Agent;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 
@@ -211,6 +212,13 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? AgentHttpsEndpoint { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public NutAgentAuthenticationMode? AgentAuthenticationMode { get; set; }
+
+        /// <summary>The account name only. The password is never written to this document.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AgentUsername { get; set; }
+
         public ManagedNutServerAccessMode AccessMode { get; set; }
 
         public ManagedNutServerProfile ToProfile(int schemaVersion) => new(
@@ -250,9 +258,13 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
 
             if (transport != NutAgentTransportKind.Https) return new NutAgentProfileSettings(transport);
 
-            return NutAgentProfileSettings.IsValidHttpsEndpoint(AgentHttpsEndpoint)
-                ? new NutAgentProfileSettings(NutAgentTransportKind.Https, AgentHttpsEndpoint)
-                : NutAgentProfileSettings.NamedPipeDefault;
+            if (!NutAgentProfileSettings.IsValidHttpsEndpoint(AgentHttpsEndpoint)) return NutAgentProfileSettings.NamedPipeDefault;
+
+            var authentication = AgentAuthenticationMode is { } mode && Enum.IsDefined(mode)
+                ? mode
+                : NutAgentAuthenticationMode.CurrentWindowsIdentity;
+
+            return new NutAgentProfileSettings(NutAgentTransportKind.Https, AgentHttpsEndpoint, authentication, AgentUsername);
         }
 
         public static ProfileEntry FromProfile(ManagedNutServerProfile profile) => new()
@@ -281,6 +293,10 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
             ManagedFiles = [.. profile.Management.ManagedFiles.Kinds],
             AgentTransport = profile.Management.Mode == NutManagementMode.Remote ? profile.Management.Agent.Transport : null,
             AgentHttpsEndpoint = profile.Management.Agent.HttpsEndpoint,
+            AgentAuthenticationMode = profile.Management.Agent.Transport == NutAgentTransportKind.Https
+                ? profile.Management.Agent.Authentication
+                : null,
+            AgentUsername = profile.Management.Agent.Username,
             AccessMode = profile.AccessMode
         };
     }

@@ -94,14 +94,10 @@ public partial class App : Application
         // it does not quietly try the remote SCM instead, because a silent second path would mean an
         // operator could never tell which one answered — or why control is unavailable on a server
         // where monitoring appears to work.
-        var agentTransport = runtimeProfile.Profile.Management.Agent.Transport;
-        INutManagerAgentClient agentClient = agentTransport switch
-        {
-            NutAgentTransportKind.NamedPipe => new WindowsNamedPipeNutAgentClient(),
-            // HTTPS is persisted and validated, but its listener is not implemented in this build.
-            // Refusing here names the missing transport instead of pretending the pipe was chosen.
-            _ => new UnavailableNutAgentClient("The HTTPS agent transport is not available in this build.")
-        };
+        var agentSettings = runtimeProfile.Profile.Management.Agent;
+        var agentTransport = agentSettings.Transport;
+        var agentClient = await NutAgentClientFactory.CreateAsync(
+            agentSettings, runtimeProfile.Profile.Id, credentialStore, CancellationToken.None);
 
         var remoteWindowsService = isLocalManagement
             ? null

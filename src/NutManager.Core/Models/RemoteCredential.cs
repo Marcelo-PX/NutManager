@@ -10,7 +10,17 @@ public enum RemoteCredentialKind
 {
     SshPassword,
     SshPrivateKeyPassphrase,
-    SmbPassword
+    SmbPassword,
+
+    /// <summary>
+    /// The password of the alternate Windows account used to reach the NutManager agent.
+    ///
+    /// A separate kind, and therefore a separate stored target, even when the account happens to
+    /// match the SMB one. The two authorize different things — one reads configuration files, the
+    /// other controls a service — and a single stored secret would silently grant whichever
+    /// boundary the operator did not think they were granting.
+    /// </summary>
+    WindowsAgentPassword
 }
 
 public enum RemoteCredentialStoreStatus

@@ -1,3 +1,5 @@
+using NutManager.Core.Agent;
+
 namespace NutManager.Core.Models;
 
 /// <summary>
@@ -29,11 +31,20 @@ public sealed record NutAgentProfileSettings
 {
     public static readonly NutAgentProfileSettings NamedPipeDefault = new(NutAgentTransportKind.NamedPipe);
 
-    public NutAgentProfileSettings(NutAgentTransportKind transport, string? httpsEndpoint = null)
+    public NutAgentProfileSettings(
+        NutAgentTransportKind transport,
+        string? httpsEndpoint = null,
+        NutAgentAuthenticationMode authentication = NutAgentAuthenticationMode.CurrentWindowsIdentity,
+        string? username = null)
     {
         if (!Enum.IsDefined(transport))
         {
             throw new ArgumentOutOfRangeException(nameof(transport), "The agent transport is invalid.");
+        }
+
+        if (!Enum.IsDefined(authentication))
+        {
+            throw new ArgumentOutOfRangeException(nameof(authentication), "The agent authentication mode is invalid.");
         }
 
         Transport = transport;
@@ -41,11 +52,40 @@ public sealed record NutAgentProfileSettings
         // The endpoint is kept only for the transport that uses it, so a profile switched back to
         // the named pipe cannot carry a stale HTTPS address that nothing validates any more.
         HttpsEndpoint = transport == NutAgentTransportKind.Https ? ValidateHttpsEndpoint(httpsEndpoint) : null;
+
+        // An alternate account is only meaningful where a credential can be handed to Negotiate.
+        // Over the named pipe the caller is whoever Windows already authenticated, so the setting
+        // is normalised away rather than kept as a promise the transport cannot keep.
+        Authentication = transport == NutAgentTransportKind.Https
+            ? authentication
+            : NutAgentAuthenticationMode.CurrentWindowsIdentity;
+
+        Username = Authentication == NutAgentAuthenticationMode.AlternateWindowsAccount
+            ? NormalizeUsername(username)
+            : null;
     }
 
     public NutAgentTransportKind Transport { get; }
 
     public string? HttpsEndpoint { get; }
+
+    public NutAgentAuthenticationMode Authentication { get; }
+
+    /// <summary>
+    /// The account name only. The password lives in the Windows Credential Manager under the
+    /// agent's own target and never touches this record, the profile document, or a log.
+    /// </summary>
+    public string? Username { get; }
+
+    private static string? NormalizeUsername(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        var trimmed = value.Trim();
+        return trimmed.Length > 255
+            ? throw new ArgumentException("The agent account name is too long.", nameof(value))
+            : trimmed;
+    }
 
     /// <summary>
     /// Accepts one scheme and refuses everything else.

@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using System.Security.Principal;
 using System.ServiceProcess;
 using NutManager.Core.Administration;
 using NutManager.Core.Agent;
@@ -24,6 +25,7 @@ internal sealed class NutAgentWindowsService : ServiceBase
 
     private readonly CancellationTokenSource _stopping = new();
     private Task? _listener;
+    private Task? _https;
 
     internal NutAgentWindowsService()
     {
@@ -62,6 +64,47 @@ internal sealed class NutAgentWindowsService : ServiceBase
 
         var server = new NutAgentNamedPipeServer(composition.Dispatcher, operatorsGroup);
         _listener = Task.Run(() => server.RunAsync(_stopping.Token), CancellationToken.None);
+
+        StartHttpsIfConfigured(composition, operatorsGroup);
+    }
+
+    /// <summary>
+    /// Starts the optional HTTPS listener, and only if it can be started as configured.
+    ///
+    /// Off is the default: an installation that does nothing gets a named pipe and no open port.
+    /// When it is on and something is wrong — no prefix, a plain-text prefix, a wildcard host, a
+    /// certificate that is absent or has no private key — the listener does not start at all. It
+    /// never degrades into something weaker, and the named pipe keeps working, so a mistake in the
+    /// HTTPS configuration cannot take away the transport that was already secure.
+    /// </summary>
+    private void StartHttpsIfConfigured(NutAgentComposition composition, SecurityIdentifier operatorsGroup)
+    {
+        var options = NutAgentHttpsOptions.Load();
+        if (!options.HttpsEnabled) return;
+
+        if (!NutAgentHttpsOptions.Validate(options, out var failure))
+        {
+            WriteStartupFailure(composition, $"The HTTPS transport was not started: {failure}");
+            return;
+        }
+
+        if (!NutAgentCertificateCheck.Exists(options.CertificateThumbprint!, out var certificateFailure))
+        {
+            WriteStartupFailure(composition, $"The HTTPS transport was not started: {certificateFailure}");
+            return;
+        }
+
+        try
+        {
+            var https = new NutAgentHttpsServer(composition.Dispatcher, operatorsGroup, options.HttpsPrefix!);
+            _https = Task.Run(() => https.RunAsync(_stopping.Token), CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            // Binding failures are the common case here: no SSL certificate bound to the port, or
+            // no URL reservation. Both are deployment steps, and both are named rather than hidden.
+            WriteStartupFailure(composition, $"The HTTPS transport could not bind to {options.HttpsPrefix}: {exception.GetType().Name}.");
+        }
     }
 
     protected override void OnStop()
@@ -71,6 +114,7 @@ internal sealed class NutAgentWindowsService : ServiceBase
         try
         {
             _listener?.Wait(StopTimeout);
+            _https?.Wait(StopTimeout);
         }
         catch (Exception)
         {

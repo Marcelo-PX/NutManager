@@ -163,9 +163,133 @@ single request to the agent, which holds both phases under one lock.
 
 ### Transport selection
 
-The profile stores the agent transport. New and existing profiles use the named pipe, which is the
-only transport this build implements. A profile that names HTTPS is refused by name — the application
-will not quietly use the named pipe instead — until the HTTPS listener exists.
+The profile stores the agent transport, and the named pipe is the default for new and existing
+profiles. HTTPS is selected per profile and requires the server-side setup below.
+
+There is no fallback in either direction. A profile that selects HTTPS never quietly uses the named
+pipe when the endpoint is wrong, and a profile on the named pipe never tries HTTPS: an operator who
+cannot tell which transport answered cannot diagnose either.
+
+## The optional HTTPS transport
+
+HTTPS exists for the case the named pipe cannot serve. A pipe reached from another machine rides SMB
+and needs a Windows session the client may not have; Negotiate over HTTPS can be given an explicit
+credential instead, so a client outside the server's domain can authenticate without anyone
+establishing a session first.
+
+It is **disabled by default**. Installing the agent opens no TCP port. Everything below is a
+deliberate act by an administrator.
+
+### 1. The agent configuration file
+
+Create `%ProgramData%\NutManager\Agent\agent.json` on the server:
+
+```json
+{
+  "httpsEnabled": true,
+  "httpsPrefix": "https://gandalf.sbra.local:5199/",
+  "certificateThumbprint": "A909502DD82AE41433E6F83886B00D4277A32A7B"
+}
+```
+
+The file holds no secret and cannot: there is no password, no PFX and no private key in it. The
+certificate is named by thumbprint and lives in the Windows certificate store, where the private key
+is protected by the operating system.
+
+Restrict the file so that only `SYSTEM` and `Administrators` can modify it — it decides where a
+privileged agent listens:
+
+```powershell
+icacls "C:\ProgramData\NutManager\Agent\agent.json" /inheritance:r /grant "SYSTEM:(R)" /grant "Administrators:(F)"
+```
+
+The prefix must use `https`, must end with a forward slash, and must name an explicit host. A
+wildcard (`https://*:5199/`) is refused: on a privileged agent it would accept requests aimed at any
+name that resolves to the machine. Any of these mistakes stops the HTTPS listener from starting; the
+named pipe keeps working, and the reason is written to the Application event log.
+
+### 2. The certificate
+
+The certificate must be in `LocalMachine\My`, must have a private key on that machine, and its
+subject or SAN must match the host name clients will use. The agent verifies the first two at
+startup and refuses to listen otherwise. It never creates, installs or trusts a certificate.
+
+```powershell
+Get-ChildItem Cert:\LocalMachine\My | Select-Object Thumbprint, Subject, HasPrivateKey, NotAfter
+```
+
+### 3. Bind the certificate to the port
+
+HTTP.sys owns the TLS binding, and it is a deployment step. The agent never runs `netsh`.
+
+```powershell
+netsh http add sslcert ipport=0.0.0.0:5199 certhash=A909502DD82AE41433E6F83886B00D4277A32A7B appid="{00000000-0000-0000-0000-000000000000}"
+```
+
+Use a stable GUID of your own for `appid`. Verify with:
+
+```powershell
+netsh http show sslcert ipport=0.0.0.0:5199
+```
+
+### 4. Reserve the URL
+
+The agent runs as LocalSystem, which can normally bind without a reservation. If your policy
+requires one:
+
+```powershell
+netsh http add urlacl url=https://gandalf.sbra.local:5199/ user="NT AUTHORITY\SYSTEM"
+```
+
+### 5. Firewall
+
+Opening the port is a deliberate administrative act, and the agent never touches firewall rules:
+
+```powershell
+New-NetFirewallRule -DisplayName "NutManager Agent HTTPS" -Direction Inbound -Protocol TCP -LocalPort 5199 -Action Allow
+```
+
+### 6. Restart the agent
+
+```powershell
+Restart-Service NutManagerAgent
+```
+
+### Authentication over HTTPS
+
+The listener requires **Negotiate** and does not accept anonymous requests — HTTP.sys authenticates
+before the request reaches the agent, so an unauthenticated caller never gets as far as the code that
+could refuse it. Membership of `NutManager Operators` is then required, exactly as on the named pipe.
+There is no bearer token, no Basic authentication and no password anywhere in the agent protocol.
+
+In NutManager, an HTTPS profile chooses between:
+
+- **Current Windows identity** — the account NutManager runs as. Nothing is stored.
+- **Alternate Windows account** — a different account, supplied to Negotiate as an explicit
+  credential. Its password is kept in the Windows Credential Manager under the agent's own target,
+  separate from the SMB and SSH secrets: those authorize reading configuration files, this authorizes
+  controlling a service, and one stored secret must not silently grant both.
+
+### Troubleshooting HTTPS
+
+**The service starts but HTTPS does not.** Application event log, source `NutManager Agent`, event
+1001. It names which precondition failed: a missing or plain-text prefix, a wildcard host, a
+thumbprint that is not hexadecimal, a certificate that is absent or has no private key, or a bind
+that failed because no SSL certificate is attached to the port.
+
+**NutManager reports an incompatible agent after enabling HTTPS.** That state also covers TLS
+failures — an untrusted certificate or one whose name does not match the host. Certificate validation
+is the platform default and is never bypassed, so fix the certificate rather than the client.
+
+**NutManager reports access denied over HTTPS.** Negotiate failed, or the account is not a member of
+`NutManager Operators` on the server. A 401 and a 403 both arrive here.
+
+**Rolling HTTPS back.** Set `httpsEnabled` to `false` (or delete the file) and restart the service.
+The named pipe is unaffected. To remove the binding as well:
+
+```powershell
+netsh http delete sslcert ipport=0.0.0.0:5199
+```
 
 ## Event log
 
