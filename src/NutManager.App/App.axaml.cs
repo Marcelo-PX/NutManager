@@ -6,8 +6,10 @@ using Avalonia.Styling;
 using NutManager.App.Presentation.Themes;
 using NutManager.App.Services;
 using NutManager.App.ViewModels;
+using NutManager.Core.Agent;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
+using NutManager.Infrastructure.Agent;
 using NutManager.Infrastructure.Mock;
 using NutManager.Infrastructure.Configuration;
 using NutManager.Infrastructure.Credentials.Windows;
@@ -84,14 +86,33 @@ public partial class App : Application
                 new WindowsCredentialPrompt());
         // The host comes from the profile's own NUT endpoint, not from the SMB share path: the share
         // is a configuration transport that may point anywhere, while the endpoint is the machine
-        // whose NUT is being monitored. The probe uses the current Windows identity and no credential
-        // from any store, so it is created for a remote profile regardless of how SMB is faring.
+        // whose NUT is being monitored. The agent client uses the current Windows identity and no
+        // credential from any store, so it is created for a remote profile regardless of how SMB is
+        // faring.
+        //
+        // There is deliberately no fallback here. If the agent cannot be reached, the panel says so;
+        // it does not quietly try the remote SCM instead, because a silent second path would mean an
+        // operator could never tell which one answered — or why control is unavailable on a server
+        // where monitoring appears to work.
+        var agentTransport = runtimeProfile.Profile.Management.Agent.Transport;
+        INutManagerAgentClient agentClient = agentTransport switch
+        {
+            NutAgentTransportKind.NamedPipe => new WindowsNamedPipeNutAgentClient(),
+            // HTTPS is persisted and validated, but its listener is not implemented in this build.
+            // Refusing here names the missing transport instead of pretending the pipe was chosen.
+            _ => new UnavailableNutAgentClient("The HTTPS agent transport is not available in this build.")
+        };
+
         var remoteWindowsService = isLocalManagement
             ? null
             : new RemoteWindowsServiceViewModel(
                 runtimeProfile.Endpoint.Host,
-                new WindowsRemoteNutServiceProbe(),
-                settings.Language);
+                agentClient,
+                settings.Language,
+                transport: agentTransport);
+        var remoteWindowsServiceControl = remoteWindowsService is null
+            ? null
+            : new RemoteWindowsServiceControlViewModel(remoteWindowsService, agentClient, settings.Language);
         var installationDetector = isLocalManagement ? new WindowsNutInstallationDetector() : null;
         var diagnostics = new DiagnosticsPageViewModel(
             settings,
@@ -111,7 +132,8 @@ public partial class App : Application
             remoteManagement,
             settings.Language,
             isLocalManagement ? new WindowsNutDriverCatalogSource() : null,
-            remoteWindowsService);
+            remoteWindowsService,
+            remoteWindowsServiceControl);
         INutManagedFileDetector managedFileDetector = isLocalManagement
             ? new LocalNutManagedFileDetector(installationDetector ?? new WindowsNutInstallationDetector())
             : new RemoteNutManagedFileDetector(() => remoteManagement?.DirectoryValidation);

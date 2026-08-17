@@ -201,6 +201,16 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<NutConfigurationFileKind>? ManagedFiles { get; set; }
 
+        /// <summary>
+        /// Null on any document written before schema 6, which is read as the named pipe: the
+        /// transport that needs nothing configured on the server beyond the agent itself.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public NutAgentTransportKind? AgentTransport { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AgentHttpsEndpoint { get; set; }
+
         public ManagedNutServerAccessMode AccessMode { get; set; }
 
         public ManagedNutServerProfile ToProfile(int schemaVersion) => new(
@@ -222,8 +232,28 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
                 schemaVersion < 3 ? null : SmbUsername,
                 schemaVersion < 4 ? global::NutManager.Core.Models.SshAuthenticationMode.Password : SshAuthenticationMode ?? global::NutManager.Core.Models.SshAuthenticationMode.Password,
                 schemaVersion < 4 ? null : SshPrivateKeyPath,
-                schemaVersion < 5 ? ManagedNutConfigurationFiles.All : ManagedNutConfigurationFiles.CreateOrAll(ManagedFiles)),
+                schemaVersion < 5 ? ManagedNutConfigurationFiles.All : ManagedNutConfigurationFiles.CreateOrAll(ManagedFiles),
+                ReadAgentSettings(schemaVersion)),
             AccessMode);
+
+        /// <summary>
+        /// A document from before the agent existed, or one whose transport is unreadable, resolves
+        /// to the named pipe rather than failing to load: a profile must not become unopenable
+        /// because of a setting that has a safe default.
+        /// </summary>
+        private NutAgentProfileSettings ReadAgentSettings(int schemaVersion)
+        {
+            if (schemaVersion < 6 || AgentTransport is not { } transport || !Enum.IsDefined(transport))
+            {
+                return NutAgentProfileSettings.NamedPipeDefault;
+            }
+
+            if (transport != NutAgentTransportKind.Https) return new NutAgentProfileSettings(transport);
+
+            return NutAgentProfileSettings.IsValidHttpsEndpoint(AgentHttpsEndpoint)
+                ? new NutAgentProfileSettings(NutAgentTransportKind.Https, AgentHttpsEndpoint)
+                : NutAgentProfileSettings.NamedPipeDefault;
+        }
 
         public static ProfileEntry FromProfile(ManagedNutServerProfile profile) => new()
         {
@@ -249,6 +279,8 @@ public sealed class JsonManagedNutServerProfileStore : IManagedNutServerProfileS
             SmbAuthenticationMode = profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb ? profile.Management.SmbAuthenticationMode : null,
             SmbUsername = profile.Management.SmbUsername,
             ManagedFiles = [.. profile.Management.ManagedFiles.Kinds],
+            AgentTransport = profile.Management.Mode == NutManagementMode.Remote ? profile.Management.Agent.Transport : null,
+            AgentHttpsEndpoint = profile.Management.Agent.HttpsEndpoint,
             AccessMode = profile.AccessMode
         };
     }

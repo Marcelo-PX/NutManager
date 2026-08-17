@@ -10,13 +10,15 @@
   -->
   <StackPanel Spacing="16">
     <!--
-      Remote profile (T34). Read-only monitoring of the service on the other machine, and the notice
-      that says so. There is no Start, Stop or Restart anywhere in this block — not disabled ones,
-      none at all — because the view model behind it exposes no such command. The local actions below
-      stay behind IsLocalManagementProfile, so nothing on this page can act on a remote host.
+      Remote profile (T34 monitoring, T35 control). The monitor and the control panel are two
+      objects, and the split is deliberate: the card below binds to RemoteWindowsService, which
+      exposes no way to act, and every button lives in the separate panel bound to
+      RemoteWindowsServiceControl. A Start button in this view has to come from the control object,
+      which is what keeps "monitoring cannot act" checkable rather than merely intended.
     -->
     <StackPanel Spacing="14" IsVisible="{Binding IsRemoteManagementProfile}">
-      <Border Classes="nut-card">
+      <!-- Shown only when the agent itself says control is off, in the agent's own words. -->
+      <Border Classes="nut-card" IsVisible="{Binding RemoteWindowsService.HasControlUnavailableReason}">
         <StackPanel Orientation="Horizontal" Spacing="11">
           <PathIcon Data="{DynamicResource NutIconInfo}" Classes="muted" Width="18" Height="18" VerticalAlignment="Top" />
           <StackPanel Spacing="3">
@@ -39,7 +41,8 @@
             </Border>
             <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
               <TextBlock Text="{Binding TitleText}" Classes="nut-card-title" />
-              <TextBlock Text="{Binding ReadOnlyNoticeText}" Classes="nut-metadata" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding ObservedAtText}" Classes="nut-metadata" TextWrapping="Wrap"
+                         IsVisible="{Binding HasObservation}" />
             </StackPanel>
             <Button Grid.Column="2" Classes="nut-secondary"
                     Command="{Binding RefreshCommand}"
@@ -53,52 +56,110 @@
           </Grid>
 
           <!--
-            Six readings, each labelled in text. The service state and the Windows query state are
-            deliberately separate rows: a refused query says nothing about the service, and folding
-            them into one line is what would let a permission problem read as an outage.
+            The agent's own state and the service's state are separate rows, and neither of them is
+            NUT's. Folding them together is what would let an authentication problem read as an outage.
           -->
-          <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="12">
+          <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="12">
             <StackPanel Spacing="2">
+              <TextBlock Text="{Binding AgentLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding AgentStateText}" Classes="nut-body" TextWrapping="Wrap"
+                         AutomationProperties.Name="{Binding AgentStateText}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="2">
+              <TextBlock Text="{Binding TransportLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding TransportText}" Classes="nut-body"
+                         AutomationProperties.Name="{Binding TransportText}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="2">
               <TextBlock Text="{Binding HostLabel}" Classes="nut-label" />
               <TextBlock Text="{Binding HostText}" Classes="nut-body" TextTrimming="CharacterEllipsis"
                          AutomationProperties.Name="{Binding HostText}" />
             </StackPanel>
-            <StackPanel Grid.Column="1" Spacing="2">
+
+            <StackPanel Grid.Row="1" Spacing="2">
               <TextBlock Text="{Binding ServiceLabel}" Classes="nut-label" />
               <TextBlock Text="{Binding ServiceIdentityText}" Classes="nut-body" TextTrimming="CharacterEllipsis"
                          AutomationProperties.Name="{Binding ServiceIdentityText}" />
             </StackPanel>
-            <StackPanel Grid.Column="2" Spacing="2">
+            <StackPanel Grid.Row="1" Grid.Column="1" Spacing="2">
               <TextBlock Text="{Binding StateLabel}" Classes="nut-label" />
               <TextBlock Text="{Binding ServiceStateText}" Classes="nut-body"
                          AutomationProperties.Name="{Binding ServiceStateText}" />
             </StackPanel>
-
-            <StackPanel Grid.Row="1" Spacing="2">
-              <TextBlock Text="{Binding ProcessLabel}" Classes="nut-label" />
-              <TextBlock Text="{Binding ProcessText}" Classes="nut-body" TextTrimming="CharacterEllipsis"
-                         AutomationProperties.Name="{Binding ProcessText}" />
-            </StackPanel>
-            <StackPanel Grid.Row="1" Grid.Column="1" Spacing="2">
+            <StackPanel Grid.Row="1" Grid.Column="2" Spacing="2">
               <TextBlock Text="{Binding ProcessIdLabel}" Classes="nut-label" />
               <TextBlock Text="{Binding ProcessIdText}" Classes="nut-body"
                          AutomationProperties.Name="{Binding ProcessIdText}" />
             </StackPanel>
-            <StackPanel Grid.Row="1" Grid.Column="2" Spacing="2">
-              <TextBlock Text="{Binding QueryLabel}" Classes="nut-label" />
-              <TextBlock Text="{Binding QueryStateText}" Classes="nut-body" TextWrapping="Wrap"
-                         AutomationProperties.Name="{Binding QueryStateText}" />
+
+            <StackPanel Grid.Row="2" Spacing="2">
+              <TextBlock Text="{Binding ProcessLabel}" Classes="nut-label" />
+              <TextBlock Text="{Binding ProcessText}" Classes="nut-body" TextTrimming="CharacterEllipsis"
+                         AutomationProperties.Name="{Binding ProcessText}" />
             </StackPanel>
           </Grid>
 
           <TextBlock Text="{Binding DiagnosticText}" Classes="nut-metadata" TextWrapping="Wrap"
                      IsVisible="{Binding HasDiagnostic}" />
 
-          <StackPanel Orientation="Horizontal" Spacing="9">
-            <TextBlock Text="{Binding ObservedAtText}" Classes="nut-metadata" IsVisible="{Binding HasObservation}" />
-            <!-- A reading kept on screen during a refresh is labelled, never passed off as current. -->
-            <TextBlock Text="{Binding RefreshingText}" Classes="nut-metadata" IsVisible="{Binding IsRefreshing}" />
-          </StackPanel>
+          <!-- A reading kept on screen during a refresh is labelled, never passed off as current. -->
+          <TextBlock Text="{Binding RefreshingText}" Classes="nut-metadata" IsVisible="{Binding IsRefreshing}" />
+        </StackPanel>
+      </Border>
+      </StackPanel>
+
+      <!--
+        Control. A separate object, so the monitor above still holds no way to act. Every button is
+        driven by the agent's advertised capabilities rather than by the service state alone: an agent
+        whose audit sink is unusable reports a healthy service and still refuses to touch it.
+      -->
+      <StackPanel IsVisible="{Binding HasRemoteWindowsServiceControl}">
+      <Border Classes="nut-card-elevated" DataContext="{Binding RemoteWindowsServiceControl}">
+        <StackPanel Spacing="12">
+          <WrapPanel>
+            <Button Classes="nut-success" Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" Margin="0,0,8,8">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Data="{DynamicResource NutIconStart}" Width="14" Height="14" />
+                <TextBlock Text="{Binding StartText}" />
+              </StackPanel>
+            </Button>
+            <Button Classes="nut-danger" Command="{Binding StopCommand}" IsEnabled="{Binding CanStop}" Margin="0,0,8,8">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Data="{DynamicResource NutIconStop}" Width="14" Height="14" />
+                <TextBlock Text="{Binding StopText}" />
+              </StackPanel>
+            </Button>
+            <Button Command="{Binding RestartCommand}" IsEnabled="{Binding CanRestart}" Margin="0,0,8,8">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <PathIcon Data="{DynamicResource NutIconRestart}" Width="14" Height="14" />
+                <TextBlock Text="{Binding RestartText}" />
+              </StackPanel>
+            </Button>
+          </WrapPanel>
+
+          <!--
+            The confirmation names the host, the action and the service. Nothing has reached the
+            agent at this point: the request is made when Confirm is pressed and not before.
+          -->
+          <Border Classes="nut-card" IsVisible="{Binding IsConfirming}" BorderBrush="{DynamicResource NutWarningBrush}">
+            <StackPanel Spacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="17" Height="17" VerticalAlignment="Top" />
+                <TextBlock Text="{Binding ConfirmationText}" FontSize="13" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="nut-primary" Command="{Binding ConfirmCommand}">
+                  <TextBlock Text="{Binding ConfirmText}" />
+                </Button>
+                <Button Classes="nut-ghost" Command="{Binding CancelConfirmationCommand}">
+                  <TextBlock Text="{Binding CancelText}" />
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Text="{Binding BusyText}" Classes="nut-metadata" IsVisible="{Binding IsBusy}" />
+          <TextBlock Text="{Binding ResultText}" Classes="nut-metadata" TextWrapping="Wrap" IsVisible="{Binding HasResult}" />
         </StackPanel>
       </Border>
       </StackPanel>

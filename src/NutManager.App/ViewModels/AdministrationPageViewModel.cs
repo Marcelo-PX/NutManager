@@ -46,7 +46,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         RemoteManagementSessionViewModel? remoteManagement = null,
         UiLanguagePreference language = UiLanguagePreference.PtBr,
         ILocalNutDriverCatalogSource? driverCatalogSource = null,
-        RemoteWindowsServiceViewModel? remoteWindowsService = null)
+        RemoteWindowsServiceViewModel? remoteWindowsService = null,
+        RemoteWindowsServiceControlViewModel? remoteWindowsServiceControl = null)
         : base(
             new NutManagerLocalizer(language).Get("Administration.Title"),
             profileContext?.Profile.Management.Mode == NutManagementMode.Remote
@@ -61,6 +62,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _profileContext = profileContext;
         _remoteManagement = remoteManagement;
         RemoteWindowsService = remoteWindowsService;
+        RemoteWindowsServiceControl = remoteWindowsServiceControl;
         Strings = new NutManagerLocalizer(language);
         if (_remoteManagement is not null)
         {
@@ -320,6 +322,14 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public RemoteWindowsServiceViewModel? RemoteWindowsService { get; }
 
     public bool HasRemoteWindowsService => RemoteWindowsService is not null;
+
+    /// <summary>
+    /// Control, kept as its own object so the monitor above stays incapable of acting. A view that
+    /// wants a Stop button has to bind to this one, which makes the separation visible in the XAML.
+    /// </summary>
+    public RemoteWindowsServiceControlViewModel? RemoteWindowsServiceControl { get; }
+
+    public bool HasRemoteWindowsServiceControl => RemoteWindowsServiceControl is not null;
 
     public bool IsRemoteManagementProfile => _profileContext?.Profile.Management.Mode == NutManagementMode.Remote;
 

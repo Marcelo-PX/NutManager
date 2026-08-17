@@ -3,28 +3,33 @@ using System.Reflection;
 using System.Windows.Input;
 using NutManager.App.ViewModels;
 using NutManager.Core.Administration;
+using NutManager.Core.Agent;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
+using NutManager.Infrastructure.Agent;
 using NutManager.Infrastructure.Platform.Windows;
 using Xunit;
 
 namespace NutManager.Tests;
 
 /// <summary>
-/// T34 remote Windows service monitoring. Everything here runs against a fake probe: no SCM, no RPC,
-/// no network and no real host, which is what lets the awkward cases — a refused query, a blocked
-/// call, a result that arrives too late — be tested at all.
+/// Remote Windows service monitoring. Everything here runs against a fake agent client: no pipe, no
+/// SCM, no network and no real host, which is what lets the awkward cases — a refused connection, a
+/// blocked call, a result that arrives too late — be tested at all.
+///
+/// T34 wrote these against a remote SCM probe. T35 moved the reading to the agent, and the assertions
+/// came with it unchanged in substance: a transport failure still never becomes a claim about the
+/// service, and the monitor still holds no way to act.
 /// </summary>
 public sealed class RemoteWindowsServiceMonitoringTests
 {
     private static readonly DateTimeOffset Observed = new(2026, 8, 16, 12, 0, 0, TimeSpan.Zero);
 
-    private static RemoteWindowsNutServiceSnapshot Success(
+    private static NutAgentServiceStatus Success(
         NutServiceState state = NutServiceState.Running,
         int? processId = 1234,
         string? executable = "nut.exe") =>
-        new("Gandalf.sbra.local", RemoteWindowsServiceProbeState.Success, "Network UPS Tools",
-            "Network UPS Tools", state, processId, executable, null, Observed);
+        new("Gandalf.sbra.local", "Network UPS Tools", "Network UPS Tools", state, processId, executable, true, Observed);
 
     // ---------------------------------------------------------------- service state
 
@@ -91,58 +96,67 @@ public sealed class RemoteWindowsServiceMonitoringTests
         Assert.Equal("—", monitor.ProcessIdText);
     }
 
-    // ---------------------------------------------------------------- probe failures
+    // ---------------------------------------------------------------- transport failures
 
     [Theory]
-    [InlineData(RemoteWindowsServiceProbeState.AccessDenied, "RemoteService.Query.AccessDenied")]
-    [InlineData(RemoteWindowsServiceProbeState.RpcUnavailable, "RemoteService.Query.RpcUnavailable")]
-    [InlineData(RemoteWindowsServiceProbeState.ServiceNotFound, "RemoteService.Query.ServiceNotFound")]
-    [InlineData(RemoteWindowsServiceProbeState.AmbiguousService, "RemoteService.Query.Ambiguous")]
-    [InlineData(RemoteWindowsServiceProbeState.TimedOut, "RemoteService.Query.TimedOut")]
-    [InlineData(RemoteWindowsServiceProbeState.Unsupported, "RemoteService.Query.Unsupported")]
-    [InlineData(RemoteWindowsServiceProbeState.UnknownFailure, "RemoteService.Query.Failed")]
-    public async Task EachQueryFailureIsNamedRatherThanShownAsAStoppedService(
-        RemoteWindowsServiceProbeState probeState,
+    [InlineData(NutAgentClientStatus.AgentUnavailable, "RemoteService.Agent.Unavailable")]
+    [InlineData(NutAgentClientStatus.AccessDenied, "RemoteService.Agent.AccessDenied")]
+    [InlineData(NutAgentClientStatus.HostUnreachable, "RemoteService.Agent.HostUnreachable")]
+    [InlineData(NutAgentClientStatus.TimedOut, "RemoteService.Agent.TimedOut")]
+    [InlineData(NutAgentClientStatus.ProtocolFailure, "RemoteService.Agent.ProtocolFailure")]
+    [InlineData(NutAgentClientStatus.Failed, "RemoteService.Agent.Failed")]
+    public async Task EachTransportFailureIsNamedRatherThanShownAsAStoppedService(
+        NutAgentClientStatus failure,
         string expectedKey)
     {
-        await using var monitor = Monitor(RemoteWindowsNutServiceSnapshot.Failure("host", probeState, Observed));
+        await using var monitor = Monitor(failure);
         await monitor.RefreshAsync();
 
-        Assert.Equal(monitor.Strings.Get(expectedKey), monitor.QueryStateText);
+        Assert.Equal(monitor.Strings.Get(expectedKey), monitor.AgentStateText);
 
-        // A failed query never claims the service is stopped: it does not know.
+        // An agent that did not answer never claims the service is stopped: it does not know.
         Assert.False(monitor.IsServiceStopped);
         Assert.False(monitor.IsServiceRunning);
-        Assert.True(monitor.IsQueryUnavailable);
+        Assert.True(monitor.IsAgentUnavailable);
         Assert.Equal(monitor.Strings.Get("Status.Unavailable"), monitor.ServiceStateText);
     }
 
     [Fact]
-    public async Task AnAmbiguousResultNamesTheCandidatesInsteadOfPickingOne()
+    public async Task AnUnreachableAgentReportsNoServiceRatherThanAGuessedOne()
     {
-        var snapshot = RemoteWindowsNutServiceSnapshot.Failure(
-            "host",
-            RemoteWindowsServiceProbeState.AmbiguousService,
-            Observed,
-            candidates: ["Network UPS Tools", "NUT"]);
-        await using var monitor = Monitor(snapshot);
+        await using var monitor = Monitor(NutAgentClientStatus.AgentUnavailable);
         await monitor.RefreshAsync();
 
-        Assert.True(monitor.HasDiagnostic);
-        Assert.Contains("Network UPS Tools", monitor.DiagnosticText);
-        Assert.Contains("NUT", monitor.DiagnosticText);
-        Assert.Null(monitor.Snapshot!.ServiceName);
+        Assert.Null(monitor.Observation!.Service);
+        Assert.Equal(monitor.Strings.Get("Common.Unavailable"), monitor.ServiceIdentityText);
+
+        // Nothing may be controlled through an agent that has not been spoken to.
+        Assert.False(monitor.IsControlAvailable);
+        Assert.False(monitor.Supports(NutAgentOperation.Restart));
     }
 
     [Fact]
     public async Task TheNumericWindowsCodeSurvivesIntoTheDiagnostic()
     {
-        var snapshot = RemoteWindowsNutServiceSnapshot.Failure(
-            "host", RemoteWindowsServiceProbeState.AccessDenied, Observed, WindowsRemoteNutServiceProbe.ErrorAccessDenied);
-        await using var monitor = Monitor(snapshot);
+        await using var monitor = Monitor(NutAgentClientStatus.AccessDenied, WindowsNamedPipeNutAgentClient.ErrorAccessDenied);
         await monitor.RefreshAsync();
 
         Assert.Contains("5", monitor.DiagnosticText);
+    }
+
+    [Fact]
+    public async Task AnAgentThatCannotControlSaysWhyWithoutClaimingToBeUnreachable()
+    {
+        // Reachable and refusing are different states. An operator told only "unavailable" would go
+        // looking at the network for a problem that is a missing local group.
+        await using var monitor = new RemoteWindowsServiceViewModel(
+            "Gandalf.sbra.local", new HandshakeOnlyClient(Handshake(controlAvailable: false, reason: "operators group missing")));
+        await monitor.RefreshAsync();
+
+        Assert.True(monitor.IsAgentReachable);
+        Assert.False(monitor.IsControlAvailable);
+        Assert.True(monitor.HasControlUnavailableReason);
+        Assert.Equal("operators group missing", monitor.ControlUnavailableText);
     }
 
     [Theory]
@@ -291,7 +305,7 @@ public sealed class RemoteWindowsServiceMonitoringTests
     [Fact]
     public async Task ASecondRefreshJoinsTheRunningProbeInsteadOfStartingAnother()
     {
-        var probe = new BlockingProbe();
+        var probe = new BlockingClient();
         await using var monitor = new RemoteWindowsServiceViewModel("host", probe);
 
         var first = monitor.RefreshAsync();
@@ -310,7 +324,7 @@ public sealed class RemoteWindowsServiceMonitoringTests
     [Fact]
     public async Task AProbeThatReturnsAfterMonitoringStoppedCannotOverwriteTheReading()
     {
-        var probe = new BlockingProbe();
+        var probe = new BlockingClient();
         var monitor = new RemoteWindowsServiceViewModel("host", probe);
 
         var pending = monitor.RefreshAsync();
@@ -320,14 +334,14 @@ public sealed class RemoteWindowsServiceMonitoringTests
         await pending;
 
         // The late answer describes a host nobody is watching any more, so it lands nowhere.
-        Assert.Null(monitor.Snapshot);
+        Assert.Null(monitor.Observation);
         await monitor.DisposeAsync();
     }
 
     [Fact]
     public async Task DisposeStopsThePollingAndRefusesFurtherProbes()
     {
-        var probe = new CountingProbe(Success());
+        var probe = new CountingClient(Success());
         var monitor = new RemoteWindowsServiceViewModel("host", probe, interval: TimeSpan.FromMilliseconds(20));
 
         monitor.StartMonitoring();
@@ -343,7 +357,7 @@ public sealed class RemoteWindowsServiceMonitoringTests
     [Fact]
     public async Task ARefreshInProgressLabelsTheReadingItIsStillShowing()
     {
-        var probe = new BlockingProbe();
+        var probe = new BlockingClient();
         await using var monitor = new RemoteWindowsServiceViewModel("host", probe);
 
         var first = monitor.RefreshAsync();
@@ -359,8 +373,7 @@ public sealed class RemoteWindowsServiceMonitoringTests
     [Fact]
     public async Task ARefusedWindowsQueryLeavesTheNutProtocolStateAlone()
     {
-        await using var monitor = Monitor(RemoteWindowsNutServiceSnapshot.Failure(
-            "Gandalf.sbra.local", RemoteWindowsServiceProbeState.AccessDenied, Observed, 5));
+        await using var monitor = Monitor(NutAgentClientStatus.AccessDenied, 5);
         await monitor.RefreshAsync();
 
         // The monitor holds no connection, endpoint or protocol state at all, so there is nothing it
@@ -373,7 +386,7 @@ public sealed class RemoteWindowsServiceMonitoringTests
         Assert.DoesNotContain(members, name => name.Contains("Connection", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(members, name => name.Contains("Endpoint", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(members, name => name.Contains("Online", StringComparison.OrdinalIgnoreCase));
-        Assert.True(monitor.IsQueryUnavailable);
+        Assert.True(monitor.IsAgentUnavailable);
     }
 
     [Fact]
@@ -385,7 +398,7 @@ public sealed class RemoteWindowsServiceMonitoringTests
         await monitor.RefreshAsync();
 
         Assert.True(monitor.IsServiceRunning);
-        Assert.Equal(monitor.Strings.Get("RemoteService.Query.Available"), monitor.QueryStateText);
+        Assert.Equal(monitor.Strings.Get("RemoteService.Agent.Connected"), monitor.AgentStateText);
     }
 
     // ---------------------------------------------------------------- localization
@@ -449,37 +462,114 @@ public sealed class RemoteWindowsServiceMonitoringTests
         Assert.False(page.CanRestartWindowsService);
     }
 
-    private static RemoteWindowsServiceViewModel Monitor(RemoteWindowsNutServiceSnapshot snapshot) =>
-        new("Gandalf.sbra.local", new CountingProbe(snapshot));
+    private static RemoteWindowsServiceViewModel Monitor(NutAgentServiceStatus status) =>
+        new("Gandalf.sbra.local", new CountingClient(status));
 
-    private sealed class CountingProbe(RemoteWindowsNutServiceSnapshot snapshot) : IRemoteWindowsNutServiceProbe
+    private static RemoteWindowsServiceViewModel Monitor(NutAgentClientStatus failure, int? win32 = null) =>
+        new("Gandalf.sbra.local", new CountingClient(failure, win32));
+
+    /// <summary>The handshake a reachable fake agent answers with.</summary>
+    internal static NutAgentHandshake Handshake(bool controlAvailable = true, string? reason = null) => new(
+        NutAgentOptions.ProtocolVersion, "1.0.0", "GANDALF",
+        controlAvailable
+            ? [NutAgentOperation.Handshake, NutAgentOperation.GetStatus, NutAgentOperation.Start, NutAgentOperation.Stop, NutAgentOperation.Restart]
+            : [NutAgentOperation.Handshake, NutAgentOperation.GetStatus],
+        controlAvailable,
+        reason);
+
+    private sealed class CountingClient : INutManagerAgentClient
     {
+        private readonly NutAgentServiceStatus? _status;
+        private readonly NutAgentClientStatus _failure;
+        private readonly int? _win32;
         private int _calls;
+
+        public CountingClient(NutAgentServiceStatus status)
+        {
+            _status = status;
+            _failure = NutAgentClientStatus.Success;
+        }
+
+        public CountingClient(NutAgentClientStatus failure, int? win32 = null)
+        {
+            _status = null;
+            _failure = failure;
+            _win32 = win32;
+        }
 
         public int Calls => Volatile.Read(ref _calls);
 
-        public Task<RemoteWindowsNutServiceSnapshot> ProbeAsync(string host, CancellationToken cancellationToken)
+        public Task<NutAgentClientResult<NutAgentHandshake>> HandshakeAsync(string host, CancellationToken cancellationToken) =>
+            _failure == NutAgentClientStatus.Success
+                ? Task.FromResult(NutAgentClientResult<NutAgentHandshake>.Ok(Handshake(), NutAgentResultCode.Success))
+                : Task.FromResult(NutAgentClientResult<NutAgentHandshake>.Failure(_failure, win32ErrorCode: _win32));
+
+        public Task<NutAgentClientResult<NutAgentServiceStatus>> GetStatusAsync(string host, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _calls);
-            return Task.FromResult(snapshot);
+            return _status is null
+                ? Task.FromResult(NutAgentClientResult<NutAgentServiceStatus>.Failure(_failure, win32ErrorCode: _win32))
+                : Task.FromResult(NutAgentClientResult<NutAgentServiceStatus>.Ok(_status, NutAgentResultCode.Success));
         }
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StopAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> RestartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
     }
 
-    /// <summary>A probe that does not answer until the test says so, standing in for a blocked RPC.</summary>
-    private sealed class BlockingProbe : IRemoteWindowsNutServiceProbe
+    /// <summary>Answers the handshake and then reports no status, for the reachable-but-refusing case.</summary>
+    private sealed class HandshakeOnlyClient(NutAgentHandshake handshake) : INutManagerAgentClient
     {
-        private readonly TaskCompletionSource<RemoteWindowsNutServiceSnapshot> _gate =
+        public Task<NutAgentClientResult<NutAgentHandshake>> HandshakeAsync(string host, CancellationToken cancellationToken) =>
+            Task.FromResult(NutAgentClientResult<NutAgentHandshake>.Ok(handshake, NutAgentResultCode.Success));
+
+        public Task<NutAgentClientResult<NutAgentServiceStatus>> GetStatusAsync(string host, CancellationToken cancellationToken) =>
+            Task.FromResult(NutAgentClientResult<NutAgentServiceStatus>.Ok(
+                NutAgentServiceStatus.Unavailable("GANDALF", Observed), NutAgentResultCode.Success));
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StopAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> RestartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
+    }
+
+    /// <summary>A client that does not answer until the test says so, standing in for a blocked call.</summary>
+    private sealed class BlockingClient : INutManagerAgentClient
+    {
+        private readonly TaskCompletionSource<NutAgentServiceStatus> _gate =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _started;
 
         public int Started => Volatile.Read(ref _started);
 
-        public void Release(RemoteWindowsNutServiceSnapshot snapshot) => _gate.TrySetResult(snapshot);
+        public void Release(NutAgentServiceStatus status) => _gate.TrySetResult(status);
 
-        public Task<RemoteWindowsNutServiceSnapshot> ProbeAsync(string host, CancellationToken cancellationToken)
+        public Task<NutAgentClientResult<NutAgentHandshake>> HandshakeAsync(string host, CancellationToken cancellationToken) =>
+            Task.FromResult(NutAgentClientResult<NutAgentHandshake>.Ok(Handshake(), NutAgentResultCode.Success));
+
+        public async Task<NutAgentClientResult<NutAgentServiceStatus>> GetStatusAsync(string host, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _started);
-            return _gate.Task;
+            var status = await _gate.Task.ConfigureAwait(false);
+            return NutAgentClientResult<NutAgentServiceStatus>.Ok(status, NutAgentResultCode.Success);
         }
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StopAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> RestartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The monitor must never mutate.");
     }
 }

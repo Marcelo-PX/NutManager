@@ -47,7 +47,9 @@ Two ways to satisfy it:
 
 - run NutManager under an account the server recognises (a domain account, or an account that exists
   on the server with the same name and password); or
-- establish a session to the server first, with credentials it recognises:
+- establish a session to the server first, with credentials it recognises. This is an administrative
+  step performed by an operator at a prompt, and it is not something NutManager does: the product
+  never launches `net`, `sc`, `cmd` or PowerShell on anyone's behalf.
 
 ```bash
 net use \\GANDALF /user:SBRA\operator
@@ -137,6 +139,33 @@ answer a handshake and report the NUT service's state and process id.
 If the service starts and immediately stops, the reason is in the Application event log under the
 source `NutManager Agent`. The startup checks that can stop it are, in order: the account is not
 LocalSystem, and the operators group could not be resolved.
+
+## Using it from NutManager
+
+The agent panel lives on the Administration page of a **remote** profile. It reports four things that
+are deliberately kept apart:
+
+- **Agent** — whether the agent answered: connected, unavailable, access denied, host unreachable, no
+  answer, incompatible, failed.
+- **Transport** — named pipe or HTTPS, as the profile selects.
+- **Service** — the NUT service's identity, state, process and pid, as the agent reports them.
+- NUT's own protocol health, which is shown elsewhere in the shell and is never touched by any of the
+  above.
+
+An agent that cannot be reached on a server whose upsd is answering normally is an administrative
+gap. NutManager says so, and does not fall back to any other route: there is no second path to the
+service control manager behind the agent.
+
+Start, Stop and Restart appear only when the agent advertises them. If the operators group or the
+event source is missing, the agent reports control as unavailable with the reason, and no button is
+offered. Stop and Restart ask for confirmation first, naming the host and the service; Restart is a
+single request to the agent, which holds both phases under one lock.
+
+### Transport selection
+
+The profile stores the agent transport. New and existing profiles use the named pipe, which is the
+only transport this build implements. A profile that names HTTPS is refused by name — the application
+will not quietly use the named pipe instead — until the HTTPS listener exists.
 
 ## Event log
 

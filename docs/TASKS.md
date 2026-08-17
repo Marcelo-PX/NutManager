@@ -1132,13 +1132,62 @@ No transport failure is ever reported as a NUT outage, and a test refuses the st
 like `Offline` or `ServerDown` appears in it. An agent that is missing from a server whose upsd is
 answering is an administrative gap, and the product says so.
 
+### Desktop integration
+
+`RemoteWindowsServiceViewModel` was evolved rather than replaced: it reads through
+`INutManagerAgentClient` now, and everything T34 built into it survives — the ten-second interval,
+one probe in flight, the generation guard that stops a late answer writing into a view nobody is
+watching, and the stale reading that stays legible while being labelled. It still exposes exactly one
+command, and that command refreshes.
+
+Control lives in `RemoteWindowsServiceControlViewModel`, a separate object. The separation is what
+keeps T34's assertion true, and a test now reflects over the monitor for mutation members rather than
+trusting the intent. The control object does not poll: it reads the monitor's observation and asks it
+to refresh once an operation finishes, so there is still only ever one probe in flight.
+
+Stop and Restart require an explicit confirmation that names the host, the action and the service.
+Restart is one request; the desktop never composes a stop followed by a start, because the atomicity
+belongs to the agent's mutation gate. Each action carries one operation id, generated once, and
+nothing is retried automatically.
+
+Buttons follow the handshake rather than the service state. An agent whose audit sink is unusable
+reports a perfectly healthy service and still offers nothing.
+
+### No fallback
+
+When the agent cannot be reached the panel says so. There is no second attempt over the remote SCM,
+and a test refuses the application composition if the probe reappears in it. A silent second path
+would leave an operator unable to tell which route answered, or why control is unavailable on a
+server whose monitoring appears to work.
+
+### Profile
+
+`NutAgentTransportKind` is separate from `RemoteConfigurationTransportKind`: editing configuration
+over SMB while controlling the service over a named pipe is an ordinary combination, and one setting
+must not decide the other. Schema 6 is additive — a version 5 document loads unchanged and takes the
+named pipe, and an unreadable or unusable transport falls back to it rather than making a profile
+unopenable.
+
+### T34 supersession audit
+
+`IRemoteWindowsNutServiceProbe` has no production consumer left, and a test asserts that rather than
+claiming it. The type was not deleted: `WindowsRemoteNutServiceProbe` still supplies the host
+normalisation and executable-name helpers the agent uses, and
+`WindowsServiceControlManagerInterop` still answers the agent's local process-id query. Removing the
+remote probe path means relocating those helpers, which is a separate change with its own risk, so
+the finding is recorded and the removal left as a follow-up.
+
 ### What is still open
 
-- the client UI: `RemoteWindowsServiceViewModel` still monitors only, and the confirmation flow for
-  Stop and Restart is not built;
-- the profile setting selecting the agent transport;
-- the optional HTTPS transport, disabled by default;
-- acceptance against the real GANDALF, which is a human step and is what closes this task.
+- **HTTPS.** Not implemented, and deliberately so. It is persisted and validated as a profile
+  setting, but delivering the listener means HTTP.sys, a certificate binding, Negotiate with
+  anonymous disabled and the same operators-group check the pipe enforces — and a partial version of
+  that is a weaker door into a privileged service. The profile can express it; the application
+  refuses it by name rather than quietly using the pipe instead.
+- **The settings selector for the agent transport.** Deferred with HTTPS: the named pipe is the only
+  working transport and is already the default, so a selector today would offer one real option and
+  one that reports itself unavailable. The panel names the transport in use.
+- **Acceptance against the real GANDALF**, which is a human step and is what closes this task.
 
 ### Known limitations
 

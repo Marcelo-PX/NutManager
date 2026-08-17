@@ -969,4 +969,45 @@
   <data name="Profiles.ManagedFiles.NoneFound" xml:space="preserve"><value>None of the supported files were found.</value></data>
   <data name="Profiles.ManagedFiles.DetectFailed" xml:space="preserve"><value>The configuration directory could not be checked.</value></data>
   <data name="Administration.File.NotEnabled" xml:space="preserve"><value>This file is not enabled for the current profile.</value></data>
+  <data name="RemoteService.Agent.Label" xml:space="preserve"><value>Agent</value></data>
+  <data name="RemoteService.Agent.Connected" xml:space="preserve"><value>Connected</value></data>
+  <data name="RemoteService.Agent.Unavailable" xml:space="preserve"><value>Unavailable</value></data>
+  <data name="RemoteService.Agent.AccessDenied" xml:space="preserve"><value>Access denied</value></data>
+  <data name="RemoteService.Agent.HostUnreachable" xml:space="preserve"><value>Host unreachable</value></data>
+  <data name="RemoteService.Agent.TimedOut" xml:space="preserve"><value>No answer</value></data>
+  <data name="RemoteService.Agent.ProtocolFailure" xml:space="preserve"><value>Incompatible agent</value></data>
+  <data name="RemoteService.Agent.Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="RemoteService.Agent.ProtocolDetail" xml:space="preserve"><value>Protocol result: {0}</value></data>
+  <data name="RemoteService.Transport.Label" xml:space="preserve"><value>Transport</value></data>
+  <data name="RemoteService.Transport.NamedPipe" xml:space="preserve"><value>Named pipe</value></data>
+  <data name="RemoteService.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
+  <data name="RemoteService.Control.Start" xml:space="preserve"><value>Start</value></data>
+  <data name="RemoteService.Control.Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="RemoteService.Control.Restart" xml:space="preserve"><value>Restart</value></data>
+  <data name="RemoteService.Control.Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="RemoteService.Control.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="RemoteService.Control.Busy" xml:space="preserve"><value>Running the operation…</value></data>
+  <data name="RemoteService.Control.ConfirmStop" xml:space="preserve"><value>Stop the NUT service "{1}" on {0}? The UPS will stop being monitored by that server until it is started again.</value></data>
+  <data name="RemoteService.Control.ConfirmRestart" xml:space="preserve"><value>Restart the NUT service "{1}" on {0}? The UPS will stop being monitored by that server while it restarts.</value></data>
+  <data name="RemoteService.Control.Started" xml:space="preserve"><value>The service was started.</value></data>
+  <data name="RemoteService.Control.Stopped" xml:space="preserve"><value>The service was stopped.</value></data>
+  <data name="RemoteService.Control.Restarted" xml:space="preserve"><value>The service was restarted.</value></data>
+  <data name="RemoteService.Control.AlreadyInState" xml:space="preserve"><value>The service was already in that state.</value></data>
+  <data name="RemoteService.Control.CompletedWithAuditFailure" xml:space="preserve"><value>The operation completed, but it could not be written to the Event Log.</value></data>
+  <data name="RemoteService.Control.Unauthorized" xml:space="preserve"><value>The agent refused the operation: this account does not belong to the operators group.</value></data>
+  <data name="RemoteService.Control.AuditUnavailable" xml:space="preserve"><value>The agent refused the operation because it cannot record it.</value></data>
+  <data name="RemoteService.Control.TargetUnavailable" xml:space="preserve"><value>The agent has not identified a NUT service on that server.</value></data>
+  <data name="RemoteService.Control.TargetRevalidationFailed" xml:space="preserve"><value>The service stopped matching what the agent had validated.</value></data>
+  <data name="RemoteService.Control.Busy.Refused" xml:space="preserve"><value>Another operation is already running.</value></data>
+  <data name="RemoteService.Control.TimedOut" xml:space="preserve"><value>The service did not reach the expected state in time.</value></data>
+  <data name="RemoteService.Control.ServiceControlFailed" xml:space="preserve"><value>The service control call failed.</value></data>
+  <data name="RemoteService.Control.Failed" xml:space="preserve"><value>The operation failed.</value></data>
+  <data name="RemoteService.Control.RestartLeftStopped" xml:space="preserve"><value>The service was stopped but did not start again. It is down.</value></data>
+  <data name="RemoteService.Control.TransportFailure" xml:space="preserve"><value>The agent could not be reached: {0}.</value></data>
+  <data name="Settings.Agent.Section" xml:space="preserve"><value>Service control agent</value></data>
+  <data name="Settings.Agent.Transport" xml:space="preserve"><value>Agent transport</value></data>
+  <data name="Settings.Agent.Transport.NamedPipe" xml:space="preserve"><value>Named pipe</value></data>
+  <data name="Settings.Agent.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
+  <data name="Settings.Agent.HttpsEndpoint" xml:space="preserve"><value>Agent HTTPS endpoint</value></data>
+  <data name="Settings.Agent.HttpsEndpoint.Invalid" xml:space="preserve"><value>Enter an absolute https:// address without embedded credentials.</value></data>
 </root>
