@@ -53,6 +53,11 @@ public partial class App : Application
         var profileBootstrap = await new ManagedNutServerBootstrapper(profileStore).LoadAsync(settings, CancellationToken.None);
         var runtimeProfile = profileBootstrap.RuntimeContext;
         var credentialStore = new WindowsCredentialManagerRemoteCredentialStore();
+
+        // A credential the operator validated but asked not to save lives here and nowhere else, for
+        // exactly as long as the process does — which is what "do not remember this" has to mean.
+        var agentSessionCredentials = new NutAgentSessionCredentialStore();
+        var agentCredentials = new NutAgentCredentialCoordinator(new WindowsCredentialPrompt(), agentSessionCredentials);
         var profileMutator = new ManagedNutServerProfileUpdateService(profileStore, credentialStore);
 
         INutClient client;
@@ -97,7 +102,7 @@ public partial class App : Application
         var agentSettings = runtimeProfile.Profile.Management.Agent;
         var agentTransport = agentSettings.Transport;
         var agentClient = await NutAgentClientFactory.CreateAsync(
-            agentSettings, runtimeProfile.Profile.Id, credentialStore, CancellationToken.None);
+            agentSettings, runtimeProfile.Profile.Id, credentialStore, CancellationToken.None, agentSessionCredentials);
 
         var remoteWindowsService = isLocalManagement
             ? null
@@ -142,7 +147,8 @@ public partial class App : Application
             credentialStore,
             new ManagedNutConnectionTester(new NutTcpClient()),
             runtimeProfile.Profile.Id,
-            managedFileDetector);
+            managedFileDetector,
+            agentCredentials);
         window.Closed += async (_, _) =>
         {
             if (remoteWindowsService is not null)
@@ -155,6 +161,7 @@ public partial class App : Application
                 await remoteManagement.DisposeAsync();
             }
 
+            agentSessionCredentials.Dispose();
             diagnostics.Dispose();
             devices.Dispose();
             polling.Dispose();

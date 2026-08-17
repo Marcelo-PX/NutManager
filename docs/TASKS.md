@@ -1304,15 +1304,42 @@ There is nowhere in the editor for a password. The draft has no property that co
 name or by type, and the section contains no password box — the secret is collected by the Windows
 credential dialog and kept in the Credential Manager under the agent’s own entry.
 
+### The credential lifecycle
+
+Signing in uses the Windows credential dialog T30 already owns, and the rule the whole flow is built
+around is that the dialog returning OK is not authentication. It collected a credential; whether that
+credential has any rights on that server is a question only the agent can answer, so a handshake is
+performed against the configured endpoint before anything is remembered, stored or shown as valid. A
+password typed correctly for an account with no rights is a password that must not be saved.
+
+Where the secret lives follows from what the operator asked for. Declining to remember it does not
+mean the connection they just authenticated should stop working, so it is held in memory for the
+session and nowhere else — the session store has no path that writes to a file, a registry key or the
+Credential Manager. Choosing to remember it does not write it at authentication time either: a
+credential stored for a profile the operator then cancels is an orphan nobody will think to remove,
+so persistence waits until the profile has actually been saved.
+
+The profile store and the Credential Manager are separate stores with no transaction across them, so
+the order is chosen instead: the profile first, then the secret, and a failure to write the secret is
+reported rather than papered over — the profile would otherwise point at an account whose password
+only exists in memory.
+
+Failure never destroys what worked. A rejected or cancelled replacement leaves the previous
+credential exactly as it was, and the account shown always comes from the dialog rather than from
+what was typed, so a profile cannot claim one account while the secret belongs to another. A late
+handshake cannot publish into a draft the operator has since changed: the same generation guard the
+monitor uses applies here.
+
+Forget clears the agent's persistent, session and pending credentials for that profile and touches
+neither the SMB nor the SSH secret — they authorize different things.
+
+A stored credential is reported as stored, never as valid. It may have been changed on the server or
+expired since, and only a handshake settles that.
+
 ### What is still open
 
-The interactive credential lifecycle — authenticate, change, remember, forget, and the status that
-follows from them — is not built yet. The account a profile is configured for is shown; signing in
-to validate a new one against the agent, and persisting or discarding that secret, is the remaining
-work. It is deliberately not half-built: the flow has to validate against the real agent rather
-than against the prompt returning OK, and that is a whole behaviour rather than a button.
-
-The desktop runtime smoke and the acceptance on the real server also remain.
+The desktop runtime smoke of this flow beyond a cancelled dialog, and the acceptance on the real
+server, both remain. No real credential was entered against GANDALF.
 
 ### It consumes T35 rather than repeating it
 

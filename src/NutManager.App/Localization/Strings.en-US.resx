@@ -30,14 +30,14 @@
   <data name="Profiles.EditorTitle" xml:space="preserve"><value>Edit server</value></data>
   <data name="Profiles.MonitoringSection" xml:space="preserve"><value>Monitoring</value></data>
   <data name="Profiles.ManagementSection" xml:space="preserve"><value>Management</value></data>
-  <data name="Profiles.TransportSection" xml:space="preserve"><value>Remote transport</value></data>
+  <data name="Profiles.TransportSection" xml:space="preserve"><value>Server connection</value></data>
   <data name="Profiles.Name" xml:space="preserve"><value>Server name</value></data>
   <data name="Profiles.MonitoringHost" xml:space="preserve"><value>Monitoring host</value></data>
   <data name="Profiles.MonitoringPort" xml:space="preserve"><value>NUT port</value></data>
   <data name="Profiles.PreferredUps" xml:space="preserve"><value>Preferred UPS (optional)</value></data>
   <data name="Profiles.ManagementMode" xml:space="preserve"><value>Location</value></data>
   <data name="Profiles.AccessMode" xml:space="preserve"><value>Access</value></data>
-  <data name="Profiles.Transport" xml:space="preserve"><value>Configuration transport</value></data>
+  <data name="Profiles.Transport" xml:space="preserve"><value>Configuration files, via</value></data>
   <data name="Profiles.ManagementHost" xml:space="preserve"><value>Management host</value></data>
   <data name="Profiles.SshPort" xml:space="preserve"><value>SSH port</value></data>
   <data name="Profiles.SshUsername" xml:space="preserve"><value>SSH user (optional)</value></data>
@@ -978,9 +978,9 @@
   <data name="RemoteService.Agent.ProtocolFailure" xml:space="preserve"><value>Incompatible agent</value></data>
   <data name="RemoteService.Agent.Failed" xml:space="preserve"><value>Failed</value></data>
   <data name="RemoteService.Agent.ProtocolDetail" xml:space="preserve"><value>Protocol result: {0}</value></data>
-  <data name="RemoteService.Transport.Label" xml:space="preserve"><value>Transport</value></data>
-  <data name="RemoteService.Transport.NamedPipe" xml:space="preserve"><value>Named pipe</value></data>
-  <data name="RemoteService.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
+  <data name="RemoteService.Transport.Label" xml:space="preserve"><value>Connection</value></data>
+  <data name="RemoteService.Transport.NamedPipe" xml:space="preserve"><value>SMB (Windows network)</value></data>
+  <data name="RemoteService.Transport.Https" xml:space="preserve"><value>HTTPS (dedicated port)</value></data>
   <data name="RemoteService.Control.Start" xml:space="preserve"><value>Start</value></data>
   <data name="RemoteService.Control.Stop" xml:space="preserve"><value>Stop</value></data>
   <data name="RemoteService.Control.Restart" xml:space="preserve"><value>Restart</value></data>
@@ -1010,19 +1010,38 @@
   <data name="Settings.Agent.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
   <data name="Settings.Agent.HttpsEndpoint" xml:space="preserve"><value>Agent HTTPS endpoint</value></data>
   <data name="Settings.Agent.HttpsEndpoint.Invalid" xml:space="preserve"><value>Enter an absolute https:// address without embedded credentials.</value></data>
-  <data name="Agent.Section" xml:space="preserve"><value>Windows agent</value></data>
-  <data name="Agent.Transport" xml:space="preserve"><value>Agent transport</value></data>
-  <data name="Agent.Transport.NamedPipe" xml:space="preserve"><value>Named pipe</value></data>
-  <data name="Agent.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
-  <data name="Agent.HttpsEndpoint" xml:space="preserve"><value>Agent HTTPS endpoint</value></data>
+  <data name="Agent.Section" xml:space="preserve"><value>NUT service control</value></data>
+  <data name="Agent.Transport" xml:space="preserve"><value>Service control, via</value></data>
+  <data name="Agent.Transport.NamedPipe" xml:space="preserve"><value>SMB (Windows network)</value></data>
+  <data name="Agent.Transport.Https" xml:space="preserve"><value>HTTPS (dedicated port)</value></data>
+  <data name="Agent.HttpsEndpoint" xml:space="preserve"><value>Agent address</value></data>
   <data name="Agent.HttpsEndpoint.Invalid" xml:space="preserve"><value>Enter an absolute https:// address that names a host and carries no credentials.</value></data>
-  <data name="Agent.Authentication" xml:space="preserve"><value>Agent authentication</value></data>
-  <data name="Agent.Auth.CurrentWindowsIdentity" xml:space="preserve"><value>Current Windows identity</value></data>
+  <data name="Agent.Authentication" xml:space="preserve"><value>Sign in as</value></data>
+  <data name="Agent.Auth.CurrentWindowsIdentity" xml:space="preserve"><value>The account NutManager is using</value></data>
   <data name="Agent.Auth.AlternateWindowsAccount" xml:space="preserve"><value>Another Windows account</value></data>
   <data name="Agent.Account" xml:space="preserve"><value>Account</value></data>
   <data name="Agent.Account.NotConfigured" xml:space="preserve"><value>No account configured yet</value></data>
-  <data name="Agent.NamedPipe.Notice" xml:space="preserve"><value>The named pipe uses the Windows identity NutManager is already running as. Reaching a server in another domain may require a Windows session to it.</value></data>
+  <data name="Agent.NamedPipe.Notice" xml:space="preserve"><value>Uses the Windows account NutManager is already running as, over the Windows network. Reaching a server in another domain may need a Windows session to it first.</value></data>
   <data name="Agent.AlternateAccount.Notice" xml:space="preserve"><value>The password is kept in the Windows Credential Manager under the agent's own entry, separate from the SMB and SSH credentials. Signing in is done from the agent panel.</value></data>
   <data name="Validation.Agent.EndpointInvalid" xml:space="preserve"><value>The agent HTTPS endpoint must be an absolute https:// address naming a host, without embedded credentials.</value></data>
   <data name="Validation.Agent.TransportInvalid" xml:space="preserve"><value>The agent transport or authentication mode is invalid.</value></data>
+  <data name="Agent.Credential.Authenticate" xml:space="preserve"><value>Sign in</value></data>
+  <data name="Agent.Credential.Change" xml:space="preserve"><value>Change</value></data>
+  <data name="Agent.Credential.Forget" xml:space="preserve"><value>Forget</value></data>
+  <data name="Agent.Credential.Remember" xml:space="preserve"><value>Remember credential</value></data>
+  <data name="Agent.Credential.Authenticating" xml:space="preserve"><value>Checking with the agent…</value></data>
+  <data name="Agent.Credential.PromptCaption" xml:space="preserve"><value>NutManager agent</value></data>
+  <data name="Agent.Credential.PromptMessage" xml:space="preserve"><value>Sign in with the Windows account that may control the NUT service on this server.</value></data>
+  <data name="Agent.Credential.ValidatedSession" xml:space="preserve"><value>Signed in as {0}. Valid for this session only.</value></data>
+  <data name="Agent.Credential.ValidatedPending" xml:space="preserve"><value>Signed in as {0}. Will be saved with the profile.</value></data>
+  <data name="Agent.Credential.Stored" xml:space="preserve"><value>Credential saved in the Windows Credential Manager.</value></data>
+  <data name="Agent.Credential.Missing" xml:space="preserve"><value>Account configured, but no credential.</value></data>
+  <data name="Agent.Credential.AccessDenied" xml:space="preserve"><value>The agent refused this account.</value></data>
+  <data name="Agent.Credential.Unavailable" xml:space="preserve"><value>No agent answered at this endpoint.</value></data>
+  <data name="Agent.Credential.HostUnreachable" xml:space="preserve"><value>The server could not be reached.</value></data>
+  <data name="Agent.Credential.TimedOut" xml:space="preserve"><value>The agent did not answer in time.</value></data>
+  <data name="Agent.Credential.ProtocolFailure" xml:space="preserve"><value>The agent answered but the connection could not be trusted. Check the certificate.</value></data>
+  <data name="Agent.Credential.PromptUnavailable" xml:space="preserve"><value>Windows could not show the credential dialog.</value></data>
+  <data name="Agent.Credential.Failed" xml:space="preserve"><value>The credential could not be verified.</value></data>
+  <data name="Agent.Credential.SaveFailed" xml:space="preserve"><value>The profile was saved, but the credential could not be written to the Credential Manager.</value></data>
 </root>

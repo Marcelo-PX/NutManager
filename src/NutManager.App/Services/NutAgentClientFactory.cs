@@ -24,7 +24,8 @@ public static class NutAgentClientFactory
         NutAgentProfileSettings settings,
         Guid profileId,
         IRemoteCredentialStore credentialStore,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        INutAgentSessionCredentialStore? sessionCredentials = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(credentialStore);
@@ -49,6 +50,18 @@ public static class NutAgentClientFactory
             return new UnavailableNutAgentClient("The alternate Windows account has no user name configured.");
         }
 
+        var (user, domain) = SplitAccount(settings.Username);
+
+        // A credential the operator validated but asked not to save is still the credential they
+        // chose for this session, so it is consulted before the stored one. Preferring the saved
+        // copy would mean an account they just replaced kept being used until the app restarted.
+        if (sessionCredentials is not null &&
+            sessionCredentials.TryRead(profileId, settings.Username, out var session) &&
+            !session.IsEmpty)
+        {
+            return new WindowsHttpsNutAgentClient(settings.HttpsEndpoint, BuildCredential(user, domain, session.Span));
+        }
+
         var secret = await credentialStore
             .ReadAsync(profileId, RemoteCredentialKind.WindowsAgentPassword, cancellationToken)
             .ConfigureAwait(false);
@@ -64,7 +77,6 @@ public static class NutAgentClientFactory
         // outlive this method as a managed string anyone could later find on the heap.
         using (stored)
         {
-            var (user, domain) = SplitAccount(settings.Username);
             return new WindowsHttpsNutAgentClient(settings.HttpsEndpoint, BuildCredential(user, domain, stored.Memory.Span));
         }
     }
