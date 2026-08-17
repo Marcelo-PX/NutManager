@@ -1010,4 +1010,19 @@
   <data name="Settings.Agent.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
   <data name="Settings.Agent.HttpsEndpoint" xml:space="preserve"><value>Endpoint HTTPS do agente</value></data>
   <data name="Settings.Agent.HttpsEndpoint.Invalid" xml:space="preserve"><value>Informe um endereço https:// absoluto, sem credenciais embutidas.</value></data>
+  <data name="Agent.Section" xml:space="preserve"><value>Agente do Windows</value></data>
+  <data name="Agent.Transport" xml:space="preserve"><value>Transporte do agente</value></data>
+  <data name="Agent.Transport.NamedPipe" xml:space="preserve"><value>Named pipe</value></data>
+  <data name="Agent.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
+  <data name="Agent.HttpsEndpoint" xml:space="preserve"><value>Endpoint HTTPS do agente</value></data>
+  <data name="Agent.HttpsEndpoint.Invalid" xml:space="preserve"><value>Informe um endereço https:// absoluto, que nomeie um host e não contenha credenciais.</value></data>
+  <data name="Agent.Authentication" xml:space="preserve"><value>Autenticação do agente</value></data>
+  <data name="Agent.Auth.CurrentWindowsIdentity" xml:space="preserve"><value>Identidade atual do Windows</value></data>
+  <data name="Agent.Auth.AlternateWindowsAccount" xml:space="preserve"><value>Outra conta do Windows</value></data>
+  <data name="Agent.Account" xml:space="preserve"><value>Conta</value></data>
+  <data name="Agent.Account.NotConfigured" xml:space="preserve"><value>Nenhuma conta configurada ainda</value></data>
+  <data name="Agent.NamedPipe.Notice" xml:space="preserve"><value>O named pipe usa a identidade Windows com que o NutManager já está sendo executado. Alcançar um servidor em outro domínio pode exigir uma sessão Windows com ele.</value></data>
+  <data name="Agent.AlternateAccount.Notice" xml:space="preserve"><value>A senha fica no Gerenciador de Credenciais do Windows, em uma entrada própria do agente, separada das credenciais SMB e SSH. A autenticação é feita pelo painel do agente.</value></data>
+  <data name="Validation.Agent.EndpointInvalid" xml:space="preserve"><value>O endpoint HTTPS do agente deve ser um endereço https:// absoluto que nomeie um host, sem credenciais embutidas.</value></data>
+  <data name="Validation.Agent.TransportInvalid" xml:space="preserve"><value>O transporte ou o modo de autenticação do agente é inválido.</value></data>
 </root>

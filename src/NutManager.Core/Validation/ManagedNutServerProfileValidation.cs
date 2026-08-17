@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using NutManager.Core.Agent;
 using NutManager.Core.Models;
 
 namespace NutManager.Core.Validation;
@@ -24,6 +25,7 @@ public static class ManagedProfileFields
     public const string SmbConfigurationDirectory = "SmbConfigurationDirectory";
     public const string SmbAuthenticationMode = "SmbAuthenticationMode";
     public const string SmbUsername = "SmbUsername";
+    public const string AgentHttpsEndpoint = "AgentHttpsEndpoint";
 }
 
 public sealed record ManagedNutServerProfileInput(
@@ -47,7 +49,11 @@ public sealed record ManagedNutServerProfileInput(
     string? SmbConfigurationDirectory,
     SmbAuthenticationMode SmbAuthenticationMode,
     string? SmbUsername,
-    ManagedNutConfigurationFiles? ManagedFiles = null);
+    ManagedNutConfigurationFiles? ManagedFiles = null,
+    NutAgentTransportKind AgentTransport = NutAgentTransportKind.NamedPipe,
+    string? AgentHttpsEndpoint = null,
+    NutAgentAuthenticationMode AgentAuthentication = NutAgentAuthenticationMode.CurrentWindowsIdentity,
+    string? AgentUsername = null);
 
 public sealed record ManagedNutServerProfileValidationResult(
     ManagedNutServerProfile? Profile,
@@ -207,6 +213,11 @@ public static class ManagedNutServerProfileValidator
             issues.Add(Error(ManagedProfileFields.AccessMode, "Access.ModeInvalid", "Validation.Profile.AccessModeInvalid"));
         }
 
+        // Validated once and shared by both configuration transports: editing over SMB while
+        // controlling over a named pipe is an ordinary combination, so one setting must never be
+        // reachable only through the other.
+        var agent = ValidateAgent(input, issues);
+
         NutManagementProfile? management = null;
         if (input.ManagementMode == NutManagementMode.Local)
         {
@@ -271,7 +282,8 @@ public static class ManagedNutServerProfileValidator
                     RemoteConfigurationTransportKind.SshSftp,
                     sshAuthenticationMode: input.SshAuthenticationMode,
                     sshPrivateKeyPath: privateKeyPath.Value,
-                    managedFiles: input.ManagedFiles);
+                    managedFiles: input.ManagedFiles,
+                    agent: agent);
             }
         }
         else if (input.ManagementMode == NutManagementMode.Remote && input.ConfigurationTransport == RemoteConfigurationTransportKind.Smb)
@@ -317,7 +329,8 @@ public static class ManagedNutServerProfileValidator
                     smbConfigurationDirectory: configurationDirectory,
                     smbAuthenticationMode: input.SmbAuthenticationMode,
                     smbUsername: smbUsername.Value,
-                    managedFiles: input.ManagedFiles);
+                    managedFiles: input.ManagedFiles,
+                    agent: agent);
             }
         }
         else if (input.ManagementMode == NutManagementMode.Remote)
@@ -335,6 +348,39 @@ public static class ManagedNutServerProfileValidator
                 input.AccessMode)
             : null;
         return new ManagedNutServerProfileValidationResult(profile, issues.AsReadOnly());
+    }
+
+    /// <summary>
+    /// Turns the agent fields into settings, or records why they cannot be used.
+    ///
+    /// The endpoint is only required by the transport that needs one, and the model already
+    /// normalises the rest — a named pipe drops an endpoint and an alternate account, because the
+    /// caller there is whoever Windows already authenticated. What this adds is the message an
+    /// operator reads instead of an exception.
+    /// </summary>
+    private static NutAgentProfileSettings? ValidateAgent(ManagedNutServerProfileInput input, List<FieldValidationIssue> issues)
+    {
+        if (input.ManagementMode != NutManagementMode.Remote) return null;
+
+        if (!Enum.IsDefined(input.AgentTransport) || !Enum.IsDefined(input.AgentAuthentication))
+        {
+            issues.Add(Error(ManagedProfileFields.AgentHttpsEndpoint, "Agent.TransportInvalid", "Validation.Agent.TransportInvalid"));
+            return null;
+        }
+
+        if (input.AgentTransport != NutAgentTransportKind.Https)
+        {
+            return new NutAgentProfileSettings(NutAgentTransportKind.NamedPipe);
+        }
+
+        if (!NutAgentProfileSettings.IsValidHttpsEndpoint(input.AgentHttpsEndpoint))
+        {
+            issues.Add(Error(ManagedProfileFields.AgentHttpsEndpoint, "Agent.EndpointInvalid", "Validation.Agent.EndpointInvalid"));
+            return null;
+        }
+
+        return new NutAgentProfileSettings(
+            NutAgentTransportKind.Https, input.AgentHttpsEndpoint, input.AgentAuthentication, input.AgentUsername);
     }
 
     private static bool IsHostname(string value)

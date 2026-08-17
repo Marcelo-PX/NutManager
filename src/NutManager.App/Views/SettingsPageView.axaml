@@ -340,6 +340,63 @@
                                  TextWrapping="Wrap" />
                     </StackPanel>
 
+
+                    <!--
+                      Windows agent (T36). Deliberately its own block rather than part of the SMB or
+                      SFTP sections: the agent transport is independent of the configuration
+                      transport, and editing files over SMB while controlling the service over a
+                      named pipe is an ordinary combination.
+                    -->
+                    <StackPanel IsVisible="{Binding ProfileDraft.IsAgentSectionVisible}" Spacing="8">
+                      <TextBlock Text="{Binding AgentSectionText}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding AgentTransportText}" FontWeight="SemiBold" />
+                      <ComboBox ItemsSource="{Binding AgentTransportOptions}"
+                                SelectedItem="{Binding SelectedAgentTransportOption, Mode=TwoWay}"
+                                AutomationProperties.Name="{Binding AgentTransportText}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+
+                      <!-- The pipe carries the Windows identity the application already has, so it
+                           offers no endpoint and no account to choose. -->
+                      <TextBlock Text="{Binding AgentNamedPipeNoticeText}"
+                                 IsVisible="{Binding ProfileDraft.IsAgentNamedPipe}"
+                                 FontSize="12"
+                                 Foreground="{DynamicResource NutTextSecondaryBrush}"
+                                 TextWrapping="Wrap" />
+
+                      <StackPanel IsVisible="{Binding ProfileDraft.IsAgentHttps}" Spacing="8">
+                        <TextBlock Text="{Binding AgentHttpsEndpointText}" FontWeight="SemiBold" />
+                        <TextBox Text="{Binding ProfileDraft.AgentHttpsEndpoint, Mode=TwoWay}"
+                                 PlaceholderText="https://servidor:5199/"
+                                 AutomationProperties.Name="{Binding AgentHttpsEndpointText}" />
+                        <TextBlock Text="{Binding AgentHttpsEndpointInvalidText}"
+                                   IsVisible="{Binding ProfileDraft.HasInvalidAgentHttpsEndpoint}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource NutWarningBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <TextBlock Text="{Binding AgentAuthenticationText}" FontWeight="SemiBold" />
+                        <ComboBox ItemsSource="{Binding AgentAuthenticationOptions}"
+                                  SelectedItem="{Binding SelectedAgentAuthenticationOption, Mode=TwoWay}"
+                                  AutomationProperties.Name="{Binding AgentAuthenticationText}">
+                          <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <!-- The account name, never a password box: the secret is collected by the
+                             Windows credential dialog and stored under the agent's own entry. -->
+                        <StackPanel IsVisible="{Binding ProfileDraft.UsesAgentAlternateAccount}" Spacing="6">
+                          <TextBlock Text="{Binding AgentAccountText}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding AgentAccountStatusText}"
+                                     TextWrapping="Wrap"
+                                     AutomationProperties.Name="{Binding AgentAccountText}" />
+                          <TextBlock Text="{Binding AgentAlternateAccountNoticeText}"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource NutTextSecondaryBrush}"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                      </StackPanel>
+                    </StackPanel>
+
                     <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
                     <Button Content="{Binding ForgetCredentialText}" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
 

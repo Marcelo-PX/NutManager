@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NutManager.App.Localization;
 using NutManager.App.Services;
+using NutManager.Core.Agent;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 using NutManager.Core.Validation;
@@ -121,6 +122,18 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             new PresentationOption<SmbAuthenticationMode>(SmbAuthenticationMode.ExplicitCredentials, Localizer.Get("SmbAuth.ExplicitCredentials"))
         ];
 
+        AgentTransportOptions =
+        [
+            new PresentationOption<NutAgentTransportKind>(NutAgentTransportKind.NamedPipe, Localizer.Get("Agent.Transport.NamedPipe")),
+            new PresentationOption<NutAgentTransportKind>(NutAgentTransportKind.Https, Localizer.Get("Agent.Transport.Https"))
+        ];
+
+        AgentAuthenticationOptions =
+        [
+            new PresentationOption<NutAgentAuthenticationMode>(NutAgentAuthenticationMode.CurrentWindowsIdentity, Localizer.Get("Agent.Auth.CurrentWindowsIdentity")),
+            new PresentationOption<NutAgentAuthenticationMode>(NutAgentAuthenticationMode.AlternateWindowsAccount, Localizer.Get("Agent.Auth.AlternateWindowsAccount"))
+        ];
+
         _isApplyingVisualPreferences = true;
         Apply(settings);
         SelectedThemeOption = ThemeOptions.Single(option => option.Preference == settings.Theme);
@@ -149,6 +162,10 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public IReadOnlyList<PresentationOption<SshAuthenticationMode>> SshAuthenticationOptions { get; }
 
     public IReadOnlyList<PresentationOption<SmbAuthenticationMode>> SmbAuthenticationOptions { get; }
+
+    public IReadOnlyList<PresentationOption<NutAgentTransportKind>> AgentTransportOptions { get; }
+
+    public IReadOnlyList<PresentationOption<NutAgentAuthenticationMode>> AgentAuthenticationOptions { get; }
 
     public ObservableCollection<ManagedNutServerProfile> ManagedProfiles { get; }
 
@@ -197,6 +214,39 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         get => SmbAuthenticationOptions.Single(option => option.Value == ProfileDraft.SmbAuthenticationMode);
         set => ProfileDraft.SmbAuthenticationMode = value.Value;
     }
+
+    public PresentationOption<NutAgentTransportKind> SelectedAgentTransportOption
+    {
+        get => AgentTransportOptions.Single(option => option.Value == ProfileDraft.AgentTransport);
+        set => ProfileDraft.AgentTransport = value.Value;
+    }
+
+    public PresentationOption<NutAgentAuthenticationMode> SelectedAgentAuthenticationOption
+    {
+        get => AgentAuthenticationOptions.Single(option => option.Value == ProfileDraft.AgentAuthentication);
+        set => ProfileDraft.AgentAuthentication = value.Value;
+    }
+
+    // ==================== Windows agent labels ====================
+
+    public string AgentSectionText => Localizer.Get("Agent.Section");
+    public string AgentTransportText => Localizer.Get("Agent.Transport");
+    public string AgentHttpsEndpointText => Localizer.Get("Agent.HttpsEndpoint");
+    public string AgentHttpsEndpointInvalidText => Localizer.Get("Agent.HttpsEndpoint.Invalid");
+    public string AgentAuthenticationText => Localizer.Get("Agent.Authentication");
+    public string AgentAccountText => Localizer.Get("Agent.Account");
+    public string AgentNamedPipeNoticeText => Localizer.Get("Agent.NamedPipe.Notice");
+    public string AgentAlternateAccountNoticeText => Localizer.Get("Agent.AlternateAccount.Notice");
+
+    /// <summary>
+    /// The account the profile carries, or a statement that none is configured. Never a secret, and
+    /// never anything from which one could be inferred.
+    /// </summary>
+    public string AgentAccountStatusText => ProfileDraft.UsesAgentAlternateAccount
+        ? string.IsNullOrWhiteSpace(ProfileDraft.AgentUsername)
+            ? Localizer.Get("Agent.Account.NotConfigured")
+            : ProfileDraft.AgentUsername!
+        : Localizer.Get("Agent.Auth.CurrentWindowsIdentity");
 
     public string AppearanceTitle => Localizer.Get("Appearance.Title");
     public string AppearanceThemeLabel => Localizer.Get("Appearance.Theme");
@@ -1144,6 +1194,9 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(SelectedConfigurationTransportOption));
         OnPropertyChanged(nameof(SelectedSshAuthenticationOption));
         OnPropertyChanged(nameof(SelectedSmbAuthenticationOption));
+        OnPropertyChanged(nameof(SelectedAgentTransportOption));
+        OnPropertyChanged(nameof(SelectedAgentAuthenticationOption));
+        OnPropertyChanged(nameof(AgentAccountStatusText));
         RefreshProfileValidation();
         NotifyProfilePropertiesChanged();
     }

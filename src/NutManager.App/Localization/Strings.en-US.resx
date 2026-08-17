@@ -1010,4 +1010,19 @@
   <data name="Settings.Agent.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
   <data name="Settings.Agent.HttpsEndpoint" xml:space="preserve"><value>Agent HTTPS endpoint</value></data>
   <data name="Settings.Agent.HttpsEndpoint.Invalid" xml:space="preserve"><value>Enter an absolute https:// address without embedded credentials.</value></data>
+  <data name="Agent.Section" xml:space="preserve"><value>Windows agent</value></data>
+  <data name="Agent.Transport" xml:space="preserve"><value>Agent transport</value></data>
+  <data name="Agent.Transport.NamedPipe" xml:space="preserve"><value>Named pipe</value></data>
+  <data name="Agent.Transport.Https" xml:space="preserve"><value>HTTPS</value></data>
+  <data name="Agent.HttpsEndpoint" xml:space="preserve"><value>Agent HTTPS endpoint</value></data>
+  <data name="Agent.HttpsEndpoint.Invalid" xml:space="preserve"><value>Enter an absolute https:// address that names a host and carries no credentials.</value></data>
+  <data name="Agent.Authentication" xml:space="preserve"><value>Agent authentication</value></data>
+  <data name="Agent.Auth.CurrentWindowsIdentity" xml:space="preserve"><value>Current Windows identity</value></data>
+  <data name="Agent.Auth.AlternateWindowsAccount" xml:space="preserve"><value>Another Windows account</value></data>
+  <data name="Agent.Account" xml:space="preserve"><value>Account</value></data>
+  <data name="Agent.Account.NotConfigured" xml:space="preserve"><value>No account configured yet</value></data>
+  <data name="Agent.NamedPipe.Notice" xml:space="preserve"><value>The named pipe uses the Windows identity NutManager is already running as. Reaching a server in another domain may require a Windows session to it.</value></data>
+  <data name="Agent.AlternateAccount.Notice" xml:space="preserve"><value>The password is kept in the Windows Credential Manager under the agent's own entry, separate from the SMB and SSH credentials. Signing in is done from the agent panel.</value></data>
+  <data name="Validation.Agent.EndpointInvalid" xml:space="preserve"><value>The agent HTTPS endpoint must be an absolute https:// address naming a host, without embedded credentials.</value></data>
+  <data name="Validation.Agent.TransportInvalid" xml:space="preserve"><value>The agent transport or authentication mode is invalid.</value></data>
 </root>
