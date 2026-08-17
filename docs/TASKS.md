@@ -1180,12 +1180,17 @@ the finding is recorded and the removal left as a follow-up.
 
 ### HTTPS
 
-Implemented on HTTP.sys through `HttpListener`, which is the HTTP.sys wrapper available without
-taking the whole ASP.NET Core framework into a privileged agent. Microsoft marks `HttpListener` as
-not recommended for new development, and that was weighed: the alternative pulls a far larger
-dependency surface into a LocalSystem process for a server that answers one route, and every property
-this task needs — kernel-mode TLS, Negotiate, anonymous disabled — is present and supported. The
-trade is recorded here rather than made silently.
+Implemented on HTTP.sys through ASP.NET Core's `UseHttpSys`. It was first written against
+`System.Net.HttpListener`, which is also HTTP.sys and needed no framework reference; that was
+replaced because Microsoft marks `HttpListener` as not recommended for new development and gives it
+limited servicing, and a privileged agent is the wrong place to depend on a type in that state. A
+test now refuses the whole `src` tree if `HttpListener` reappears.
+
+The cost is explicit and operational: the published agent requires `Microsoft.AspNetCore.App`
+alongside `Microsoft.NETCore.App`, so the server needs the ASP.NET Core runtime even when HTTPS stays
+disabled. The deployment guide states it rather than leaving an administrator to discover it from a
+service that will not start. Kestrel was not considered: HTTP.sys keeps TLS and the certificate
+binding with Windows, where an administrator put them, instead of inside the process.
 
 It is off unless a deployment turned it on, so installing the agent opens no port.
 `AuthenticationSchemes.Negotiate` means HTTP.sys authenticates before the request reaches the agent:

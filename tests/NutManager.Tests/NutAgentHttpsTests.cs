@@ -322,13 +322,61 @@ public sealed class NutAgentHttpsTests
             foreach (var forbidden in new[]
             {
                 "DangerousAcceptAnyServerCertificateValidator", "ServerCertificateCustomValidationCallback",
-                "CheckCertificateRevocationList = false", "AllowAnonymous", "http://",
-                "LogonUser(", "RunImpersonated(", "AuthenticationSchemes.Anonymous", "AuthenticationSchemes.Basic"
+                "CheckCertificateRevocationList = false", "http://", "LogonUser(", "RunImpersonated(",
+                // The endpoint opt-out forms. The HttpSys option of the same name is required
+                // to be present and false, so it is asserted separately rather than banned here.
+                ".AllowAnonymous()", "[AllowAnonymous]", "AuthenticationSchemes.Basic"
             })
             {
                 Assert.DoesNotContain(forbidden, source, StringComparison.OrdinalIgnoreCase);
             }
         }
+    }
+
+    [Fact]
+    public void ProductionNoLongerUsesHttpListenerAnywhere()
+    {
+        // The migration to ASP.NET Core HTTP.sys is asserted rather than remembered: HttpListener is
+        // the type Microsoft marks as not recommended for new development, and it must not come back
+        // through a stray using or a second transport.
+        var production = Directory
+            .EnumerateFiles(Path.Combine(Repository.Root, "src"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(path => File.ReadAllText(path).Contains("HttpListener", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Empty(production);
+    }
+
+    [Fact]
+    public void TheHttpsServerIsHostedOnHttpSysAndNeverOnKestrel()
+    {
+        var source = Repository.Read(Path.Combine("src", "NutManager.Agent", "NutAgentHttpsServer.cs"));
+
+        Assert.Contains("UseHttpSys", source, StringComparison.Ordinal);
+
+        // Kestrel would mean TLS configured inside this process, with a certificate and its password
+        // somewhere in reach. HTTP.sys keeps the binding with Windows, where the administrator put it.
+        foreach (var forbidden in new[] { "UseKestrel", "ConfigureKestrel", "UseHttps(", "ListenAnyIP", "pfx" })
+        {
+            Assert.DoesNotContain(forbidden, source, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public void TheHttpsServerTurnsOffTheTwoDefaultsThatWouldAcceptAnonymousCallers()
+    {
+        var source = Repository.Read(Path.Combine("src", "NutManager.Agent", "NutAgentHttpsServer.cs"));
+
+        // HttpSys defaults are Schemes = None and AllowAnonymous = true. Both are set explicitly,
+        // because a default must never be what decides whether an agent authenticates.
+        Assert.Contains("Authentication.Schemes = AuthenticationSchemes.Negotiate", source, StringComparison.Ordinal);
+        Assert.Contains("Authentication.AllowAnonymous = false", source, StringComparison.Ordinal);
+        Assert.Contains("MaxRequestBodySize", source, StringComparison.Ordinal);
+
+        // The endpoint must not opt itself back out of authentication.
+        Assert.DoesNotContain(".AllowAnonymous()", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[AllowAnonymous]", source, StringComparison.Ordinal);
     }
 
     [Fact]

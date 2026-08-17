@@ -1,37 +1,49 @@
 using System.Net;
 using System.Runtime.Versioning;
 using System.Security.Principal;
-using System.Text;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.HttpSys;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NutManager.Core.Agent;
+
+// System.Net carries a type of the same name; the HTTP.sys one is the one that configures this
+// server, and the alias makes which is meant unambiguous at the point of use.
+using AuthenticationSchemes = Microsoft.AspNetCore.Server.HttpSys.AuthenticationSchemes;
 
 namespace NutManager.Agent;
 
 /// <summary>
-/// The optional HTTPS transport, on HTTP.sys.
+/// The optional HTTPS transport, on HTTP.sys through ASP.NET Core.
 ///
 /// It exists for the case the named pipe cannot serve: a client that is not recognised by the
 /// server's domain has no Windows session to carry a pipe, but Negotiate over HTTPS can be given an
 /// explicit credential. That is the whole reason this transport is here, and it is off unless a
 /// deployment turned it on.
 ///
-/// <see cref="AuthenticationSchemes.Negotiate"/> is not decoration. HTTP.sys authenticates before
-/// the request is handed over, so an anonymous caller never reaches this code at all — there is no
-/// branch here that could be made to skip the check, because the check happens before the branch
-/// exists. Membership of the operators group is then required before anything is dispatched, using
-/// the same authorization object the pipe uses.
+/// Authentication is settled before this code runs. <see cref="AuthenticationSchemes.Negotiate"/>
+/// with <c>AllowAnonymous</c> false makes HTTP.sys reject an unauthenticated caller in kernel mode,
+/// so there is no branch here that could be made to skip the check — the check happens before the
+/// branch exists. Membership of the operators group is then required before anything is dispatched,
+/// using the same authorization the pipe uses, because being an authenticated Windows account is not
+/// the same as being allowed to control a UPS service.
 ///
-/// Nothing about controlling a service lives here. This class authenticates, authorizes, bounds the
-/// request and calls the dispatcher — the same dispatcher the named pipe calls, so neither transport
-/// can develop its own opinion about what an operation means.
+/// TLS belongs to HTTP.sys and to the certificate an administrator bound to the port. Nothing here
+/// loads a certificate, and there is no Kestrel HTTPS configuration to get wrong.
+///
+/// Nothing about controlling a service lives here either. This class authenticates, authorizes,
+/// bounds the request and calls the same dispatcher the named pipe calls.
 /// </summary>
 [SupportedOSPlatform("windows")]
-internal sealed class NutAgentHttpsServer
+internal sealed class NutAgentHttpsServer : IAsyncDisposable
 {
-    private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(15);
-
     private readonly NutAgentRequestDispatcher _dispatcher;
     private readonly SecurityIdentifier _operatorsGroup;
     private readonly string _prefix;
+
+    private WebApplication? _app;
 
     internal NutAgentHttpsServer(NutAgentRequestDispatcher dispatcher, SecurityIdentifier operatorsGroup, string prefix)
     {
@@ -45,61 +57,68 @@ internal sealed class NutAgentHttpsServer
     }
 
     /// <summary>
-    /// Listens until stopped. A failure to bind is reported to the caller rather than swallowed:
-    /// HTTPS that was asked for and did not start must be visible, not silently absent.
+    /// Builds and starts the host, and lets a failure to bind reach the caller.
+    ///
+    /// That is the point of starting it here rather than on a detached task: an absent SSL binding
+    /// or a missing URL reservation fails at <c>StartAsync</c>, and a listener that was asked for and
+    /// did not start must be recorded rather than lost in a task nobody observes.
     /// </summary>
-    internal async Task RunAsync(CancellationToken cancellationToken)
+    internal async Task StartAsync(CancellationToken cancellationToken)
     {
-        using var listener = new HttpListener();
-        listener.Prefixes.Add(_prefix);
+        var builder = WebApplication.CreateSlimBuilder();
 
-        // Anonymous is the default for HttpListener, and leaving it would be the single worst
-        // mistake available in this file.
-        listener.AuthenticationSchemes = AuthenticationSchemes.Negotiate;
-        listener.IgnoreWriteExceptions = true;
+        // The agent's record of privileged control is the Windows Event Log, written by the audit
+        // sink. Framework logging would add a second, noisier account of the same events and a
+        // status poll every ten seconds would be most of it.
+        builder.Logging.ClearProviders();
 
-        listener.Start();
-
-        using var registration = cancellationToken.Register(listener.Abort);
-
-        while (!cancellationToken.IsCancellationRequested)
+        builder.WebHost.UseHttpSys(options =>
         {
-            HttpListenerContext context;
-            try
-            {
-                context = await listener.GetContextAsync().ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
-                // Aborted on shutdown, or one failed accept. Neither is a reason to stop listening.
-                if (cancellationToken.IsCancellationRequested) return;
-                continue;
-            }
+            options.UrlPrefixes.Add(_prefix);
 
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await HandleAsync(context, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // One client must never take the listener down with it.
-                }
-                finally
-                {
-                    try { context.Response.Close(); } catch (Exception) { }
-                }
-            }, CancellationToken.None);
+            // Both explicit. The defaults are None and true, which would be an agent that accepts
+            // anonymous requests, and no default is allowed to decide this.
+            options.Authentication.Schemes = AuthenticationSchemes.Negotiate;
+            options.Authentication.AllowAnonymous = false;
+
+            // A server-side ceiling in addition to the bounded read below, so an oversized body is
+            // refused by HTTP.sys before it reaches managed code at all.
+            options.MaxRequestBodySize = NutAgentHttpsProtocol.MaxRequestBytes;
+        });
+
+        builder.Services.AddAuthentication(HttpSysDefaults.AuthenticationScheme);
+        builder.Services.AddAuthorization();
+
+        var app = builder.Build();
+        app.UseAuthentication();
+
+        // Terminal middleware rather than routing. The agent answers exactly one method on one path
+        // and everything else is a plain 404: an agent that distinguishes "wrong method" from
+        // "wrong path" is an agent that helps someone map it.
+        app.Run(context => HandleAsync(context));
+
+        _app = app;
+        await app.StartAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    internal async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_app is null) return;
+
+        try
+        {
+            await _app.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Stopping is not allowed to fail: the process is going down either way.
         }
     }
 
-    private async Task HandleAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    private async Task HandleAsync(HttpContext context)
     {
-        if (!NutAgentHttpsProtocol.IsAgentRoute(context.Request.HttpMethod, context.Request.Url?.AbsolutePath))
+        if (!NutAgentHttpsProtocol.IsAgentRoute(context.Request.Method, context.Request.Path.Value))
         {
-            // No route information is offered back. An agent that says "wrong path, try another"
-            // is an agent that helps someone map it.
             context.Response.StatusCode = (int)HttpStatusCode.NotFound;
             return;
         }
@@ -112,42 +131,47 @@ internal sealed class NutAgentHttpsServer
             return;
         }
 
-        var payload = await ReadBoundedBodyAsync(context.Request, cancellationToken).ConfigureAwait(false);
+        var payload = await ReadBoundedBodyAsync(context).ConfigureAwait(false);
         if (payload is null)
         {
             await RespondAsync(context, HttpStatusCode.RequestEntityTooLarge,
-                NutAgentResponse.Refused(NutAgentResultCode.MalformedRequest, "The request exceeded the permitted size."),
-                cancellationToken).ConfigureAwait(false);
+                NutAgentResponse.Refused(NutAgentResultCode.MalformedRequest, "The request exceeded the permitted size."))
+                .ConfigureAwait(false);
             return;
         }
 
         if (!NutAgentWireCodec.TryReadRequest(payload, out var request, out var failure))
         {
-            await RespondAsync(context, HttpStatusCode.BadRequest, NutAgentResponse.Refused(failure), cancellationToken)
-                .ConfigureAwait(false);
+            await RespondAsync(context, HttpStatusCode.BadRequest, NutAgentResponse.Refused(failure)).ConfigureAwait(false);
             return;
         }
 
         var caller = new NutAgentCallerContext(identity, true, NutAgentHttpsProtocol.TransportName);
-        var response = await _dispatcher.DispatchAsync(request!, caller, cancellationToken).ConfigureAwait(false);
-        await RespondAsync(context, HttpStatusCode.OK, response, cancellationToken).ConfigureAwait(false);
+
+        // Deliberately not the request's own cancellation token: a client that hangs up mid-restart
+        // must not abort a privileged mutation half-way. The application service owns that lifetime.
+        var response = await _dispatcher.DispatchAsync(request!, caller, CancellationToken.None).ConfigureAwait(false);
+        await RespondAsync(context, HttpStatusCode.OK, response).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// The caller's name and verdict, both taken from the token HTTP.sys authenticated. Nothing in
-    /// the request body contributes to either, so a client cannot describe itself into the group.
+    /// Who is on the other end, according to the token HTTP.sys authenticated. Nothing in the
+    /// request body or headers contributes, so a client cannot describe itself into the group.
     /// </summary>
-    private (string Identity, bool Authorized) Authorize(HttpListenerContext context)
+    private (string Identity, bool Authorized) Authorize(HttpContext context)
     {
         try
         {
-            if (context.User?.Identity is not WindowsIdentity windows || !windows.IsAuthenticated)
+            if (context.User.Identity is not WindowsIdentity windows || !windows.IsAuthenticated)
             {
+                // Should be unreachable with AllowAnonymous false, which is exactly why it is
+                // checked: the transport's guarantee is verified rather than assumed.
                 return ("(unauthenticated)", false);
             }
 
-            // IsInRole with the SID expands nested and domain group membership the way Windows
-            // itself resolves it at logon.
+            // IsInRole with the SID expands nested and domain membership the way Windows resolves
+            // it at logon, and the SID keeps a local group distinct from a domain group of the
+            // same name.
             return (windows.Name, new WindowsPrincipal(windows).IsInRole(_operatorsGroup));
         }
         catch (Exception)
@@ -157,25 +181,25 @@ internal sealed class NutAgentHttpsServer
     }
 
     /// <summary>
-    /// Reads at most the permitted number of bytes, and refuses rather than truncating.
+    /// Reads at most the permitted number of bytes and refuses rather than truncating.
     ///
-    /// The declared content length is never trusted as an allocation size: a caller that announces
-    /// a gigabyte gets a refusal, and one that lies about a small length still cannot write more
-    /// than the ceiling because the read itself stops there.
+    /// Kept even though HTTP.sys enforces its own ceiling: a declared length is never used as an
+    /// allocation size, and a chunked body that lies about its size still cannot write past the
+    /// buffer because the read itself stops there.
     /// </summary>
-    private static async Task<byte[]?> ReadBoundedBodyAsync(HttpListenerRequest request, CancellationToken cancellationToken)
+    private static async Task<byte[]?> ReadBoundedBodyAsync(HttpContext context)
     {
-        if (request.ContentLength64 > NutAgentHttpsProtocol.MaxRequestBytes) return null;
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(ReadTimeout);
+        if (context.Request.ContentLength > NutAgentHttpsProtocol.MaxRequestBytes) return null;
 
         var buffer = new byte[NutAgentHttpsProtocol.MaxRequestBytes + 1];
         var total = 0;
 
         while (total < buffer.Length)
         {
-            var read = await request.InputStream.ReadAsync(buffer.AsMemory(total), timeout.Token).ConfigureAwait(false);
+            var read = await context.Request.Body
+                .ReadAsync(buffer.AsMemory(total), context.RequestAborted)
+                .ConfigureAwait(false);
+
             if (read == 0) break;
             total += read;
         }
@@ -183,19 +207,23 @@ internal sealed class NutAgentHttpsServer
         return total > NutAgentHttpsProtocol.MaxRequestBytes ? null : buffer[..total];
     }
 
-    private static async Task RespondAsync(
-        HttpListenerContext context,
-        HttpStatusCode status,
-        NutAgentResponse response,
-        CancellationToken cancellationToken)
+    private static async Task RespondAsync(HttpContext context, HttpStatusCode status, NutAgentResponse response)
     {
+        // The same codec both transports use. A framework serializer here would give the two
+        // transports different wire shapes for the same contract.
         var payload = NutAgentWireCodec.Serialize(response);
 
         context.Response.StatusCode = (int)status;
         context.Response.ContentType = NutAgentHttpsProtocol.ContentType;
-        context.Response.ContentEncoding = Encoding.UTF8;
-        context.Response.ContentLength64 = payload.Length;
+        context.Response.ContentLength = payload.Length;
 
-        await context.Response.OutputStream.WriteAsync(payload, cancellationToken).ConfigureAwait(false);
+        await context.Response.Body.WriteAsync(payload).ConfigureAwait(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_app is null) return;
+        await _app.DisposeAsync().ConfigureAwait(false);
+        _app = null;
     }
 }

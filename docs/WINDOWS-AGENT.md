@@ -29,9 +29,22 @@ that it has no authority and refuses every control operation.
 ## Requirements
 
 - Windows x64, with NUT installed and registered as a Windows service.
-- The .NET 10 runtime, unless you publish self-contained.
+- The **ASP.NET Core Runtime 10** on the server, unless you publish self-contained. This is stricter
+  than it used to be: the agent's optional HTTPS transport is hosted on ASP.NET Core's HTTP.sys
+  server, so the published `runtimeconfig.json` requires both `Microsoft.NETCore.App` and
+  `Microsoft.AspNetCore.App`. Installing the ASP.NET Core runtime brings the .NET runtime with it, so
+  it is one download rather than two — but the plain .NET runtime alone is no longer enough, even
+  when HTTPS stays disabled.
 - Administrative rights on the server for the installation steps below. The agent itself never
   performs any of them.
+
+Check what is present:
+
+```powershell
+dotnet --list-runtimes
+```
+
+Both `Microsoft.NETCore.App 10.x` and `Microsoft.AspNetCore.App 10.x` must appear.
 
 ## Authentication, and the one thing to check first
 
@@ -71,9 +84,9 @@ dotnet publish src/NutManager.Agent/NutManager.Agent.csproj --configuration Rele
 Copy the contents of `publish/agent` to the server, for example to
 `C:\Program Files\NutManager Agent`.
 
-The published payload is about 8 MB and currently includes libraries the agent never calls — the
-SSH and WMI stacks arrive because the agent references `NutManager.Infrastructure` as a whole. They
-are carried, not used: no code path in the agent reaches them. Narrowing the payload is a packaging
+The published payload is about 7 MB and still includes libraries the agent never calls — the SSH and
+WMI stacks arrive because the agent references `NutManager.Infrastructure` as a whole. They are
+carried, not used: no code path in the agent reaches them. Narrowing the payload is a packaging
 change worth making, and it is recorded as a known limitation rather than solved by moving
 platform-specific code into `NutManager.Core`, which is not allowed to hold it.
 
@@ -256,6 +269,10 @@ Restart-Service NutManagerAgent
 ```
 
 ### Authentication over HTTPS
+
+The transport is hosted by ASP.NET Core on the HTTP.sys server, configured through `UseHttpSys`. TLS
+stays with HTTP.sys and the certificate an administrator bound to the port: nothing inside the agent
+loads a certificate or terminates TLS.
 
 The listener requires **Negotiate** and does not accept anonymous requests — HTTP.sys authenticates
 before the request reaches the agent, so an unauthenticated caller never gets as far as the code that

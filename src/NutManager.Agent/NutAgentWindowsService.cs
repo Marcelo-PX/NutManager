@@ -25,7 +25,7 @@ internal sealed class NutAgentWindowsService : ServiceBase
 
     private readonly CancellationTokenSource _stopping = new();
     private Task? _listener;
-    private Task? _https;
+    private NutAgentHttpsServer? _https;
 
     internal NutAgentWindowsService()
     {
@@ -94,16 +94,21 @@ internal sealed class NutAgentWindowsService : ServiceBase
             return;
         }
 
+        var https = new NutAgentHttpsServer(composition.Dispatcher, operatorsGroup, options.HttpsPrefix!);
+
         try
         {
-            var https = new NutAgentHttpsServer(composition.Dispatcher, operatorsGroup, options.HttpsPrefix!);
-            _https = Task.Run(() => https.RunAsync(_stopping.Token), CancellationToken.None);
+            // Awaited rather than dropped on a background task. Binding failures are the common
+            // case — no SSL certificate attached to the port, no URL reservation — and they surface
+            // here, at start. A faulted task nobody observes would leave the service reporting a
+            // clean start with no HTTPS on it.
+            https.StartAsync(_stopping.Token).GetAwaiter().GetResult();
+            _https = https;
         }
         catch (Exception exception)
         {
-            // Binding failures are the common case here: no SSL certificate bound to the port, or
-            // no URL reservation. Both are deployment steps, and both are named rather than hidden.
             WriteStartupFailure(composition, $"The HTTPS transport could not bind to {options.HttpsPrefix}: {exception.GetType().Name}.");
+            https.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
     }
 
@@ -114,7 +119,14 @@ internal sealed class NutAgentWindowsService : ServiceBase
         try
         {
             _listener?.Wait(StopTimeout);
-            _https?.Wait(StopTimeout);
+
+            if (_https is { } https)
+            {
+                using var deadline = new CancellationTokenSource(StopTimeout);
+                https.StopAsync(deadline.Token).GetAwaiter().GetResult();
+                https.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                _https = null;
+            }
         }
         catch (Exception)
         {
