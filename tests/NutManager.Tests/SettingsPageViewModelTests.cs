@@ -155,6 +155,32 @@ public sealed class SettingsPageViewModelTests
         Assert.Contains("não foi alterado", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void ExplicitSmbCredentialHelpNamesTheAdministrationPageInBothCultures()
+    {
+        // Settings reports whether an SMB credential is stored and offers to forget it, but signing
+        // in happens on the Administration page. This text is the only thing joining the two, so it
+        // has to name that page rather than merely resolve to something non-empty.
+        foreach (var (language, page) in new[]
+                 {
+                     (UiLanguagePreference.PtBr, "Administração"),
+                     (UiLanguagePreference.EnUs, "Administration")
+                 })
+        {
+            var value = new App.Localization.NutManagerLocalizer(language).Get("Profiles.SmbSecretHelp");
+
+            Assert.NotEqual("Profiles.SmbSecretHelp", value);
+            Assert.Contains(page, value, StringComparison.Ordinal);
+        }
+
+        // "Administra" is the shared prefix of both spellings, so this stays true whichever culture
+        // the default settings resolve to.
+        Assert.Contains(
+            "Administra",
+            new SettingsPageViewModel(new ApplicationSettings(), null).SmbSecretHelp,
+            StringComparison.Ordinal);
+    }
+
     private static SettingsPageViewModel CreateProfileViewModel(
         ManagedNutServerProfiles profiles,
         ProfileStore profileStore,

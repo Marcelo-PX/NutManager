@@ -52,7 +52,7 @@
   <data name="Profiles.ProtectedSecretHelp" xml:space="preserve"><value>Passwords and passphrases can be remembered only after a successful connection and are never saved in the profile.</value></data>
   <data name="Profiles.SmbShare" xml:space="preserve"><value>SMB share</value></data>
   <data name="Profiles.SmbAuthentication" xml:space="preserve"><value>SMB authentication</value></data>
-  <data name="Profiles.SmbSecretHelp" xml:space="preserve"><value>The SMB password is never kept in the draft or saved in the profile.</value></data>
+  <data name="Profiles.SmbSecretHelp" xml:space="preserve"><value>The SMB password is never kept in the draft or saved in the profile. Use the Administration page to sign in with the account.</value></data>
   <data name="Profiles.ForgetCredential" xml:space="preserve"><value>Forget protected credential</value></data>
   <data name="Profiles.Activate" xml:space="preserve"><value>Make active</value></data>
   <data name="Profiles.Delete" xml:space="preserve"><value>Delete</value></data>

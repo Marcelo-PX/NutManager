@@ -270,7 +270,7 @@
 
                   <StackPanel IsVisible="{Binding ProfileDraft.IsRemote}" Spacing="10">
                     <TextBlock Text="{Binding TransportSectionTitle}" FontWeight="SemiBold" FontSize="16" Margin="0,6,0,0" />
-                    <TextBlock Text="{Binding TransportLabel}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding TransportLabel}" />
                     <ComboBox ItemsSource="{Binding ConfigurationTransportOptions}" SelectedItem="{Binding SelectedConfigurationTransportOption, Mode=TwoWay}">
                       <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
                     </ComboBox>
@@ -327,6 +327,12 @@
                         The share is the exact location of the NUT files, and for another Windows
                         account the identity comes back from the Windows credential dialog rather
                         than being typed here. Current Windows identity needs nothing further.
+
+                        The help text names the Administration page for the same reason: this
+                        surface reports whether a credential is stored and can forget it, but
+                        signing in happens there. Saying so is the difference between a deliberate
+                        split and a dead end — without it the operator selects explicit credentials
+                        and finds no way to supply one.
                       -->
                       <TextBlock Text="{Binding SmbSecretHelp}"
                                  IsVisible="{Binding ProfileDraft.UsesSmbExplicitCredentials}"
@@ -349,7 +355,7 @@
                     -->
                     <StackPanel IsVisible="{Binding ProfileDraft.IsAgentSectionVisible}" Spacing="8">
                       <TextBlock Text="{Binding AgentSectionText}" FontWeight="SemiBold" />
-                      <TextBlock Text="{Binding AgentTransportText}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding AgentTransportText}" />
                       <ComboBox ItemsSource="{Binding AgentTransportOptions}"
                                 SelectedItem="{Binding SelectedAgentTransportOption, Mode=TwoWay}"
                                 AutomationProperties.Name="{Binding AgentTransportText}">
