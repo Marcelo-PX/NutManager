@@ -1417,6 +1417,16 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(SelectedAgentTransportOption));
         OnPropertyChanged(nameof(SelectedAgentAuthenticationOption));
         OnPropertyChanged(nameof(AgentAccountStatusText));
+
+        // The credential surface reads the draft — which account, which transport, whether the
+        // endpoint is usable — so it has to be re-evaluated with it. Leaving these out is what left
+        // "Sign in" disabled beside a perfectly valid endpoint.
+        OnPropertyChanged(nameof(AgentCredentialStatusText));
+        OnPropertyChanged(nameof(AgentAuthenticateText));
+        OnPropertyChanged(nameof(CanAuthenticateAgentCredential));
+        OnPropertyChanged(nameof(CanForgetAgentCredential));
+        AuthenticateAgentCredentialCommand.NotifyCanExecuteChanged();
+        ForgetAgentCredentialCommand.NotifyCanExecuteChanged();
         RefreshProfileValidation();
         NotifyProfilePropertiesChanged();
     }

@@ -327,6 +327,29 @@ public sealed class AgentSettingsPresentationTests
     }
 
     [Fact]
+    public void TheCredentialSurfaceFollowsTheDraftItReads()
+    {
+        // Found by running the app: selecting the alternate account left "Sign in" disabled beside a
+        // perfectly valid endpoint, and the status still described the current identity. Both read
+        // the draft, and neither was in the list of properties re-raised when the draft changes.
+        var settings = new SettingsPageViewModel(new ApplicationSettings(), null);
+        settings.ProfileDraft.ManagementMode = NutManagementMode.Remote;
+        settings.ProfileDraft.AgentTransport = NutAgentTransportKind.Https;
+        settings.ProfileDraft.AgentHttpsEndpoint = "https://gandalf.sbra.local:5199/";
+
+        var changed = new List<string>();
+        settings.PropertyChanged += (_, args) => changed.Add(args.PropertyName ?? string.Empty);
+
+        settings.ProfileDraft.AgentAuthentication = NutAgentAuthenticationMode.AlternateWindowsAccount;
+
+        Assert.Contains(nameof(SettingsPageViewModel.CanAuthenticateAgentCredential), changed);
+        Assert.Contains(nameof(SettingsPageViewModel.AgentCredentialStatusText), changed);
+
+        // And the status now describes the alternate account rather than the current identity.
+        Assert.NotEqual(settings.Localizer.Get("Agent.Auth.CurrentWindowsIdentity"), settings.AgentCredentialStatusText);
+    }
+
+    [Fact]
     public void EveryAgentStringExistsInBothLanguages()
     {
         var keys = new[]

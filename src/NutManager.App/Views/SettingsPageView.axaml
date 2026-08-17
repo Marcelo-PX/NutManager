@@ -386,9 +386,6 @@
                              Windows credential dialog and stored under the agent's own entry. -->
                         <StackPanel IsVisible="{Binding ProfileDraft.UsesAgentAlternateAccount}" Spacing="6">
                           <TextBlock Text="{Binding AgentAccountText}" FontWeight="SemiBold" />
-                          <TextBlock Text="{Binding AgentAccountStatusText}"
-                                     TextWrapping="Wrap"
-                                     AutomationProperties.Name="{Binding AgentAccountText}" />
                           <TextBlock Text="{Binding AgentCredentialStatusText}"
                                      TextWrapping="Wrap"
                                      AutomationProperties.Name="{Binding AgentCredentialStatusText}" />
