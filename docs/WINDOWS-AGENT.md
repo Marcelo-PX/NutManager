@@ -110,6 +110,21 @@ accounts; membership held through it is recognised.
 net localgroup "NutManager Operators" "SBRA\operator" /add
 ```
 
+#### On a domain controller
+
+The same command creates the group, but a domain controller has no separate SAM: the group it creates
+is held in the directory and appears as `DOMAIN\NutManager Operators` rather than
+`SERVER\NutManager Operators`. That is normal and needs no different installation step.
+
+The agent resolves the group against whatever the server itself treats as its local group database —
+the SAM on a workstation or member server, the directory on a domain controller — so the same binary
+is correct in both roles. It then pins the group's SID and authorizes by SID from that point on.
+
+The distinction still matters for authority. On a member server the local group wins over a domain
+group that happens to share the name: existence is proven against the local group database first, and
+the translation starts at the local system. A domain account is authorized by being a member of the
+group, directly or through a nested group — never by being a domain account.
+
 ### 2. Register the Event Log source
 
 Control is refused whenever the audit sink is unusable, so this step is not optional. It is performed

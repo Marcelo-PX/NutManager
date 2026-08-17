@@ -1336,10 +1336,37 @@ neither the SMB nor the SSH secret — they authorize different things.
 A stored credential is reported as stored, never as valid. It may have been changed on the server or
 expired since, and only a handshake settles that.
 
+### The operator group on a domain controller
+
+Installing on the real server found a defect before the service was ever created. The agent resolved
+its operator group machine-qualified, as `MachineName\NutManager Operators`, which is correct on a
+workstation or member server and resolves to nothing on a domain controller — there the group is held
+in the directory and exists as `DOMAIN\NutManager Operators`. On GANDALF the group was plainly
+present, with its member, and the agent would have started and refused every operation.
+
+Resolution now follows the server's own local group database rather than a name the code assembles:
+the local group API is asked whether the name is a group it holds, and only then is the name
+translated, with the search starting at the local system. A workstation or member server answers from
+its SAM, a domain controller from the directory it uses as its local database, and neither the domain
+nor the machine is named anywhere in the code.
+
+Asking in that order is what preserves the original guarantee. A member server that also has a domain
+group of the same name still pins its own: the existence proof runs against the local database first,
+so a name that is only a domain account never reaches the translation. The resolved account must also
+be a group — a user or a computer answering to the name is refused rather than pinned as the
+authority over service control.
+
+The rest is unchanged. The SID is still pinned at startup, authorization still compares SIDs rather
+than names, the pipe ACL is still built from the pinned SID, indirect membership is still expanded,
+and every failure — missing group, failed lookup, wrong account type, SID mismatch — still fails
+closed.
+
 ### What is still open
 
 The desktop runtime smoke of this flow beyond a cancelled dialog, and the acceptance on the real
-server, both remain. No real credential was entered against GANDALF.
+server, both remain. No real credential was entered against GANDALF, and the agent is not yet
+installed there: the domain-controller fix landed before the service was created, so the corrected
+build is what will be deployed.
 
 ### It consumes T35 rather than repeating it
 
