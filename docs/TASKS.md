@@ -52,7 +52,9 @@ Only one task should normally be in progress at a time.
 | T31 | DONE | Collapsible NUT file rail | Page-level collapsible file navigation with the current visual language |
 | T32 | DONE | Icon library adoption and T31 visual acceptance | Every icon drawn from Material Icons, glass that responds to the pointer, and horizontal administration navigation |
 | T33 | DONE | Code health, dead-code cleanup and focused refactoring | Proven-dead code removed, doubtful code preserved, behaviour and visuals unchanged |
-| T34 | IN PROGRESS | Remote Windows NUT service monitoring | Read-only monitoring of the Windows NUT service and its process from a remote NutManager instance, independently from NUT protocol health |
+| T34 | DONE | Remote Windows NUT service monitoring | Read-only monitoring of the Windows NUT service and its process from a remote NutManager instance, independently from NUT protocol health |
+| T35 | DONE | Windows Agent for secure remote NUT service control | Privileged Windows agent with authenticated named-pipe and HTTPS transports, service control restricted to the validated NUT service, Event Log auditing and desktop integration |
+| T36 | PLANNED | Windows Agent settings and deployment UX | Expose the agent transport and authentication model in the profile editor, complete the native credential lifecycle, and carry out desktop and server acceptance |
 
 ---
 
@@ -980,7 +982,7 @@ but never defined, fell outside every search it ran.
 
 ## T34 — Remote Windows NUT service monitoring
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Objective
 
@@ -1046,10 +1048,262 @@ publishes one command and it refreshes. No firewall change, no service ACL chang
 no remote process enumeration, no WMI, no remote registry, no WinRM, no `Process.Start`. No NUT
 configuration file is read or written.
 
+### Acceptance as observed
+
+The query reached GANDALF and GANDALF refused it: `ERROR_ACCESS_DENIED` (5), which is authorization
+failing rather than the network — a blocked RPC returns 1722. NutManager runs as `PT90N\Marcelo`, a
+local account on a machine that is not joined to `SBRA.LOCAL`, so the remote SCM has no identity to
+recognise. That is a property of the machine, not of any particular session.
+
+What the run did prove is the thing this task exists for. Throughout the refused query the shell kept
+reporting the UPS as connected on `Gandalf.sbra.local:3493`: an administrative failure did not become
+an outage. The panel showed "Acesso negado" with the numeric code beside a NUT that was plainly fine,
+which is case D of the state matrix, observed live rather than argued.
+
+What stayed unproven is the positive path — a successful SCM authentication showing Running with a
+process id — and it stayed unproven for environmental reasons this task is forbidden to change. T35
+supersedes the approach rather than fixing it: an agent on the server queries its own SCM locally, so
+the cross-machine authentication that failed here stops being on the path at all.
+
 ### Validation
 
 - the full gate set including a warnings-as-errors build, plus a runtime smoke over every page;
 - acceptance against the real GANDALF profile, recorded exactly as observed.
+
+## T35 — Windows agent for secure remote NUT service control
+
+**Status:** DONE
+
+### Objective
+
+An agent on the NUT server that monitors and controls the one NUT service it has validated for
+itself, over a transport Windows authenticates.
+
+### Why the approach changed rather than the code
+
+T34 reached GANDALF and GANDALF refused it: `ERROR_ACCESS_DENIED`, a cross-machine authentication
+that a non-domain client with a local account cannot satisfy. Moving the SCM call to the machine that
+owns the service takes that authentication off the path to controlling a service. It does not remove
+authentication from the product — the agent authenticates its callers — it removes the hop that had
+no identity to offer.
+
+### What the agent will not accept
+
+Nothing in the protocol names a service, a path or a command. The request is three scalars, so a
+caller cannot redirect the agent at a target it did not choose. That is the confused-deputy defence,
+and it is structural: implementing a redirect would require adding a field, which is a reviewable
+change rather than a silent one.
+
+### The containment T34 could not perform
+
+The agent runs on the server, so it can require what a remote observer cannot: the service binary
+must live inside the detected NUT installation. Name-based association is not sufficient here, and a
+service that borrows the name "Network UPS Tools" while pointing elsewhere is refused. Revalidation
+before every mutation re-runs the whole selection and compares the binary path as well as the name,
+which closes the window between "we checked" and "we acted".
+
+### Fail-closed, in the specific places it matters
+
+- No operators group means no control, for the lifetime of the process. There is no fallback to
+  Administrators; the group is resolved machine-qualified so a domain group of the same name cannot
+  become the authority.
+- No usable audit sink means no mutation. A privileged action nobody can account for is worse than no
+  action.
+- No unambiguous NUT service means no authority to act.
+- Not running as LocalSystem means the service refuses to start.
+- The group, the event source and the service registration are deployment acts. An agent that can
+  create them is an agent that can be made to.
+
+### Transport
+
+A named pipe, versioned in its name. The ACL grants LocalSystem and the operators group and names
+nobody else, because a pipe grants nothing it was not told to grant. There is deliberately no deny
+entry for Everyone: a deny outranks every allow and every operator is also a member of Everyone.
+
+Framing is length-prefixed, bounded, and checks the declared length before allocating. Reads are
+exact. A peer closing on a frame boundary is not an error; stopping half-way through one is.
+
+Connections are handled concurrently so a status poll keeps being answered while a restart holds the
+mutation gate.
+
+### What the client keeps from T34
+
+No transport failure is ever reported as a NUT outage, and a test refuses the status enum if a name
+like `Offline` or `ServerDown` appears in it. An agent that is missing from a server whose upsd is
+answering is an administrative gap, and the product says so.
+
+### Desktop integration
+
+`RemoteWindowsServiceViewModel` was evolved rather than replaced: it reads through
+`INutManagerAgentClient` now, and everything T34 built into it survives — the ten-second interval,
+one probe in flight, the generation guard that stops a late answer writing into a view nobody is
+watching, and the stale reading that stays legible while being labelled. It still exposes exactly one
+command, and that command refreshes.
+
+Control lives in `RemoteWindowsServiceControlViewModel`, a separate object. The separation is what
+keeps T34's assertion true, and a test now reflects over the monitor for mutation members rather than
+trusting the intent. The control object does not poll: it reads the monitor's observation and asks it
+to refresh once an operation finishes, so there is still only ever one probe in flight.
+
+Stop and Restart require an explicit confirmation that names the host, the action and the service.
+Restart is one request; the desktop never composes a stop followed by a start, because the atomicity
+belongs to the agent's mutation gate. Each action carries one operation id, generated once, and
+nothing is retried automatically.
+
+Buttons follow the handshake rather than the service state. An agent whose audit sink is unusable
+reports a perfectly healthy service and still offers nothing.
+
+### No fallback
+
+When the agent cannot be reached the panel says so. There is no second attempt over the remote SCM,
+and a test refuses the application composition if the probe reappears in it. A silent second path
+would leave an operator unable to tell which route answered, or why control is unavailable on a
+server whose monitoring appears to work.
+
+### Profile
+
+`NutAgentTransportKind` is separate from `RemoteConfigurationTransportKind`: editing configuration
+over SMB while controlling the service over a named pipe is an ordinary combination, and one setting
+must not decide the other. Schema 6 is additive — a version 5 document loads unchanged and takes the
+named pipe, and an unreadable or unusable transport falls back to it rather than making a profile
+unopenable.
+
+### T34 supersession audit
+
+`IRemoteWindowsNutServiceProbe` has no production consumer left, and a test asserts that rather than
+claiming it. The type was not deleted: `WindowsRemoteNutServiceProbe` still supplies the host
+normalisation and executable-name helpers the agent uses, and
+`WindowsServiceControlManagerInterop` still answers the agent's local process-id query. Removing the
+remote probe path means relocating those helpers, which is a separate change with its own risk, so
+the finding is recorded and the removal left as a follow-up.
+
+### HTTPS
+
+Implemented on HTTP.sys through ASP.NET Core's `UseHttpSys`. It was first written against
+`System.Net.HttpListener`, which is also HTTP.sys and needed no framework reference; that was
+replaced because Microsoft marks `HttpListener` as not recommended for new development and gives it
+limited servicing, and a privileged agent is the wrong place to depend on a type in that state. A
+test now refuses the whole `src` tree if `HttpListener` reappears.
+
+The cost is explicit and operational: the published agent requires `Microsoft.AspNetCore.App`
+alongside `Microsoft.NETCore.App`, so the server needs the ASP.NET Core runtime even when HTTPS stays
+disabled. The deployment guide states it rather than leaving an administrator to discover it from a
+service that will not start. Kestrel was not considered: HTTP.sys keeps TLS and the certificate
+binding with Windows, where an administrator put them, instead of inside the process.
+
+It is off unless a deployment turned it on, so installing the agent opens no port.
+`AuthenticationSchemes.Negotiate` means HTTP.sys authenticates before the request reaches the agent:
+an anonymous caller never arrives at the code that would refuse it. Membership of the operators group
+is then required, through the same check the pipe uses, and the request goes to the same dispatcher —
+neither transport has its own opinion about what an operation means.
+
+One route, `POST /v1/agent`, and nothing else. There is no endpoint that names an operation and no
+unauthenticated health probe. The body is bounded before it is deserialized, with the same ceilings
+the pipe uses.
+
+Every way the configuration can be wrong stops the listener rather than degrading it: a plain-text
+prefix, a wildcard host, a thumbprint that is not hexadecimal, a certificate that is missing or has no
+private key. The named pipe keeps working in every one of those cases, so a mistake in the HTTPS
+configuration cannot take away the transport that was already secure. The certificate is named by
+thumbprint and lives in `LocalMachine\My`; the agent never creates, installs or trusts one, and the
+TLS binding and any URL reservation are `netsh` steps the administrator performs.
+
+### The alternate Windows account
+
+The client authenticates as the current Windows identity, or as an explicit account handed to
+Negotiate through the handler — no `LogonUser`, no process-wide impersonation, and nothing that
+changes the identity of anything else the application is doing. That is what makes a client outside
+the server's domain usable without establishing a session first, which is the environmental problem
+T34 ran into.
+
+The password is stored under the agent's own Credential Manager target and kind. Same server and same
+user name do not make the secrets equivalent: the SMB one authorizes reading configuration files and
+this one authorizes controlling a service, so a test asserts that the agent path never reads the SMB
+credential. Certificate validation is the platform default; a test refuses either transport file if a
+validation callback ever appears in it.
+
+### Where this task was closed, and why there
+
+T35 delivers the agent and the two authenticated ways of reaching it: the server-side authority, the
+named pipe, HTTPS on ASP.NET Core HTTP.sys with Negotiate, the validated NUT-only service control,
+the Event Log record, and the desktop monitoring and control that consume them. The profile carries
+the transport, the endpoint, the authentication mode and the account name, and the application builds
+the right client from them.
+
+What was deliberately left out is the **graphical** editing of those options and the operational
+acceptance that follows it. That is a scope decision rather than an unfinished implementation: the
+model, the persistence, the migration, the credential boundary and both clients exist and are tested,
+and what T36 adds is the surface an operator uses to set them without editing a profile document.
+
+Deferred to T36:
+
+- the agent section of the profile editor — transport selector, HTTPS endpoint, authentication
+  selector;
+- the interactive credential lifecycle — authenticate, change, remember, forget, and the status an
+  operator reads;
+- the desktop runtime smoke;
+- installation on the real server, and acceptance against it.
+
+### What was not validated
+
+Stated plainly, because closing a task does not turn an unrun check into a passed one:
+
+- the desktop runtime smoke was **not run**;
+- the agent was **never installed** on GANDALF, and nothing on that machine was touched;
+- no real Start, Stop or Restart was performed against the live NUT service.
+
+These are deferred acceptance activities belonging to T36, not defects in what T35 built. Destructive
+operations against the real service continue to require the user's explicit authorization at the
+moment they are run.
+
+### Known limitations
+
+The published agent carries the SSH and WMI libraries because it references
+`NutManager.Infrastructure` as a whole. No agent code path reaches them. Narrowing the payload is a
+packaging change; the platform-specific code cannot move into `NutManager.Core`.
+
+## T36 — Windows agent settings and deployment UX
+
+**Status:** PLANNED
+
+### Objective
+
+Expose the agent transport and authentication model T35 built through the graphical profile editor,
+complete the native credential lifecycle, and carry out the desktop and server acceptance that T35
+deferred.
+
+### Scope
+
+- an agent section in the remote profile editor: transport (named pipe or HTTPS), the HTTPS
+  endpoint, and the authentication mode (current Windows identity or an alternate account);
+- the credential lifecycle through the existing native prompt: authenticate, change, remember,
+  forget, and a status an operator can read without seeing a secret;
+- pt-BR and en-US parity, and accessible names for every new control;
+- profile save and reload, including a draft that is never persisted while invalid;
+- the desktop runtime smoke;
+- installation on the real server and acceptance against it.
+
+### It consumes T35 rather than repeating it
+
+The profile model, the schema, the credential kind, the agent protocol, both clients and the
+service-control path already exist. T36 must use them. It must not introduce a second agent protocol,
+a second credential store, another HTTPS or named-pipe client, or another route to service control —
+a parallel implementation is how two security boundaries end up disagreeing, and only one of them
+gets reviewed.
+
+The managed profile schema stays at version 6. Nothing in this scope needs a new field.
+
+### Acceptance on the real server
+
+Requires, on the server: the ASP.NET Core runtime 10, the agent installed and running as LocalSystem,
+the `NutManager Operators` group, the Event Log source, an authorized operator account, and — for
+HTTPS — a certificate in `LocalMachine\My` with its HTTP.sys binding and any URL reservation.
+
+Then verify: the handshake answers, `GetStatus` reports the right service identity and process id,
+NUT's own protocol health stays independent of all of it, and an unauthorized caller is refused.
+
+Start, Stop and Restart against the live NUT service require the user's explicit authorization at the
+moment they are run. That rule does not relax because the agent is installed.
 
 ## Task execution template
 

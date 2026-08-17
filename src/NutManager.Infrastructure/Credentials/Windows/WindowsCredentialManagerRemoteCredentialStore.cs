@@ -218,6 +218,7 @@ public static class WindowsCredentialTargetNames
             RemoteCredentialKind.SshPassword => "ssh-password",
             RemoteCredentialKind.SshPrivateKeyPassphrase => "ssh-key-passphrase",
             RemoteCredentialKind.SmbPassword => "smb-password",
+            RemoteCredentialKind.WindowsAgentPassword => "windows-agent-password",
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
         return $"NutManager:RemoteCredential:v1:{profileId:N}:{suffix}";

@@ -80,9 +80,18 @@ public sealed record NutManagementProfile
         string? smbUsername = null,
         SshAuthenticationMode sshAuthenticationMode = SshAuthenticationMode.Password,
         string? sshPrivateKeyPath = null,
-        ManagedNutConfigurationFiles? managedFiles = null)
+        ManagedNutConfigurationFiles? managedFiles = null,
+        NutAgentProfileSettings? agent = null)
     {
         ManagedFiles = managedFiles ?? ManagedNutConfigurationFiles.All;
+
+        // A profile written before the agent existed gets the named pipe, which is the transport that
+        // needs no server-side configuration beyond installing the agent itself. A local profile has
+        // no remote agent to reach, so the setting is present and inert rather than absent.
+        Agent = mode == NutManagementMode.Remote
+            ? agent ?? NutAgentProfileSettings.NamedPipeDefault
+            : NutAgentProfileSettings.NamedPipeDefault;
+
         if (!Enum.IsDefined(mode))
         {
             throw new ArgumentOutOfRangeException(nameof(mode), "The management mode is invalid.");
@@ -157,6 +166,12 @@ public sealed record NutManagementProfile
     public NutManagementMode Mode { get; }
 
     public RemoteConfigurationTransportKind ConfigurationTransport { get; }
+
+    /// <summary>
+    /// How the agent is reached. Independent of <see cref="ConfigurationTransport"/>: editing
+    /// configuration over SMB and controlling the service over a named pipe is a normal combination.
+    /// </summary>
+    public NutAgentProfileSettings Agent { get; }
 
     public string? ManagementHost { get; }
 
@@ -284,7 +299,12 @@ public sealed record ManagedNutServerProfile
 
 public sealed record ManagedNutServerProfiles
 {
-    public const int CurrentSchemaVersion = 5;
+    /// <summary>
+    /// Version 6 added the agent transport. Older documents load unchanged and take the named pipe,
+    /// so the bump is additive: nothing a version 5 document holds is read differently, and a profile
+    /// written before the agent existed keeps behaving exactly as it did.
+    /// </summary>
+    public const int CurrentSchemaVersion = 6;
 
     public ManagedNutServerProfiles(int schemaVersion, Guid activeProfileId, IReadOnlyList<ManagedNutServerProfile> profiles)
     {

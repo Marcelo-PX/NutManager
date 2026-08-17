@@ -155,7 +155,7 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
     }
 
     [Fact]
-    public async Task DeleteAllTouchesOnlyTheThreeKnownAppOwnedTargets()
+    public async Task DeleteAllTouchesOnlyTheKnownAppOwnedTargets()
     {
         var native = new FakeNative();
         var profileId = Guid.NewGuid();
@@ -164,7 +164,9 @@ public sealed class WindowsCredentialManagerRemoteCredentialStoreTests
         var result = await store.DeleteAllForProfileAsync(profileId);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(3, native.DeleteTargets.Count);
+        // Four since the agent gained its own credential: removing a profile must take its
+        // agent secret with it, or the next profile to reuse the id would inherit one.
+        Assert.Equal(4, native.DeleteTargets.Count);
         Assert.All(native.DeleteTargets, target => Assert.StartsWith($"NutManager:RemoteCredential:v1:{profileId:N}:", target, StringComparison.Ordinal));
     }
 

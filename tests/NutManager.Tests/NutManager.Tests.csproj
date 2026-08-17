@@ -15,6 +15,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The agent's own configuration rules decide whether a privileged listener may open, so the
+         test project references it directly rather than restating them. -->
+    <ProjectReference Include="..\..\src\NutManager.Agent\NutManager.Agent.csproj" />
     <ProjectReference Include="..\..\src\NutManager.App\NutManager.App.csproj" />
     <ProjectReference Include="..\..\src\NutManager.Core\NutManager.Core.csproj" />
     <ProjectReference Include="..\..\src\NutManager.Infrastructure\NutManager.Infrastructure.csproj" />

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- The agent hosts a Windows service and talks to the local SCM. There is no other platform. -->
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ServiceBase comes from the ServiceController package the solution already references, so
+         hosting a Windows service adds no new dependency. -->
+    <PackageReference Include="System.ServiceProcess.ServiceController" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The HTTP.sys server, through the shared framework rather than a NuGet package. This is what
+         lets the optional HTTPS transport use the supported ASP.NET Core stack instead of
+         System.Net.HttpListener. It makes the ASP.NET Core runtime a requirement on the server,
+         which the deployment guide states. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core and Infrastructure only. The agent never references the Avalonia application. -->
+    <ProjectReference Include="..\NutManager.Core\NutManager.Core.csproj" />
+    <ProjectReference Include="..\NutManager.Infrastructure\NutManager.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
