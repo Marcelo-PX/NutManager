@@ -270,7 +270,7 @@
 
                   <StackPanel IsVisible="{Binding ProfileDraft.IsRemote}" Spacing="10">
                     <TextBlock Text="{Binding TransportSectionTitle}" FontWeight="SemiBold" FontSize="16" Margin="0,6,0,0" />
-                    <TextBlock Text="{Binding TransportLabel}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding TransportLabel}" />
                     <ComboBox ItemsSource="{Binding ConfigurationTransportOptions}" SelectedItem="{Binding SelectedConfigurationTransportOption, Mode=TwoWay}">
                       <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
                     </ComboBox>
@@ -327,6 +327,12 @@
                         The share is the exact location of the NUT files, and for another Windows
                         account the identity comes back from the Windows credential dialog rather
                         than being typed here. Current Windows identity needs nothing further.
+
+                        The help text names the Administration page for the same reason: this
+                        surface reports whether a credential is stored and can forget it, but
+                        signing in happens there. Saying so is the difference between a deliberate
+                        split and a dead end — without it the operator selects explicit credentials
+                        and finds no way to supply one.
                       -->
                       <TextBlock Text="{Binding SmbSecretHelp}"
                                  IsVisible="{Binding ProfileDraft.UsesSmbExplicitCredentials}"
@@ -340,6 +346,108 @@
                                  TextWrapping="Wrap" />
                     </StackPanel>
 
+
+                    <!--
+                      Windows agent (T36). Deliberately its own block rather than part of the SMB or
+                      SFTP sections: the agent transport is independent of the configuration
+                      transport, and editing files over SMB while controlling the service over a
+                      named pipe is an ordinary combination.
+                    -->
+                    <StackPanel IsVisible="{Binding ProfileDraft.IsAgentSectionVisible}" Spacing="8">
+                      <TextBlock Text="{Binding AgentSectionText}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding AgentTransportText}" />
+                      <ComboBox ItemsSource="{Binding AgentTransportOptions}"
+                                SelectedItem="{Binding SelectedAgentTransportOption, Mode=TwoWay}"
+                                AutomationProperties.Name="{Binding AgentTransportText}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                      </ComboBox>
+
+                      <!-- The pipe carries the Windows identity the application already has, so it
+                           offers no endpoint and no account to choose. -->
+                      <TextBlock Text="{Binding AgentNamedPipeNoticeText}"
+                                 IsVisible="{Binding ProfileDraft.IsAgentNamedPipe}"
+                                 FontSize="12"
+                                 Foreground="{DynamicResource NutTextSecondaryBrush}"
+                                 TextWrapping="Wrap" />
+
+                      <StackPanel IsVisible="{Binding ProfileDraft.IsAgentHttps}" Spacing="8">
+                        <TextBlock Text="{Binding AgentHttpsEndpointText}" FontWeight="SemiBold" />
+                        <TextBox Text="{Binding ProfileDraft.AgentHttpsEndpoint, Mode=TwoWay}"
+                                 PlaceholderText="https://servidor:5199/"
+                                 AutomationProperties.Name="{Binding AgentHttpsEndpointText}" />
+                        <TextBlock Text="{Binding AgentHttpsEndpointInvalidText}"
+                                   IsVisible="{Binding ProfileDraft.HasInvalidAgentHttpsEndpoint}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource NutWarningBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <TextBlock Text="{Binding AgentAuthenticationText}" FontWeight="SemiBold" />
+                        <ComboBox ItemsSource="{Binding AgentAuthenticationOptions}"
+                                  SelectedItem="{Binding SelectedAgentAuthenticationOption, Mode=TwoWay}"
+                                  AutomationProperties.Name="{Binding AgentAuthenticationText}">
+                          <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}" /></DataTemplate></ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <!-- The account name, never a password box: the secret is collected by the
+                             Windows credential dialog and stored under the agent's own entry. -->
+                        <StackPanel IsVisible="{Binding ProfileDraft.UsesAgentAlternateAccount}" Spacing="6">
+                          <!--
+                            The account and the credential are separate facts and get separate
+                            labels. A profile can name an account it holds no secret for, and
+                            printing the credential status under a heading that reads "Account"
+                            made a configured account look like no account at all.
+                          -->
+                          <TextBlock Text="{Binding AgentAccountText}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding AgentAccountStatusText}"
+                                     TextWrapping="Wrap"
+                                     AutomationProperties.Name="{Binding AgentAccountStatusText}" />
+
+                          <TextBlock Text="{Binding AgentCredentialLabel}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding AgentCredentialStatusText}"
+                                     TextWrapping="Wrap"
+                                     AutomationProperties.Name="{Binding AgentCredentialStatusText}" />
+
+                          <!--
+                            The secret is collected by the Windows credential dialog and proven
+                            against the agent before anything is remembered. There is no password
+                            box here and there is not meant to be one.
+                          -->
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="{Binding AgentAuthenticateText}"
+                                    Command="{Binding AuthenticateAgentCredentialCommand}"
+                                    IsEnabled="{Binding CanAuthenticateAgentCredential}"
+                                    AutomationProperties.Name="{Binding AgentAuthenticateText}" />
+                            <Button Content="{Binding AgentForgetText}"
+                                    Command="{Binding ForgetAgentCredentialCommand}"
+                                    IsEnabled="{Binding CanForgetAgentCredential}"
+                                    AutomationProperties.Name="{Binding AgentForgetText}" />
+                          </StackPanel>
+
+                          <CheckBox Content="{Binding AgentRememberText}"
+                                    IsChecked="{Binding RememberAgentCredential, Mode=TwoWay}"
+                                    AutomationProperties.Name="{Binding AgentRememberText}" />
+
+                          <TextBlock Text="{Binding AgentAuthenticatingText}"
+                                     IsVisible="{Binding IsAuthenticatingAgentCredential}"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource NutTextSecondaryBrush}"
+                                     AutomationProperties.Name="{Binding AgentAuthenticatingText}" />
+
+                          <TextBlock Text="{Binding AgentAlternateAccountNoticeText}"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource NutTextSecondaryBrush}"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                      </StackPanel>
+                    </StackPanel>
+
+                    <!--
+                      This credential belongs to the configuration transport, not to the agent, and
+                      it sits directly under the agent's own credential block. Unlabelled, the two
+                      read as one surface contradicting itself: "credential saved" immediately above
+                      "no protected credential is required". The heading is what separates them.
+                    -->
+                    <TextBlock Text="{Binding ConfigurationCredentialLabel}" FontWeight="SemiBold" Margin="0,6,0,0" />
                     <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
                     <Button Content="{Binding ForgetCredentialText}" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
 

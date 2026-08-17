@@ -35,6 +35,14 @@ public static class AdministrationPresentation
         var localAvailability = isRemote
             ? strings.Get("Administration.Availability.LocalOnly")
             : strings.Get("Administration.Availability.Available");
+
+        // The NUT service is reachable on a remote profile, through the agent — which is the entire
+        // reason the agent exists. This section was local-only before T35 and correctly said so; a
+        // profile that now reads the remote service's state and pid, and is offered start, stop and
+        // restart, must not be told the section belongs to local management.
+        var serviceAvailability = isRemote
+            ? strings.Get("Administration.Availability.ViaAgent")
+            : strings.Get("Administration.Availability.Available");
         var remoteAvailability = isRemote
             ? strings.Get("Administration.Availability.Available")
             : strings.Get("Administration.Availability.RemoteOnly");
@@ -52,8 +60,8 @@ public static class AdministrationPresentation
             new(AdministrationSection.WindowsService,
                 strings.Get("Administration.Section.WindowsService"),
                 strings.Get("Administration.Section.WindowsService.Description"),
-                !isRemote,
-                localAvailability),
+                true,
+                serviceAvailability),
             new(AdministrationSection.DevicesAndDrivers,
                 strings.Get("Administration.Section.DevicesDrivers"),
                 strings.Get("Administration.Section.DevicesDrivers.Description"),

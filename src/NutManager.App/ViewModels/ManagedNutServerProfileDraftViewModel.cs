@@ -1,5 +1,6 @@
 using NutManager.Core.Configuration;
 using CommunityToolkit.Mvvm.ComponentModel;
+using NutManager.Core.Agent;
 using NutManager.Core.Models;
 using NutManager.Core.Validation;
 
@@ -83,6 +84,22 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
     [ObservableProperty]
     private string? _smbUsername;
 
+    // ==================== Windows agent ====================
+
+    /// <summary>How this profile reaches the agent. Independent of the configuration transport.</summary>
+    [ObservableProperty]
+    private NutAgentTransportKind _agentTransport = NutAgentTransportKind.NamedPipe;
+
+    [ObservableProperty]
+    private string? _agentHttpsEndpoint;
+
+    [ObservableProperty]
+    private NutAgentAuthenticationMode _agentAuthentication = NutAgentAuthenticationMode.CurrentWindowsIdentity;
+
+    /// <summary>The account name only. The password never reaches this draft.</summary>
+    [ObservableProperty]
+    private string? _agentUsername;
+
     public bool IsRemote => ManagementMode == NutManagementMode.Remote;
 
     public bool IsSshSftp => IsRemote && ConfigurationTransport == RemoteConfigurationTransportKind.SshSftp;
@@ -105,6 +122,26 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
             StringComparison.OrdinalIgnoreCase);
 
     public bool IsSshPrivateKey => IsSshSftp && SshAuthenticationMode == SshAuthenticationMode.PrivateKey;
+
+    // ==================== Windows agent derived state ====================
+
+    /// <summary>There is no remote agent to reach from a local profile.</summary>
+    public bool IsAgentSectionVisible => IsRemote;
+
+    public bool IsAgentNamedPipe => IsRemote && AgentTransport == NutAgentTransportKind.NamedPipe;
+
+    public bool IsAgentHttps => IsRemote && AgentTransport == NutAgentTransportKind.Https;
+
+    /// <summary>
+    /// Only HTTPS can carry an explicit credential. Over the named pipe the caller is whoever
+    /// Windows already authenticated, so the alternate account is not offered rather than offered
+    /// and quietly ignored.
+    /// </summary>
+    public bool UsesAgentAlternateAccount =>
+        IsAgentHttps && AgentAuthentication == NutAgentAuthenticationMode.AlternateWindowsAccount;
+
+    public bool HasInvalidAgentHttpsEndpoint =>
+        IsAgentHttps && !NutAgentProfileSettings.IsValidHttpsEndpoint(AgentHttpsEndpoint);
 
     // ==================== Managed NUT files ====================
 
@@ -172,6 +209,10 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SmbAuthenticationMode = profile.Management.SmbAuthenticationMode;
         SmbUsername = profile.Management.SmbUsername;
         SetManagedFiles(profile.Management.ManagedFiles);
+        AgentTransport = profile.Management.Agent.Transport;
+        AgentHttpsEndpoint = profile.Management.Agent.HttpsEndpoint;
+        AgentAuthentication = profile.Management.Agent.Authentication;
+        AgentUsername = profile.Management.Agent.Username;
     }
 
     public void CopyFrom(ManagedNutServerProfileDraftViewModel source)
@@ -198,6 +239,10 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SmbAuthenticationMode = source.SmbAuthenticationMode;
         SmbUsername = source.SmbUsername;
         SetManagedFiles(source.ManagedFiles);
+        AgentTransport = source.AgentTransport;
+        AgentHttpsEndpoint = source.AgentHttpsEndpoint;
+        AgentAuthentication = source.AgentAuthentication;
+        AgentUsername = source.AgentUsername;
     }
 
     public ManagedNutServerProfileInput ToInput() => new(
@@ -221,7 +266,11 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         SmbConfigurationDirectory,
         SmbAuthenticationMode,
         SmbUsername,
-        ManagedFiles);
+        ManagedFiles,
+        AgentTransport,
+        AgentHttpsEndpoint,
+        AgentAuthentication,
+        AgentUsername);
 
     public ManagedNutServerProfileValidationResult Validate(IEnumerable<ManagedNutServerProfile> existingProfiles) =>
         ManagedNutServerProfileValidator.Validate(ToInput(), existingProfiles);
@@ -249,7 +298,11 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
                string.Equals(SmbConfigurationDirectory, profile.Management.SmbConfigurationDirectory, StringComparison.Ordinal) &&
                SmbAuthenticationMode == profile.Management.SmbAuthenticationMode &&
                string.Equals(SmbUsername, profile.Management.SmbUsername, StringComparison.Ordinal) &&
-               ManagedFiles.Equals(profile.Management.ManagedFiles);
+               ManagedFiles.Equals(profile.Management.ManagedFiles) &&
+               AgentTransport == profile.Management.Agent.Transport &&
+               string.Equals(AgentHttpsEndpoint, profile.Management.Agent.HttpsEndpoint, StringComparison.Ordinal) &&
+               AgentAuthentication == profile.Management.Agent.Authentication &&
+               string.Equals(AgentUsername, profile.Management.Agent.Username, StringComparison.Ordinal);
     }
 
     partial void OnManagementModeChanged(NutManagementMode value)
@@ -259,9 +312,26 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         OnPropertyChanged(nameof(IsSmb));
         OnPropertyChanged(nameof(IsSshPrivateKey));
         NotifySmbDerivedState();
+        NotifyAgentDerivedState();
     }
 
     partial void OnSmbAuthenticationModeChanged(SmbAuthenticationMode value) => NotifySmbDerivedState();
+
+    partial void OnAgentTransportChanged(NutAgentTransportKind value) => NotifyAgentDerivedState();
+
+    partial void OnAgentAuthenticationChanged(NutAgentAuthenticationMode value) => NotifyAgentDerivedState();
+
+    partial void OnAgentHttpsEndpointChanged(string? value) =>
+        OnPropertyChanged(nameof(HasInvalidAgentHttpsEndpoint));
+
+    private void NotifyAgentDerivedState()
+    {
+        OnPropertyChanged(nameof(IsAgentSectionVisible));
+        OnPropertyChanged(nameof(IsAgentNamedPipe));
+        OnPropertyChanged(nameof(IsAgentHttps));
+        OnPropertyChanged(nameof(UsesAgentAlternateAccount));
+        OnPropertyChanged(nameof(HasInvalidAgentHttpsEndpoint));
+    }
 
     partial void OnSmbSharePathChanged(string? value) =>
         OnPropertyChanged(nameof(HasLegacySmbConfigurationDirectory));

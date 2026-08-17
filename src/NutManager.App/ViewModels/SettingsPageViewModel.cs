@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NutManager.App.Localization;
 using NutManager.App.Services;
+using NutManager.Core.Agent;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 using NutManager.Core.Validation;
@@ -17,6 +18,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     private readonly IManagedNutServerProfileStore? _profileStore;
     private readonly ManagedNutServerProfileUpdateService? _profileMutator;
     private readonly IRemoteCredentialStore? _credentialStore;
+    private readonly NutAgentCredentialCoordinator? _agentCredentials;
+    private int _agentCredentialGeneration;
     private readonly IManagedNutConnectionTester? _connectionTester;
     private readonly Guid _runtimeProfileId;
     private readonly string _runtimeProfileName;
@@ -53,7 +56,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         IRemoteCredentialStore? credentialStore = null,
         IManagedNutConnectionTester? connectionTester = null,
         Guid? runtimeProfileId = null,
-        INutManagedFileDetector? managedFileDetector = null)
+        INutManagedFileDetector? managedFileDetector = null,
+        NutAgentCredentialCoordinator? agentCredentials = null)
         : base(
             Localize(settings, "Settings.Title"),
             Localize(settings, "Settings.Description"))
@@ -64,6 +68,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         _profileStore = profileStore;
         _profileMutator = profileStore is null ? null : profileMutator ?? new ManagedNutServerProfileUpdateService(profileStore);
         _credentialStore = credentialStore;
+        _agentCredentials = agentCredentials;
         _connectionTester = connectionTester;
         _confirmedSettings = settings;
         _confirmedProfiles = profiles ?? ManagedNutServerProfiles.CreateLegacyProfile(settings);
@@ -121,6 +126,18 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             new PresentationOption<SmbAuthenticationMode>(SmbAuthenticationMode.ExplicitCredentials, Localizer.Get("SmbAuth.ExplicitCredentials"))
         ];
 
+        AgentTransportOptions =
+        [
+            new PresentationOption<NutAgentTransportKind>(NutAgentTransportKind.NamedPipe, Localizer.Get("Agent.Transport.NamedPipe")),
+            new PresentationOption<NutAgentTransportKind>(NutAgentTransportKind.Https, Localizer.Get("Agent.Transport.Https"))
+        ];
+
+        AgentAuthenticationOptions =
+        [
+            new PresentationOption<NutAgentAuthenticationMode>(NutAgentAuthenticationMode.CurrentWindowsIdentity, Localizer.Get("Agent.Auth.CurrentWindowsIdentity")),
+            new PresentationOption<NutAgentAuthenticationMode>(NutAgentAuthenticationMode.AlternateWindowsAccount, Localizer.Get("Agent.Auth.AlternateWindowsAccount"))
+        ];
+
         _isApplyingVisualPreferences = true;
         Apply(settings);
         SelectedThemeOption = ThemeOptions.Single(option => option.Preference == settings.Theme);
@@ -149,6 +166,10 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public IReadOnlyList<PresentationOption<SshAuthenticationMode>> SshAuthenticationOptions { get; }
 
     public IReadOnlyList<PresentationOption<SmbAuthenticationMode>> SmbAuthenticationOptions { get; }
+
+    public IReadOnlyList<PresentationOption<NutAgentTransportKind>> AgentTransportOptions { get; }
+
+    public IReadOnlyList<PresentationOption<NutAgentAuthenticationMode>> AgentAuthenticationOptions { get; }
 
     public ObservableCollection<ManagedNutServerProfile> ManagedProfiles { get; }
 
@@ -197,6 +218,149 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         get => SmbAuthenticationOptions.Single(option => option.Value == ProfileDraft.SmbAuthenticationMode);
         set => ProfileDraft.SmbAuthenticationMode = value.Value;
     }
+
+    public PresentationOption<NutAgentTransportKind> SelectedAgentTransportOption
+    {
+        get => AgentTransportOptions.Single(option => option.Value == ProfileDraft.AgentTransport);
+        set => ProfileDraft.AgentTransport = value.Value;
+    }
+
+    public PresentationOption<NutAgentAuthenticationMode> SelectedAgentAuthenticationOption
+    {
+        get => AgentAuthenticationOptions.Single(option => option.Value == ProfileDraft.AgentAuthentication);
+        set => ProfileDraft.AgentAuthentication = value.Value;
+    }
+
+    // ==================== Windows agent labels ====================
+
+    public string AgentSectionText => Localizer.Get("Agent.Section");
+    public string AgentTransportText => Localizer.Get("Agent.Transport");
+    public string AgentHttpsEndpointText => Localizer.Get("Agent.HttpsEndpoint");
+    public string AgentHttpsEndpointInvalidText => Localizer.Get("Agent.HttpsEndpoint.Invalid");
+    public string AgentAuthenticationText => Localizer.Get("Agent.Authentication");
+    public string AgentAccountText => Localizer.Get("Agent.Account");
+    public string AgentNamedPipeNoticeText => Localizer.Get("Agent.NamedPipe.Notice");
+    public string AgentAlternateAccountNoticeText => Localizer.Get("Agent.AlternateAccount.Notice");
+
+    /// <summary>
+    /// The account the profile carries, or a statement that none is configured. Never a secret, and
+    /// never anything from which one could be inferred.
+    /// </summary>
+    // ==================== Windows agent credential ====================
+
+    /// <summary>
+    /// True while the credential dialog is open or the handshake is running. One at a time: two
+    /// prompts racing to publish into the same draft is how an operator ends up with an account
+    /// they did not pick.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanAuthenticateAgentCredential))]
+    [NotifyPropertyChangedFor(nameof(CanForgetAgentCredential))]
+    private bool _isAuthenticatingAgentCredential;
+
+    /// <summary>Whether a validated credential should be written when the profile is saved.</summary>
+    [ObservableProperty]
+    private bool _rememberAgentCredential = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AgentCredentialStatusText))]
+    [NotifyPropertyChangedFor(nameof(CanForgetAgentCredential))]
+    private NutAgentCredentialOutcome? _agentCredentialOutcome;
+
+    /// <summary>The account most recently proven against the agent, held only for this session.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AgentCredentialStatusText))]
+    [NotifyPropertyChangedFor(nameof(CanForgetAgentCredential))]
+    private string? _validatedAgentAccount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AgentCredentialStatusText))]
+    [NotifyPropertyChangedFor(nameof(CanForgetAgentCredential))]
+    private bool _hasStoredAgentCredential;
+
+    public string AgentAuthenticateText => Localizer.Get(
+        HasStoredAgentCredential || ValidatedAgentAccount is not null ? "Agent.Credential.Change" : "Agent.Credential.Authenticate");
+
+    /// <summary>
+    /// The label over the agent's credential status. The account and the credential are separate
+    /// facts — a profile can name an account it has no secret for — and showing the status under a
+    /// heading that says "Account" made the two read as one.
+    /// </summary>
+    public string AgentCredentialLabel => Localizer.Get("Agent.Credential.Label");
+
+    /// <summary>Names what the protected credential below it is actually for.</summary>
+    public string ConfigurationCredentialLabel => Localizer.Get("Credential.Configuration.Label");
+
+    public string AgentForgetText => Localizer.Get("Agent.Credential.Forget");
+    public string AgentRememberText => Localizer.Get("Agent.Credential.Remember");
+    public string AgentAuthenticatingText => Localizer.Get("Agent.Credential.Authenticating");
+
+    /// <summary>Set by the View so the Windows dialog belongs to the application window.</summary>
+    public nint CredentialPromptOwnerWindowHandle { get; set; }
+
+    /// <summary>
+    /// The dialog is not opened for a destination that cannot be used: an endpoint that will not
+    /// validate is a prompt the operator would fill in for nothing.
+    /// </summary>
+    public bool CanAuthenticateAgentCredential =>
+        _agentCredentials is not null &&
+        ProfileDraft.UsesAgentAlternateAccount &&
+        !ProfileDraft.HasInvalidAgentHttpsEndpoint &&
+        !IsAuthenticatingAgentCredential;
+
+    public bool CanForgetAgentCredential =>
+        _agentCredentials is not null &&
+        ProfileDraft.UsesAgentAlternateAccount &&
+        !IsAuthenticatingAgentCredential &&
+        (HasStoredAgentCredential || ValidatedAgentAccount is not null);
+
+    /// <summary>
+    /// What an operator can act on, and never anything a secret could be inferred from.
+    ///
+    /// A stored credential is reported as stored rather than as valid. It may have been changed on
+    /// the server or expired since, and only a handshake settles that — claiming more than was
+    /// proven is how a credential screen starts lying.
+    /// </summary>
+    public string AgentCredentialStatusText
+    {
+        get
+        {
+            if (!ProfileDraft.UsesAgentAlternateAccount) return Localizer.Get("Agent.Auth.CurrentWindowsIdentity");
+
+            if (AgentCredentialOutcome is { } outcome && outcome != NutAgentCredentialOutcome.Validated &&
+                outcome != NutAgentCredentialOutcome.Cancelled)
+            {
+                return Localizer.Get(outcome switch
+                {
+                    NutAgentCredentialOutcome.AccessDenied => "Agent.Credential.AccessDenied",
+                    NutAgentCredentialOutcome.AgentUnavailable => "Agent.Credential.Unavailable",
+                    NutAgentCredentialOutcome.HostUnreachable => "Agent.Credential.HostUnreachable",
+                    NutAgentCredentialOutcome.TimedOut => "Agent.Credential.TimedOut",
+                    NutAgentCredentialOutcome.ProtocolFailure => "Agent.Credential.ProtocolFailure",
+                    NutAgentCredentialOutcome.PromptUnavailable => "Agent.Credential.PromptUnavailable",
+                    _ => "Agent.Credential.Failed"
+                });
+            }
+
+            if (ValidatedAgentAccount is { } validated)
+            {
+                var key = RememberAgentCredential ? "Agent.Credential.ValidatedPending" : "Agent.Credential.ValidatedSession";
+                return string.Format(System.Globalization.CultureInfo.CurrentCulture, Localizer.Get(key), validated);
+            }
+
+            if (HasStoredAgentCredential) return Localizer.Get("Agent.Credential.Stored");
+
+            return string.IsNullOrWhiteSpace(ProfileDraft.AgentUsername)
+                ? Localizer.Get("Agent.Account.NotConfigured")
+                : Localizer.Get("Agent.Credential.Missing");
+        }
+    }
+
+    public string AgentAccountStatusText => ProfileDraft.UsesAgentAlternateAccount
+        ? string.IsNullOrWhiteSpace(ProfileDraft.AgentUsername)
+            ? Localizer.Get("Agent.Account.NotConfigured")
+            : ProfileDraft.AgentUsername!
+        : Localizer.Get("Agent.Auth.CurrentWindowsIdentity");
 
     public string AppearanceTitle => Localizer.Get("Appearance.Title");
     public string AppearanceThemeLabel => Localizer.Get("Appearance.Theme");
@@ -554,6 +718,12 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             ApplyConfirmedProfiles(document, updated.Id);
             IsProfileSaved = true;
             ProfileStatusMessage = Localizer.Get("Profiles.SaveSuccess");
+
+            // Only now, with the profile actually persisted, may a remembered credential be written.
+            // The profile store and the Credential Manager are separate stores and there is no
+            // transaction across them, so the order is chosen instead: the profile first, and a
+            // failure to write the secret afterwards is reported rather than papered over.
+            await CommitAgentCredentialAsync(updated.Id, cancellationToken);
             return true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -806,6 +976,114 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         }
     }
 
+    /// <summary>
+    /// Collects a credential and proves it against the agent before anything is remembered.
+    ///
+    /// The generation guard is the same one the monitor uses: a handshake can outlive the draft it
+    /// was started for, and publishing a late answer into a profile the operator has since changed
+    /// would attach an account to the wrong server.
+    /// </summary>
+    [RelayCommand]
+    private async Task AuthenticateAgentCredentialAsync(CancellationToken cancellationToken = default)
+    {
+        if (_agentCredentials is null || !CanAuthenticateAgentCredential) return;
+
+        var profileId = ProfileDraft.Id;
+        var endpoint = ProfileDraft.AgentHttpsEndpoint!;
+        var generation = ++_agentCredentialGeneration;
+
+        IsAuthenticatingAgentCredential = true;
+        try
+        {
+            var result = await _agentCredentials.AuthenticateAsync(
+                profileId,
+                endpoint,
+                ProfileDraft.AgentUsername,
+                Localizer.Get("Agent.Credential.PromptCaption"),
+                Localizer.Get("Agent.Credential.PromptMessage"),
+                CredentialPromptOwnerWindowHandle,
+                cancellationToken);
+
+            if (generation != _agentCredentialGeneration) return;
+
+            // Cancelling changes nothing at all: not the draft, not the status, not the store.
+            if (result.Outcome == NutAgentCredentialOutcome.Cancelled) return;
+
+            AgentCredentialOutcome = result.Outcome;
+
+            if (result.IsValidated)
+            {
+                ValidatedAgentAccount = result.Username;
+                ProfileDraft.AgentUsername = result.Username;
+            }
+        }
+        finally
+        {
+            if (generation == _agentCredentialGeneration) IsAuthenticatingAgentCredential = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes the agent credential for this profile, and only that one. The SMB and SSH secrets
+    /// authorize different things and are left exactly where they are.
+    /// </summary>
+    [RelayCommand]
+    private async Task ForgetAgentCredentialAsync(CancellationToken cancellationToken = default)
+    {
+        if (_agentCredentials is null || !CanForgetAgentCredential) return;
+
+        var profileId = ProfileDraft.Id;
+        _agentCredentials.ForgetSession(profileId);
+        ValidatedAgentAccount = null;
+        AgentCredentialOutcome = null;
+
+        if (_credentialStore is not null)
+        {
+            await _credentialStore.DeleteAsync(profileId, RemoteCredentialKind.WindowsAgentPassword, cancellationToken);
+        }
+
+        HasStoredAgentCredential = false;
+        ProfileStatusMessage = Localizer.Get("Credential.ForgetSuccess");
+    }
+
+    /// <summary>
+    /// Writes the validated credential once the profile it belongs to actually exists.
+    ///
+    /// Deliberately not done at authentication time: a credential stored for a profile the operator
+    /// then cancels is an orphan in the Credential Manager that nobody will think to remove.
+    /// </summary>
+    private async Task CommitAgentCredentialAsync(Guid profileId, CancellationToken cancellationToken)
+    {
+        if (_agentCredentials is null || _credentialStore is null) return;
+        if (!RememberAgentCredential || ValidatedAgentAccount is not { } account) return;
+
+        var persisted = await _agentCredentials.PersistAsync(profileId, account, _credentialStore, cancellationToken);
+        HasStoredAgentCredential = persisted;
+
+        // The profile is already saved at this point, so claiming success would leave it pointing at
+        // an account whose secret is only in memory. Saying so is the only honest report.
+        if (!persisted) ProfileStatusMessage = Localizer.Get("Agent.Credential.SaveFailed");
+    }
+
+    /// <summary>Rebuilds the credential status when the selected profile changes.</summary>
+    private async Task RefreshAgentCredentialStatusAsync(CancellationToken cancellationToken = default)
+    {
+        ValidatedAgentAccount = null;
+        AgentCredentialOutcome = null;
+        HasStoredAgentCredential = false;
+
+        var profile = SelectedManagedProfile;
+        if (profile is null || _credentialStore is null) return;
+
+        if (_agentCredentials is not null && _agentCredentials.HasSessionCredential(profile.Id, out var session))
+        {
+            ValidatedAgentAccount = session;
+        }
+
+        var stored = await _credentialStore.ContainsAsync(profile.Id, RemoteCredentialKind.WindowsAgentPassword, cancellationToken);
+        HasStoredAgentCredential = stored.IsSuccess;
+    }
+
     [RelayCommand]
     private async Task ForgetStoredCredentialAsync(CancellationToken cancellationToken = default)
     {
@@ -842,6 +1120,22 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         {
             StoredCredentialStatus = result.Status;
         }
+    }
+
+    /// <summary>
+    /// Both credential statuses, which is what startup actually needs.
+    ///
+    /// They are two lifecycles over two stores answering two questions — one authorizes reading the
+    /// configuration files, the other authorizes controlling the service — and the bootstrap used to
+    /// refresh only the first. The agent's status therefore stayed at its constructed default, so a
+    /// profile whose password was sitting in the Credential Manager, and which the agent client had
+    /// already used to connect, reported no credential until the operator happened to switch
+    /// profiles. Selection refreshed both; opening the application did not.
+    /// </summary>
+    public async Task RefreshCredentialStatusesAsync(CancellationToken cancellationToken = default)
+    {
+        await RefreshStoredCredentialStatusAsync(cancellationToken);
+        await RefreshAgentCredentialStatusAsync(cancellationToken);
     }
 
     public ApplicationSettings CreateSettings() => new(
@@ -1032,7 +1326,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         ProfileSaveError = null;
         NotifySelectionChanged();
         NotifyProfilePropertiesChanged();
-        _ = RefreshStoredCredentialStatusAsync();
+        _ = RefreshCredentialStatusesAsync();
     }
 
     private void BeginCreate()
@@ -1047,7 +1341,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         ProfileStatusMessage = Localizer.Get("Profiles.NewServerHelp");
         NotifySelectionChanged();
         NotifyProfilePropertiesChanged();
-        _ = RefreshStoredCredentialStatusAsync();
+        _ = RefreshCredentialStatusesAsync();
     }
 
     private void DiscardProfileDraftCore()
@@ -1144,6 +1438,19 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(SelectedConfigurationTransportOption));
         OnPropertyChanged(nameof(SelectedSshAuthenticationOption));
         OnPropertyChanged(nameof(SelectedSmbAuthenticationOption));
+        OnPropertyChanged(nameof(SelectedAgentTransportOption));
+        OnPropertyChanged(nameof(SelectedAgentAuthenticationOption));
+        OnPropertyChanged(nameof(AgentAccountStatusText));
+
+        // The credential surface reads the draft — which account, which transport, whether the
+        // endpoint is usable — so it has to be re-evaluated with it. Leaving these out is what left
+        // "Sign in" disabled beside a perfectly valid endpoint.
+        OnPropertyChanged(nameof(AgentCredentialStatusText));
+        OnPropertyChanged(nameof(AgentAuthenticateText));
+        OnPropertyChanged(nameof(CanAuthenticateAgentCredential));
+        OnPropertyChanged(nameof(CanForgetAgentCredential));
+        AuthenticateAgentCredentialCommand.NotifyCanExecuteChanged();
+        ForgetAgentCredentialCommand.NotifyCanExecuteChanged();
         RefreshProfileValidation();
         NotifyProfilePropertiesChanged();
     }

@@ -54,7 +54,7 @@ Only one task should normally be in progress at a time.
 | T33 | DONE | Code health, dead-code cleanup and focused refactoring | Proven-dead code removed, doubtful code preserved, behaviour and visuals unchanged |
 | T34 | DONE | Remote Windows NUT service monitoring | Read-only monitoring of the Windows NUT service and its process from a remote NutManager instance, independently from NUT protocol health |
 | T35 | DONE | Windows Agent for secure remote NUT service control | Privileged Windows agent with authenticated named-pipe and HTTPS transports, service control restricted to the validated NUT service, Event Log auditing and desktop integration |
-| T36 | PLANNED | Windows Agent settings and deployment UX | Expose the agent transport and authentication model in the profile editor, complete the native credential lifecycle, and carry out desktop and server acceptance |
+| T36 | IN PROGRESS | Windows Agent settings and deployment UX | Expose the agent transport and authentication model in the profile editor, complete the native credential lifecycle, and carry out desktop and server acceptance |
 
 ---
 
@@ -1264,7 +1264,7 @@ packaging change; the platform-specific code cannot move into `NutManager.Core`.
 
 ## T36 — Windows agent settings and deployment UX
 
-**Status:** PLANNED
+**Status:** IN PROGRESS
 
 ### Objective
 
@@ -1282,6 +1282,91 @@ deferred.
 - profile save and reload, including a draft that is never persisted while invalid;
 - the desktop runtime smoke;
 - installation on the real server and acceptance against it.
+
+### What is implemented
+
+The profile editor now carries the agent section for a remote profile: the transport, and — for
+HTTPS — the endpoint, the authentication mode and the account the profile is configured for. The
+section is absent for a local profile, because there is no remote agent to reach.
+
+The named pipe offers no endpoint and no account, and that is the point rather than an omission:
+over the pipe the caller is whoever Windows already authenticated, so an account field there would
+be a promise the transport cannot keep. The model normalises the same way, so a draft switched back
+to the pipe cannot carry a stale endpoint or account into the saved document.
+
+The endpoint is validated by the same rule the model uses — absolute, https, a named host, no
+embedded credentials — reported inline as the operator types and again by the profile validator, so
+an invalid draft cannot be saved. The agent fields take part in dirty tracking, Cancel and
+save/reload like every other field, and the agent transport stays independent of the configuration
+transport: SMB with a named pipe is an ordinary combination and a test asserts it.
+
+There is nowhere in the editor for a password. The draft has no property that could hold one, by
+name or by type, and the section contains no password box — the secret is collected by the Windows
+credential dialog and kept in the Credential Manager under the agent’s own entry.
+
+### The credential lifecycle
+
+Signing in uses the Windows credential dialog T30 already owns, and the rule the whole flow is built
+around is that the dialog returning OK is not authentication. It collected a credential; whether that
+credential has any rights on that server is a question only the agent can answer, so a handshake is
+performed against the configured endpoint before anything is remembered, stored or shown as valid. A
+password typed correctly for an account with no rights is a password that must not be saved.
+
+Where the secret lives follows from what the operator asked for. Declining to remember it does not
+mean the connection they just authenticated should stop working, so it is held in memory for the
+session and nowhere else — the session store has no path that writes to a file, a registry key or the
+Credential Manager. Choosing to remember it does not write it at authentication time either: a
+credential stored for a profile the operator then cancels is an orphan nobody will think to remove,
+so persistence waits until the profile has actually been saved.
+
+The profile store and the Credential Manager are separate stores with no transaction across them, so
+the order is chosen instead: the profile first, then the secret, and a failure to write the secret is
+reported rather than papered over — the profile would otherwise point at an account whose password
+only exists in memory.
+
+Failure never destroys what worked. A rejected or cancelled replacement leaves the previous
+credential exactly as it was, and the account shown always comes from the dialog rather than from
+what was typed, so a profile cannot claim one account while the secret belongs to another. A late
+handshake cannot publish into a draft the operator has since changed: the same generation guard the
+monitor uses applies here.
+
+Forget clears the agent's persistent, session and pending credentials for that profile and touches
+neither the SMB nor the SSH secret — they authorize different things.
+
+A stored credential is reported as stored, never as valid. It may have been changed on the server or
+expired since, and only a handshake settles that.
+
+### The operator group on a domain controller
+
+Installing on the real server found a defect before the service was ever created. The agent resolved
+its operator group machine-qualified, as `MachineName\NutManager Operators`, which is correct on a
+workstation or member server and resolves to nothing on a domain controller — there the group is held
+in the directory and exists as `DOMAIN\NutManager Operators`. On GANDALF the group was plainly
+present, with its member, and the agent would have started and refused every operation.
+
+Resolution now follows the server's own local group database rather than a name the code assembles:
+the local group API is asked whether the name is a group it holds, and only then is the name
+translated, with the search starting at the local system. A workstation or member server answers from
+its SAM, a domain controller from the directory it uses as its local database, and neither the domain
+nor the machine is named anywhere in the code.
+
+Asking in that order is what preserves the original guarantee. A member server that also has a domain
+group of the same name still pins its own: the existence proof runs against the local database first,
+so a name that is only a domain account never reaches the translation. The resolved account must also
+be a group — a user or a computer answering to the name is refused rather than pinned as the
+authority over service control.
+
+The rest is unchanged. The SID is still pinned at startup, authorization still compares SIDs rather
+than names, the pipe ACL is still built from the pinned SID, indirect membership is still expanded,
+and every failure — missing group, failed lookup, wrong account type, SID mismatch — still fails
+closed.
+
+### What is still open
+
+The desktop runtime smoke of this flow beyond a cancelled dialog, and the acceptance on the real
+server, both remain. No real credential was entered against GANDALF, and the agent is not yet
+installed there: the domain-controller fix landed before the service was created, so the corrected
+build is what will be deployed.
 
 ### It consumes T35 rather than repeating it
 

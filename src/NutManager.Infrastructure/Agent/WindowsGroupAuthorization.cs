@@ -5,10 +5,22 @@ using NutManager.Core.Agent;
 namespace NutManager.Infrastructure.Agent;
 
 /// <summary>
-/// Answers "may this caller control the service" by membership of one local group.
+/// Answers "may this caller control the service" by membership of one group.
 ///
-/// The group is pinned by SID at startup, and it is resolved <em>machine-qualified</em> on purpose: a
-/// domain group that happens to share the name must never become the authority over a server's UPS.
+/// The group is pinned by SID at startup, and it is resolved against <em>the server's own local
+/// security database</em>: the SAM on a workstation or member server, and the directory a domain
+/// controller uses as its local database. That distinction is the whole point of this class. The
+/// earlier implementation qualified the name as <c>MachineName\group</c>, which reads correctly and
+/// is wrong on a domain controller — there the group exists as <c>DOMAIN\group</c>, the
+/// machine-qualified name resolves to nothing, and an agent installed on a DC refused every
+/// operation while the group sat there plainly visible.
+///
+/// Resolution is deliberately two questions rather than one. First the local group database is asked
+/// whether the name is a group it holds; only then is the name translated to a SID. Asking in that
+/// order is what keeps a domain group of the same name from becoming the authority over a member
+/// server's UPS: the translation starts at the local system, and the existence proof means a name
+/// that is only a domain account never reaches it.
+///
 /// If the group does not exist, <see cref="IsConfigured"/> is false and every control operation is
 /// refused for as long as the agent runs. There is deliberately no widening rule underneath that —
 /// not Administrators, not LocalSystem, not "the interactive user". A deployment that forgot to
@@ -24,8 +36,19 @@ public sealed class WindowsGroupAuthorization : INutAgentAuthorization
 
     private readonly string _groupName;
     private readonly SecurityIdentifier? _groupSid;
+    private readonly IWindowsLocalSecurityDatabase? _database;
 
     public WindowsGroupAuthorization(string? groupName = null)
+        : this(groupName, null)
+    {
+    }
+
+    /// <summary>
+    /// The database is injectable for one reason: the member-server and domain-controller cases
+    /// differ in what Windows answers, not in what this class does with the answer, and one test
+    /// machine can only ever be one of them.
+    /// </summary>
+    public WindowsGroupAuthorization(string? groupName, IWindowsLocalSecurityDatabase? database)
     {
         _groupName = string.IsNullOrWhiteSpace(groupName) ? DefaultGroupName : groupName;
 
@@ -35,7 +58,8 @@ public sealed class WindowsGroupAuthorization : INutAgentAuthorization
             return;
         }
 
-        (_groupSid, ConfigurationFailure) = WindowsAgentGroupMembership.ResolveLocalGroup(_groupName);
+        _database = database ?? new WindowsAgentGroupInterop();
+        (_groupSid, ConfigurationFailure) = WindowsLocalGroupResolution.Resolve(_groupName, _database);
     }
 
     public string GroupName => _groupName;
@@ -59,72 +83,95 @@ public sealed class WindowsGroupAuthorization : INutAgentAuthorization
     /// </summary>
     public Task<bool> IsAuthorizedAsync(string identity, CancellationToken cancellationToken)
     {
-        if (_groupSid is null || string.IsNullOrWhiteSpace(identity) || !OperatingSystem.IsWindows())
+        if (_groupSid is null || _database is null || string.IsNullOrWhiteSpace(identity) || !OperatingSystem.IsWindows())
         {
             return Task.FromResult(false);
         }
 
-        return WindowsAgentGroupMembership.IsMemberAsync(identity, _groupSid, cancellationToken);
+        return WindowsLocalGroupResolution.IsMemberAsync(identity, _groupSid, _database, cancellationToken);
     }
 }
 
 /// <summary>
-/// The Windows-typed membership queries, behind one annotation.
+/// The resolution and membership rules, behind one platform annotation.
 ///
-/// Everything here reads. No account is created, no group is created, no membership is changed, and
-/// no privilege is adjusted — a mutation would need an API that does not appear in this file.
+/// They live here rather than on <see cref="WindowsGroupAuthorization"/> because
+/// <see cref="SecurityIdentifier"/> is Windows-typed and a platform guard does not follow a call into
+/// a lambda — the <c>Task.Run</c> has to sit on the annotated side. Nothing here reaches Win32
+/// directly: every question goes through <see cref="IWindowsLocalSecurityDatabase"/>, which is what
+/// makes the domain-controller case provable without a domain controller.
 /// </summary>
 [SupportedOSPlatform("windows")]
-internal static class WindowsAgentGroupMembership
+internal static class WindowsLocalGroupResolution
 {
     /// <summary>
-    /// Resolves the group on this machine. Machine-qualified so that only a local group can satisfy
-    /// it, and reported as a failure rather than an exception so the agent can start, refuse control
-    /// and say why.
+    /// Proves the group belongs to the local database, then translates it, then insists the result is
+    /// actually a group. Reported as a failure rather than thrown, so the agent can start, refuse
+    /// control and say why.
     /// </summary>
-    internal static (SecurityIdentifier? Sid, string? Failure) ResolveLocalGroup(string groupName)
+    internal static (SecurityIdentifier? Sid, string? Failure) Resolve(string groupName, IWindowsLocalSecurityDatabase database)
     {
+        var (exists, existenceFailure) = database.FindLocalGroup(groupName);
+        if (!exists)
+        {
+            return (null, existenceFailure ?? $"The local group '{groupName}' does not exist on this server.");
+        }
+
+        var (sid, kind, domain, lookupFailure) = database.LookupAccount(groupName);
+        if (string.IsNullOrWhiteSpace(sid))
+        {
+            return (null, lookupFailure ?? $"The local group '{groupName}' could not be translated to a SID.");
+        }
+
+        if (!IsGroup(kind))
+        {
+            // The name resolved, but not to something that can hold members. Accepting it would pin a
+            // user or a computer as the authority over service control.
+            return (null, $"'{groupName}' resolved to a {kind} rather than a group{Qualify(domain)}.");
+        }
+
         try
         {
-            var account = new NTAccount(Environment.MachineName, groupName);
-            var sid = (SecurityIdentifier)account.Translate(typeof(SecurityIdentifier));
-            return (sid, null);
-        }
-        catch (IdentityNotMappedException)
-        {
-            return (null, $"The local group '{groupName}' does not exist on {Environment.MachineName}.");
+            return (new SecurityIdentifier(sid), null);
         }
         catch (Exception exception)
         {
-            return (null, $"The local group '{groupName}' could not be resolved ({exception.GetType().Name}).");
+            return (null, $"The SID resolved for '{groupName}' is not usable ({exception.GetType().Name}).");
         }
     }
-
-    // Scheduled here rather than in the guarded caller: a platform guard does not follow the call
-    // into a lambda, so the lambda has to live on the annotated side.
-    internal static Task<bool> IsMemberAsync(string identity, SecurityIdentifier groupSid, CancellationToken cancellationToken) =>
-        Task.Run(() => IsMember(identity, groupSid), cancellationToken);
 
     /// <summary>
     /// Whether the account belongs to the pinned group, directly or through a group that does.
     ///
     /// The groups are compared by SID rather than by name. The lookup returns names, and a name is the
     /// part of an identity that can be made to look like another one; the SID is the part that cannot.
+    /// The candidate names are resolved through the same local database that produced the pinned SID,
+    /// because resolving them any other way is the same mistake in its second half.
     /// </summary>
-    internal static bool IsMember(string identity, SecurityIdentifier groupSid)
+    // Scheduled here rather than in the guarded caller: a platform guard does not follow the call
+    // into a lambda, so the lambda has to live on the annotated side.
+    internal static Task<bool> IsMemberAsync(
+        string identity, SecurityIdentifier groupSid, IWindowsLocalSecurityDatabase database, CancellationToken cancellationToken) =>
+        Task.Run(() => IsMember(identity, groupSid, database), cancellationToken);
+
+    internal static bool IsMember(string identity, SecurityIdentifier groupSid, IWindowsLocalSecurityDatabase database)
     {
         try
         {
-            foreach (var name in WindowsAgentGroupInterop.GetLocalGroups(identity))
+            foreach (var name in database.GetLocalGroupNames(identity))
             {
+                var (sid, kind, _, _) = database.LookupAccount(name);
+
+                // One unresolvable group is not an answer about the others.
+                if (string.IsNullOrWhiteSpace(sid) || !IsGroup(kind)) continue;
+
                 SecurityIdentifier candidate;
                 try
                 {
-                    candidate = (SecurityIdentifier)new NTAccount(Environment.MachineName, name).Translate(typeof(SecurityIdentifier));
+                    candidate = new SecurityIdentifier(sid);
                 }
                 catch (Exception)
                 {
-                    // One unresolvable group is not an answer about the others.
                     continue;
                 }
 
@@ -139,4 +186,17 @@ internal static class WindowsAgentGroupMembership
             return false;
         }
     }
+
+    /// <summary>
+    /// The kinds a group authority may take. <c>Alias</c> covers both a member server's SAM group and
+    /// a domain controller's domain-local group, which is what the installation instructions create in
+    /// either place; <c>Group</c> covers the global and universal forms. Everything else — a user, a
+    /// computer, a well-known SID, a deleted or unknown account — is refused, and the local-group
+    /// existence proof has already run before this is consulted.
+    /// </summary>
+    private static bool IsGroup(WindowsAccountKind kind) =>
+        kind is WindowsAccountKind.Alias or WindowsAccountKind.Group;
+
+    private static string Qualify(string? domain) =>
+        string.IsNullOrWhiteSpace(domain) ? string.Empty : $" in '{domain}'";
 }
