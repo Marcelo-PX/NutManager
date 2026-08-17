@@ -1071,8 +1071,8 @@ the cross-machine authentication that failed here stops being on the path at all
 
 ## T35 — Windows agent for secure remote NUT service control
 
-**Status:** IN PROGRESS — agent and transport complete, client UI pending, real server acceptance
-pending.
+**Status:** IN PROGRESS — agent, named-pipe transport and desktop integration complete; the alternate
+Windows account and the optional HTTPS transport are not implemented; real server acceptance pending.
 
 ### Objective
 
@@ -1187,6 +1187,14 @@ the finding is recorded and the removal left as a follow-up.
 - **The settings selector for the agent transport.** Deferred with HTTPS: the named pipe is the only
   working transport and is already the default, so a selector today would offer one real option and
   one that reports itself unavailable. The panel names the transport in use.
+- **The alternate Windows account.** The client authenticates as the current Windows identity only.
+  Supporting a different account over a named pipe means opening a scoped Windows network session to
+  the server's IPC share, which is credential-handling infrastructure with its own rules — the T19B
+  boundary, the 1219 session-conflict policy, and the T20 credential store — and none of it may be
+  approximated. It is the natural companion to the HTTPS work, where Negotiate can carry an explicit
+  credential without a session at all, and it is left for that change rather than half-built here.
+  Until then the operator supplies the identity outside the product, which the deployment guide
+  documents.
 - **Acceptance against the real GANDALF**, which is a human step and is what closes this task.
 
 ### Known limitations
