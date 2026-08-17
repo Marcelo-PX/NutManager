@@ -281,6 +281,16 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string AgentAuthenticateText => Localizer.Get(
         HasStoredAgentCredential || ValidatedAgentAccount is not null ? "Agent.Credential.Change" : "Agent.Credential.Authenticate");
 
+    /// <summary>
+    /// The label over the agent's credential status. The account and the credential are separate
+    /// facts — a profile can name an account it has no secret for — and showing the status under a
+    /// heading that says "Account" made the two read as one.
+    /// </summary>
+    public string AgentCredentialLabel => Localizer.Get("Agent.Credential.Label");
+
+    /// <summary>Names what the protected credential below it is actually for.</summary>
+    public string ConfigurationCredentialLabel => Localizer.Get("Credential.Configuration.Label");
+
     public string AgentForgetText => Localizer.Get("Agent.Credential.Forget");
     public string AgentRememberText => Localizer.Get("Agent.Credential.Remember");
     public string AgentAuthenticatingText => Localizer.Get("Agent.Credential.Authenticating");
@@ -1112,6 +1122,22 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         }
     }
 
+    /// <summary>
+    /// Both credential statuses, which is what startup actually needs.
+    ///
+    /// They are two lifecycles over two stores answering two questions — one authorizes reading the
+    /// configuration files, the other authorizes controlling the service — and the bootstrap used to
+    /// refresh only the first. The agent's status therefore stayed at its constructed default, so a
+    /// profile whose password was sitting in the Credential Manager, and which the agent client had
+    /// already used to connect, reported no credential until the operator happened to switch
+    /// profiles. Selection refreshed both; opening the application did not.
+    /// </summary>
+    public async Task RefreshCredentialStatusesAsync(CancellationToken cancellationToken = default)
+    {
+        await RefreshStoredCredentialStatusAsync(cancellationToken);
+        await RefreshAgentCredentialStatusAsync(cancellationToken);
+    }
+
     public ApplicationSettings CreateSettings() => new(
         pollingInterval: TimeSpan.FromSeconds(double.Parse(PollingIntervalSeconds, CultureInfo.InvariantCulture)),
         connectionTimeout: TimeSpan.FromSeconds(double.Parse(ConnectionTimeoutSeconds, CultureInfo.InvariantCulture)),
@@ -1300,8 +1326,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         ProfileSaveError = null;
         NotifySelectionChanged();
         NotifyProfilePropertiesChanged();
-        _ = RefreshStoredCredentialStatusAsync();
-        _ = RefreshAgentCredentialStatusAsync();
+        _ = RefreshCredentialStatusesAsync();
     }
 
     private void BeginCreate()
@@ -1316,8 +1341,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         ProfileStatusMessage = Localizer.Get("Profiles.NewServerHelp");
         NotifySelectionChanged();
         NotifyProfilePropertiesChanged();
-        _ = RefreshStoredCredentialStatusAsync();
-        _ = RefreshAgentCredentialStatusAsync();
+        _ = RefreshCredentialStatusesAsync();
     }
 
     private void DiscardProfileDraftCore()

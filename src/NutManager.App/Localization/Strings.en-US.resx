@@ -101,7 +101,9 @@
   <data name="Credential.StoredNo" xml:space="preserve"><value>Protected credential saved: No</value></data>
   <data name="Credential.Unavailable" xml:space="preserve"><value>Protected credential: Unavailable</value></data>
   <data name="Credential.QueryFailed" xml:space="preserve"><value>The protected credential could not be checked.</value></data>
-  <data name="Credential.NotRequired" xml:space="preserve"><value>No protected credential is required for this profile.</value></data>
+  <data name="Credential.NotRequired" xml:space="preserve"><value>No protected credential is required for this profile's configuration files.</value></data>
+  <data name="Credential.Configuration.Label" xml:space="preserve"><value>Configuration file credential</value></data>
+  <data name="Credential.Configuration.Help" xml:space="preserve"><value>This credential is separate from the one used to control the NUT service.</value></data>
   <data name="Credential.ForgetSuccess" xml:space="preserve"><value>The protected credential was removed.</value></data>
   <data name="Credential.ForgetFailed" xml:space="preserve"><value>The protected credential could not be removed.</value></data>
   <data name="Validation.Host.Required" xml:space="preserve"><value>Enter a host.</value></data>
@@ -150,6 +152,7 @@
   <data name="Administration.Availability.Available" xml:space="preserve"><value>Available for this profile</value></data>
   <data name="Administration.Availability.LocalOnly" xml:space="preserve"><value>Available only for local management</value></data>
   <data name="Administration.Availability.RemoteOnly" xml:space="preserve"><value>Available only for remote management</value></data>
+  <data name="Administration.Availability.ViaAgent" xml:space="preserve"><value>Available through the Windows agent</value></data>
   <data name="Administration.Availability.Manage" xml:space="preserve"><value>Read and management allowed</value></data>
   <data name="Administration.Availability.ReadOnly" xml:space="preserve"><value>Read only for this profile</value></data>
   <data name="Administration.Configuration.LocalInstallation" xml:space="preserve"><value>Local NUT installation</value></data>
@@ -1034,6 +1037,7 @@
   <data name="Agent.Credential.PromptMessage" xml:space="preserve"><value>Sign in with the Windows account that may control the NUT service on this server.</value></data>
   <data name="Agent.Credential.ValidatedSession" xml:space="preserve"><value>Signed in as {0}. Valid for this session only.</value></data>
   <data name="Agent.Credential.ValidatedPending" xml:space="preserve"><value>Signed in as {0}. Will be saved with the profile.</value></data>
+  <data name="Agent.Credential.Label" xml:space="preserve"><value>Agent credential</value></data>
   <data name="Agent.Credential.Stored" xml:space="preserve"><value>Credential saved in the Windows Credential Manager.</value></data>
   <data name="Agent.Credential.Missing" xml:space="preserve"><value>Account configured, but no credential.</value></data>
   <data name="Agent.Credential.AccessDenied" xml:space="preserve"><value>The agent refused this account.</value></data>

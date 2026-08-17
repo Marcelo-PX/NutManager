@@ -202,7 +202,9 @@ public partial class App : Application
         await devices.InitializeAsync();
         await diagnostics.RefreshLocalInstallationAsync();
         await administration.InitializeAsync();
-        await settingsPage.RefreshStoredCredentialStatusAsync();
+        // Both, not just the configuration transport's: the agent keeps its secret under its own
+        // entry, and refreshing only one left a stored agent credential reported as missing.
+        await settingsPage.RefreshCredentialStatusesAsync();
         if (remoteManagement is not null)
         {
             await remoteManagement.RefreshStoredCredentialStatusAsync();

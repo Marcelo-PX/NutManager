@@ -391,7 +391,18 @@
                         <!-- The account name, never a password box: the secret is collected by the
                              Windows credential dialog and stored under the agent's own entry. -->
                         <StackPanel IsVisible="{Binding ProfileDraft.UsesAgentAlternateAccount}" Spacing="6">
+                          <!--
+                            The account and the credential are separate facts and get separate
+                            labels. A profile can name an account it holds no secret for, and
+                            printing the credential status under a heading that reads "Account"
+                            made a configured account look like no account at all.
+                          -->
                           <TextBlock Text="{Binding AgentAccountText}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding AgentAccountStatusText}"
+                                     TextWrapping="Wrap"
+                                     AutomationProperties.Name="{Binding AgentAccountStatusText}" />
+
+                          <TextBlock Text="{Binding AgentCredentialLabel}" FontWeight="SemiBold" />
                           <TextBlock Text="{Binding AgentCredentialStatusText}"
                                      TextWrapping="Wrap"
                                      AutomationProperties.Name="{Binding AgentCredentialStatusText}" />
@@ -430,6 +441,13 @@
                       </StackPanel>
                     </StackPanel>
 
+                    <!--
+                      This credential belongs to the configuration transport, not to the agent, and
+                      it sits directly under the agent's own credential block. Unlabelled, the two
+                      read as one surface contradicting itself: "credential saved" immediately above
+                      "no protected credential is required". The heading is what separates them.
+                    -->
+                    <TextBlock Text="{Binding ConfigurationCredentialLabel}" FontWeight="SemiBold" Margin="0,6,0,0" />
                     <TextBlock Text="{Binding StoredCredentialText}" TextWrapping="Wrap" />
                     <Button Content="{Binding ForgetCredentialText}" Command="{Binding ForgetStoredCredentialCommand}" IsEnabled="{Binding CanForgetStoredCredential}" HorizontalAlignment="Left" />
 
