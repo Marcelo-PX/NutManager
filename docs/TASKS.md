@@ -53,7 +53,8 @@ Only one task should normally be in progress at a time.
 | T32 | DONE | Icon library adoption and T31 visual acceptance | Every icon drawn from Material Icons, glass that responds to the pointer, and horizontal administration navigation |
 | T33 | DONE | Code health, dead-code cleanup and focused refactoring | Proven-dead code removed, doubtful code preserved, behaviour and visuals unchanged |
 | T34 | DONE | Remote Windows NUT service monitoring | Read-only monitoring of the Windows NUT service and its process from a remote NutManager instance, independently from NUT protocol health |
-| T35 | IN PROGRESS | Windows Agent for secure remote NUT service control | A privileged agent on the server that monitors and controls only the validated NUT service, over an authenticated transport |
+| T35 | DONE | Windows Agent for secure remote NUT service control | Privileged Windows agent with authenticated named-pipe and HTTPS transports, service control restricted to the validated NUT service, Event Log auditing and desktop integration |
+| T36 | PLANNED | Windows Agent settings and deployment UX | Expose the agent transport and authentication model in the profile editor, complete the native credential lifecycle, and carry out desktop and server acceptance |
 
 ---
 
@@ -1071,9 +1072,7 @@ the cross-machine authentication that failed here stops being on the path at all
 
 ## T35 — Windows agent for secure remote NUT service control
 
-**Status:** IN PROGRESS — agent, both transports, the alternate Windows account and the desktop
-integration are complete; the profile editor has no controls for the agent settings yet; real server
-acceptance pending.
+**Status:** DONE
 
 ### Objective
 
@@ -1223,20 +1222,88 @@ this one authorizes controlling a service, so a test asserts that the agent path
 credential. Certificate validation is the platform default; a test refuses either transport file if a
 validation callback ever appears in it.
 
-### What is still open
+### Where this task was closed, and why there
 
-- **The settings editor for the agent transport.** The profile persists, validates and migrates the
-  transport, endpoint, authentication mode and account name, and the composition builds the right
-  client from them — but the profile editor has no controls for them yet, so selecting HTTPS today
-  means editing the profile document. That is the remaining piece of user-facing work.
-- **Acceptance against the real GANDALF**, which is a human step and is what closes this task.
-- **Acceptance against the real GANDALF**, which is a human step and is what closes this task.
+T35 delivers the agent and the two authenticated ways of reaching it: the server-side authority, the
+named pipe, HTTPS on ASP.NET Core HTTP.sys with Negotiate, the validated NUT-only service control,
+the Event Log record, and the desktop monitoring and control that consume them. The profile carries
+the transport, the endpoint, the authentication mode and the account name, and the application builds
+the right client from them.
+
+What was deliberately left out is the **graphical** editing of those options and the operational
+acceptance that follows it. That is a scope decision rather than an unfinished implementation: the
+model, the persistence, the migration, the credential boundary and both clients exist and are tested,
+and what T36 adds is the surface an operator uses to set them without editing a profile document.
+
+Deferred to T36:
+
+- the agent section of the profile editor — transport selector, HTTPS endpoint, authentication
+  selector;
+- the interactive credential lifecycle — authenticate, change, remember, forget, and the status an
+  operator reads;
+- the desktop runtime smoke;
+- installation on the real server, and acceptance against it.
+
+### What was not validated
+
+Stated plainly, because closing a task does not turn an unrun check into a passed one:
+
+- the desktop runtime smoke was **not run**;
+- the agent was **never installed** on GANDALF, and nothing on that machine was touched;
+- no real Start, Stop or Restart was performed against the live NUT service.
+
+These are deferred acceptance activities belonging to T36, not defects in what T35 built. Destructive
+operations against the real service continue to require the user's explicit authorization at the
+moment they are run.
 
 ### Known limitations
 
 The published agent carries the SSH and WMI libraries because it references
 `NutManager.Infrastructure` as a whole. No agent code path reaches them. Narrowing the payload is a
 packaging change; the platform-specific code cannot move into `NutManager.Core`.
+
+## T36 — Windows agent settings and deployment UX
+
+**Status:** PLANNED
+
+### Objective
+
+Expose the agent transport and authentication model T35 built through the graphical profile editor,
+complete the native credential lifecycle, and carry out the desktop and server acceptance that T35
+deferred.
+
+### Scope
+
+- an agent section in the remote profile editor: transport (named pipe or HTTPS), the HTTPS
+  endpoint, and the authentication mode (current Windows identity or an alternate account);
+- the credential lifecycle through the existing native prompt: authenticate, change, remember,
+  forget, and a status an operator can read without seeing a secret;
+- pt-BR and en-US parity, and accessible names for every new control;
+- profile save and reload, including a draft that is never persisted while invalid;
+- the desktop runtime smoke;
+- installation on the real server and acceptance against it.
+
+### It consumes T35 rather than repeating it
+
+The profile model, the schema, the credential kind, the agent protocol, both clients and the
+service-control path already exist. T36 must use them. It must not introduce a second agent protocol,
+a second credential store, another HTTPS or named-pipe client, or another route to service control —
+a parallel implementation is how two security boundaries end up disagreeing, and only one of them
+gets reviewed.
+
+The managed profile schema stays at version 6. Nothing in this scope needs a new field.
+
+### Acceptance on the real server
+
+Requires, on the server: the ASP.NET Core runtime 10, the agent installed and running as LocalSystem,
+the `NutManager Operators` group, the Event Log source, an authorized operator account, and — for
+HTTPS — a certificate in `LocalMachine\My` with its HTTP.sys binding and any URL reservation.
+
+Then verify: the handshake answers, `GetStatus` reports the right service identity and process id,
+NUT's own protocol health stays independent of all of it, and an unauthorized caller is refused.
+
+Start, Stop and Restart against the live NUT service require the user's explicit authorization at the
+moment they are run. That rule does not relax because the agent is installed.
 
 ## Task execution template
 

@@ -179,6 +179,11 @@ single request to the agent, which holds both phases under one lock.
 The profile stores the agent transport, and the named pipe is the default for new and existing
 profiles. HTTPS is selected per profile and requires the server-side setup below.
 
+The profile editor does not yet have controls for these options — that is planned work (T36), not a
+missing capability. Until then the transport, endpoint, authentication mode and account name are set
+in the profile document itself; the application reads, validates and migrates them exactly as it will
+once the editor exists.
+
 There is no fallback in either direction. A profile that selects HTTPS never quietly uses the named
 pipe when the endpoint is wrong, and a profile on the named pipe never tries HTTPS: an operator who
 cannot tell which transport answered cannot diagnose either.
