@@ -52,7 +52,10 @@ public partial class OverviewPageView : UserControl
         ActiveConfigurationLayout.RowDefinitions = new RowDefinitions(fitsTwoColumns ? "Auto" : "Auto,Auto");
         Grid.SetColumn(ActiveConnectivityRows, fitsTwoColumns ? 1 : 0);
         Grid.SetRow(ActiveConnectivityRows, fitsTwoColumns ? 0 : 1);
-        Grid.SetColumn(ActiveConfigurationIllustration, 2);
+        // A collapsed child still participates in Grid's cell bookkeeping. Keep its indices inside
+        // the current definition set even while it is hidden, otherwise the first compact measure
+        // pass indexes a non-existent third column and terminates the application.
+        Grid.SetColumn(ActiveConfigurationIllustration, fitsIllustration ? 2 : 0);
         Grid.SetRow(ActiveConfigurationIllustration, 0);
         ActiveConfigurationIllustration.IsVisible = fitsIllustration;
         ActiveConfigurationIllustration.Opacity = fitsIllustration ? 1d : 0d;

@@ -217,6 +217,8 @@ public sealed class T37PresentationTests
         Assert.Contains("Static by design: Agent reachability must not pulse, glow or animate", view, StringComparison.Ordinal);
         Assert.Contains("fitsIllustration ? \"*,*,Auto\" : fitsTwoColumns ? \"*,*\" : \"*\"", behavior, StringComparison.Ordinal);
         Assert.Contains("Grid.SetRow(ActiveConnectivityRows, fitsTwoColumns ? 0 : 1)", behavior, StringComparison.Ordinal);
+        Assert.Contains("Grid.SetColumn(ActiveConfigurationIllustration, fitsIllustration ? 2 : 0)", behavior, StringComparison.Ordinal);
+        Assert.DoesNotContain("Grid.SetColumn(ActiveConfigurationIllustration, 2)", behavior, StringComparison.Ordinal);
 
         var indicatorStart = styles.IndexOf("Style Selector=\"Ellipse.nut-agent-status-dot\"", StringComparison.Ordinal);
         var indicatorEnd = styles.IndexOf("<!-- ==================== Surfaces", indicatorStart, StringComparison.Ordinal);
