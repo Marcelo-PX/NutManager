@@ -77,9 +77,12 @@ public partial class SettingsPageView : UserControl
         }
         finally
         {
+            // Selection reconciliation in the profile ListBox can request BringIntoView during the
+            // next layout/render pass. Background runs after that request, so this restoration is
+            // the final scroll operation instead of being immediately overwritten.
             await Dispatcher.UIThread.InvokeAsync(
                 () => SettingsScrollViewer.Offset = offset,
-                DispatcherPriority.Loaded);
+                DispatcherPriority.Background);
         }
     }
 

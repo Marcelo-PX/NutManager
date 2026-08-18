@@ -111,7 +111,9 @@
                         IsEnabled="{Binding CanProbeRemoteWriteCapability}"
                         IsVisible="{Binding !RemoteManagement.IsWriteCapabilitySupported}"
                         AutomationProperties.Name="{Binding Strings[Administration.Remote.SafeWrite.Verify]}"
-                        Width="190"
+                        Width="176"
+                        FontWeight="Bold"
+                        HorizontalContentAlignment="Center"
                         VerticalAlignment="Center" />
                 <Button Grid.Column="2"
                         Classes="nut-success-outline nut-status-locked"
@@ -119,7 +121,9 @@
                         IsEnabled="False"
                         IsVisible="{Binding RemoteManagement.IsWriteCapabilitySupported}"
                         AutomationProperties.Name="{Binding Strings[Administration.Remote.SafeWrite.Verified]}"
-                        Width="190"
+                        Width="176"
+                        FontWeight="Bold"
+                        HorizontalContentAlignment="Center"
                         VerticalAlignment="Center" />
               </Grid>
             </Border>

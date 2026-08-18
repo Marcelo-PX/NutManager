@@ -1,5 +1,6 @@
 using NutManager.App.Services;
 using NutManager.App.ViewModels;
+using NutManager.Core.Configuration;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 using Xunit;
@@ -127,12 +128,15 @@ public sealed class SettingsPageViewModelTests
         var profileStore = new ProfileStore(profiles) { ThrowOnSave = true };
         var credentials = new CredentialStore();
         var viewModel = CreateProfileViewModel(profiles, profileStore, credentials);
+        var persistedNotifications = 0;
+        viewModel.ProfilePersisted += _ => persistedNotifications++;
         viewModel.ProfileDraft.ManagementHost = "new-management.example";
 
         await viewModel.SaveProfileCommand.ExecuteAsync(null);
 
         Assert.False(viewModel.IsProfileSaved);
         Assert.Equal("management.example", profileStore.Current.ActiveProfile.Management.ManagementHost);
+        Assert.Equal(0, persistedNotifications);
         Assert.Contains("não pôde ser salvo", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("credenciais protegidas", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
     }
@@ -152,6 +156,27 @@ public sealed class SettingsPageViewModelTests
         Assert.False(viewModel.IsProfileSaved);
         Assert.Equal("management.example", profileStore.Current.ActiveProfile.Management.ManagementHost);
         Assert.Contains("não foi alterado", viewModel.ProfileSaveError, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SuccessfulProfileSavePublishesOnlyTheConfirmedManagedFileScope()
+    {
+        var profile = RemoteProfile();
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]);
+        var profileStore = new ProfileStore(profiles);
+        var viewModel = CreateProfileViewModel(profiles, profileStore, new CredentialStore());
+        ManagedNutServerProfile? persisted = null;
+        viewModel.ProfilePersisted += profile => persisted = profile;
+        viewModel.ProfileDraft.ManagedFileToggles
+            .Single(toggle => toggle.Kind == NutConfigurationFileKind.UpsdUsers)
+            .IsEnabled = false;
+
+        await viewModel.SaveProfileCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsProfileSaved);
+        Assert.NotNull(persisted);
+        Assert.False(persisted.Management.ManagedFiles.Contains(NutConfigurationFileKind.UpsdUsers));
+        Assert.Equal(profileStore.Current.ActiveProfile, persisted);
     }
 
     [Fact]

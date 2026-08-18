@@ -104,6 +104,35 @@ public sealed class AdministrationPageViewModelTests
     }
 
     [Fact]
+    public async Task ConfirmedManagedFileScopeUpdatesImmediatelyWithoutAnotherPipelineLoad()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        pipeline.SetFile("/session/nut/etc/upsd.users", NutConfigurationFileKind.UpsdUsers, "[upsmon]\n");
+        var context = CreateProfileContext(
+            NutManagementMode.Local,
+            ManagedNutServerAccessMode.Manage,
+            ManagedNutConfigurationFiles.All);
+        var viewModel = new AdministrationPageViewModel(
+            new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "nut.conf", "upsd.users")),
+            pipeline,
+            profileContext: context);
+        await viewModel.InitializeAsync();
+        await viewModel.SelectFileAsync(viewModel.ConfigurationFiles.Single(file => file.FileKind == NutConfigurationFileKind.UpsdUsers));
+        var loadsBeforeProfileUpdate = pipeline.LoadCalls;
+
+        viewModel.UpdateManagedConfigurationFiles(ManagedNutConfigurationFiles.Create(
+            [NutConfigurationFileKind.UpsConf, NutConfigurationFileKind.UpsdConf, NutConfigurationFileKind.UpsmonConf]));
+
+        Assert.False(viewModel.ConfigurationFiles.Single(file => file.FileKind == NutConfigurationFileKind.NutConf).IsManaged);
+        Assert.False(viewModel.ConfigurationFiles.Single(file => file.FileKind == NutConfigurationFileKind.UpsdUsers).IsManaged);
+        Assert.True(viewModel.ConfigurationFiles.Single(file => file.FileKind == NutConfigurationFileKind.UpsConf).IsManaged);
+        Assert.Null(viewModel.SelectedFile);
+        Assert.False(viewModel.HasLoadedFile);
+        Assert.Equal(loadsBeforeProfileUpdate, pipeline.LoadCalls);
+    }
+
+    [Fact]
     public async Task UpsdConfUsesDedicatedSemanticEditorAndPreservesUnknownContent()
     {
         const string text = "# keep this\nLISTEN 127.0.0.1\nLISTEN ::1\nunknown future value\n";

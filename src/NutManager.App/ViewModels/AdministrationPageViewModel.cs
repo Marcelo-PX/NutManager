@@ -115,6 +115,32 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool IsConfigurationFileListEmpty => ConfigurationFiles.All(file => !file.IsManaged);
 
+    /// <summary>
+    /// Applies the confirmed managed-file scope of the profile already running in this process.
+    /// This deliberately does not replace the runtime profile, transport or session: endpoint and
+    /// connection changes still take effect on the next application start. If the open file was
+    /// disabled, its editor is closed immediately so a stale draft cannot reach the write pipeline.
+    /// </summary>
+    public void UpdateManagedConfigurationFiles(ManagedNutConfigurationFiles managedFiles)
+    {
+        ArgumentNullException.ThrowIfNull(managedFiles);
+
+        foreach (var file in ConfigurationFiles)
+        {
+            file.IsManaged = managedFiles.Contains(file.FileKind);
+        }
+
+        if (SelectedFile is { IsManaged: false })
+        {
+            ClearLoadedDocument(clearSelectedFile: true);
+            SetStatus(Strings.Get("Administration.File.NotEnabled"));
+        }
+
+        OnPropertyChanged(nameof(IsConfigurationFileListEmpty));
+        RefreshConfigurationFileTiles();
+        NotifyWorkflowPropertiesChanged();
+    }
+
     // ==================== Configuration file rail ====================
 
     /// <summary>
@@ -2229,7 +2255,7 @@ public sealed partial class NutConfigurationFileItemViewModel : ObservableObject
         Title = title;
         FileName = fileName;
         FileKind = fileKind;
-        IsManaged = isManaged;
+        _isManaged = isManaged;
         State = NutConfigurationFileState.Missing;
     }
 
@@ -2242,7 +2268,8 @@ public sealed partial class NutConfigurationFileItemViewModel : ObservableObject
     public NutConfigurationFileKind FileKind { get; }
 
     /// <summary>Whether this profile authorizes NutManager to manage this file.</summary>
-    public bool IsManaged { get; }
+    [ObservableProperty]
+    private bool _isManaged;
 
     // The rail stacks one icon per file and shows the matching one, which is the pattern the
     // Administration section list already uses. It avoids a value converter for what is a fixed,
@@ -2284,6 +2311,8 @@ public sealed partial class NutConfigurationFileItemViewModel : ObservableObject
     };
 
     public bool CanLoad => IsManaged && State is (NutConfigurationFileState.Available or NutConfigurationFileState.Loaded);
+
+    partial void OnIsManagedChanged(bool value) => OnPropertyChanged(nameof(CanLoad));
 
     internal void ApplyInstallationInfo(NutConfigurationFileInfo? info)
     {

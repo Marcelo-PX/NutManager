@@ -2,7 +2,6 @@ using System.Numerics;
 using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Rendering.Composition;
 using Avalonia.Rendering.Composition.Animations;
@@ -38,8 +37,6 @@ public partial class NutStatusLed : UserControl
     public NutStatusLed()
     {
         InitializeComponent();
-        PointerEntered += (_, _) => ApplyHover(true);
-        PointerExited += (_, _) => ApplyHover(false);
     }
 
     public NutLedState State { get => GetValue(StateProperty); set => SetValue(StateProperty, value); }
@@ -86,13 +83,11 @@ public partial class NutStatusLed : UserControl
         ApplyStateClasses(Halo);
         AmbientHalo.Opacity = State switch
         {
-            NutLedState.Healthy => 0.58,
+            NutLedState.Healthy => 0.76,
             NutLedState.Pending => 0.42,
             NutLedState.Critical => 0.48,
             _ => 0
         };
-        Highlight.Opacity = State == NutLedState.Unavailable ? 0.18 : 0.34;
-
         if (period == TimeSpan.Zero)
         {
             StopPulse();
@@ -104,7 +99,7 @@ public partial class NutStatusLed : UserControl
 
     public static TimeSpan PulsePeriodFor(NutLedState state) => state switch
     {
-        NutLedState.Healthy => TimeSpan.FromSeconds(2.0),
+        NutLedState.Healthy => TimeSpan.FromSeconds(1.8),
         _ => TimeSpan.Zero
     };
 
@@ -132,17 +127,17 @@ public partial class NutStatusLed : UserControl
         scale.Target = ScaleTarget;
         scale.Duration = period;
         scale.IterationBehavior = AnimationIterationBehavior.Forever;
-        scale.InsertKeyFrame(0f, new Vector3D(1, 1, 1), easing);
-        scale.InsertKeyFrame(0.5f, new Vector3D(1.65, 1.65, 1), easing);
-        scale.InsertKeyFrame(1f, new Vector3D(1, 1, 1), easing);
+        scale.InsertKeyFrame(0f, new Vector3D(0.85, 0.85, 1), easing);
+        scale.InsertKeyFrame(0.72f, new Vector3D(1.75, 1.75, 1), easing);
+        scale.InsertKeyFrame(1f, new Vector3D(1.9, 1.9, 1), easing);
 
         var opacity = halo.Compositor.CreateScalarKeyFrameAnimation();
         opacity.Target = OpacityTarget;
         opacity.Duration = period;
         opacity.IterationBehavior = AnimationIterationBehavior.Forever;
-        opacity.InsertKeyFrame(0f, 0.12f, easing);
-        opacity.InsertKeyFrame(0.5f, 0.82f, easing);
-        opacity.InsertKeyFrame(1f, 0.12f, easing);
+        opacity.InsertKeyFrame(0f, 0.92f, easing);
+        opacity.InsertKeyFrame(0.72f, 0.18f, easing);
+        opacity.InsertKeyFrame(1f, 0f, easing);
 
         halo.StartAnimation(ScaleTarget, scale);
         halo.StartAnimation(OpacityTarget, opacity);
@@ -159,17 +154,10 @@ public partial class NutStatusLed : UserControl
             halo.StopAnimation(ScaleTarget);
             halo.StopAnimation(OpacityTarget);
             halo.Scale = new Vector3D(1, 1, 1);
-            halo.Opacity = State == NutLedState.Unavailable ? 0f : 0.75f;
+            halo.Opacity = 0f;
         }
 
         // The core is intentionally never animated. It remains the stable, non-motion state cue.
-    }
-
-    private void ApplyHover(bool over)
-    {
-        // Hover only deepens what is already there; it never changes the pulse rate, which would
-        // make the indicator look like it had changed state.
-        Highlight.Opacity = over ? 0.5 : State == NutLedState.Unavailable ? 0.18 : 0.34;
     }
 
     private static readonly DirectProperty<NutStatusLed, IBrush?> StateBrushProperty =

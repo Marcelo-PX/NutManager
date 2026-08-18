@@ -186,6 +186,16 @@ public partial class App : Application
         settingsPage.SidebarPreferenceChanged += preference => viewModel.SidebarPreference = preference;
         viewModel.SidebarPreferenceChanged += settingsPage.ApplySidebarPreference;
         settingsPage.BackgroundTransparencyChanged += viewModel.SetTransparencyPreference;
+        settingsPage.ProfilePersisted += profile =>
+        {
+            // The process keeps the endpoint, transport and credentials with which it started.
+            // Managed-file scope is presentation/write authorization for that same runtime profile,
+            // however, and can safely take effect immediately after its profile was persisted.
+            if (profile.Id == runtimeProfile.Profile.Id)
+            {
+                administration.UpdateManagedConfigurationFiles(profile.Management.ManagedFiles);
+            }
+        };
         viewModel.EffectiveThemeChanged += settingsPage.ApplyTransparencyAvailability;
         settingsPage.ApplyTransparencyAvailability(viewModel.IsEffectiveDark);
         ApplyTheme(settings.Theme);

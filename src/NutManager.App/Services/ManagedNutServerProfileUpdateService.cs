@@ -52,7 +52,9 @@ public sealed class ManagedNutServerProfileUpdateService
                     smbSharePath: current.Management.SmbSharePath,
                     smbConfigurationDirectory: directory,
                     smbAuthenticationMode: current.Management.SmbAuthenticationMode,
-                    smbUsername: current.Management.SmbUsername)
+                    smbUsername: current.Management.SmbUsername,
+                    managedFiles: current.Management.ManagedFiles,
+                    agent: current.Management.Agent)
                 : CreateSshManagement(current.Management, remoteConfigurationDirectory: directory),
             cancellationToken);
 
@@ -73,7 +75,9 @@ public sealed class ManagedNutServerProfileUpdateService
                     smbSharePath: current.Management.SmbSharePath,
                     smbConfigurationDirectory: current.Management.SmbConfigurationDirectory,
                     smbAuthenticationMode: current.Management.SmbAuthenticationMode,
-                    smbUsername: username)
+                    smbUsername: username,
+                    managedFiles: current.Management.ManagedFiles,
+                    agent: current.Management.Agent)
                 : current.Management,
             cancellationToken);
     }
@@ -358,7 +362,9 @@ public sealed class ManagedNutServerProfileUpdateService
             preserveTrust ? source.TrustedHostKeyAlgorithm : trustedHostKeyAlgorithm,
             RemoteConfigurationTransportKind.SshSftp,
             sshAuthenticationMode: source.SshAuthenticationMode,
-            sshPrivateKeyPath: source.SshPrivateKeyPath);
+            sshPrivateKeyPath: source.SshPrivateKeyPath,
+            managedFiles: source.ManagedFiles,
+            agent: source.Agent);
 
     private sealed record ProfileMutationResult(ManagedNutServerProfiles Document, ManagedNutServerProfile Profile);
 

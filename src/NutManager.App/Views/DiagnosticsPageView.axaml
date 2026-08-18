@@ -256,7 +256,7 @@
                 <TextBlock Text="{Binding Strings[Diagnostics.Application]}" Classes="nut-metadata" />
                 <TextBlock Text="{Binding ApplicationName}" FontSize="13" />
               </StackPanel>
-              <StackPanel Width="140" Margin="0,0,16,10" Spacing="2">
+              <StackPanel Width="220" Margin="0,0,24,10" Spacing="2">
                 <TextBlock Text="{Binding Strings[Common.Version]}" Classes="nut-metadata" />
                 <TextBlock Text="{Binding ApplicationVersion}" FontSize="13" />
               </StackPanel>

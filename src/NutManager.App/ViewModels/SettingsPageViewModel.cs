@@ -631,6 +631,12 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public event Action<ThemePreference>? ThemeChanged;
     public event Action<SidebarPreference>? SidebarPreferenceChanged;
     public event Action<bool>? BackgroundTransparencyChanged;
+    /// <summary>
+    /// Raised only after the profile document has been persisted. Runtime consumers may use the
+    /// confirmed profile to refresh presentation-only profile scope without treating an unsaved
+    /// draft as authoritative.
+    /// </summary>
+    public event Action<ManagedNutServerProfile>? ProfilePersisted;
 
     [RelayCommand]
     private async Task SaveAsync(CancellationToken cancellationToken = default)
@@ -713,7 +719,9 @@ public sealed partial class SettingsPageViewModel : PageViewModel
                 return false;
             }
 
-            ApplyConfirmedProfiles(document, updated.Id);
+            var persistedProfile = document.Profiles.Single(profile => profile.Id == updated.Id);
+            ApplyConfirmedProfiles(document, persistedProfile.Id);
+            ProfilePersisted?.Invoke(persistedProfile);
             IsProfileSaved = true;
             ProfileStatusMessage = Localizer.Get("Profiles.SaveSuccess");
 

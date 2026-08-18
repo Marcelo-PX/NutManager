@@ -91,6 +91,20 @@ public sealed class T37PresentationTests
         Assert.Contains("Click=\"SaveProfileButton_OnClick\"", view, StringComparison.Ordinal);
         Assert.Contains("var offset = SettingsScrollViewer.Offset", behavior, StringComparison.Ordinal);
         Assert.Contains("SettingsScrollViewer.Offset = offset", behavior, StringComparison.Ordinal);
+        Assert.Contains("DispatcherPriority.Background", behavior, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PersistedManagedFileScopeIsForwardedToTheRunningAdministrationContext()
+    {
+        var app = Read("src", "NutManager.App", "App.axaml.cs");
+
+        Assert.Contains("settingsPage.ProfilePersisted += profile =>", app, StringComparison.Ordinal);
+        Assert.Contains("profile.Id == runtimeProfile.Profile.Id", app, StringComparison.Ordinal);
+        Assert.Contains(
+            "administration.UpdateManagedConfigurationFiles(profile.Management.ManagedFiles)",
+            app,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -115,7 +129,9 @@ public sealed class T37PresentationTests
         Assert.Contains("Administration.Remote.SafeWrite.Verify", remote, StringComparison.Ordinal);
         Assert.Contains("Classes=\"nut-success-outline nut-status-locked\"", remote, StringComparison.Ordinal);
         Assert.Contains("Administration.Remote.SafeWrite.Verified", remote, StringComparison.Ordinal);
-        Assert.Equal(2, remote.Split("Width=\"190\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, remote.Split("Width=\"176\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, remote.Split("FontWeight=\"Bold\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, remote.Split("HorizontalContentAlignment=\"Center\"", StringSplitOptions.None).Length - 1);
         Assert.Contains("IsEnabled=\"False\"", remote, StringComparison.Ordinal);
         Assert.Contains("IsVisible=\"{Binding !RemoteManagement.IsWriteCapabilitySupported}\"", remote, StringComparison.Ordinal);
 
@@ -183,6 +199,17 @@ public sealed class T37PresentationTests
         Assert.Contains("Diagnostics.Group.Overview", view, StringComparison.Ordinal);
         Assert.Contains("Diagnostics.Group.Connection", view, StringComparison.Ordinal);
         Assert.Contains("Diagnostics.Group.Environment", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DiagnosticsLeavesRoomBetweenVersionAndRuntime()
+    {
+        var view = Read("src", "NutManager.App", "Views", "DiagnosticsPageView.axaml");
+
+        var version = view.IndexOf("ApplicationVersion", StringComparison.Ordinal);
+        var runtime = view.IndexOf("Diagnostics.Runtime", version, StringComparison.Ordinal);
+        Assert.True(version >= 0 && runtime > version);
+        Assert.Contains("Width=\"220\" Margin=\"0,0,24,10\"", view[(version - 220)..runtime], StringComparison.Ordinal);
     }
 
     [Fact]
