@@ -88,10 +88,88 @@ public sealed class T37PresentationTests
         var behavior = Read("src", "NutManager.App", "Views", "SettingsPageView.axaml.cs");
 
         Assert.Contains("x:Name=\"SettingsScrollViewer\"", view, StringComparison.Ordinal);
-        Assert.Contains("Click=\"SaveProfileButton_OnClick\"", view, StringComparison.Ordinal);
+        Assert.Contains("Click=\"SaveAllButton_OnClick\"", view, StringComparison.Ordinal);
         Assert.Contains("var offset = SettingsScrollViewer.Offset", behavior, StringComparison.Ordinal);
         Assert.Contains("SettingsScrollViewer.Offset = offset", behavior, StringComparison.Ordinal);
         Assert.Contains("DispatcherPriority.Background", behavior, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GeneralSettingsAndFinalActionsShareTheManagedServersCard()
+    {
+        var view = Read("src", "NutManager.App", "Views", "SettingsPageView.axaml");
+        var card = view.IndexOf("x:Name=\"ManagedServersCard\"", StringComparison.Ordinal);
+        var management = view.IndexOf("x:Name=\"ManagedProfilesLayout\"", StringComparison.Ordinal);
+        var general = view.IndexOf("x:Name=\"GeneralSettingsSection\"", StringComparison.Ordinal);
+        var save = view.IndexOf("x:Name=\"SettingsCommitBar\"", StringComparison.Ordinal);
+        var discard = view.IndexOf("Command=\"{Binding DiscardAllCommand}\"", StringComparison.Ordinal);
+
+        Assert.True(card >= 0 && management > card && general > management && save > general && discard > save);
+        Assert.Equal(1, view.Split("Click=\"SaveAllButton_OnClick\"", StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("Click=\"SaveProfileButton_OnClick\"", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Command=\"{Binding SaveCommand}\"", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SettingsDurationsAndNutPortUseCompactNumericControls()
+    {
+        var view = Read("src", "NutManager.App", "Views", "SettingsPageView.axaml");
+        var styles = Read("src", "NutManager.App", "Presentation", "Themes", "NutControlStyles.axaml");
+
+        Assert.Contains("ProfileDraft.MonitoringPortValue, Mode=TwoWay", view, StringComparison.Ordinal);
+        Assert.Contains("ConnectionTimeoutSecondsValue, Mode=TwoWay", view, StringComparison.Ordinal);
+        Assert.Contains("PollingIntervalSecondsValue, Mode=TwoWay", view, StringComparison.Ordinal);
+        Assert.Equal(3, view.Split("<NumericUpDown", StringSplitOptions.None).Length - 1);
+        var general = view[view.IndexOf("x:Name=\"GeneralSettingsSection\"", StringComparison.Ordinal)..];
+        Assert.Equal(2, general.Split("Width=\"220\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("Maximum=\"65535\"", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text=\"{Binding ProfileDraft.MonitoringPort", view, StringComparison.Ordinal);
+        Assert.Contains("Style Selector=\"NumericUpDown\"", styles, StringComparison.Ordinal);
+        Assert.Contains("ButtonSpinner#PART_Spinner", styles, StringComparison.Ordinal);
+        Assert.Contains("Property=\"CornerRadius\" Value=\"8\"", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ManagedServerListHasSubtleRoundedClipping()
+    {
+        var view = Read("src", "NutManager.App", "Views", "SettingsPageView.axaml");
+        var listPanel = view.IndexOf("x:Name=\"ProfileListPanel\"", StringComparison.Ordinal);
+        var roundedList = view.IndexOf("<Border CornerRadius=\"8\" ClipToBounds=\"True\">", StringComparison.Ordinal);
+        var list = view.IndexOf("<ListBox ItemsSource=\"{Binding ManagedProfileCards}\"", StringComparison.Ordinal);
+
+        Assert.True(listPanel >= 0 && roundedList > listPanel && list > roundedList);
+    }
+
+    [Fact]
+    public void ProfileQuickMenuUsesReadableCardsAndWrappingMetadata()
+    {
+        var shell = Read("src", "NutManager.App", "MainWindow.axaml");
+        var styles = Read("src", "NutManager.App", "Presentation", "Themes", "NutShellStyles.axaml");
+        var menu = shell[shell.IndexOf("x:Name=\"ProfileQuickMenuButton\"", StringComparison.Ordinal)..];
+
+        Assert.Contains("Classes=\"nut-profile-menu-item\"", menu, StringComparison.Ordinal);
+        Assert.Contains("TextWrapping=\"Wrap\"", menu, StringComparison.Ordinal);
+        Assert.Contains("Classes=\"nut-pill healthy\"", menu, StringComparison.Ordinal);
+        Assert.Contains("ToolTip.Tip=\"{Binding Endpoint}\"", menu, StringComparison.Ordinal);
+        var profileItems = menu[..menu.IndexOf("Classes=\"nut-profile-manage\"", StringComparison.Ordinal)];
+        Assert.DoesNotContain("Classes=\"nut-profile-avatar\"", profileItems, StringComparison.Ordinal);
+        Assert.Contains("Style Selector=\"Button.nut-profile-menu-item\"", styles, StringComparison.Ordinal);
+        Assert.Contains("Property=\"CornerRadius\" Value=\"10\"", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SidebarProfileSelectorUsesAnimatedAccentGlowOnHover()
+    {
+        var styles = Read("src", "NutManager.App", "Presentation", "Themes", "NutShellStyles.axaml");
+        var hover = styles.IndexOf(
+            "Style Selector=\"Button.nut-profile-card:pointerover /template/ ContentPresenter\"",
+            StringComparison.Ordinal);
+
+        Assert.True(hover >= 0);
+        Assert.Contains("BoxShadowsTransition Property=\"BoxShadow\"", styles, StringComparison.Ordinal);
+        Assert.Contains("Property=\"CornerRadius\" Value=\"12\"", styles, StringComparison.Ordinal);
+        Assert.Contains("Property=\"ClipToBounds\" Value=\"True\"", styles, StringComparison.Ordinal);
+        Assert.Contains("0 0 10 0 #665FA8FF, 0 0 24 3 #335FA8FF", styles[hover..], StringComparison.Ordinal);
     }
 
     [Fact]

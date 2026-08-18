@@ -109,6 +109,24 @@ public sealed class SettingsPageViewModelTests
     }
 
     [Fact]
+    public void NumericPresentationValuesPreserveTheExistingTechnicalContracts()
+    {
+        var viewModel = new SettingsPageViewModel();
+        var profileDraft = viewModel.ProfileDraft;
+
+        viewModel.ConnectionTimeoutSecondsValue = 12.5m;
+        viewModel.PollingIntervalSecondsValue = 9m;
+        profileDraft.MonitoringPortValue = 3493m;
+
+        Assert.Equal("12.5", viewModel.ConnectionTimeoutSeconds);
+        Assert.Equal("9", viewModel.PollingIntervalSeconds);
+        Assert.Equal("3493", profileDraft.MonitoringPort);
+        Assert.Equal(12.5m, viewModel.ConnectionTimeoutSecondsValue);
+        Assert.Equal(9m, viewModel.PollingIntervalSecondsValue);
+        Assert.Equal(3493m, profileDraft.MonitoringPortValue);
+    }
+
+    [Fact]
     public async Task StoreFailureIsVisible()
     {
         var viewModel = new SettingsPageViewModel(new ApplicationSettings(), new FailingStore());
@@ -177,6 +195,56 @@ public sealed class SettingsPageViewModelTests
         Assert.NotNull(persisted);
         Assert.False(persisted.Management.ManagedFiles.Contains(NutConfigurationFileKind.UpsdUsers));
         Assert.Equal(profileStore.Current.ActiveProfile, persisted);
+    }
+
+    [Fact]
+    public async Task SaveAllPersistsTheProfileBeforeTheGeneralPreferences()
+    {
+        var profile = RemoteProfile();
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]);
+        var profileStore = new ProfileStore(profiles);
+        var credentials = new CredentialStore();
+        var savedSettings = new List<ApplicationSettings>();
+        var viewModel = new SettingsPageViewModel(
+            new ApplicationSettings(),
+            new RecordingStore(savedSettings),
+            profiles,
+            profileStore,
+            new ManagedNutServerProfileUpdateService(profileStore, credentials),
+            credentials);
+        viewModel.ProfileDraft.ManagedFileToggles
+            .Single(toggle => toggle.Kind == NutConfigurationFileKind.NutConf)
+            .IsEnabled = false;
+        viewModel.PollingIntervalSeconds = "11";
+
+        await viewModel.SaveAllCommand.ExecuteAsync(null);
+
+        Assert.False(profileStore.Current.ActiveProfile.Management.ManagedFiles.Contains(NutConfigurationFileKind.NutConf));
+        Assert.Equal(TimeSpan.FromSeconds(11), Assert.Single(savedSettings).PollingInterval);
+        Assert.False(viewModel.CanDiscardAll);
+    }
+
+    [Fact]
+    public void DiscardAllRestoresTheConfirmedProfileAndGeneralPreferences()
+    {
+        var profile = RemoteProfile();
+        var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]);
+        var settings = new ApplicationSettings(
+            pollingInterval: TimeSpan.FromSeconds(7),
+            connectionTimeout: TimeSpan.FromSeconds(4));
+        var viewModel = new SettingsPageViewModel(settings, null, profiles, null);
+        viewModel.ProfileDraft.ManagedFileToggles
+            .Single(toggle => toggle.Kind == NutConfigurationFileKind.UpsdUsers)
+            .IsEnabled = false;
+        viewModel.PollingIntervalSeconds = "99";
+        viewModel.ConnectionTimeoutSeconds = "88";
+
+        viewModel.DiscardAllCommand.Execute(null);
+
+        Assert.True(viewModel.ProfileDraft.ManagedFiles.Contains(NutConfigurationFileKind.UpsdUsers));
+        Assert.Equal("7", viewModel.PollingIntervalSeconds);
+        Assert.Equal("4", viewModel.ConnectionTimeoutSeconds);
+        Assert.False(viewModel.CanDiscardAll);
     }
 
     [Fact]

@@ -36,6 +36,23 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
     [ObservableProperty]
     private string _monitoringPort = NutEndpoint.DefaultPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// Numeric presentation boundary for the NUT port. The persisted draft remains text because
+    /// typed validation owns range errors, while the Settings view uses this property to prevent
+    /// non-numeric input without duplicating parsing in code-behind.
+    /// </summary>
+    public decimal? MonitoringPortValue
+    {
+        get => decimal.TryParse(
+            MonitoringPort,
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var value)
+            ? value
+            : null;
+        set => MonitoringPort = value?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+    }
+
     [ObservableProperty]
     private string? _preferredUpsName;
 
@@ -314,6 +331,9 @@ public sealed partial class ManagedNutServerProfileDraftViewModel : ObservableOb
         NotifySmbDerivedState();
         NotifyAgentDerivedState();
     }
+
+    partial void OnMonitoringPortChanged(string value) =>
+        OnPropertyChanged(nameof(MonitoringPortValue));
 
     partial void OnSmbAuthenticationModeChanged(SmbAuthenticationMode value) => NotifySmbDerivedState();
 

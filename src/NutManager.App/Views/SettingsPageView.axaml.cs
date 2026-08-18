@@ -63,9 +63,9 @@ public partial class SettingsPageView : UserControl
     /// save in "Managed NUT files" from navigating the administrator away from the control they
     /// just used. The view model still owns the command and every persistence rule.
     /// </summary>
-    private async void SaveProfileButton_OnClick(object? sender, RoutedEventArgs eventArgs)
+    private async void SaveAllButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
-        if (DataContext is not SettingsPageViewModel viewModel || !viewModel.SaveProfileCommand.CanExecute(null))
+        if (DataContext is not SettingsPageViewModel viewModel || !viewModel.SaveAllCommand.CanExecute(null))
         {
             return;
         }
@@ -73,7 +73,7 @@ public partial class SettingsPageView : UserControl
         var offset = SettingsScrollViewer.Offset;
         try
         {
-            await viewModel.SaveProfileCommand.ExecuteAsync(null);
+            await viewModel.SaveAllCommand.ExecuteAsync(null);
         }
         finally
         {

@@ -108,7 +108,7 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="nut-card">
+      <Border x:Name="ManagedServersCard" Classes="nut-card">
         <StackPanel Spacing="16">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
             <PathIcon Data="{DynamicResource NutIconServer}" Classes="accent" Width="17" Height="17" VerticalAlignment="Center" />
@@ -151,33 +151,35 @@
                   Grid.Row="2"
                   Grid.Column="0"
                   RowDefinitions="*,10,Auto">
-              <ListBox ItemsSource="{Binding ManagedProfileCards}"
-                       SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
-                       MinHeight="180"
-                       MaxHeight="520">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
-                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220" RowSpacing="3">
-                      <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                      <Border Grid.Column="1" Classes="nut-pill healthy" Padding="8,2" IsVisible="{Binding IsActive}">
-                        <TextBlock Text="{Binding ActiveText}" Classes="healthy" FontSize="11" FontWeight="SemiBold" />
-                      </Border>
-                      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Endpoint}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
-                      <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" ItemSpacing="5" LineSpacing="3">
-                        <Border Classes="nut-pill" Padding="7,1">
-                          <TextBlock Text="{Binding ManagementMode}" FontSize="11" Classes="nut-metadata" />
+              <Border CornerRadius="8" ClipToBounds="True">
+                <ListBox ItemsSource="{Binding ManagedProfileCards}"
+                         SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
+                         MinHeight="180"
+                         MaxHeight="520">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
+                      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220" RowSpacing="3">
+                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Classes="nut-pill healthy" Padding="8,2" IsVisible="{Binding IsActive}">
+                          <TextBlock Text="{Binding ActiveText}" Classes="healthy" FontSize="11" FontWeight="SemiBold" />
                         </Border>
-                        <Border Classes="nut-pill" Padding="7,1">
-                          <TextBlock Text="{Binding AccessMode}" FontSize="11" Classes="nut-metadata" />
-                        </Border>
-                        <Border Classes="nut-pill" Padding="7,1" IsVisible="{Binding HasTransport}">
-                          <TextBlock Text="{Binding Transport}" FontSize="11" Classes="nut-metadata" />
-                        </Border>
-                      </WrapPanel>
-                    </Grid>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Endpoint}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                        <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" ItemSpacing="5" LineSpacing="3">
+                          <Border Classes="nut-pill" Padding="7,1">
+                            <TextBlock Text="{Binding ManagementMode}" FontSize="11" Classes="nut-metadata" />
+                          </Border>
+                          <Border Classes="nut-pill" Padding="7,1">
+                            <TextBlock Text="{Binding AccessMode}" FontSize="11" Classes="nut-metadata" />
+                          </Border>
+                          <Border Classes="nut-pill" Padding="7,1" IsVisible="{Binding HasTransport}">
+                            <TextBlock Text="{Binding Transport}" FontSize="11" Classes="nut-metadata" />
+                          </Border>
+                        </WrapPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Border>
               <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="8">
                 <Button Content="{Binding ActivateProfileText}"
                         Command="{Binding ActivateSelectedProfileCommand}"
@@ -224,7 +226,12 @@
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                     <StackPanel Spacing="6">
                       <TextBlock Text="{Binding MonitoringPortLabel}" FontWeight="SemiBold" />
-                      <TextBox Text="{Binding ProfileDraft.MonitoringPort, Mode=TwoWay}" AutomationProperties.Name="{Binding MonitoringPortLabel}" />
+                      <NumericUpDown Value="{Binding ProfileDraft.MonitoringPortValue, Mode=TwoWay}"
+                                     Minimum="1"
+                                     Maximum="65535"
+                                     Increment="1"
+                                     FormatString="0"
+                                     AutomationProperties.Name="{Binding MonitoringPortLabel}" />
                       <ItemsControl ItemsSource="{Binding MonitoringPortValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Spacing="6">
@@ -538,24 +545,11 @@
                 </StackPanel>
               </Border>
 
-              <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
-                <Button Classes="nut-success"
-                        Content="{Binding SaveProfileText}"
-                        Click="SaveProfileButton_OnClick"
-                        IsEnabled="{Binding CanSaveProfile}" />
-                <Button Content="{Binding DiscardProfileText}" Command="{Binding DiscardProfileDraftCommand}" IsEnabled="{Binding IsProfileDraftDirty}" />
-              </WrapPanel>
-              <TextBlock Text="{Binding ProfileSavingText}" IsVisible="{Binding IsSavingProfile}" />
-              <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding HasProfileStatusMessage}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding HasProfileSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" AutomationProperties.Name="{Binding ProfileSaveError}" />
-              <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
             </StackPanel>
           </Grid>
-        </StackPanel>
-      </Border>
 
-      <Border Classes="nut-card">
-        <StackPanel Spacing="12">
+          <Border Classes="nut-divider" Margin="0,4" />
+          <StackPanel x:Name="GeneralSettingsSection" Spacing="12">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <PathIcon Data="{DynamicResource NutIconConnection}" Classes="cyan" Width="17" Height="17" />
             <TextBlock Text="{Binding GeneralSettingsTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
@@ -564,18 +558,48 @@
           <Grid x:Name="GeneralPreferencesLayout" ColumnDefinitions="*,*" ColumnSpacing="14">
             <StackPanel x:Name="ConnectionTimeoutPanel" Spacing="5">
               <TextBlock Text="{Binding ConnectionTimeoutLabel}" Classes="nut-label" />
-              <TextBox Text="{Binding ConnectionTimeoutSeconds}" AutomationProperties.Name="{Binding ConnectionTimeoutLabel}" />
+              <NumericUpDown Value="{Binding ConnectionTimeoutSecondsValue, Mode=TwoWay}"
+                             Minimum="1"
+                             Increment="1"
+                             FormatString="0.##"
+                             Width="220"
+                             HorizontalAlignment="Left"
+                             AutomationProperties.Name="{Binding ConnectionTimeoutLabel}" />
             </StackPanel>
             <StackPanel x:Name="PollingIntervalPanel" Grid.Column="1" Spacing="5">
               <TextBlock Text="{Binding PollingIntervalLabel}" Classes="nut-label" />
-              <TextBox Text="{Binding PollingIntervalSeconds}" AutomationProperties.Name="{Binding PollingIntervalLabel}" />
+              <NumericUpDown Value="{Binding PollingIntervalSecondsValue, Mode=TwoWay}"
+                             Minimum="1"
+                             Increment="1"
+                             FormatString="0.##"
+                             Width="220"
+                             HorizontalAlignment="Left"
+                             AutomationProperties.Name="{Binding PollingIntervalLabel}" />
             </StackPanel>
           </Grid>
-          <Button Classes="nut-primary" Content="{Binding SaveSettingsText}" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
-          <TextBlock Text="{Binding SavingText}" IsVisible="{Binding IsSaving}" />
-          <TextBlock Text="{Binding SettingsSavedText}" IsVisible="{Binding IsSaved}" Foreground="{DynamicResource NutHealthyBrush}" />
-          <TextBlock Text="{Binding SaveError}" IsVisible="{Binding HasSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding LoadError}" IsVisible="{Binding HasLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+
+            <!-- One deliberate commit point for this card: the profile is persisted first and the
+                 general preferences follow only after it succeeds. -->
+            <StackPanel x:Name="SettingsCommitBar" Spacing="8">
+              <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                <Button Classes="nut-primary"
+                        Content="{Binding SaveSettingsText}"
+                        Click="SaveAllButton_OnClick"
+                        IsEnabled="{Binding CanSaveAll}" />
+                <Button Content="{Binding DiscardProfileText}"
+                        Command="{Binding DiscardAllCommand}"
+                        IsEnabled="{Binding CanDiscardAll}" />
+              </WrapPanel>
+              <TextBlock Text="{Binding ProfileSavingText}" IsVisible="{Binding IsSavingProfile}" />
+              <TextBlock Text="{Binding SavingText}" IsVisible="{Binding IsSaving}" />
+              <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding HasProfileStatusMessage}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding SettingsSavedText}" IsVisible="{Binding IsSaved}" Foreground="{DynamicResource NutHealthyBrush}" />
+              <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding HasProfileSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" AutomationProperties.Name="{Binding ProfileSaveError}" />
+              <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding SaveError}" IsVisible="{Binding HasSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding LoadError}" IsVisible="{Binding HasLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+          </StackPanel>
         </StackPanel>
       </Border>
     </StackPanel>

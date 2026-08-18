@@ -668,6 +668,33 @@
     <Setter Property="FontSize" Value="12.5" />
   </Style>
 
+  <!-- Numeric fields use Avalonia's ButtonSpinner internally. Styling the NumericUpDown at the
+       product-theme boundary lets that template inherit the same surface, subtle separators and
+       rounded outline as TextBox instead of retaining the bright Fluent defaults. -->
+  <Style Selector="NumericUpDown">
+    <Setter Property="MinHeight" Value="38" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="11,7" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ ButtonSpinner#PART_Spinner">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="NumericUpDown:pointerover /template/ ButtonSpinner#PART_Spinner">
+    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown:focus-within /template/ ButtonSpinner#PART_Spinner">
+    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+  </Style>
+
   <Style Selector="ComboBox">
     <Setter Property="MinHeight" Value="38" />
     <Setter Property="CornerRadius" Value="8" />

@@ -502,6 +502,22 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     [ObservableProperty] private string _pollingIntervalSeconds = "5";
     [ObservableProperty] private string _connectionTimeoutSeconds = "5";
+
+    /// <summary>
+    /// Numeric presentation boundaries for the duration fields. The existing string properties
+    /// remain the validation/persistence contract, while NumericUpDown prevents non-numeric input.
+    /// </summary>
+    public decimal? PollingIntervalSecondsValue
+    {
+        get => ParseNumericPresentationValue(PollingIntervalSeconds);
+        set => PollingIntervalSeconds = FormatNumericPresentationValue(value);
+    }
+
+    public decimal? ConnectionTimeoutSecondsValue
+    {
+        get => ParseNumericPresentationValue(ConnectionTimeoutSeconds);
+        set => ConnectionTimeoutSeconds = FormatNumericPresentationValue(value);
+    }
     [ObservableProperty] private ThemeOption? _selectedThemeOption;
     [ObservableProperty] private PresentationOption<UiLanguagePreference>? _selectedLanguageOption;
     [ObservableProperty] private PresentationOption<SidebarPreference>? _selectedSidebarOption;
@@ -565,6 +581,11 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public bool CanPersistProfiles => _profileStore is not null && _canPersistProfiles && !IsSavingProfile;
 
     public bool CanSaveProfile => CanPersistProfiles && IsProfileDraftDirty && !_profileValidation.HasErrors;
+
+    public bool CanSaveAll => !IsSaving && !IsSavingProfile &&
+        (!IsProfileDraftDirty || CanSaveProfile);
+
+    public bool CanDiscardAll => IsProfileDraftDirty || AreGeneralSettingsDirty;
 
     public bool CanDeleteSelectedProfile => CanPersistProfiles && SelectedManagedProfile is not null && ManagedProfiles.Count > 1 && SelectedManagedProfile.Id != _confirmedProfiles.ActiveProfileId;
 
@@ -655,6 +676,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             _confirmedSettings = settings;
             _canPersistThemeAutomatically = true;
             IsSaved = true;
+            OnPropertyChanged(nameof(CanDiscardAll));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -668,6 +690,35 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         {
             IsSaving = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task SaveAllAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsProfileDraftDirty && !await SaveProfileCoreAsync(cancellationToken))
+        {
+            return;
+        }
+
+        await SaveAsync(cancellationToken);
+    }
+
+    [RelayCommand]
+    private void DiscardAll()
+    {
+        if (IsProfileDraftDirty)
+        {
+            DiscardProfileDraftCore();
+        }
+
+        PollingIntervalSeconds = _confirmedSettings.PollingInterval.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
+        ConnectionTimeoutSeconds = _confirmedSettings.ConnectionTimeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
+        IsSaved = false;
+        IsProfileSaved = false;
+        SaveError = null;
+        ProfileSaveError = null;
+        ProfileStatusMessage = null;
+        OnPropertyChanged(nameof(CanDiscardAll));
     }
 
     [RelayCommand]
@@ -1187,6 +1238,16 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         language: SelectedLanguageOption?.Value ?? UiLanguagePreference.PtBr,
         sidebarPreference: SelectedSidebarOption?.Value ?? SidebarPreference.Expanded);
 
+    private bool AreGeneralSettingsDirty =>
+        !string.Equals(
+            PollingIntervalSeconds,
+            _confirmedSettings.PollingInterval.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture),
+            StringComparison.Ordinal) ||
+        !string.Equals(
+            ConnectionTimeoutSeconds,
+            _confirmedSettings.ConnectionTimeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture),
+            StringComparison.Ordinal);
+
     public void Apply(ApplicationSettings settings)
     {
         PollingIntervalSeconds = settings.PollingInterval.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
@@ -1519,6 +1580,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(SmbDirectoryValidationIssues));
         OnPropertyChanged(nameof(SmbUsernameValidationIssues));
         OnPropertyChanged(nameof(CanSaveProfile));
+        OnPropertyChanged(nameof(CanSaveAll));
+        OnPropertyChanged(nameof(CanDiscardAll));
         OnPropertyChanged(nameof(CanTestConnection));
     }
 
@@ -1535,6 +1598,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanForgetTrustedHostKey));
         OnPropertyChanged(nameof(CanPersistProfiles));
         OnPropertyChanged(nameof(CanSaveProfile));
+        OnPropertyChanged(nameof(CanSaveAll));
+        OnPropertyChanged(nameof(CanDiscardAll));
         OnPropertyChanged(nameof(IsSelectedProfileActive));
         OnPropertyChanged(nameof(ActiveProfileName));
         OnPropertyChanged(nameof(RuntimeProfileName));
@@ -1543,6 +1608,32 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanForgetStoredCredential));
         OnPropertyChanged(nameof(StoredCredentialText));
     }
+
+    partial void OnPollingIntervalSecondsChanged(string value)
+    {
+        IsSaved = false;
+        OnPropertyChanged(nameof(PollingIntervalSecondsValue));
+        OnPropertyChanged(nameof(CanDiscardAll));
+    }
+
+    partial void OnConnectionTimeoutSecondsChanged(string value)
+    {
+        IsSaved = false;
+        OnPropertyChanged(nameof(ConnectionTimeoutSecondsValue));
+        OnPropertyChanged(nameof(CanDiscardAll));
+    }
+
+    private static decimal? ParseNumericPresentationValue(string value) =>
+        decimal.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+
+    private static string FormatNumericPresentationValue(decimal? value) =>
+        value?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty;
+
+    partial void OnIsSavingChanged(bool value) => OnPropertyChanged(nameof(CanSaveAll));
+
+    partial void OnIsSavingProfileChanged(bool value) => OnPropertyChanged(nameof(CanSaveAll));
 
     private void NotifySelectionChanged()
     {
