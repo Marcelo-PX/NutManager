@@ -4,6 +4,33 @@
              xmlns:controls="clr-namespace:NutManager.App.Presentation.Controls"
              x:Class="NutManager.App.Views.OverviewPageView"
              x:DataType="viewModels:OverviewPageViewModel">
+  <UserControl.Resources>
+    <DataTemplate x:Key="ActiveConfigurationRowTemplate" x:DataType="viewModels:OverviewInfoRowViewModel">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="0,0,0,9">
+        <TextBlock Text="{Binding Label}"
+                   Classes="nut-metadata"
+                   TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    VerticalAlignment="Center">
+          <!-- Static by design: Agent reachability must not pulse, glow or animate. -->
+          <Ellipse Classes="nut-agent-status-dot"
+                   Classes.healthy="{Binding IsHealthy}"
+                   Classes.critical="{Binding IsCritical}"
+                   IsVisible="{Binding HasStatusIndicator}" />
+          <TextBlock Text="{Binding Value}"
+                     FontSize="13"
+                     FontWeight="SemiBold"
+                     Classes.accent="{Binding IsAccent}"
+                     Classes.muted="{Binding !IsAccent}"
+                     TextTrimming="CharacterEllipsis"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
   <!--
     UPS dashboard composed against the approved reference: one compact metric band above a two by
     two lower grid. Every reading is projected from the current snapshot; a missing NUT variable
@@ -371,27 +398,24 @@
               it carries no state, is excluded from the accessibility tree, and collapses first
               when the card gets narrow so the configuration rows always stay readable.
             -->
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
-              <ItemsControl ItemsSource="{Binding ActiveConfigurationRows}" VerticalAlignment="Center">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="viewModels:OverviewInfoRowViewModel">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,9">
-                      <TextBlock Text="{Binding Label}" Classes="nut-metadata" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="1"
-                                 Text="{Binding Value}"
-                                 FontSize="13"
-                                 FontWeight="SemiBold"
-                                 Classes.accent="{Binding IsAccent}"
-                                 Classes.muted="{Binding !IsAccent}"
-                                 TextTrimming="CharacterEllipsis"
-                                 VerticalAlignment="Center" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+            <Grid x:Name="ActiveConfigurationLayout"
+                  ColumnDefinitions="*,*,Auto"
+                  RowDefinitions="Auto"
+                  ColumnSpacing="18"
+                  RowSpacing="12">
+              <ItemsControl x:Name="ActiveProfileRows"
+                            ItemsSource="{Binding ActiveProfileRows}"
+                            ItemTemplate="{StaticResource ActiveConfigurationRowTemplate}"
+                            VerticalAlignment="Center" />
+
+              <ItemsControl x:Name="ActiveConnectivityRows"
+                            Grid.Column="1"
+                            ItemsSource="{Binding ActiveConnectivityRows}"
+                            ItemTemplate="{StaticResource ActiveConfigurationRowTemplate}"
+                            VerticalAlignment="Center" />
 
               <Image x:Name="ActiveConfigurationIllustration"
-                     Grid.Column="1"
+                     Grid.Column="2"
                      Source="avares://NutManager.App/Assets/Illustrations/server-security.png"
                      Height="150"
                      Stretch="Uniform"

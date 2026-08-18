@@ -137,24 +137,29 @@
   </Style>
 
   <Style Selector="Button.nut-profile-card">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.nut-profile-card /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="12" />
+  </Style>
+  <Style Selector="Button.nut-profile-card:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.nut-profile-card-surface">
     <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="10" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
-        <BrushTransition Property="Background" Duration="0:0:0.14" />
-      </Transitions>
-    </Setter>
-  </Style>
-  <Style Selector="Button.nut-profile-card /template/ ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="ClipToBounds" Value="True" />
     <Setter Property="BoxShadow" Value="0 0 0 0 #00000000, 0 0 0 0 #00000000" />
     <Setter Property="Transitions">
       <Transitions>
@@ -164,7 +169,7 @@
       </Transitions>
     </Setter>
   </Style>
-  <Style Selector="Button.nut-profile-card:pointerover /template/ ContentPresenter">
+  <Style Selector="Button.nut-profile-card:pointerover Border.nut-profile-card-surface">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
     <Setter Property="BoxShadow" Value="0 0 10 0 #665FA8FF, 0 0 24 3 #335FA8FF" />

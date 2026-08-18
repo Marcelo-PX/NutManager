@@ -313,21 +313,23 @@
                 </Border>
               </Flyout>
             </Button.Flyout>
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-              <Border Classes="nut-profile-avatar">
-                <PathIcon Data="{DynamicResource NutIconProfile}" Width="17" Height="17" Foreground="{DynamicResource NutTextSecondaryBrush}" />
-              </Border>
-              <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                <TextBlock Text="{Binding ActiveProfileName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding ActiveProfileModeText}" Classes="nut-metadata accent" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-              <PathIcon Grid.Column="2"
-                        Data="{DynamicResource NutIconChevronDown}"
-                        Width="14"
-                        Height="14"
-                        Foreground="{DynamicResource NutTextMutedBrush}"
-                        VerticalAlignment="Center" />
-            </Grid>
+            <Border Classes="nut-profile-card-surface">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                <Border Classes="nut-profile-avatar">
+                  <PathIcon Data="{DynamicResource NutIconProfile}" Width="17" Height="17" Foreground="{DynamicResource NutTextSecondaryBrush}" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding ActiveProfileName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding ActiveProfileModeText}" Classes="nut-metadata accent" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <PathIcon Grid.Column="2"
+                          Data="{DynamicResource NutIconChevronDown}"
+                          Width="14"
+                          Height="14"
+                          Foreground="{DynamicResource NutTextMutedBrush}"
+                          VerticalAlignment="Center" />
+              </Grid>
+            </Border>
           </Button>
 
           <TextBlock Grid.Row="3"

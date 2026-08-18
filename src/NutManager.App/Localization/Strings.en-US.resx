@@ -823,6 +823,15 @@
   <data name="Overview.ActiveConfiguration" xml:space="preserve"><value>Active configuration</value></data>
   <data name="Overview.Administration" xml:space="preserve"><value>Administration</value></data>
   <data name="Overview.Profile" xml:space="preserve"><value>Profile</value></data>
+  <data name="Overview.Management" xml:space="preserve"><value>Management</value></data>
+  <data name="Overview.Access" xml:space="preserve"><value>Access</value></data>
+  <data name="Overview.PreferredUps" xml:space="preserve"><value>Preferred UPS</value></data>
+  <data name="Overview.ConfigurationVia" xml:space="preserve"><value>Configuration via</value></data>
+  <data name="Overview.ControlVia" xml:space="preserve"><value>Control via</value></data>
+  <data name="Overview.ManagedFiles" xml:space="preserve"><value>NUT files</value></data>
+  <data name="Overview.ManagedFiles.One" xml:space="preserve"><value>{0} managed</value></data>
+  <data name="Overview.ManagedFiles.Many" xml:space="preserve"><value>{0} managed</value></data>
+  <data name="Overview.Agent" xml:space="preserve"><value>Agent</value></data>
   <data name="Overview.MockState" xml:space="preserve"><value>Simulated data (mock)</value></data>
   <data name="Overview.AutoRefresh" xml:space="preserve"><value>Automatic refresh</value></data>
   <data name="Common.Enabled" xml:space="preserve"><value>Enabled</value></data>

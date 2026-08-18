@@ -207,19 +207,19 @@
           <WrapPanel>
             <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
               <TextBlock Text="{Binding Strings[Ups.Runtimecal.HighRuntime]}" Classes="nut-label" />
-              <NumericUpDown Value="{Binding RuntimeHighSeconds, Mode=TwoWay}" Minimum="1" />
+              <NumericUpDown Value="{Binding RuntimeHighSeconds, Mode=TwoWay}" Minimum="1" ParsingNumberStyle="Integer" />
             </StackPanel>
             <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
               <TextBlock Text="{Binding Strings[Ups.Runtimecal.HighLoad]}" Classes="nut-label" />
-              <NumericUpDown Value="{Binding RuntimeHighLoad, Mode=TwoWay}" Minimum="1" Maximum="100" />
+              <NumericUpDown Value="{Binding RuntimeHighLoad, Mode=TwoWay}" Minimum="1" Maximum="100" ParsingNumberStyle="Integer" />
             </StackPanel>
             <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
               <TextBlock Text="{Binding Strings[Ups.Runtimecal.LowRuntime]}" Classes="nut-label" />
-              <NumericUpDown Value="{Binding RuntimeLowSeconds, Mode=TwoWay}" Minimum="1" />
+              <NumericUpDown Value="{Binding RuntimeLowSeconds, Mode=TwoWay}" Minimum="1" ParsingNumberStyle="Integer" />
             </StackPanel>
             <StackPanel Width="180" Margin="0,0,0,10" Spacing="4">
               <TextBlock Text="{Binding Strings[Ups.Runtimecal.LowLoad]}" Classes="nut-label" />
-              <NumericUpDown Value="{Binding RuntimeLowLoad, Mode=TwoWay}" Minimum="1" Maximum="100" />
+              <NumericUpDown Value="{Binding RuntimeLowLoad, Mode=TwoWay}" Minimum="1" Maximum="100" ParsingNumberStyle="Integer" />
             </StackPanel>
           </WrapPanel>
           <TextBlock Text="{Binding Strings[Ups.Runtimecal.Safety]}" Classes="nut-metadata" TextWrapping="Wrap" />

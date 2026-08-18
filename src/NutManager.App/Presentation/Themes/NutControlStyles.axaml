@@ -105,6 +105,19 @@
     </ControlTheme>
   </Styles.Resources>
 
+  <!-- Agent reachability in the Overview is intentionally static: no transition or animation. -->
+  <Style Selector="Ellipse.nut-agent-status-dot">
+    <Setter Property="Width" Value="8" />
+    <Setter Property="Height" Value="8" />
+    <Setter Property="Fill" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="Ellipse.nut-agent-status-dot.healthy">
+    <Setter Property="Fill" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+  <Style Selector="Ellipse.nut-agent-status-dot.critical">
+    <Setter Property="Fill" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+
   <!-- ==================== Surfaces ==================== -->
   <!--
     Cards are glass: a translucent pane over the window rather than an opaque block. The border is
@@ -321,12 +334,13 @@
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="RenderTransformOrigin" Value="50%,50%" />
     <Setter Property="RenderTransform" Value="none" />
+    <Setter Property="BoxShadow" Value="0 0 0 0 #00000000, 0 0 0 0 #00000000" />
     <Setter Property="Transitions">
       <Transitions>
         <BrushTransition Property="Background" Duration="0:0:0.18" />
         <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
         <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
-        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.18" />
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.08" />
       </Transitions>
     </Setter>
   </Style>
@@ -669,9 +683,9 @@
     <Setter Property="FontSize" Value="12.5" />
   </Style>
 
-  <!-- Keep numeric input visually aligned with the other NutManager fields. NumericUpDown still
-       owns parsing, range validation and keyboard stepping; only the Fluent two-button spinner is
-       hidden because its separate disabled surfaces fragment the right edge of the control. -->
+  <!-- Keep numeric input visually aligned with the other NutManager fields while preserving the
+       native increment/decrement affordance. Clipping the shared spinner surface keeps both button
+       states inside the rounded outer edge instead of exposing square corners. -->
   <Style Selector="NumericUpDown">
     <Setter Property="MinHeight" Value="38" />
     <Setter Property="CornerRadius" Value="8" />
@@ -680,13 +694,15 @@
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
-    <Setter Property="ShowButtonSpinner" Value="False" />
+    <Setter Property="ShowButtonSpinner" Value="True" />
+    <Setter Property="ClipToBounds" Value="True" />
   </Style>
   <Style Selector="NumericUpDown /template/ ButtonSpinner#PART_Spinner">
     <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="ClipToBounds" Value="True" />
   </Style>
   <Style Selector="NumericUpDown:pointerover /template/ ButtonSpinner#PART_Spinner">
     <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />

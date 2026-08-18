@@ -230,6 +230,7 @@
                                      Minimum="1"
                                      Maximum="65535"
                                      Increment="1"
+                                     ParsingNumberStyle="Integer"
                                      FormatString="0"
                                      AutomationProperties.Name="{Binding MonitoringPortLabel}" />
                       <ItemsControl ItemsSource="{Binding MonitoringPortValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
@@ -555,12 +556,13 @@
             <TextBlock Text="{Binding GeneralSettingsTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
           </StackPanel>
           <Border Classes="nut-divider" />
-          <Grid x:Name="GeneralPreferencesLayout" ColumnDefinitions="*,*" ColumnSpacing="14">
+          <Grid x:Name="GeneralPreferencesLayout" ColumnDefinitions="220,220" ColumnSpacing="18">
             <StackPanel x:Name="ConnectionTimeoutPanel" Spacing="5">
               <TextBlock Text="{Binding ConnectionTimeoutLabel}" Classes="nut-label" />
               <NumericUpDown Value="{Binding ConnectionTimeoutSecondsValue, Mode=TwoWay}"
                              Minimum="1"
                              Increment="1"
+                             ParsingNumberStyle="Float"
                              FormatString="0.##"
                              Width="220"
                              HorizontalAlignment="Left"
@@ -571,6 +573,7 @@
               <NumericUpDown Value="{Binding PollingIntervalSecondsValue, Mode=TwoWay}"
                              Minimum="1"
                              Increment="1"
+                             ParsingNumberStyle="Float"
                              FormatString="0.##"
                              Width="220"
                              HorizontalAlignment="Left"

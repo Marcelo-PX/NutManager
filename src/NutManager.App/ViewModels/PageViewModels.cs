@@ -426,24 +426,32 @@ public sealed partial class OverviewPageViewModel : PageViewModel
     // Active configuration and administration shortcuts are supplied by the shell, which already
     // owns this state. The dashboard only presents them; it performs no administrative action.
     [ObservableProperty]
-    private IReadOnlyList<OverviewInfoRowViewModel> _activeConfigurationRows = [];
+    private IReadOnlyList<OverviewInfoRowViewModel> _activeProfileRows = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<OverviewInfoRowViewModel> _activeConnectivityRows = [];
 
     [ObservableProperty]
     private IReadOnlyList<OverviewShortcutViewModel> _administrationShortcuts = [];
 
-    public bool HasActiveConfiguration => ActiveConfigurationRows.Count > 0;
+    public bool HasActiveConfiguration => ActiveProfileRows.Count > 0 || ActiveConnectivityRows.Count > 0;
 
     public bool HasAdministrationShortcuts => AdministrationShortcuts.Count > 0;
 
     public void SetDashboardContext(
-        IReadOnlyList<OverviewInfoRowViewModel> activeConfiguration,
+        IReadOnlyList<OverviewInfoRowViewModel> activeProfile,
+        IReadOnlyList<OverviewInfoRowViewModel> activeConnectivity,
         IReadOnlyList<OverviewShortcutViewModel> shortcuts)
     {
-        ActiveConfigurationRows = activeConfiguration ?? [];
+        ActiveProfileRows = activeProfile ?? [];
+        ActiveConnectivityRows = activeConnectivity ?? [];
         AdministrationShortcuts = shortcuts ?? [];
     }
 
-    partial void OnActiveConfigurationRowsChanged(IReadOnlyList<OverviewInfoRowViewModel> value) =>
+    partial void OnActiveProfileRowsChanged(IReadOnlyList<OverviewInfoRowViewModel> value) =>
+        OnPropertyChanged(nameof(HasActiveConfiguration));
+
+    partial void OnActiveConnectivityRowsChanged(IReadOnlyList<OverviewInfoRowViewModel> value) =>
         OnPropertyChanged(nameof(HasActiveConfiguration));
 
     partial void OnAdministrationShortcutsChanged(IReadOnlyList<OverviewShortcutViewModel> value) =>

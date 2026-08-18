@@ -3,7 +3,26 @@ using System.Windows.Input;
 namespace NutManager.App.ViewModels;
 
 /// <summary>Label/value row used by the Overview active-configuration card.</summary>
-public sealed record OverviewInfoRowViewModel(string Label, string Value, bool IsAccent = true);
+public sealed record OverviewInfoRowViewModel(
+    string Label,
+    string Value,
+    bool IsAccent = true,
+    OverviewInfoRowStatus Status = OverviewInfoRowStatus.None)
+{
+    public bool HasStatusIndicator => Status != OverviewInfoRowStatus.None;
+
+    public bool IsHealthy => Status == OverviewInfoRowStatus.Healthy;
+
+    public bool IsCritical => Status == OverviewInfoRowStatus.Critical;
+}
+
+/// <summary>Static semantic state for the Windows Agent indicator on the Overview.</summary>
+public enum OverviewInfoRowStatus
+{
+    None,
+    Healthy,
+    Critical
+}
 
 /// <summary>
 /// Navigation-only shortcut shown on the Overview administration card. It carries an existing

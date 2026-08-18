@@ -116,6 +116,8 @@ public sealed class T37PresentationTests
     public void SettingsDurationsAndNutPortUseCompactNumericControls()
     {
         var view = Read("src", "NutManager.App", "Views", "SettingsPageView.axaml");
+        var behavior = Read("src", "NutManager.App", "Views", "SettingsPageView.axaml.cs");
+        var upsEditor = Read("src", "NutManager.App", "Views", "UpsConfigurationEditorView.axaml");
         var styles = Read("src", "NutManager.App", "Presentation", "Themes", "NutControlStyles.axaml");
 
         Assert.Contains("ProfileDraft.MonitoringPortValue, Mode=TwoWay", view, StringComparison.Ordinal);
@@ -125,12 +127,19 @@ public sealed class T37PresentationTests
         var general = view[view.IndexOf("x:Name=\"GeneralSettingsSection\"", StringComparison.Ordinal)..];
         Assert.Equal(2, general.Split("Width=\"220\"", StringSplitOptions.None).Length - 1);
         Assert.Contains("Maximum=\"65535\"", view, StringComparison.Ordinal);
+        Assert.Contains("ParsingNumberStyle=\"Integer\"", view, StringComparison.Ordinal);
+        Assert.Equal(4, upsEditor.Split("<NumericUpDown", StringSplitOptions.None).Length - 1);
+        Assert.Equal(4, upsEditor.Split("ParsingNumberStyle=\"Integer\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("x:Name=\"GeneralPreferencesLayout\" ColumnDefinitions=\"220,220\" ColumnSpacing=\"18\"", view, StringComparison.Ordinal);
+        Assert.Contains("new ColumnDefinitions(\"220,220\")", behavior, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding ProfileDraft.MonitoringPort", view, StringComparison.Ordinal);
+        var numericStyles = styles[styles.IndexOf("<Style Selector=\"NumericUpDown\">", StringComparison.Ordinal)..];
         Assert.Contains("Style Selector=\"NumericUpDown\"", styles, StringComparison.Ordinal);
-        Assert.Contains("ButtonSpinner#PART_Spinner", styles, StringComparison.Ordinal);
-        Assert.Contains("Property=\"CornerRadius\" Value=\"8\"", styles, StringComparison.Ordinal);
-        Assert.Contains("Property=\"ShowButtonSpinner\" Value=\"False\"", styles, StringComparison.Ordinal);
-        Assert.DoesNotContain("RepeatButton#PART_DecreaseButton", styles, StringComparison.Ordinal);
+        Assert.Contains("ButtonSpinner#PART_Spinner", numericStyles, StringComparison.Ordinal);
+        Assert.Contains("Property=\"CornerRadius\" Value=\"8\"", numericStyles, StringComparison.Ordinal);
+        Assert.Contains("Property=\"ShowButtonSpinner\" Value=\"True\"", numericStyles, StringComparison.Ordinal);
+        Assert.True(numericStyles.Split("Property=\"ClipToBounds\" Value=\"True\"", StringSplitOptions.None).Length - 1 >= 2);
+        Assert.DoesNotContain("RepeatButton#PART_DecreaseButton", numericStyles, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -165,14 +174,15 @@ public sealed class T37PresentationTests
     public void SidebarProfileSelectorUsesAnimatedAccentGlowOnHover()
     {
         var styles = Read("src", "NutManager.App", "Presentation", "Themes", "NutShellStyles.axaml");
+        var shell = Read("src", "NutManager.App", "MainWindow.axaml");
         var hover = styles.IndexOf(
-            "Style Selector=\"Button.nut-profile-card:pointerover /template/ ContentPresenter\"",
+            "Style Selector=\"Button.nut-profile-card:pointerover Border.nut-profile-card-surface\"",
             StringComparison.Ordinal);
 
         Assert.True(hover >= 0);
         Assert.Contains("BoxShadowsTransition Property=\"BoxShadow\"", styles, StringComparison.Ordinal);
         Assert.Contains("Property=\"CornerRadius\" Value=\"12\"", styles, StringComparison.Ordinal);
-        Assert.Contains("Property=\"ClipToBounds\" Value=\"True\"", styles, StringComparison.Ordinal);
+        Assert.Contains("Classes=\"nut-profile-card-surface\"", shell, StringComparison.Ordinal);
         Assert.Contains("0 0 10 0 #665FA8FF, 0 0 24 3 #335FA8FF", styles[hover..], StringComparison.Ordinal);
     }
 
@@ -187,6 +197,35 @@ public sealed class T37PresentationTests
             "administration.UpdateManagedConfigurationFiles(profile.Management.ManagedFiles)",
             app,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "viewModel.UpdateManagedConfigurationFiles(profile.Management.ManagedFiles)",
+            app,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ActiveConfigurationUsesTwoResponsiveColumnsAndAStaticAgentIndicator()
+    {
+        var view = Read("src", "NutManager.App", "Views", "OverviewPageView.axaml");
+        var behavior = Read("src", "NutManager.App", "Views", "OverviewPageView.axaml.cs");
+        var styles = Read("src", "NutManager.App", "Presentation", "Themes", "NutControlStyles.axaml");
+
+        Assert.Contains("x:Name=\"ActiveConfigurationLayout\"", view, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding ActiveProfileRows}\"", view, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding ActiveConnectivityRows}\"", view, StringComparison.Ordinal);
+        Assert.Contains("Classes=\"nut-agent-status-dot\"", view, StringComparison.Ordinal);
+        Assert.Contains("Static by design: Agent reachability must not pulse, glow or animate", view, StringComparison.Ordinal);
+        Assert.Contains("fitsIllustration ? \"*,*,Auto\" : fitsTwoColumns ? \"*,*\" : \"*\"", behavior, StringComparison.Ordinal);
+        Assert.Contains("Grid.SetRow(ActiveConnectivityRows, fitsTwoColumns ? 0 : 1)", behavior, StringComparison.Ordinal);
+
+        var indicatorStart = styles.IndexOf("Style Selector=\"Ellipse.nut-agent-status-dot\"", StringComparison.Ordinal);
+        var indicatorEnd = styles.IndexOf("<!-- ==================== Surfaces", indicatorStart, StringComparison.Ordinal);
+        Assert.True(indicatorStart >= 0 && indicatorEnd > indicatorStart);
+        var indicatorStyles = styles[indicatorStart..indicatorEnd];
+        Assert.Contains("NutHealthyBrush", indicatorStyles, StringComparison.Ordinal);
+        Assert.Contains("NutCriticalBrush", indicatorStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain("Transition", indicatorStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain("Animation", indicatorStyles, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -291,7 +330,17 @@ public sealed class T37PresentationTests
         var version = view.IndexOf("ApplicationVersion", StringComparison.Ordinal);
         var runtime = view.IndexOf("Diagnostics.Runtime", version, StringComparison.Ordinal);
         Assert.True(version >= 0 && runtime > version);
-        Assert.Contains("Width=\"220\" Margin=\"0,0,24,10\"", view[(version - 220)..runtime], StringComparison.Ordinal);
+        Assert.Contains("Width=\"300\" Margin=\"0,0,36,10\"", view[(version - 220)..runtime], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PrimaryStatusGlowRespondsWithoutADeadHoverInterval()
+    {
+        var styles = Read("src", "NutManager.App", "Presentation", "Themes", "NutControlStyles.axaml");
+        var pills = styles[styles.IndexOf("<Style Selector=\"Border.nut-pill\">", StringComparison.Ordinal)..];
+
+        Assert.Contains("0 0 0 0 #00000000, 0 0 0 0 #00000000", pills, StringComparison.Ordinal);
+        Assert.Contains("BoxShadowsTransition Property=\"BoxShadow\" Duration=\"0:0:0.08\"", pills, StringComparison.Ordinal);
     }
 
     [Fact]

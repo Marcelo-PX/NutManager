@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Avalonia;
 using NutManager.App.Localization;
+using NutManager.Core.Agent;
 using NutManager.Core.Models;
 
 namespace NutManager.App.ViewModels;
@@ -16,6 +17,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly NutManagementMode? _managementMode;
     private readonly ManagedNutServerAccessMode? _accessMode;
     private readonly string? _preferredUpsName;
+    private readonly ManagedNutServerProfile? _activeProfile;
+    private readonly RemoteWindowsServiceViewModel? _remoteWindowsService;
+    private ManagedNutConfigurationFiles _managedConfigurationFiles = ManagedNutConfigurationFiles.Create([]);
     private bool _isOverlayOpen;
     private SemanticConfigurationReviewViewModel? _semanticReview;
 
@@ -43,7 +47,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         string? activeProfileName = null,
         NutManagementMode? managementMode = null,
         ManagedNutServerAccessMode? accessMode = null,
-        string? preferredUpsName = null)
+        string? preferredUpsName = null,
+        ManagedNutServerProfile? activeProfile = null,
+        RemoteWindowsServiceViewModel? remoteWindowsService = null)
     {
         ArgumentNullException.ThrowIfNull(overviewPage);
         ArgumentNullException.ThrowIfNull(devicesPage);
@@ -55,6 +61,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _managementMode = managementMode;
         _accessMode = accessMode;
         _preferredUpsName = string.IsNullOrWhiteSpace(preferredUpsName) ? null : preferredUpsName;
+        _activeProfile = activeProfile;
+        _remoteWindowsService = remoteWindowsService;
+        _managedConfigurationFiles = activeProfile?.Management.ManagedFiles ?? ManagedNutConfigurationFiles.Create([]);
         _language = language;
         _sidebarPreference = sidebarPreference;
         Localizer = new NutManagerLocalizer(language);
@@ -100,6 +109,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsConnectionUnavailable));
             }
         };
+        if (_remoteWindowsService is not null)
+        {
+            _remoteWindowsService.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(RemoteWindowsServiceViewModel.Observation))
+                {
+                    PublishDashboardContext();
+                }
+            };
+        }
         UpdateNavigationSelection();
         PublishDashboardContext();
     }
@@ -110,16 +129,49 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     private void PublishDashboardContext()
     {
-        var rows = new List<OverviewInfoRowViewModel>
+        var activeManagementMode = _activeProfile?.Management.Mode ?? _managementMode;
+        var activeAccessMode = _activeProfile?.AccessMode ?? _accessMode;
+        var activePreferredUps = _activeProfile?.Monitoring.PreferredUpsName ?? _preferredUpsName;
+        var profileRows = new List<OverviewInfoRowViewModel>
         {
-            new(Localizer.Get("Overview.Profile"), ActiveProfileName)
+            new(Localizer.Get("Overview.Profile"), _activeProfile?.Name ?? ActiveProfileName)
         };
-        if (_managementMode is { } mode)
-            rows.Add(new(Localizer.Get("Administration.Context.Management"),
+        if (activeManagementMode is { } mode)
+            profileRows.Add(new(Localizer.Get("Overview.Management"),
                 Localizer.Get(mode == NutManagementMode.Local ? "Management.Local" : "Management.Remote")));
-        if (_accessMode is { } access)
-            rows.Add(new(Localizer.Get("Administration.Context.Access"),
+        if (activeAccessMode is { } access)
+            profileRows.Add(new(Localizer.Get("Overview.Access"),
                 Localizer.Get(access == ManagedNutServerAccessMode.Manage ? "Access.Manage" : "Access.ReadOnly")));
+        profileRows.Add(new(Localizer.Get("Overview.PreferredUps"),
+            activePreferredUps ?? Localizer.Get("Status.Unavailable"),
+            activePreferredUps is not null));
+
+        var configurationTransport = _activeProfile?.Management.Mode switch
+        {
+            NutManagementMode.Local => Localizer.Get("Management.Local"),
+            NutManagementMode.Remote when _activeProfile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb => Localizer.Get("Transport.Smb"),
+            NutManagementMode.Remote => Localizer.Get("Transport.Sftp"),
+            _ => Localizer.Get("Status.Unavailable")
+        };
+        var agentTransport = _activeProfile?.Management.Mode switch
+        {
+            NutManagementMode.Remote when _activeProfile.Management.Agent.Transport == NutAgentTransportKind.Https => Localizer.Get("Settings.Agent.Transport.Https"),
+            NutManagementMode.Remote => Localizer.Get("RemoteService.Transport.NamedPipe"),
+            _ => Localizer.Get("Status.Unavailable")
+        };
+        var isAgentConnected = _remoteWindowsService?.IsAgentReachable == true;
+        var connectivityRows = new List<OverviewInfoRowViewModel>
+        {
+            new(Localizer.Get("Overview.ConfigurationVia"), configurationTransport,
+                configurationTransport != Localizer.Get("Status.Unavailable")),
+            new(Localizer.Get("Overview.ControlVia"), agentTransport,
+                agentTransport != Localizer.Get("Status.Unavailable")),
+            new(Localizer.Get("Overview.ManagedFiles"), ManagedFilesText),
+            new(Localizer.Get("Overview.Agent"),
+                Localizer.Get(isAgentConnected ? "RemoteService.Agent.Connected" : "Status.Disconnected"),
+                false,
+                isAgentConnected ? OverviewInfoRowStatus.Healthy : OverviewInfoRowStatus.Critical)
+        };
         var administrationPage = _pages[AppPage.Administration] as AdministrationPageViewModel;
         var shortcuts = new List<OverviewShortcutViewModel>
         {
@@ -133,7 +185,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 OverviewShortcutGlyph.Diagnostics, new RelayCommand(() => Navigate(AppPage.Diagnostics)))
         };
 
-        _overviewPage.SetDashboardContext(rows, shortcuts);
+        _overviewPage.SetDashboardContext(profileRows, connectivityRows, shortcuts);
+    }
+
+    private string ManagedFilesText => string.Format(
+        System.Globalization.CultureInfo.CurrentCulture,
+        Localizer.Get(_managedConfigurationFiles.Count == 1 ? "Overview.ManagedFiles.One" : "Overview.ManagedFiles.Many"),
+        _managedConfigurationFiles.Count);
+
+    /// <summary>Applies the confirmed managed-file selection to the active runtime profile summary.</summary>
+    public void UpdateManagedConfigurationFiles(ManagedNutConfigurationFiles managedFiles)
+    {
+        ArgumentNullException.ThrowIfNull(managedFiles);
+        _managedConfigurationFiles = managedFiles;
+        PublishDashboardContext();
     }
 
     private OverviewShortcutViewModel CreateShortcut(

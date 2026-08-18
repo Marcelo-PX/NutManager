@@ -823,6 +823,15 @@
   <data name="Overview.ActiveConfiguration" xml:space="preserve"><value>Configurações ativas</value></data>
   <data name="Overview.Administration" xml:space="preserve"><value>Administração</value></data>
   <data name="Overview.Profile" xml:space="preserve"><value>Perfil</value></data>
+  <data name="Overview.Management" xml:space="preserve"><value>Gerenciamento</value></data>
+  <data name="Overview.Access" xml:space="preserve"><value>Acesso</value></data>
+  <data name="Overview.PreferredUps" xml:space="preserve"><value>UPS preferido</value></data>
+  <data name="Overview.ConfigurationVia" xml:space="preserve"><value>Configuração via</value></data>
+  <data name="Overview.ControlVia" xml:space="preserve"><value>Controle via</value></data>
+  <data name="Overview.ManagedFiles" xml:space="preserve"><value>Arquivos NUT</value></data>
+  <data name="Overview.ManagedFiles.One" xml:space="preserve"><value>{0} gerenciado</value></data>
+  <data name="Overview.ManagedFiles.Many" xml:space="preserve"><value>{0} gerenciados</value></data>
+  <data name="Overview.Agent" xml:space="preserve"><value>Agente</value></data>
   <data name="Overview.MockState" xml:space="preserve"><value>Dados simulados (mock)</value></data>
   <data name="Overview.AutoRefresh" xml:space="preserve"><value>Atualização automática</value></data>
   <data name="Common.Enabled" xml:space="preserve"><value>Ativado</value></data>

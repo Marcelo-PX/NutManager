@@ -6,7 +6,8 @@ namespace NutManager.App.Views;
 public partial class OverviewPageView : UserControl
 {
     /// <summary>Below this content width the decorative illustration yields its space to the data rows.</summary>
-    private const double IllustrationMinimumWidth = 900d;
+    private const double IllustrationMinimumWidth = 1180d;
+    private const double TwoColumnMinimumWidth = 760d;
 
     public OverviewPageView()
     {
@@ -16,10 +17,10 @@ public partial class OverviewPageView : UserControl
         // does the easing; there is no looping animation and no timer.
         Loaded += (_, _) =>
         {
-            UpdateIllustration();
+            UpdateActiveConfigurationLayout();
             StartPrimaryStatusHalo();
         };
-        SizeChanged += (_, _) => UpdateIllustration();
+        SizeChanged += (_, _) => UpdateActiveConfigurationLayout();
     }
 
     /// <summary>
@@ -33,11 +34,27 @@ public partial class OverviewPageView : UserControl
         NutIconMotion.Glow(PrimaryStatusHalo, 0.10, 0.30, TimeSpan.FromSeconds(2.6));
     }
 
-    private void UpdateIllustration()
+    private void UpdateActiveConfigurationLayout()
     {
-        if (ActiveConfigurationIllustration is null) return;
-        var fits = Bounds.Width >= IllustrationMinimumWidth;
-        ActiveConfigurationIllustration.IsVisible = fits;
-        ActiveConfigurationIllustration.Opacity = fits ? 1d : 0d;
+        if (ActiveConfigurationLayout is null ||
+            ActiveProfileRows is null ||
+            ActiveConnectivityRows is null ||
+            ActiveConfigurationIllustration is null)
+        {
+            return;
+        }
+
+        var fitsIllustration = Bounds.Width >= IllustrationMinimumWidth;
+        var fitsTwoColumns = Bounds.Width >= TwoColumnMinimumWidth;
+
+        ActiveConfigurationLayout.ColumnDefinitions = new ColumnDefinitions(
+            fitsIllustration ? "*,*,Auto" : fitsTwoColumns ? "*,*" : "*");
+        ActiveConfigurationLayout.RowDefinitions = new RowDefinitions(fitsTwoColumns ? "Auto" : "Auto,Auto");
+        Grid.SetColumn(ActiveConnectivityRows, fitsTwoColumns ? 1 : 0);
+        Grid.SetRow(ActiveConnectivityRows, fitsTwoColumns ? 0 : 1);
+        Grid.SetColumn(ActiveConfigurationIllustration, 2);
+        Grid.SetRow(ActiveConfigurationIllustration, 0);
+        ActiveConfigurationIllustration.IsVisible = fitsIllustration;
+        ActiveConfigurationIllustration.Opacity = fitsIllustration ? 1d : 0d;
     }
 }

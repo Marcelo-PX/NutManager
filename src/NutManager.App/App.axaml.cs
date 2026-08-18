@@ -173,7 +173,9 @@ public partial class App : Application
             runtimeProfile.Profile.Name,
             runtimeProfile.Profile.Management.Mode,
             runtimeProfile.Profile.AccessMode,
-            runtimeProfile.Profile.Monitoring.PreferredUpsName);
+            runtimeProfile.Profile.Monitoring.PreferredUpsName,
+            runtimeProfile.Profile,
+            remoteWindowsService);
         viewModel.SetTransparencyPreference(settings.BackgroundTransparency);
         administration.SemanticReviewChanged += viewModel.SetSemanticReview;
         viewModel.ThemeChanged += async preference =>
@@ -194,6 +196,7 @@ public partial class App : Application
             if (profile.Id == runtimeProfile.Profile.Id)
             {
                 administration.UpdateManagedConfigurationFiles(profile.Management.ManagedFiles);
+                viewModel.UpdateManagedConfigurationFiles(profile.Management.ManagedFiles);
             }
         };
         viewModel.EffectiveThemeChanged += settingsPage.ApplyTransparencyAvailability;

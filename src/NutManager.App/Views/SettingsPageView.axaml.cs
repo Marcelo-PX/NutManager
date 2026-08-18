@@ -43,7 +43,7 @@ public partial class SettingsPageView : UserControl
 
         GeneralPreferencesLayout.ColumnDefinitions = compact
             ? new ColumnDefinitions("*")
-            : new ColumnDefinitions("*,*");
+            : new ColumnDefinitions("220,220");
         GeneralPreferencesLayout.RowDefinitions = compact
             ? new RowDefinitions("Auto,12,Auto")
             : new RowDefinitions("Auto");
