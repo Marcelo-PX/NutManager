@@ -11,7 +11,7 @@ public sealed class DiagnosticsPageViewModelTests
     private static readonly ApplicationRuntimeInfo RuntimeInfo = new("10.2.3-test", ".NET test runtime", "Test OS", "TestArchitecture");
 
     [Fact]
-    public void ShowsDeterministicApplicationAndMockConfigurationInformation()
+    public void ShowsDeterministicApplicationInformationAndIgnoresLegacyMockPreference()
     {
         using var viewModel = CreateViewModel(new ApplicationSettings(
             pollingInterval: TimeSpan.FromSeconds(8),
@@ -24,7 +24,7 @@ public sealed class DiagnosticsPageViewModelTests
         Assert.Equal(".NET test runtime", viewModel.Runtime);
         Assert.Equal("Test OS", viewModel.OperatingSystem);
         Assert.Equal("TestArchitecture", viewModel.Architecture);
-        Assert.Equal("Dados simulados", viewModel.ModeText);
+        Assert.Equal("Servidor NUT real", viewModel.ModeText);
         Assert.Equal("monitor.example", viewModel.Host);
         Assert.Equal("3494", viewModel.Port);
         Assert.Equal("3 s", viewModel.ConnectionTimeoutText);

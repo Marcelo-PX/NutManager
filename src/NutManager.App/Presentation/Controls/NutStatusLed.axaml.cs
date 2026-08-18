@@ -22,7 +22,8 @@ public enum NutLedState
 /// The shell's status light. The breathing halo is the only continuous animation in the
 /// application and it is confined to this control: it runs on the render thread through the
 /// Composition API, so there is no timer and no UI-thread work per frame. Healthy, pending, and
-/// critical states breathe at their semantic cadence; unavailable stays still.
+/// critical states keep a static semantic glow; the healthy state alone breathes. The core remains
+/// stable throughout, so disabling motion never removes the state cue.
 /// </summary>
 public partial class NutStatusLed : UserControl
 {
@@ -80,10 +81,16 @@ public partial class NutStatusLed : UserControl
     {
         var period = PulsePeriodFor(State);
 
-        // The shadow colour lives in a style, so the state is handed over as a class.
-        Halo.Classes.Set("healthy", State == NutLedState.Healthy);
-        Halo.Classes.Set("pending", State == NutLedState.Pending);
-        Halo.Classes.Set("critical", State == NutLedState.Critical);
+        // The shadow colour lives in a style, so the state is handed to both halo layers as a class.
+        ApplyStateClasses(AmbientHalo);
+        ApplyStateClasses(Halo);
+        AmbientHalo.Opacity = State switch
+        {
+            NutLedState.Healthy => 0.58,
+            NutLedState.Pending => 0.42,
+            NutLedState.Critical => 0.48,
+            _ => 0
+        };
         Highlight.Opacity = State == NutLedState.Unavailable ? 0.18 : 0.34;
 
         if (period == TimeSpan.Zero)
@@ -98,9 +105,15 @@ public partial class NutStatusLed : UserControl
     public static TimeSpan PulsePeriodFor(NutLedState state) => state switch
     {
         NutLedState.Healthy => TimeSpan.FromSeconds(2.0),
-        NutLedState.Pending or NutLedState.Critical => TimeSpan.FromSeconds(3.2),
         _ => TimeSpan.Zero
     };
+
+    private void ApplyStateClasses(Border halo)
+    {
+        halo.Classes.Set("healthy", State == NutLedState.Healthy);
+        halo.Classes.Set("pending", State == NutLedState.Pending);
+        halo.Classes.Set("critical", State == NutLedState.Critical);
+    }
 
     private void StartPulse(TimeSpan period)
     {
@@ -120,34 +133,19 @@ public partial class NutStatusLed : UserControl
         scale.Duration = period;
         scale.IterationBehavior = AnimationIterationBehavior.Forever;
         scale.InsertKeyFrame(0f, new Vector3D(1, 1, 1), easing);
-        scale.InsertKeyFrame(0.5f, new Vector3D(1.45, 1.45, 1), easing);
+        scale.InsertKeyFrame(0.5f, new Vector3D(1.65, 1.65, 1), easing);
         scale.InsertKeyFrame(1f, new Vector3D(1, 1, 1), easing);
 
         var opacity = halo.Compositor.CreateScalarKeyFrameAnimation();
         opacity.Target = OpacityTarget;
         opacity.Duration = period;
         opacity.IterationBehavior = AnimationIterationBehavior.Forever;
-        opacity.InsertKeyFrame(0f, 0.3f, easing);
-        opacity.InsertKeyFrame(0.5f, 1f, easing);
-        opacity.InsertKeyFrame(1f, 0.3f, easing);
+        opacity.InsertKeyFrame(0f, 0.12f, easing);
+        opacity.InsertKeyFrame(0.5f, 0.82f, easing);
+        opacity.InsertKeyFrame(1f, 0.12f, easing);
 
         halo.StartAnimation(ScaleTarget, scale);
         halo.StartAnimation(OpacityTarget, opacity);
-
-        // The ball itself brightens with its glow. Without this the core sits at a flat value while
-        // the halo breathes around it, and the light reads as a separate ring rather than as one
-        // component lighting up. The swing is small so the dot never looks like it is switching off.
-        if (ElementComposition.GetElementVisual(Core) is { } core)
-        {
-            var coreOpacity = core.Compositor.CreateScalarKeyFrameAnimation();
-            coreOpacity.Target = OpacityTarget;
-            coreOpacity.Duration = period;
-            coreOpacity.IterationBehavior = AnimationIterationBehavior.Forever;
-            coreOpacity.InsertKeyFrame(0f, 0.72f, easing);
-            coreOpacity.InsertKeyFrame(0.5f, 1f, easing);
-            coreOpacity.InsertKeyFrame(1f, 0.72f, easing);
-            core.StartAnimation(OpacityTarget, coreOpacity);
-        }
 
         _pulseRunning = true;
     }
@@ -164,11 +162,7 @@ public partial class NutStatusLed : UserControl
             halo.Opacity = State == NutLedState.Unavailable ? 0f : 0.75f;
         }
 
-        if (ElementComposition.GetElementVisual(Core) is { } core)
-        {
-            core.StopAnimation(OpacityTarget);
-            core.Opacity = 1f;
-        }
+        // The core is intentionally never animated. It remains the stable, non-motion state cue.
     }
 
     private void ApplyHover(bool over)

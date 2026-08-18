@@ -122,6 +122,32 @@ public sealed class ManagedNutServerProfileTests
     }
 
     [Fact]
+    public async Task ServiceControlTransportPersistsAcrossApplicationRestarts()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new JsonManagedNutServerProfileStore(directory.Path);
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "Remote HTTPS agent",
+            new NutMonitoringProfile("gandalf.example"),
+            new NutManagementProfile(
+                NutManagementMode.Remote,
+                configurationTransport: RemoteConfigurationTransportKind.Smb,
+                smbSharePath: @"\\gandalf\etc",
+                agent: new NutAgentProfileSettings(
+                    NutAgentTransportKind.Https,
+                    "https://gandalf.example:5199/")),
+            ManagedNutServerAccessMode.Manage);
+
+        await store.SaveAsync(Document(profile), CancellationToken.None);
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(NutAgentTransportKind.Https, loaded!.ActiveProfile.Management.Agent.Transport);
+        Assert.Equal("https://gandalf.example:5199/", loaded.ActiveProfile.Management.Agent.HttpsEndpoint);
+    }
+
+    [Fact]
     public async Task SchemaVersionOneRemoteProfileMigratesToSessionOnlySshMetadata()
     {
         using var directory = new TemporaryDirectory();

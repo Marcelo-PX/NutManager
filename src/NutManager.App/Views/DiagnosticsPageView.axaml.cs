@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input.Platform;
@@ -11,6 +12,27 @@ public partial class DiagnosticsPageView : UserControl
     public DiagnosticsPageView()
     {
         InitializeComponent();
+        SizeChanged += (_, args) => ApplySummaryLayout(args.NewSize.Width);
+    }
+
+    private void ApplySummaryLayout(double width)
+    {
+        var columns = width >= 1120 ? 4 : width >= 650 ? 2 : 1;
+        DiagnosticsSummaryGrid.ColumnDefinitions = new ColumnDefinitions(string.Join(',', Enumerable.Repeat("*", columns)));
+        DiagnosticsSummaryGrid.RowDefinitions = new RowDefinitions(string.Join(',', Enumerable.Repeat("Auto", 4 / columns)));
+
+        var cards = new Control[]
+        {
+            ConnectionSummaryCard,
+            FreshnessSummaryCard,
+            DiscoverySummaryCard,
+            TechnicalSummaryCard
+        };
+        for (var index = 0; index < cards.Length; index++)
+        {
+            Grid.SetColumn(cards[index], index % columns);
+            Grid.SetRow(cards[index], index / columns);
+        }
     }
 
     private async void CopyDiagnosticsButton_OnClick(object? sender, RoutedEventArgs eventArgs)

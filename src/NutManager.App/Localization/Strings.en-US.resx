@@ -449,6 +449,14 @@
   <data name="Remote.Message.RequiresPassword" xml:space="preserve"><value>This profile requires SSH password authentication.</value></data>
   <data name="Remote.Message.SelectPrivateKey" xml:space="preserve"><value>Select a private key to connect.</value></data>
   <data name="Remote.Message.ProtectedCredentialUnavailable" xml:space="preserve"><value>The protected credential is unavailable.</value></data>
+  <data name="Remote.Message.AutoConnectCredentialRequired" xml:space="preserve"><value>Automatic connection requires this profile's protected SMB credential. Connect once and choose remember for future launches.</value></data>
+  <data name="Administration.Remote.SmbDirectory.Fixed" xml:space="preserve"><value>This directory is defined by the profile in Settings. NutManager only connects to and validates the saved location here.</value></data>
+  <data name="Administration.Remote.SafeWrite.Title" xml:space="preserve"><value>Safe replacement with File.Replace</value></data>
+  <data name="Administration.Remote.SafeWrite.Help" xml:space="preserve"><value>SMB writes require explicit authorization: the check creates temporary files, confirms atomic replacement with File.Replace, and removes every artifact before writes are enabled.</value></data>
+  <data name="Administration.Remote.SafeWrite.Verify" xml:space="preserve"><value>AUTHORIZE WRITE</value></data>
+  <data name="Administration.Remote.SafeWrite.Verified" xml:space="preserve"><value>AUTHORIZED</value></data>
+  <data name="Administration.Configuration.WriteAuthorizationRequired" xml:space="preserve"><value>Authorize safe writes in Remote access before saving changes to this file.</value></data>
+  <data name="Administration.Configuration.CapabilityRefreshFailed" xml:space="preserve"><value>Authorization was updated, but the current editor could not be reactivated. Select the file again.</value></data>
   <data name="Remote.Message.ConfigurePrivateKeyFirst" xml:space="preserve"><value>Configure the private key in the profile before using the saved passphrase.</value></data>
   <data name="Remote.Message.CredentialRemoved" xml:space="preserve"><value>The protected credential was removed.</value></data>
   <data name="Remote.Message.CredentialRemoveFailed" xml:space="preserve"><value>The protected credential could not be removed.</value></data>

@@ -6,10 +6,10 @@
              Height="32"
              ClipToBounds="False">
   <!--
-    One lit ball, not a stack of circles. Earlier versions layered a second and third ellipse
-    around the core to suggest a glow, but an ellipse has a hard edge: concentric ellipses read as
-    rings drawn around the dot rather than as light coming off it. The glow is a blurred drop
-    shadow instead, so it fades out with no contour of its own.
+    One lit ball with two blurred shadows. The ambient shadow keeps the current state legible at
+    every point in the cycle; the breathing shadow adds the PeaNUT-like healthy pulse without ever
+    fading or moving the core. Neither halo has a visible fill or hard edge, so they read as light
+    rather than as concentric rings.
 
     A shadow colour cannot come from a brush binding, so each state carries its own class. The halo
     is a bare 6px border with no fill - only its shadow is ever visible - and pulsing the ball means
@@ -57,6 +57,14 @@
   </UserControl.Styles>
 
   <Grid Width="32" Height="32" Background="Transparent" ClipToBounds="False">
+    <Border x:Name="AmbientHalo"
+            Classes="nut-led-halo"
+            Width="4"
+            Height="4"
+            Opacity="0.58"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            IsHitTestVisible="False" />
     <Border x:Name="Halo"
             Classes="nut-led-halo"
             Width="4"

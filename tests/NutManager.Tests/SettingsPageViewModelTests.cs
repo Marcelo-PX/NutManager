@@ -14,13 +14,12 @@ public sealed class SettingsPageViewModelTests
         var saved = new List<ApplicationSettings>();
         var confirmed = new ApplicationSettings(mockMode: true, pollingInterval: TimeSpan.FromSeconds(8));
         var viewModel = new SettingsPageViewModel(confirmed, new RecordingStore(saved));
-        viewModel.MockMode = false;
         viewModel.PollingIntervalSeconds = "99";
 
         await viewModel.PersistThemeAsync(ThemePreference.Dark);
 
         var persisted = Assert.Single(saved);
-        Assert.True(persisted.MockMode);
+        Assert.False(persisted.MockMode);
         Assert.Equal(TimeSpan.FromSeconds(8), persisted.PollingInterval);
         Assert.Equal(ThemePreference.Dark, persisted.Theme);
         Assert.Null(persisted.LegacyMonitoringEndpoint);
@@ -77,7 +76,7 @@ public sealed class SettingsPageViewModelTests
             pollingInterval: TimeSpan.FromSeconds(8),
             connectionTimeout: TimeSpan.FromSeconds(4),
             theme: ThemePreference.Light,
-            mockMode: true,
+            mockMode: false,
             language: UiLanguagePreference.EnUs,
             sidebarPreference: SidebarPreference.Collapsed);
         var viewModel = new SettingsPageViewModel(source, new RecordingStore(saved));

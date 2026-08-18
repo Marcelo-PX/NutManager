@@ -53,6 +53,28 @@ public sealed class RemoteManagementSessionViewModelTests
     }
 
     [Fact]
+    public async Task SuccessfulSshConnectionValidatesTheConfiguredDirectoryAutomatically()
+    {
+        var profile = RemoteProfile(ManagedNutServerAccessMode.ReadOnly);
+        var session = new FakeSession(RemoteNutPlatform.Windows);
+        var viewModel = new RemoteManagementSessionViewModel(
+            profile,
+            new FakeTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, session)));
+
+        Assert.False(viewModel.ShowsDirectoryBrowser);
+        await viewModel.ConnectWithPasswordAsync("fictional-password".AsMemory());
+
+        Assert.Equal(1, session.ValidateCalls);
+        Assert.Equal(RemoteNutConnectionState.Ready, viewModel.ConnectionState);
+        Assert.True(viewModel.IsDirectoryValidated);
+        Assert.True(viewModel.ShowsDirectoryBrowser);
+
+        await viewModel.DisconnectAsync();
+
+        Assert.False(viewModel.ShowsDirectoryBrowser);
+    }
+
+    [Fact]
     public async Task HostKeyMismatchNeverPersistsThePresentedKey()
     {
         var profile = RemoteProfile(ManagedNutServerAccessMode.Manage);
@@ -79,13 +101,17 @@ public sealed class RemoteManagementSessionViewModelTests
         viewModel.ConfigurationContextChanged += (pipeline, _, _) => configuredPipeline = pipeline;
 
         await viewModel.ConnectWithPasswordAsync("fictional-password".AsMemory());
-        await viewModel.ValidateCurrentDirectoryAsync();
         Assert.True(viewModel.CanReadConfiguration);
         Assert.False(viewModel.CanEditConfiguration);
+        Assert.True(viewModel.IsWriteCapabilityUnverified);
+        Assert.False(viewModel.IsWriteCapabilitySupported);
 
         await viewModel.ProbeWriteCapabilityAsync();
 
         Assert.True(viewModel.CanEditConfiguration);
+        Assert.False(viewModel.IsWriteCapabilityUnverified);
+        Assert.True(viewModel.IsWriteCapabilitySupported);
+        Assert.False(viewModel.IsWriteCapabilityRejected);
         Assert.NotNull(configuredPipeline);
         Assert.Equal(1, session.ProbeCalls);
     }
@@ -105,6 +131,7 @@ public sealed class RemoteManagementSessionViewModelTests
         await viewModel.ProbeWriteCapabilityAsync();
 
         Assert.True(viewModel.IsWriteCapabilityCritical);
+        Assert.True(viewModel.IsWriteCapabilityRejected);
         Assert.False(viewModel.CanEditConfiguration);
         Assert.Contains("CRÍTICO", viewModel.WriteCapabilityCriticalText);
     }
@@ -168,6 +195,7 @@ public sealed class RemoteManagementSessionViewModelTests
 
         Assert.True(viewModel.IsSmb);
         Assert.False(viewModel.IsSshSftp);
+        Assert.False(viewModel.ShowsDirectoryBrowser);
         Assert.False(viewModel.CanTrustHostKey);
         Assert.Equal(1, transport.ConnectCalls);
         Assert.IsType<SmbRemoteNutConnectionRequest>(transport.LastRequest);
@@ -188,7 +216,7 @@ public sealed class RemoteManagementSessionViewModelTests
         Assert.Equal(1, transport.ConnectCalls);
         Assert.Equal(1, credentials.WriteCalls);
         Assert.Equal(RemoteCredentialKind.SshPassword, credentials.LastKind);
-        Assert.Equal(RemoteNutConnectionState.Connected, viewModel.ConnectionState);
+        Assert.Equal(RemoteNutConnectionState.Ready, viewModel.ConnectionState);
     }
 
     [Fact]
@@ -340,7 +368,7 @@ public sealed class RemoteManagementSessionViewModelTests
         await viewModel.ConnectWithPrivateKeyAsync(profile.Management.SshPrivateKeyPath!);
 
         Assert.Equal(1, transport.ConnectCalls);
-        Assert.Equal(RemoteNutConnectionState.Connected, viewModel.ConnectionState);
+        Assert.Equal(RemoteNutConnectionState.Ready, viewModel.ConnectionState);
     }
 
     [Fact]
@@ -359,6 +387,87 @@ public sealed class RemoteManagementSessionViewModelTests
 
         Assert.Equal(0, credentials.ContainsCalls);
         Assert.Contains("Nenhuma credencial", viewModel.StoredCredentialText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StartupRestoresCurrentIdentitySmbAndValidatesTheSavedDirectory()
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "SMB",
+            new NutMonitoringProfile("monitor.example"),
+            new NutManagementProfile(
+                NutManagementMode.Remote,
+                configurationTransport: RemoteConfigurationTransportKind.Smb,
+                smbSharePath: @"\\server\share"),
+            ManagedNutServerAccessMode.Manage);
+        var session = new FakeSession(RemoteNutPlatform.Unknown, new SmbRemoteNutConfigurationPathPolicy(@"\\server\share"));
+        var transport = new FakeSmbTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, session));
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport, credentialStore: new FakeCredentialStore());
+
+        await viewModel.TryConnectAndValidateConfiguredSmbAsync();
+
+        Assert.Equal(1, transport.ConnectCalls);
+        Assert.Equal(1, session.ValidateCalls);
+        Assert.True(viewModel.IsDirectoryValidated);
+        Assert.False(viewModel.CanEditConfiguration);
+        Assert.Equal(0, session.ProbeCalls);
+    }
+
+    [Fact]
+    public async Task StartupNeverPromptsOrConnectsExplicitSmbWithoutAProtectedCredential()
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "SMB",
+            new NutMonitoringProfile("monitor.example"),
+            new NutManagementProfile(
+                NutManagementMode.Remote,
+                configurationTransport: RemoteConfigurationTransportKind.Smb,
+                smbSharePath: @"\\server\share",
+                smbAuthenticationMode: SmbAuthenticationMode.ExplicitCredentials,
+                smbUsername: @"DOMAIN\operator"),
+            ManagedNutServerAccessMode.Manage);
+        var transport = new FakeSmbTransport(new RemoteNutConnectionResult(
+            RemoteNutConnectionState.Connected,
+            new FakeSession(RemoteNutPlatform.Unknown, new SmbRemoteNutConfigurationPathPolicy(@"\\server\share"))));
+        var credentials = new FakeCredentialStore();
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport, credentialStore: credentials);
+
+        await viewModel.TryConnectAndValidateConfiguredSmbAsync();
+
+        Assert.Equal(0, transport.ConnectCalls);
+        Assert.Equal(0, credentials.ReadCalls);
+        Assert.Contains("credencial SMB protegida", viewModel.StatusMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task StartupReusesAProtectedSmbCredentialExactlyOnceAndValidates()
+    {
+        var profile = new ManagedNutServerProfile(
+            Guid.NewGuid(),
+            "SMB",
+            new NutMonitoringProfile("monitor.example"),
+            new NutManagementProfile(
+                NutManagementMode.Remote,
+                configurationTransport: RemoteConfigurationTransportKind.Smb,
+                smbSharePath: @"\\server\share",
+                smbAuthenticationMode: SmbAuthenticationMode.ExplicitCredentials,
+                smbUsername: @"DOMAIN\operator"),
+            ManagedNutServerAccessMode.Manage);
+        var credentials = new FakeCredentialStore();
+        await credentials.WriteAsync(profile.Id, RemoteCredentialKind.SmbPassword, "fictional-password".AsMemory());
+        var session = new FakeSession(RemoteNutPlatform.Unknown, new SmbRemoteNutConfigurationPathPolicy(@"\\server\share"));
+        var transport = new FakeSmbTransport(new RemoteNutConnectionResult(RemoteNutConnectionState.Connected, session));
+        var viewModel = new RemoteManagementSessionViewModel(profile, transport, credentialStore: credentials);
+
+        await viewModel.TryConnectAndValidateConfiguredSmbAsync();
+
+        Assert.Equal(1, transport.ConnectCalls);
+        Assert.Equal(1, credentials.ReadCalls);
+        Assert.Equal(1, session.ValidateCalls);
+        Assert.Equal(0, session.ProbeCalls);
+        Assert.True(viewModel.IsDirectoryValidated);
     }
 
     [Fact]
@@ -454,9 +563,14 @@ public sealed class RemoteManagementSessionViewModelTests
         public bool IsSafeWriteCapabilityValidFor(string configurationDirectory) => true;
         public string HomeDirectory => "/etc/nut";
         public int ProbeCalls { get; private set; }
+        public int ValidateCalls { get; private set; }
         public RemoteNutWriteCapabilityResult? ProbeResult { get; init; }
         public Task<RemoteNutDirectoryListing> BrowseDirectoryAsync(string directory, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutDirectoryListing(directory, "/etc", []));
-        public Task<RemoteNutDirectoryValidationResult> ValidateConfigurationDirectoryAsync(string directory, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutDirectoryValidationResult(RemoteNutTransportStatus.Success, directory, ["nut.conf"]));
+        public Task<RemoteNutDirectoryValidationResult> ValidateConfigurationDirectoryAsync(string directory, CancellationToken cancellationToken = default)
+        {
+            ValidateCalls++;
+            return Task.FromResult(new RemoteNutDirectoryValidationResult(RemoteNutTransportStatus.Success, directory, ["nut.conf"]));
+        }
         public Task<RemoteNutFileReadResult> ReadFileAsync(string path, CancellationToken cancellationToken = default) => Task.FromResult(new RemoteNutFileReadResult(RemoteNutTransportStatus.NotFound));
         public Task<RemoteNutWriteCapabilityResult> ProbeSafeWriteCapabilityAsync(string directory, CancellationToken cancellationToken = default)
         {

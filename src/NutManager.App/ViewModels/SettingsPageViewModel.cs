@@ -342,13 +342,13 @@ public sealed partial class SettingsPageViewModel : PageViewModel
                 });
             }
 
+            if (HasStoredAgentCredential) return Localizer.Get("Agent.Credential.Stored");
+
             if (ValidatedAgentAccount is { } validated)
             {
                 var key = RememberAgentCredential ? "Agent.Credential.ValidatedPending" : "Agent.Credential.ValidatedSession";
                 return string.Format(System.Globalization.CultureInfo.CurrentCulture, Localizer.Get(key), validated);
             }
-
-            if (HasStoredAgentCredential) return Localizer.Get("Agent.Credential.Stored");
 
             return string.IsNullOrWhiteSpace(ProfileDraft.AgentUsername)
                 ? Localizer.Get("Agent.Account.NotConfigured")
@@ -488,7 +488,6 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string GeneralSettingsTitle => Localizer.Get("Settings.GeneralTitle");
     public string ConnectionTimeoutLabel => Localizer.Get("Settings.ConnectionTimeout");
     public string PollingIntervalLabel => Localizer.Get("Settings.PollingInterval");
-    public string MockModeLabel => Localizer.Get("Settings.MockMode");
     public string SaveSettingsText => Localizer.Get("Settings.Save");
     public string SavingText => Localizer.Get("Common.Saving");
     public string SettingsSavedText => Localizer.Get("Settings.SaveSuccess");
@@ -503,7 +502,6 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     [ObservableProperty] private string _pollingIntervalSeconds = "5";
     [ObservableProperty] private string _connectionTimeoutSeconds = "5";
-    [ObservableProperty] private bool _mockMode;
     [ObservableProperty] private ThemeOption? _selectedThemeOption;
     [ObservableProperty] private PresentationOption<UiLanguagePreference>? _selectedLanguageOption;
     [ObservableProperty] private PresentationOption<SidebarPreference>? _selectedSidebarOption;
@@ -1015,12 +1013,47 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             {
                 ValidatedAgentAccount = result.Username;
                 ProfileDraft.AgentUsername = result.Username;
+
+                // An existing, unchanged profile already owns this exact endpoint/account binding.
+                // Persist immediately when requested so closing the application after authenticating
+                // cannot silently discard the validated credential. New profiles and edited agent
+                // identities still wait for Save, which prevents orphaned or mis-bound secrets.
+                if (RememberAgentCredential &&
+                    _credentialStore is not null &&
+                    CanPersistAgentCredentialImmediately(profileId, endpoint, result.Username!))
+                {
+                    var persisted = await _agentCredentials.PersistAsync(
+                        profileId,
+                        result.Username!,
+                        _credentialStore,
+                        cancellationToken);
+                    HasStoredAgentCredential = persisted;
+                    if (!persisted)
+                    {
+                        ProfileStatusMessage = Localizer.Get("Agent.Credential.SaveFailed");
+                    }
+                }
             }
         }
         finally
         {
             if (generation == _agentCredentialGeneration) IsAuthenticatingAgentCredential = false;
         }
+    }
+
+    private bool CanPersistAgentCredentialImmediately(Guid profileId, string endpoint, string username)
+    {
+        if (_isCreatingProfile || _draftBaseProfile?.Id != profileId)
+        {
+            return false;
+        }
+
+        var saved = _confirmedProfiles.Profiles.SingleOrDefault(profile => profile.Id == profileId);
+        return saved is not null &&
+            saved.Management.Agent.Transport == NutAgentTransportKind.Https &&
+            saved.Management.Agent.Authentication == NutAgentAuthenticationMode.AlternateWindowsAccount &&
+            string.Equals(saved.Management.Agent.HttpsEndpoint, endpoint, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(saved.Management.Agent.Username, username, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -1142,7 +1175,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         pollingInterval: TimeSpan.FromSeconds(double.Parse(PollingIntervalSeconds, CultureInfo.InvariantCulture)),
         connectionTimeout: TimeSpan.FromSeconds(double.Parse(ConnectionTimeoutSeconds, CultureInfo.InvariantCulture)),
         theme: SelectedThemeOption?.Preference ?? ThemePreference.System,
-        mockMode: MockMode,
+        mockMode: false,
         language: SelectedLanguageOption?.Value ?? UiLanguagePreference.PtBr,
         sidebarPreference: SelectedSidebarOption?.Value ?? SidebarPreference.Expanded);
 
@@ -1150,7 +1183,6 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     {
         PollingIntervalSeconds = settings.PollingInterval.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
         ConnectionTimeoutSeconds = settings.ConnectionTimeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
-        MockMode = settings.MockMode;
         Localizer = new NutManagerLocalizer(settings.Language);
     }
 
@@ -1291,7 +1323,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             _confirmedSettings.PollingInterval,
             _confirmedSettings.ConnectionTimeout,
             theme ?? _confirmedSettings.Theme,
-            _confirmedSettings.MockMode,
+            mockMode: false,
             language ?? _confirmedSettings.Language,
             sidebarPreference ?? _confirmedSettings.SidebarPreference,
             backgroundTransparency: backgroundTransparency ?? _confirmedSettings.BackgroundTransparency);

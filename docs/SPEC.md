@@ -88,7 +88,7 @@ Managed profiles separate monitoring from management metadata:
 - monitoring stores the NUT TCP host, port, and optional preferred UPS;
 - management is Local or Remote and has an explicit access mode.
 
-A remote profile can monitor through NUT TCP and manage configuration only through an explicit SSH/SFTP or SMB file session; it never falls back to local management. The user manually browses and validates the remote directory, with no server/share autodiscovery. SSH host keys use explicit SHA-256 fingerprint pinning; an unknown key requires review and a mismatch is rejected. SMB uses an explicit UNC share and current-identity or session-only explicit authentication. A successful explicit connection may opt in to save only its secret in Windows Credential Manager; the profile JSON stores no secret.
+A remote profile can monitor through NUT TCP and manage configuration only through an explicit SSH/SFTP or SMB file session; it never falls back to local management. The user supplies the directory without server/share autodiscovery; NutManager performs its read-only validation automatically after a successful connection or browse. SSH host keys use explicit SHA-256 fingerprint pinning; an unknown key requires review and a mismatch is rejected. SMB uses an explicit UNC share and current-identity or session-only explicit authentication. A successful explicit connection may opt in to save only its secret in Windows Credential Manager; the profile JSON stores no secret.
 
 Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can write only after an explicit safe-write capability probe: Windows/OpenSSH for SSH/SFTP or verified `File.Replace` behavior for SMB. Remote service control, ACL, COM-port, and driver administration remain unavailable.
 
@@ -100,7 +100,7 @@ Remote ReadOnly profiles can inspect configuration. Remote Manage profiles can w
 - syntax-preserving configuration parsing plus dedicated graphical forms for all five supported files;
 - preview, backup, safe write, recovery, and rollback;
 - Windows local service, UAC, ACL, process, Event Log, COM, and driver diagnostics;
-- SSH/SFTP and SMB remote configuration management with manual directory validation; SSH uses pinned host keys and SMB uses a share-root boundary;
+- SSH/SFTP and SMB remote configuration management with automatic read-only directory validation; SSH uses pinned host keys and SMB uses a share-root boundary;
 - responsive shell, shared design system, and `pt-BR`/`en-US` localization.
 
 ### Next

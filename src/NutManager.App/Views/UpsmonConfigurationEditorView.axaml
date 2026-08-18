@@ -143,19 +143,23 @@
       </StackPanel>
     </Border>
 
-    <ItemsControl ItemsSource="{Binding BasicFields}">
-      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <Border Classes="nut-card">
+      <StackPanel Spacing="18">
+        <ItemsControl ItemsSource="{Binding BasicFields}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
-    <ItemsControl ItemsSource="{Binding AdvancedFields}">
-      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+        <ItemsControl ItemsSource="{Binding AdvancedFields}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
 
     <Border Classes="nut-card" BorderBrush="{DynamicResource NutWarningBrush}" Padding="12" IsVisible="{Binding ShowExecWithoutCommandWarning}">
       <StackPanel Orientation="Horizontal" Spacing="9">

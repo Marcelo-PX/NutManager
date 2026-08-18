@@ -21,15 +21,21 @@
       squares there is nothing worth reclaiming, and a switcher that can hide the thing you switch
       with is a way to get lost rather than a way to save room.
     -->
-    <Grid x:Name="ConfigurationEditorLayout" RowDefinitions="Auto,Auto" IsVisible="{Binding IsConfigurationEditorVisible}">
+    <Grid x:Name="ConfigurationEditorLayout"
+          ColumnDefinitions="Auto,16,*"
+          RowDefinitions="Auto">
       <!--
         The frame owns the surface, the outline and the rounding; the tiles inside are transparent
         and draw only their own right-hand divider. ClipToBounds plus the negative right margin is
         what removes the last tile's divider: it falls on the clip boundary and is cut, which is
         tidier than asking a style to know which item is last.
       -->
-      <Border x:Name="ConfigurationFilesPanel" Grid.Row="0" Classes="nut-file-strip-frame">
-        <ItemsControl ItemsSource="{Binding ConfigurationFiles}" Classes="nut-file-strip">
+      <StackPanel x:Name="ConfigurationFilesRegion"
+                  Grid.Column="0"
+                  Spacing="8"
+                  IsVisible="{Binding IsConfigurationEditorVisible}">
+        <Border x:Name="ConfigurationFilesPanel" Classes="nut-file-strip-frame">
+          <ItemsControl ItemsSource="{Binding ConfigurationFiles}" Classes="nut-file-strip">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
@@ -44,7 +50,7 @@
               <Button Classes="nut-file-tile"
                       Classes.selected="{Binding IsSelected}"
                       Click="ConfigurationFileTile_OnClick"
-                      IsEnabled="{Binding CanLoad}"
+                      IsEnabled="{Binding IsManaged}"
                       AutomationProperties.Name="{Binding AccessibleName}"
                       ToolTip.Tip="{Binding AccessibleName}">
                 <Panel>
@@ -77,15 +83,31 @@
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </Border>
+          </ItemsControl>
+        </Border>
 
-      <TextBlock Grid.Row="1"
-                 Text="{Binding Strings[Administration.Configuration.NoFiles]}"
-                 IsVisible="{Binding IsConfigurationFileListEmpty}"
-                 Classes="nut-metadata"
-                 Margin="0,8,0,0"
-                 TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Strings[Administration.Configuration.NoFiles]}"
+                   IsVisible="{Binding IsConfigurationFileListEmpty}"
+                   Classes="nut-metadata"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+
+      <!-- On a wide page this compact context sits beside the file switcher. The code-behind moves
+           it below only when the available width cannot keep both regions readable. Its existing
+           visibility condition is unchanged. -->
+      <Border x:Name="RemoteConfigurationCard"
+              Grid.Column="2"
+              Classes="nut-card"
+              Padding="14,12"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
+              IsVisible="{Binding IsRemoteManagementProfile}">
+        <StackPanel Spacing="5">
+          <TextBlock Text="{Binding Strings[Administration.Configuration.RemoteContext]}" Classes="nut-section-title" />
+          <TextBlock Text="{Binding ManagementAvailabilityText}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Strings[Administration.Configuration.RemoteAccessHint]}" Classes="nut-metadata" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
     </Grid>
 
     <!-- The editor panel is a plain container: the form supplies its own sections, so nesting a
@@ -120,14 +142,6 @@
               <Button Content="{Binding Strings[Common.SelectFolder]}" Click="SelectDirectoryButton_OnClick" IsEnabled="{Binding CanChangeInstallation}" />
             </StackPanel>
           </WrapPanel>
-        </Border>
-
-        <Border Classes="nut-card" IsVisible="{Binding IsRemoteManagementProfile}">
-          <StackPanel Spacing="6">
-            <TextBlock Text="{Binding Strings[Administration.Configuration.RemoteContext]}" Classes="nut-section-title" />
-            <TextBlock Text="{Binding ManagementAvailabilityText}" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding Strings[Administration.Configuration.RemoteAccessHint]}" Classes="nut-metadata" TextWrapping="Wrap" />
-          </StackPanel>
         </Border>
 
           <StackPanel IsVisible="{Binding IsEditorPlaceholderVisible}" Spacing="4">
@@ -168,6 +182,18 @@
                   </StackPanel>
                 </StackPanel>
               </Grid>
+              <Border Classes="nut-card"
+                      BorderBrush="{DynamicResource NutWarningBrush}"
+                      Padding="12"
+                      IsVisible="{Binding RequiresRemoteWriteAuthorization}">
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <PathIcon Data="{DynamicResource NutIconWarning}" Classes="warning" Width="15" Height="15" VerticalAlignment="Top" />
+                  <TextBlock Text="{Binding Strings[Administration.Configuration.WriteAuthorizationRequired]}"
+                             Classes="warning"
+                             FontSize="12.5"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
             </StackPanel>
             <ContentControl Content="{Binding UpsConfigurationEditor}" IsVisible="{Binding IsUpsConfigurationEditorVisible}" IsEnabled="{Binding CanEditEntries}">
               <ContentControl.DataTemplates>

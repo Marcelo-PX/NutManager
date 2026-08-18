@@ -55,6 +55,55 @@ public sealed class AdministrationPageViewModelTests
     }
 
     [Fact]
+    public async Task DisabledCurrentFileMigratesToTheFirstManagedLoadableFile()
+    {
+        var pipeline = new TestPipeline();
+        pipeline.SetFile("/session/nut/etc/nut.conf", NutConfigurationFileKind.NutConf, "MODE=standalone\n");
+        var context = CreateProfileContext(
+            NutManagementMode.Local,
+            ManagedNutServerAccessMode.Manage,
+            ManagedNutConfigurationFiles.Create([NutConfigurationFileKind.NutConf]));
+        var viewModel = new AdministrationPageViewModel(
+            new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "nut.conf", "ups.conf")),
+            pipeline,
+            profileContext: context);
+        await viewModel.InitializeAsync();
+        var disabled = viewModel.ConfigurationFiles.Single(file => file.FileKind == NutConfigurationFileKind.UpsConf);
+
+        // Simulates restored/stale navigation state after the profile stopped managing ups.conf.
+        viewModel.SelectedFile = disabled;
+        await viewModel.SelectFileAsync(disabled);
+
+        Assert.Equal(NutConfigurationFileKind.NutConf, viewModel.SelectedFile?.FileKind);
+        Assert.True(viewModel.SelectedFile?.IsManaged);
+        Assert.True(viewModel.HasLoadedFile);
+        Assert.Equal(1, pipeline.LoadCalls);
+    }
+
+    [Fact]
+    public async Task NoManagedFilesClearAnInvalidSelectionWithoutLoadingAnything()
+    {
+        var pipeline = new TestPipeline();
+        var context = CreateProfileContext(
+            NutManagementMode.Local,
+            ManagedNutServerAccessMode.Manage,
+            ManagedNutConfigurationFiles.Create([]));
+        var viewModel = new AdministrationPageViewModel(
+            new TestInstallationDetector(CreateInstallation("/session/nut", "/session/nut/etc", "nut.conf")),
+            pipeline,
+            profileContext: context);
+        await viewModel.InitializeAsync();
+        var disabled = viewModel.ConfigurationFiles[0];
+
+        viewModel.SelectedFile = disabled;
+        await viewModel.SelectFileAsync(disabled);
+
+        Assert.Null(viewModel.SelectedFile);
+        Assert.False(viewModel.HasLoadedFile);
+        Assert.Equal(0, pipeline.LoadCalls);
+    }
+
+    [Fact]
     public async Task UpsdConfUsesDedicatedSemanticEditorAndPreservesUnknownContent()
     {
         const string text = "# keep this\nLISTEN 127.0.0.1\nLISTEN ::1\nunknown future value\n";
@@ -1124,15 +1173,18 @@ public sealed class AdministrationPageViewModelTests
         AssertClean();
     }
 
-    private static ManagedNutServerRuntimeContext CreateProfileContext(NutManagementMode managementMode, ManagedNutServerAccessMode accessMode)
+    private static ManagedNutServerRuntimeContext CreateProfileContext(
+        NutManagementMode managementMode,
+        ManagedNutServerAccessMode accessMode,
+        ManagedNutConfigurationFiles? managedFiles = null)
     {
         var profile = new ManagedNutServerProfile(
             Guid.NewGuid(),
             "Test profile",
             new NutMonitoringProfile("monitor.example", 3493, "ups-a"),
             managementMode == NutManagementMode.Local
-                ? new NutManagementProfile(NutManagementMode.Local)
-                : new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut"),
+                ? new NutManagementProfile(NutManagementMode.Local, managedFiles: managedFiles)
+                : new NutManagementProfile(NutManagementMode.Remote, "management.example", "/etc/nut", managedFiles: managedFiles),
             accessMode);
         var profiles = new ManagedNutServerProfiles(ManagedNutServerProfiles.CurrentSchemaVersion, profile.Id, [profile]);
         return ManagedNutServerRuntimeContext.FromProfiles(profiles, new ApplicationSettings());

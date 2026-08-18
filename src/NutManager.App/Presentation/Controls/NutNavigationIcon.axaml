@@ -4,7 +4,8 @@
              x:Class="NutManager.App.Presentation.Controls.NutNavigationIcon"
              x:Name="Root"
              Width="24"
-             Height="24">
+             Height="24"
+             ClipToBounds="False">
   <!--
     One glyph per navigation destination, drawn by the icon library.
 
@@ -30,7 +31,14 @@
     The Panel carries the name, not the Path: it is exactly 20x20 whatever the glyph's aspect ratio
     turns out to be, so the compositor's centre point is genuinely the centre of what turns.
   -->
-  <Grid Width="24" Height="24">
+  <!--
+    The viewport is 32 px while the layout footprint remains 24 px through the symmetric negative
+    margin. A 20 px square needs 28.3 px at the cog's 45-degree point, and the other glyphs can
+    scale to almost 24 px when their compositor motion and hover transform overlap. Keeping that
+    ink inside a 32 px viewport prevents clipping without shrinking the drawings, widening a row,
+    or moving its label.
+  -->
+  <Grid Width="32" Height="32" Margin="-4" ClipToBounds="False">
 
     <!-- Overview: the dashboard breathes, the way a surface with live figures on it would. -->
     <Grid Classes="nut-icon-motion nut-icon-lift" IsVisible="{Binding IsOverview, ElementName=Root}">

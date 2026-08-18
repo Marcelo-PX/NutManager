@@ -11,7 +11,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IReadOnlyDictionary<AppPage, PageViewModel> _pages;
     private readonly OverviewPageViewModel _overviewPage;
     private readonly SettingsPageViewModel _settingsPage;
-    private readonly bool _isMockModeConfigured;
     private readonly string? _activeEndpoint;
     private readonly string? _activeProfileName;
     private readonly NutManagementMode? _managementMode;
@@ -51,7 +50,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _overviewPage = overviewPage;
         _settingsPage = settingsPage ?? new SettingsPageViewModel();
-        _isMockModeConfigured = mockMode;
         _activeEndpoint = string.IsNullOrWhiteSpace(activeEndpoint) ? null : activeEndpoint;
         _activeProfileName = string.IsNullOrWhiteSpace(activeProfileName) ? null : activeProfileName;
         _managementMode = managementMode;
@@ -100,7 +98,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsConnectionPending));
                 OnPropertyChanged(nameof(IsConnectionCritical));
                 OnPropertyChanged(nameof(IsConnectionUnavailable));
-                OnPropertyChanged(nameof(IsMockMode));
             }
         };
         UpdateNavigationSelection();
@@ -123,11 +120,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (_accessMode is { } access)
             rows.Add(new(Localizer.Get("Administration.Context.Access"),
                 Localizer.Get(access == ManagedNutServerAccessMode.Manage ? "Access.Manage" : "Access.ReadOnly")));
-        rows.Add(new(
-            Localizer.Get("Overview.MockState"),
-            Localizer.Get(IsMockMode ? "Common.Enabled" : "Common.Disabled"),
-            IsMockMode));
-
         var administrationPage = _pages[AppPage.Administration] as AdministrationPageViewModel;
         var shortcuts = new List<OverviewShortcutViewModel>
         {
@@ -218,7 +210,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ShellLayoutState.Medium => new Thickness(20),
         _ => new Thickness(14)
     };
-    public bool IsMockMode => _isMockModeConfigured || _overviewPage.IsSimulated;
+    public bool IsMockMode => false;
     public string? ActiveUpsName => _overviewPage.Snapshot?.Identity.Name ?? _preferredUpsName;
     public string ConnectionDetailText => _activeEndpoint is null
         ? Localizer.Get("Shell.NoActiveProfile")

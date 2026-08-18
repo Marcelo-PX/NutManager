@@ -449,6 +449,14 @@
   <data name="Remote.Message.RequiresPassword" xml:space="preserve"><value>Este perfil exige autenticação SSH por senha.</value></data>
   <data name="Remote.Message.SelectPrivateKey" xml:space="preserve"><value>Selecione uma chave privada para conectar.</value></data>
   <data name="Remote.Message.ProtectedCredentialUnavailable" xml:space="preserve"><value>A credencial protegida não está disponível.</value></data>
+  <data name="Remote.Message.AutoConnectCredentialRequired" xml:space="preserve"><value>A conexão automática requer a credencial SMB protegida deste perfil. Conecte uma vez e escolha lembrar para os próximos inícios.</value></data>
+  <data name="Administration.Remote.SmbDirectory.Fixed" xml:space="preserve"><value>Este diretório é definido pelo perfil em Configurações. Aqui o NutManager apenas conecta e valida o local salvo.</value></data>
+  <data name="Administration.Remote.SafeWrite.Title" xml:space="preserve"><value>Substituição segura com File.Replace</value></data>
+  <data name="Administration.Remote.SafeWrite.Help" xml:space="preserve"><value>A escrita SMB requer autorização explícita: a verificação cria arquivos temporários, confirma a substituição atômica com File.Replace e remove todos os artefatos antes de liberar gravações.</value></data>
+  <data name="Administration.Remote.SafeWrite.Verify" xml:space="preserve"><value>AUTORIZAR ESCRITA</value></data>
+  <data name="Administration.Remote.SafeWrite.Verified" xml:space="preserve"><value>AUTORIZADO</value></data>
+  <data name="Administration.Configuration.WriteAuthorizationRequired" xml:space="preserve"><value>Autorize a escrita segura na seção Acesso remoto para salvar alterações neste arquivo.</value></data>
+  <data name="Administration.Configuration.CapabilityRefreshFailed" xml:space="preserve"><value>A autorização foi atualizada, mas não foi possível reativar o editor atual. Selecione o arquivo novamente.</value></data>
   <data name="Remote.Message.ConfigurePrivateKeyFirst" xml:space="preserve"><value>Configure a chave privada no perfil antes de usar a passphrase salva.</value></data>
   <data name="Remote.Message.CredentialRemoved" xml:space="preserve"><value>A credencial protegida foi removida.</value></data>
   <data name="Remote.Message.CredentialRemoveFailed" xml:space="preserve"><value>Não foi possível remover a credencial protegida.</value></data>

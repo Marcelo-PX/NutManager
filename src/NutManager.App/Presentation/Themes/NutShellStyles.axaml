@@ -232,9 +232,8 @@
   </Style>
 
   <!--
-    Navigation icon states. Colour eases through a brush transition and the one-pixel lift through
-    a thickness transition; selection is still carried by the accent bar and the label weight, so
-    the motion is reinforcement rather than the signal itself.
+    Navigation icon states. Colour eases through a brush transition; selection is still carried by
+    the accent bar and the label weight, so motion reinforces the state without shifting its axis.
   -->
   <!--
     ==================== Navigation glyph states ====================
@@ -247,26 +246,13 @@
     RenderTransform, for which no animator is registered. Transitions are state driven, so a
     sidebar at rest costs nothing.
   -->
-  <Style Selector="Grid.nut-icon-motion, Path.nut-icon-motion">
-    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+  <!--
+    The wrapper never translates or scales. Every hover motion below is centred on the fixed 20 px
+    glyph through the compositor; composing a second RenderTransform on the 32 px viewport changed
+    the apparent axis when hover began and made an otherwise aligned icon jump sideways.
+  -->
+  <Style Selector="Grid.nut-icon-motion">
     <Setter Property="RenderTransform" Value="none" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut" />
-      </Transitions>
-    </Setter>
-  </Style>
-
-  <!-- Each family moves in the way its object would. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-lift">
-    <Setter Property="RenderTransform" Value="translateY(-1px) scale(1.04)" />
-  </Style>
-  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-nudge">
-    <Setter Property="RenderTransform" Value="scale(1.03)" />
-  </Style>
-  <!-- The gear's turn is a compositor loop on the glyph itself, so the grid only lends the scale. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-gear">
-    <Setter Property="RenderTransform" Value="scale(1.03)" />
   </Style>
   <!--
     Looping motion cannot be expressed here. A keyframe Animation targeting RenderTransform throws
@@ -419,9 +405,11 @@
     <Setter Property="Padding" Value="0" />
   </Style>
   <Style Selector="ListBox.nut-section-tabs ListBoxItem">
-    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="Margin" Value="0" />
     <Setter Property="Padding" Value="13,9" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="MinHeight" Value="46" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
   </Style>
   <Style Selector="ListBox.nut-section-tabs ListBoxItem /template/ ContentPresenter">
@@ -474,7 +462,7 @@
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="20" />
     <Setter Property="ClipToBounds" Value="True" />
     <Setter Property="HorizontalAlignment" Value="Left" />
     <Setter Property="Transitions">
@@ -561,7 +549,9 @@
     <Setter Property="Background" Value="{DynamicResource NutAccentBrush}" />
   </Style>
   <Style Selector="Button.nut-file-tile:disabled">
-    <Setter Property="Opacity" Value="0.45" />
+    <!-- Muted enough to communicate profile scope, but still legible as an available module. -->
+    <Setter Property="Opacity" Value="0.62" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
   </Style>
 
   <!-- Kept as a class so the two label lines are addressable as one unit. -->

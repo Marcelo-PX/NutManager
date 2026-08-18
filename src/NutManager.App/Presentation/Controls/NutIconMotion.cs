@@ -21,7 +21,6 @@ namespace NutManager.App.Presentation.Controls;
 /// </summary>
 public static class NutIconMotion
 {
-    private const string OffsetProperty = "Offset";
     private const string OpacityProperty = "Opacity";
     private const string RotationProperty = "RotationAngle";
     private const string ScaleProperty = "Scale";
@@ -107,11 +106,12 @@ public static class NutIconMotion
     public static void Reset(Visual target, double restingOpacity)
     {
         if (Visual(target) is not { } visual) return;
-        visual.StopAnimation(OffsetProperty);
         visual.StopAnimation(OpacityProperty);
         visual.StopAnimation(RotationProperty);
         visual.StopAnimation(ScaleProperty);
-        visual.Offset = new Vector3D(0, 0, 0);
+        // Offset is owned by Avalonia's layout compositor. Writing zero here relocates a centred
+        // 20 px glyph to the top-left of its 32 px animation viewport as soon as hover changes the
+        // composition state. Only properties animated by this helper are reset.
         visual.RotationAngle = 0f;
         visual.Scale = new Vector3D(1, 1, 1);
         visual.Opacity = (float)restingOpacity;

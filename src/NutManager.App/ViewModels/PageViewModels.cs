@@ -522,14 +522,6 @@ public sealed partial class OverviewPageViewModel : PageViewModel
             });
 }
 
-/// <summary>Diagnostics surfaces that map to a real NutManager capability.</summary>
-public enum DiagnosticsTab
-{
-    Overview,
-    Connectivity,
-    Environment
-}
-
 public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposable
 {
     private readonly ApplicationSettings _settings;
@@ -586,33 +578,6 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
 
     public NutManagerLocalizer Strings { get; }
 
-    // ==================== T27A diagnostics presentation ====================
-    // Only tabs backed by a real capability exist. NutManager has no quick-test runner, no event
-    // log reader and no latency history, so no such surface is fabricated here.
-
-    [ObservableProperty]
-    private DiagnosticsTab _selectedTab = DiagnosticsTab.Overview;
-
-    public bool IsOverviewTab => SelectedTab == DiagnosticsTab.Overview;
-    public bool IsConnectivityTab => SelectedTab == DiagnosticsTab.Connectivity;
-    public bool IsEnvironmentTab => SelectedTab == DiagnosticsTab.Environment;
-
-    [RelayCommand]
-    private void ShowOverviewTab() => SelectedTab = DiagnosticsTab.Overview;
-
-    [RelayCommand]
-    private void ShowConnectivityTab() => SelectedTab = DiagnosticsTab.Connectivity;
-
-    [RelayCommand]
-    private void ShowEnvironmentTab() => SelectedTab = DiagnosticsTab.Environment;
-
-    partial void OnSelectedTabChanged(DiagnosticsTab value)
-    {
-        OnPropertyChanged(nameof(IsOverviewTab));
-        OnPropertyChanged(nameof(IsConnectivityTab));
-        OnPropertyChanged(nameof(IsEnvironmentTab));
-    }
-
     // Categorical states derived from the live polling/installation state. These are never
     // aggregated into a score: no health percentage or pass/fail tally is invented.
     public bool IsConnectionHealthy => _pollingState.ConnectionState == ConnectionState.Connected;
@@ -622,7 +587,6 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     public bool HasSnapshot => _pollingState.Snapshot is not null;
     public bool HasLastError => !string.IsNullOrWhiteSpace(_pollingState.LastError);
     public bool IsLocalInstallationDetected => _localInstallation.IsDetected;
-    public bool IsMockMode => _settings.MockMode;
     public bool HasDevicesDiscovered => DiscoveredUpsCount > 0;
 
     public IReadOnlyList<string> DiagnosticGroups =>
@@ -655,7 +619,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     public string OperatingSystem => _runtimeInfo.OperatingSystem;
     public string Architecture => _runtimeInfo.Architecture;
 
-    public string ModeText => _settings.MockMode ? Strings.Get("Shell.SimulationActive") : Strings.Get("Diagnostics.LiveServer");
+    public string ModeText => Strings.Get("Diagnostics.LiveServer");
     public string Host => _profileContext?.Endpoint.Host ?? Strings.Get("Status.Unavailable");
     public string Port => _profileContext?.Endpoint.Port.ToString(CultureInfo.InvariantCulture) ?? Strings.Get("Status.Unavailable");
     public string ConnectionTimeoutText => FormatDuration(_settings.ConnectionTimeout);

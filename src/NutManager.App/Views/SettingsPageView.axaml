@@ -28,7 +28,8 @@
     </DataTemplate>
   </UserControl.Resources>
 
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+  <ScrollViewer x:Name="SettingsScrollViewer"
+                HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="26" MaxWidth="1180">
       <StackPanel Spacing="2">
@@ -143,8 +144,13 @@
             </StackPanel>
           </Border>
 
-          <Grid x:Name="ManagedProfilesLayout" ColumnDefinitions="290,16,*" RowDefinitions="Auto">
-            <StackPanel x:Name="ProfileListPanel" Grid.Column="0" Spacing="10">
+          <Grid x:Name="ManagedProfilesLayout"
+                ColumnDefinitions="330,16,*"
+                RowDefinitions="Auto,14,Auto,16,Auto">
+            <Grid x:Name="ProfileListPanel"
+                  Grid.Row="2"
+                  Grid.Column="0"
+                  RowDefinitions="*,10,Auto">
               <ListBox ItemsSource="{Binding ManagedProfileCards}"
                        SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
                        MinHeight="180"
@@ -172,40 +178,49 @@
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
-              <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+              <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="8">
                 <Button Content="{Binding ActivateProfileText}"
                         Command="{Binding ActivateSelectedProfileCommand}"
-                        IsEnabled="{Binding CanActivateSelectedProfile}" />
+                        IsEnabled="{Binding CanActivateSelectedProfile}"
+                        HorizontalAlignment="Stretch" />
                 <Button Grid.Column="1"
                         Classes="nut-danger"
                         Content="{Binding DeleteProfileText}"
                         Command="{Binding DeleteSelectedProfileCommand}"
-                        IsEnabled="{Binding CanDeleteSelectedProfile}" />
+                        IsEnabled="{Binding CanDeleteSelectedProfile}"
+                        HorizontalAlignment="Stretch" />
               </Grid>
+            </Grid>
+
+            <!-- The list and the complete monitoring editor are peers in the first row. The
+                 server name belongs beside the host because both identify the endpoint; port and
+                 preferred UPS form the second row below them. -->
+            <StackPanel x:Name="ProfileEditorHeader"
+                        Grid.Column="2"
+                        Orientation="Horizontal"
+                        Spacing="10">
+              <PathIcon Data="{DynamicResource NutIconEdit}" Classes="accent" Width="16" Height="16" />
+              <TextBlock Text="{Binding EditorTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
             </StackPanel>
 
-            <StackPanel x:Name="ProfileEditorPanel" Grid.Column="2" Spacing="14">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <PathIcon Data="{DynamicResource NutIconEdit}" Classes="accent" Width="16" Height="16" />
-                <TextBlock Text="{Binding EditorTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
-              </StackPanel>
-
-              <Border Classes="nut-card-flat" Padding="14">
-                <StackPanel Spacing="10">
-                  <TextBlock Text="{Binding NameLabel}" FontWeight="SemiBold" />
-                  <TextBox Text="{Binding ProfileDraft.Name, Mode=TwoWay}"
-                           AutomationProperties.Name="{Binding NameLabel}" />
-                  <ItemsControl ItemsSource="{Binding NameValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
-                </StackPanel>
-              </Border>
-
-              <Border Classes="nut-card-flat" Padding="14">
+            <StackPanel x:Name="ProfileIdentityPanel" Grid.Row="2" Grid.Column="2">
+              <Border x:Name="ProfileMonitoringPanel" Classes="nut-card-flat" Padding="14">
                 <StackPanel Spacing="10">
                   <TextBlock Text="{Binding MonitoringSectionTitle}" FontWeight="SemiBold" FontSize="16" />
-                  <TextBlock Text="{Binding MonitoringHostLabel}" FontWeight="SemiBold" />
-                  <TextBox Text="{Binding ProfileDraft.MonitoringHost, Mode=TwoWay}"
-                           AutomationProperties.Name="{Binding MonitoringHostLabel}" />
-                  <ItemsControl ItemsSource="{Binding MonitoringHostValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="{Binding NameLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.Name, Mode=TwoWay}"
+                               AutomationProperties.Name="{Binding NameLabel}" />
+                      <ItemsControl ItemsSource="{Binding NameValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="6">
+                      <TextBlock Text="{Binding MonitoringHostLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.MonitoringHost, Mode=TwoWay}"
+                               AutomationProperties.Name="{Binding MonitoringHostLabel}" />
+                      <ItemsControl ItemsSource="{Binding MonitoringHostValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                    </StackPanel>
+                  </Grid>
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                     <StackPanel Spacing="6">
                       <TextBlock Text="{Binding MonitoringPortLabel}" FontWeight="SemiBold" />
@@ -249,6 +264,12 @@
                   </StackPanel>
                 </StackPanel>
               </Border>
+            </StackPanel>
+
+            <StackPanel x:Name="ProfileEditorPanel"
+                        Grid.Row="4"
+                        Grid.ColumnSpan="3"
+                        Spacing="14">
 
               <Border Classes="nut-card-flat" Padding="14">
                 <StackPanel Spacing="10">
@@ -518,7 +539,10 @@
               </Border>
 
               <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
-                <Button Classes="nut-success" Content="{Binding SaveProfileText}" Command="{Binding SaveProfileCommand}" IsEnabled="{Binding CanSaveProfile}" />
+                <Button Classes="nut-success"
+                        Content="{Binding SaveProfileText}"
+                        Click="SaveProfileButton_OnClick"
+                        IsEnabled="{Binding CanSaveProfile}" />
                 <Button Content="{Binding DiscardProfileText}" Command="{Binding DiscardProfileDraftCommand}" IsEnabled="{Binding IsProfileDraftDirty}" />
               </WrapPanel>
               <TextBlock Text="{Binding ProfileSavingText}" IsVisible="{Binding IsSavingProfile}" />
@@ -547,7 +571,6 @@
               <TextBox Text="{Binding PollingIntervalSeconds}" AutomationProperties.Name="{Binding PollingIntervalLabel}" />
             </StackPanel>
           </Grid>
-          <CheckBox Content="{Binding MockModeLabel}" IsChecked="{Binding MockMode}" />
           <Button Classes="nut-primary" Content="{Binding SaveSettingsText}" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
           <TextBlock Text="{Binding SavingText}" IsVisible="{Binding IsSaving}" />
           <TextBlock Text="{Binding SettingsSavedText}" IsVisible="{Binding IsSaved}" Foreground="{DynamicResource NutHealthyBrush}" />

@@ -503,6 +503,33 @@
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutCriticalBrush}" />
   </Style>
 
+  <Style Selector="Button.nut-success-outline">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.nut-success-outline /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+
+  <Style Selector="Button.nut-danger-solid">
+    <Setter Property="Background" Value="{DynamicResource NutCriticalBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutCriticalBrush}" />
+    <Setter Property="Foreground" Value="#FFFFFF" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.nut-danger-solid /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutCriticalBrush}" />
+    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+  </Style>
+  <Style Selector="Button.nut-danger-solid:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#FF6868" />
+    <Setter Property="BorderBrush" Value="#FF6868" />
+    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+  </Style>
+
   <!--
     Disabled overrides for the semantic variants.
     These must be declared AFTER the variants: Avalonia resolves equally specific setters in
@@ -511,15 +538,42 @@
   -->
   <Style Selector="Button.nut-primary:disabled /template/ ContentPresenter,
                    Button.nut-success:disabled /template/ ContentPresenter,
+                   Button.nut-success-outline:disabled /template/ ContentPresenter,
                    Button.nut-danger:disabled /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource NutTextMutedBrush}" />
   </Style>
-  <Style Selector="Button.nut-primary:disabled, Button.nut-success:disabled, Button.nut-danger:disabled">
+  <Style Selector="Button.nut-primary:disabled, Button.nut-success:disabled, Button.nut-success-outline:disabled, Button.nut-danger:disabled">
     <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+  </Style>
+
+  <Style Selector="Button.nut-success-outline.nut-status-locked:disabled">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="Opacity" Value="0.9" />
+  </Style>
+  <Style Selector="Button.nut-success-outline.nut-status-locked:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+
+  <!-- A verified capability is a locked status, not an available action. Keep its
+       successful semantic colour while the disabled state prevents another probe. -->
+  <Style Selector="Button.nut-success.nut-status-locked:disabled">
+    <Setter Property="Background" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="Foreground" Value="#06170C" />
+    <Setter Property="Opacity" Value="0.82" />
+  </Style>
+  <Style Selector="Button.nut-success.nut-status-locked:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrush}" />
+    <Setter Property="TextElement.Foreground" Value="#06170C" />
   </Style>
 
   <!-- Quiet button for secondary actions inside dense surfaces. -->

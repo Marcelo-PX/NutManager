@@ -114,11 +114,6 @@
                                          IsUnavailable="{Binding IsConnectionUnavailable}" />
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <controls:NutStatusBadge Text="{Binding SimulationText}"
-                                   IsWarning="True"
-                                   IsVisible="{Binding IsMockMode}"
-                                   AutomationProperties.Name="{Binding SimulationText}" />
-
           <Border Classes="nut-theme-toggle" IsEnabled="{Binding IsBackgroundInteractionEnabled}">
             <StackPanel Orientation="Horizontal" Spacing="2">
               <Button Classes="nut-theme-option"
