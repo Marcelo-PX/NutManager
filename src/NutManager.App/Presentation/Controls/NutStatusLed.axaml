@@ -36,10 +36,10 @@
       <Setter Property="BoxShadow" Value="0 0 12 1 #F23BEF88" />
     </Style>
     <Style Selector="Border.nut-led-halo.pending">
-      <Setter Property="BoxShadow" Value="0 0 11 0 #F2FBBF24" />
+      <Setter Property="BoxShadow" Value="0 0 12 1 #F2FBBF24" />
     </Style>
     <Style Selector="Border.nut-led-halo.critical">
-      <Setter Property="BoxShadow" Value="0 0 11 0 #F2F87171" />
+      <Setter Property="BoxShadow" Value="0 0 15 2 #F2F87171" />
     </Style>
   </UserControl.Styles>
 

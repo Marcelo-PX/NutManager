@@ -19,7 +19,7 @@ public sealed class DiagnosticsPageViewModelTests
             mockMode: true),
             profileContext: CreateProfileContext(NutManagementMode.Local, ManagedNutServerAccessMode.Manage));
 
-        Assert.Equal("NutManager", viewModel.ApplicationName);
+        Assert.Equal("NUT Manager", viewModel.ApplicationName);
         Assert.Equal("10.2.3-test", viewModel.ApplicationVersion);
         Assert.Equal(".NET test runtime", viewModel.Runtime);
         Assert.Equal("Test OS", viewModel.OperatingSystem);

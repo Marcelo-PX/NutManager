@@ -72,7 +72,7 @@ public sealed class InteractionPolishTests
 
     [Theory]
     [InlineData(NutLedState.Healthy, 1.8)]
-    [InlineData(NutLedState.Pending, 0.0)]
+    [InlineData(NutLedState.Pending, 1.8)]
     [InlineData(NutLedState.Critical, 0.0)]
     [InlineData(NutLedState.Unavailable, 0.0)]
     public void LedPulsePeriodsAreSemanticAndDeterministic(NutLedState state, double seconds)
@@ -81,15 +81,19 @@ public sealed class InteractionPolishTests
     }
 
     [Fact]
-    public void OnlyHealthyBreathesWhileOtherStatesKeepTheirStaticSemanticGlow()
+    public void HealthyAndPendingShareTheWaveWhileCriticalKeepsItsStaticBlur()
     {
         Assert.NotEqual(TimeSpan.Zero, NutStatusLed.PulsePeriodFor(NutLedState.Healthy));
-        Assert.Equal(TimeSpan.Zero, NutStatusLed.PulsePeriodFor(NutLedState.Pending));
+        Assert.Equal(
+            NutStatusLed.PulsePeriodFor(NutLedState.Healthy),
+            NutStatusLed.PulsePeriodFor(NutLedState.Pending));
         Assert.Equal(TimeSpan.Zero, NutStatusLed.PulsePeriodFor(NutLedState.Critical));
 
         var source = Controls("NutStatusLed.axaml.cs");
+        var visual = Controls("NutStatusLed.axaml");
         Assert.Equal(1, source.Split("private void StartPulse(", StringSplitOptions.None).Length - 1);
         Assert.Contains("ApplyStateClasses(AmbientHalo)", source, StringComparison.Ordinal);
+        Assert.Contains("0 0 15 2 #F2F87171", visual, StringComparison.Ordinal);
     }
 
     [Fact]

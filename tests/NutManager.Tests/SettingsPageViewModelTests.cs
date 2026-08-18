@@ -222,6 +222,9 @@ public sealed class SettingsPageViewModelTests
         Assert.False(profileStore.Current.ActiveProfile.Management.ManagedFiles.Contains(NutConfigurationFileKind.NutConf));
         Assert.Equal(TimeSpan.FromSeconds(11), Assert.Single(savedSettings).PollingInterval);
         Assert.False(viewModel.CanDiscardAll);
+        Assert.True(viewModel.IsSaved);
+        Assert.False(viewModel.IsProfileSaved);
+        Assert.Null(viewModel.ProfileStatusMessage);
     }
 
     [Fact]

@@ -238,6 +238,7 @@
                            FontSize="18"
                            FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding !IsPrimaryStatusUnknown}"
                            Classes.healthy="{Binding IsStatusHealthy}"
                            Classes.warning="{Binding IsStatusWarning}"
                            Classes.critical="{Binding IsStatusCritical}"
@@ -260,7 +261,19 @@
                 <DataTemplate x:DataType="viewModels:OverviewStatusItemViewModel">
                   <Border Classes="nut-pill" Padding="9,3" Margin="0,0,6,6">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <TextBlock Text="{Binding StateText}" FontSize="11.5" />
+                      <Border Width="16"
+                              Height="16"
+                              CornerRadius="8"
+                              BorderThickness="1"
+                              BorderBrush="{DynamicResource NutTextSecondaryBrush}"
+                              IsVisible="{Binding IsUnknown}">
+                        <TextBlock Text="?"
+                                   FontSize="10"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                      </Border>
+                      <TextBlock Text="{Binding StateText}" FontSize="11.5" IsVisible="{Binding !IsUnknown}" />
                       <TextBlock Text="{Binding SeverityText}" FontSize="11.5" Classes="nut-metadata" />
                     </StackPanel>
                   </Border>
@@ -315,7 +328,8 @@
               <Border Grid.Column="2"
                       Classes="nut-pill"
                       Classes.healthy="{Binding IsConnected}"
-                      Classes.critical="{Binding !IsConnected}"
+                      Classes.warning="{Binding IsConnectionPending}"
+                      Classes.critical="{Binding IsConnectionCritical}"
                       Padding="10,3">
                 <TextBlock Text="{Binding ConnectionStateText}" FontSize="11.5" FontWeight="SemiBold" />
               </Border>

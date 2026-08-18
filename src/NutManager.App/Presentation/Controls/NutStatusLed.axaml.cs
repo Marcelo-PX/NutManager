@@ -21,8 +21,9 @@ public enum NutLedState
 /// The shell's status light. The breathing halo is the only continuous animation in the
 /// application and it is confined to this control: it runs on the render thread through the
 /// Composition API, so there is no timer and no UI-thread work per frame. Healthy, pending, and
-/// critical states keep a static semantic glow; the healthy state alone breathes. The core remains
-/// stable throughout, so disabling motion never removes the state cue.
+/// critical states keep a semantic glow; healthy and pending share the same breathing wave while
+/// critical keeps a stronger static blur. The core remains stable throughout, so disabling motion
+/// never removes the state cue.
 /// </summary>
 public partial class NutStatusLed : UserControl
 {
@@ -84,8 +85,8 @@ public partial class NutStatusLed : UserControl
         AmbientHalo.Opacity = State switch
         {
             NutLedState.Healthy => 0.76,
-            NutLedState.Pending => 0.42,
-            NutLedState.Critical => 0.48,
+            NutLedState.Pending => 0.76,
+            NutLedState.Critical => 0.68,
             _ => 0
         };
         if (period == TimeSpan.Zero)
@@ -99,7 +100,7 @@ public partial class NutStatusLed : UserControl
 
     public static TimeSpan PulsePeriodFor(NutLedState state) => state switch
     {
-        NutLedState.Healthy => TimeSpan.FromSeconds(1.8),
+        NutLedState.Healthy or NutLedState.Pending => TimeSpan.FromSeconds(1.8),
         _ => TimeSpan.Zero
     };
 

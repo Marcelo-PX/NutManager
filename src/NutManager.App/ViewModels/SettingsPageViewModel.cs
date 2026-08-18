@@ -701,6 +701,15 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         }
 
         await SaveAsync(cancellationToken);
+
+        // The unified action reports one success only. Keep non-success profile messages (for
+        // example, a protected credential that could not be persisted) because those still need
+        // the operator's attention.
+        if (IsSaved && string.Equals(ProfileStatusMessage, Localizer.Get("Profiles.SaveSuccess"), StringComparison.Ordinal))
+        {
+            IsProfileSaved = false;
+            ProfileStatusMessage = null;
+        }
     }
 
     [RelayCommand]

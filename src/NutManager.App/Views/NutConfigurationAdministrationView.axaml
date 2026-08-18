@@ -86,10 +86,6 @@
           </ItemsControl>
         </Border>
 
-        <TextBlock Text="{Binding Strings[Administration.Configuration.NoFiles]}"
-                   IsVisible="{Binding IsConfigurationFileListEmpty}"
-                   Classes="nut-metadata"
-                   TextWrapping="Wrap" />
       </StackPanel>
 
       <!-- On a wide page this compact context sits beside the file switcher. The code-behind moves

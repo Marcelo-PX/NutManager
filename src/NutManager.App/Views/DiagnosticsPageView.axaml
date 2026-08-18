@@ -10,7 +10,7 @@
     categorical projection of the current polling, discovery or installation state.
   -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="16">
+    <StackPanel Spacing="16" Margin="0,0,18,0">
 
       <!-- ==================== Header ==================== -->
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">

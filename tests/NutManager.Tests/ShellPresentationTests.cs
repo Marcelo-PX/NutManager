@@ -47,7 +47,7 @@ public sealed class ShellPresentationTests
         Assert.Equal("Open profiles", english.Get("Shell.OpenProfiles"));
         Assert.Equal("Gerenciar perfis", portuguese.Get("Shell.ManageProfiles"));
         Assert.Equal("Manage profiles", english.Get("Shell.ManageProfiles"));
-        Assert.Equal("© 2026 · NutManager · Marcelo Pacheco", portuguese.Get("Shell.Authorship"));
+        Assert.Equal("© 2026 · NUT Manager · Marcelo Pacheco", portuguese.Get("Shell.Authorship"));
         Assert.Equal(portuguese.Get("Shell.Authorship"), english.Get("Shell.Authorship"));
     }
 

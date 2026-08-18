@@ -580,25 +580,26 @@
 
             <!-- One deliberate commit point for this card: the profile is persisted first and the
                  general preferences follow only after it succeeds. -->
-            <StackPanel x:Name="SettingsCommitBar" Spacing="8">
-              <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
-                <Button Classes="nut-primary"
-                        Content="{Binding SaveSettingsText}"
-                        Click="SaveAllButton_OnClick"
-                        IsEnabled="{Binding CanSaveAll}" />
-                <Button Content="{Binding DiscardProfileText}"
-                        Command="{Binding DiscardAllCommand}"
-                        IsEnabled="{Binding CanDiscardAll}" />
-              </WrapPanel>
-              <TextBlock Text="{Binding ProfileSavingText}" IsVisible="{Binding IsSavingProfile}" />
-              <TextBlock Text="{Binding SavingText}" IsVisible="{Binding IsSaving}" />
-              <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding HasProfileStatusMessage}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding SettingsSavedText}" IsVisible="{Binding IsSaved}" Foreground="{DynamicResource NutHealthyBrush}" />
-              <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding HasProfileSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" AutomationProperties.Name="{Binding ProfileSaveError}" />
-              <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding SaveError}" IsVisible="{Binding HasSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding LoadError}" IsVisible="{Binding HasLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
-            </StackPanel>
+            <Grid x:Name="SettingsCommitBar" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+              <Button Classes="nut-primary"
+                      Content="{Binding SaveSettingsText}"
+                      Click="SaveAllButton_OnClick"
+                      IsEnabled="{Binding CanSaveAll}" />
+              <Button Grid.Column="1"
+                      Content="{Binding DiscardProfileText}"
+                      Command="{Binding DiscardAllCommand}"
+                      IsEnabled="{Binding CanDiscardAll}" />
+              <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="4,0,0,0">
+                <TextBlock Text="{Binding ProfileSavingText}" IsVisible="{Binding IsSavingProfile}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SavingText}" IsVisible="{Binding IsSaving}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding HasProfileStatusMessage}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SettingsSavedText}" IsVisible="{Binding IsSaved}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding HasProfileSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" AutomationProperties.Name="{Binding ProfileSaveError}" />
+                <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SaveError}" IsVisible="{Binding HasSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding LoadError}" IsVisible="{Binding HasLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
           </StackPanel>
         </StackPanel>
       </Border>

@@ -106,6 +106,8 @@ public sealed class T37PresentationTests
 
         Assert.True(card >= 0 && management > card && general > management && save > general && discard > save);
         Assert.Equal(1, view.Split("Click=\"SaveAllButton_OnClick\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("x:Name=\"SettingsCommitBar\" ColumnDefinitions=\"Auto,Auto,*\"", view, StringComparison.Ordinal);
+        Assert.Contains("<StackPanel Grid.Column=\"2\" VerticalAlignment=\"Center\"", view, StringComparison.Ordinal);
         Assert.DoesNotContain("Click=\"SaveProfileButton_OnClick\"", view, StringComparison.Ordinal);
         Assert.DoesNotContain("Command=\"{Binding SaveCommand}\"", view, StringComparison.Ordinal);
     }
@@ -127,6 +129,8 @@ public sealed class T37PresentationTests
         Assert.Contains("Style Selector=\"NumericUpDown\"", styles, StringComparison.Ordinal);
         Assert.Contains("ButtonSpinner#PART_Spinner", styles, StringComparison.Ordinal);
         Assert.Contains("Property=\"CornerRadius\" Value=\"8\"", styles, StringComparison.Ordinal);
+        Assert.Contains("Property=\"ShowButtonSpinner\" Value=\"False\"", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain("RepeatButton#PART_DecreaseButton", styles, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -303,6 +307,23 @@ public sealed class T37PresentationTests
         Assert.DoesNotContain("SimulationText", shell, StringComparison.Ordinal);
         Assert.Contains("Border.nut-card TextBlock.nut-metadata", typography, StringComparison.Ordinal);
         Assert.Contains("NutCardSmallTextBrush", typography, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LatestPresentationPolishKeepsStatusAndScrollSemanticsExplicit()
+    {
+        var overview = Read("src", "NutManager.App", "Views", "OverviewPageView.axaml");
+        var diagnostics = Read("src", "NutManager.App", "Views", "DiagnosticsPageView.axaml");
+        var administration = Read("src", "NutManager.App", "Views", "NutConfigurationAdministrationView.axaml");
+        var shell = Read("src", "NutManager.App", "MainWindow.axaml");
+
+        Assert.Contains("Classes.warning=\"{Binding IsConnectionPending}\"", overview, StringComparison.Ordinal);
+        Assert.Contains("Classes.critical=\"{Binding IsConnectionCritical}\"", overview, StringComparison.Ordinal);
+        Assert.Contains("IsVisible=\"{Binding !IsPrimaryStatusUnknown}\"", overview, StringComparison.Ordinal);
+        Assert.Contains("IsVisible=\"{Binding IsUnknown}\"", overview, StringComparison.Ordinal);
+        Assert.Contains("Spacing=\"16\" Margin=\"0,0,18,0\"", diagnostics, StringComparison.Ordinal);
+        Assert.DoesNotContain("Strings[Administration.Configuration.NoFiles]", administration, StringComparison.Ordinal);
+        Assert.Contains("Title=\"NUT Manager\"", shell, StringComparison.Ordinal);
     }
 
     private static string Read(params string[] segments) => Repository.Read(Path.Combine(segments));

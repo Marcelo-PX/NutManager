@@ -353,7 +353,7 @@
   <Style Selector="Border.nut-pill.healthy:pointerover">
     <Setter Property="Background" Value="{DynamicResource NutHealthySoftHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutHealthyBrightBrush}" />
-    <Setter Property="BoxShadow" Value="0 0 10 0 #3322C55E" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #994ADE80, 0 0 28 5 #4D4ADE80" />
   </Style>
 
   <Style Selector="Border.nut-pill.warning">
@@ -363,6 +363,7 @@
   <Style Selector="Border.nut-pill.warning:pointerover">
     <Setter Property="Background" Value="{DynamicResource NutWarningSoftHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutWarningBrightBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #99FBBF24, 0 0 28 5 #4DFBBF24" />
   </Style>
 
   <Style Selector="Border.nut-pill.critical">
@@ -372,7 +373,7 @@
   <Style Selector="Border.nut-pill.critical:pointerover">
     <Setter Property="Background" Value="{DynamicResource NutCriticalSoftHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutCriticalBrightBrush}" />
-    <Setter Property="BoxShadow" Value="0 0 10 0 #33EF4444" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #99EF4444, 0 0 28 5 #4DEF4444" />
   </Style>
 
   <Style Selector="Border.nut-pill.accent">
@@ -382,7 +383,7 @@
   <Style Selector="Border.nut-pill.accent:pointerover">
     <Setter Property="Background" Value="{DynamicResource NutAccentSoftHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
-    <Setter Property="BoxShadow" Value="0 0 10 0 #333B82F6" />
+    <Setter Property="BoxShadow" Value="0 0 12 0 #9955A8FF, 0 0 28 5 #4D55A8FF" />
   </Style>
 
   <!--
@@ -668,9 +669,9 @@
     <Setter Property="FontSize" Value="12.5" />
   </Style>
 
-  <!-- Numeric fields use Avalonia's ButtonSpinner internally. Styling the NumericUpDown at the
-       product-theme boundary lets that template inherit the same surface, subtle separators and
-       rounded outline as TextBox instead of retaining the bright Fluent defaults. -->
+  <!-- Keep numeric input visually aligned with the other NutManager fields. NumericUpDown still
+       owns parsing, range validation and keyboard stepping; only the Fluent two-button spinner is
+       hidden because its separate disabled surfaces fragment the right edge of the control. -->
   <Style Selector="NumericUpDown">
     <Setter Property="MinHeight" Value="38" />
     <Setter Property="CornerRadius" Value="8" />
@@ -679,6 +680,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+    <Setter Property="ShowButtonSpinner" Value="False" />
   </Style>
   <Style Selector="NumericUpDown /template/ ButtonSpinner#PART_Spinner">
     <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />

@@ -204,6 +204,8 @@ public sealed partial class OverviewPageViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(ConnectionStateText));
         OnPropertyChanged(nameof(IsConnected));
+        OnPropertyChanged(nameof(IsConnectionPending));
+        OnPropertyChanged(nameof(IsConnectionCritical));
     }
 
     partial void OnDataFreshnessChanged(DataFreshness value) =>
@@ -356,6 +358,8 @@ public sealed partial class OverviewPageViewModel : PageViewModel
 
     public string PrimaryStatusText => PrimaryStatus?.StateText ?? UnavailableText;
 
+    public bool IsPrimaryStatusUnknown => PrimarySemanticState == StatusSemanticState.Unknown;
+
     private StatusSeverity? PrimarySeverity => Snapshot?.StatusTokens.Count > 0
         ? Snapshot.StatusTokens.Max(token => token.Severity)
         : null;
@@ -415,6 +419,10 @@ public sealed partial class OverviewPageViewModel : PageViewModel
 
     public bool IsConnected => ConnectionState == ConnectionState.Connected;
 
+    public bool IsConnectionPending => ConnectionState is ConnectionState.Connecting or ConnectionState.Reconnecting;
+
+    public bool IsConnectionCritical => ConnectionState is ConnectionState.Disconnected or ConnectionState.ConnectionFailed;
+
     // Active configuration and administration shortcuts are supplied by the shell, which already
     // owns this state. The dashboard only presents them; it performs no administrative action.
     [ObservableProperty]
@@ -464,9 +472,11 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         nameof(TemperatureText), nameof(HasTemperature), nameof(DriverText), nameof(DriverVersionText),
         nameof(HasDriverVersion), nameof(UpsTypeText), nameof(HasUpsType),
         nameof(PrimaryStatus), nameof(HasPrimaryStatus), nameof(PrimaryStatusToken), nameof(PrimaryStatusText),
+        nameof(IsPrimaryStatusUnknown),
         nameof(IsStatusHealthy), nameof(IsStatusWarning), nameof(IsStatusCritical), nameof(IsStatusUnavailable),
         nameof(IsRunningOnMains), nameof(IsRunningOnBattery),
-        nameof(IsConnected), nameof(EndpointText), nameof(SelectedUpsText)
+        nameof(IsConnected), nameof(IsConnectionPending), nameof(IsConnectionCritical),
+        nameof(EndpointText), nameof(SelectedUpsText)
     ];
 
     private IReadOnlyList<OverviewMetricViewModel> CreateMetricCards(UpsSnapshot? snapshot) =>
@@ -519,7 +529,8 @@ public sealed partial class OverviewPageViewModel : PageViewModel
                 StatusSeverity.Warning => Strings.Get("Severity.Warning"),
                 StatusSeverity.Critical => Strings.Get("Severity.Critical"),
                 _ => Strings.Get("Common.Unknown")
-            });
+            },
+            token.State == StatusSemanticState.Unknown);
 }
 
 public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposable
@@ -613,7 +624,7 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
 
     public bool HasDiagnosticCopyStatusMessage => !string.IsNullOrWhiteSpace(DiagnosticCopyStatusMessage);
 
-    public string ApplicationName => "NutManager";
+    public string ApplicationName => "NUT Manager";
     public string ApplicationVersion => _runtimeInfo.Version;
     public string Runtime => _runtimeInfo.Runtime;
     public string OperatingSystem => _runtimeInfo.OperatingSystem;

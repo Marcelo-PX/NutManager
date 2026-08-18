@@ -212,4 +212,41 @@ public sealed class OverviewDashboardPresentationTests
         Assert.False(viewModel.IsRunningOnMains);
         Assert.False(viewModel.IsRunningOnBattery);
     }
+
+    [Theory]
+    [InlineData(ConnectionState.Connecting, true, false)]
+    [InlineData(ConnectionState.Reconnecting, true, false)]
+    [InlineData(ConnectionState.Connected, false, false)]
+    [InlineData(ConnectionState.Disconnected, false, true)]
+    [InlineData(ConnectionState.ConnectionFailed, false, true)]
+    public void ConnectionPresentationSeparatesPendingFromCriticalStates(
+        ConnectionState state,
+        bool pending,
+        bool critical)
+    {
+        var viewModel = new OverviewPageViewModel { ConnectionState = state };
+
+        Assert.Equal(pending, viewModel.IsConnectionPending);
+        Assert.Equal(critical, viewModel.IsConnectionCritical);
+    }
+
+    [Fact]
+    public void UnknownStatusKeepsItsTechnicalTokenOnlyInThePrimaryBadge()
+    {
+        var viewModel = new OverviewPageViewModel
+        {
+            Snapshot = new UpsSnapshot(
+                new UpsIdentity("ups1"),
+                [new UpsStatusToken("WAIT", StatusSemanticState.Unknown, StatusSeverity.Unknown, false)],
+                new Dictionary<string, UpsVariable>(),
+                ReferenceTime,
+                DataSource.Live),
+            StatusItems = [new OverviewStatusItemViewModel("WAIT", "WAIT", "Desconhecido", true)]
+        };
+
+        Assert.Equal("WAIT", viewModel.PrimaryStatusToken);
+        Assert.True(viewModel.IsPrimaryStatusUnknown);
+        Assert.True(viewModel.StatusItems[0].IsUnknown);
+        Assert.Equal("Desconhecido", viewModel.StatusItems[0].SeverityText);
+    }
 }
