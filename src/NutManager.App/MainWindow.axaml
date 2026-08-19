@@ -5,6 +5,7 @@
         x:Class="NutManager.App.MainWindow"
         x:DataType="viewModels:MainWindowViewModel"
              Title="NUT Manager"
+        Icon="/Assets/Branding/NutManager.ico"
         Width="1280"
         Height="800"
         MinWidth="680"
