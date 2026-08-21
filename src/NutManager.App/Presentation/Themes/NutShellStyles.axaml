@@ -445,6 +445,12 @@
     underneath showed straight through the list of profiles. These are the same glass brushes
     Border.nut-card uses, and both themes define them.
   -->
+  <!--
+    With transparency switched off the flyout takes a solid surface. The glass brush carries its own
+    alpha, which is fine for a card sitting on the window's own background but not for a menu
+    floating over the sidebar: the profiles were legible only because of what happened to be behind
+    them. The rest of the shell honours this preference, and now so does this.
+  -->
   <Style Selector="Border.nut-profile-flyout-surface">
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
@@ -461,6 +467,17 @@
       over the corners the surface had gone to the trouble of rounding.
     -->
     <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+
+  <!--
+    With transparency switched off the flyout takes a solid surface, and this has to come after the
+    rule above to win. The glass brush carries its own alpha, which is fine for a card sitting on the
+    window's own background but not for a menu floating over the sidebar: the profile list stayed
+    see-through while the rest of the shell had gone opaque.
+  -->
+  <Style Selector="Border.nut-profile-flyout-surface.opaque">
+    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
   </Style>
 
   <Style Selector="Border.nut-profile-avatar">

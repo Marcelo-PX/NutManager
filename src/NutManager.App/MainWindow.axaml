@@ -273,6 +273,7 @@
                 -->
                 <Border x:Name="ProfileQuickMenuSurface"
                         Width="{DynamicResource NutSidebarExpandedWidth}"
+                        Classes.opaque="{Binding !IsBackgroundTransparent}"
                         Padding="12,12,2,12"
                         Margin="0,8,0,0"
                         Opacity="0"
