@@ -150,7 +150,7 @@
             <Grid x:Name="ProfileListPanel"
                   Grid.Row="2"
                   Grid.Column="0"
-                  RowDefinitions="*,10,Auto">
+                  RowDefinitions="*,6,Auto">
               <!--
                 A fixed height, so the buttons underneath never move. Anything elastic — a minimum, a
                 maximum, a stretch — still lets the list grow until it hits the bound, and until then
@@ -159,14 +159,19 @@
                 to the ListBox's own ScrollViewer, where the shared scrollbar styling already
                 applies.
 
-                The cap plus Stretch is what keeps the buttons level with the monitoring card rather
-                than a hand-measured height: capped, the panel never outgrows the card, so the row is
-                sized by the card; stretched, the panel fills that row, and the button row — being
-                the last one — lands on its bottom edge. The alignment then holds by construction
-                instead of depending on a number that would drift the moment the card's contents
-                changed.
+                Both edges line up with the monitoring card opposite, and each for its own reason.
+
+                The bottom: the column opposite is a StackPanel, which takes the height of its
+                content and does not stretch, so whichever side is taller sizes the row. Set too
+                tall, this side won that measure, the row grew past the card, and the buttons — which
+                sit on the row's bottom edge — ended below where the card stopped. Kept short enough,
+                the card sizes the row and the buttons land level with it.
+
+                The top: anchored rather than stretched. A stretch bounded by a maximum centres what
+                is left over, which pushed the list down the row and opened a gap above it while the
+                bottom stayed put.
               -->
-              <Border CornerRadius="12" ClipToBounds="True" VerticalAlignment="Stretch" MaxHeight="216">
+              <Border CornerRadius="12" ClipToBounds="True" VerticalAlignment="Top" Height="210">
                 <ListBox ItemsSource="{Binding ManagedProfileCards}"
                          SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -195,7 +200,7 @@
                   </ListBox.ItemTemplate>
                 </ListBox>
               </Border>
-              <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="8">
+              <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="14">
                 <Button Content="{Binding ActivateProfileText}"
                         Command="{Binding ActivateSelectedProfileCommand}"
                         IsEnabled="{Binding CanActivateSelectedProfile}"
