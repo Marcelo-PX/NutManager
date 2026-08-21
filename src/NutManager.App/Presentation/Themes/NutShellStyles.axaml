@@ -9,7 +9,7 @@
 
   <Style Selector="Border.nut-titlebar">
     <Setter Property="Background" Value="{DynamicResource NutHeaderBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutChromeEdgeBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
   </Style>
 
@@ -505,7 +505,7 @@
 
   <Style Selector="Border.nut-footer">
     <Setter Property="Background" Value="{DynamicResource NutHeaderBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutChromeEdgeBrush}" />
     <Setter Property="BorderThickness" Value="0,1,0,0" />
   </Style>
 
