@@ -179,15 +179,28 @@ public sealed class T38RemoteDeviceInspectionTests
     }
 
     [Fact]
-    public void TheCataloguedVendorFillsInOnlyWhereTheDeviceReportedNone()
+    public void TheVendorIsNamedOnlyWhereNothingElseIsAlreadyShowingIt()
     {
+        // The manufacturer has a column of its own at the end of the row, so the identity line never
+        // repeats one the device reported.
         var reported = new NutComPortInfo("COM4", "Adapter", "Prolific", @"USB\VID_067B&PID_9999\1", "OK", 0, true);
+        // Nothing reported: the catalogue is the only thing that can name a vendor.
         var silent = new NutComPortInfo("COM5", "Adapter", null, @"USB\VID_067B&PID_9999\1", "OK", 0, true);
+        // Nothing reported, but the description already carries it.
+        var described = new NutComPortInfo("COM6", "Prolific Technology Adapter", null, @"USB\VID_067B&PID_9999\1", "OK", 0, true);
 
-        // The device named its own manufacturer, so the catalogue does not repeat it.
         Assert.Equal("VID_067B / PID_9999 · USB–Serial", DetectedComPortPresentation.BuildIdentityText(reported, Strings()));
-        // Nothing was reported, so the catalogue's vendor is the only thing that can be said.
         Assert.Equal("Prolific Technology · VID_067B / PID_9999 · USB–Serial", DetectedComPortPresentation.BuildIdentityText(silent, Strings()));
+        Assert.Equal("VID_067B / PID_9999 · USB–Serial", DetectedComPortPresentation.BuildIdentityText(described, Strings()));
+    }
+
+    [Fact]
+    public void AKnownControllerStandsInForItsVendor()
+    {
+        // PL2303 is a Prolific part; naming both would say the same thing twice.
+        var port = new NutComPortInfo("COM3", "Adapter", "Prolific", @"USB\VID_067B&PID_23A3\1", "OK", 0, true);
+
+        Assert.Equal("PL2303 · VID_067B / PID_23A3 · USB–Serial", DetectedComPortPresentation.BuildIdentityText(port, Strings()));
     }
 
     // ---------------------------------------------------------------- protocol

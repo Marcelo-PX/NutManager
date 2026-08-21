@@ -27,6 +27,33 @@ public static class NutPortPresentation
         return IsComPort(remainder) ? remainder : trimmed;
     }
 
+
+    /// <summary>
+    /// Drops the trailing <c>(COM3)</c> that Windows appends to a serial device's display name.
+    ///
+    /// The row already states the port, so repeating it inside the description is noise. Only this
+    /// port's own suffix is removed, and only at the end: a parenthetical that means something else
+    /// survives untouched, and a name that is nothing but the suffix is left alone rather than
+    /// reduced to an empty label.
+    /// </summary>
+    public static string? WithoutPortSuffix(string? friendlyName, string? portName)
+    {
+        if (string.IsNullOrWhiteSpace(friendlyName) || string.IsNullOrWhiteSpace(portName))
+        {
+            return friendlyName;
+        }
+
+        var trimmed = friendlyName.Trim();
+        var suffix = "(" + portName.Trim() + ")";
+        if (!trimmed.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed;
+        }
+
+        var remainder = trimmed[..^suffix.Length].TrimEnd();
+        return remainder.Length == 0 ? trimmed : remainder;
+    }
+
     private static bool IsComPort(string candidate) =>
         candidate.Length > 3 &&
         candidate.StartsWith("COM", StringComparison.OrdinalIgnoreCase) &&
@@ -104,7 +131,8 @@ public static class DetectedComPortPresentation
         var health = ResolveHealth(port);
         return new DetectedComPortViewModel(
             port.PortName,
-            port.FriendlyName,
+            // The row states the port already, so the description does not repeat it.
+            NutPortPresentation.WithoutPortSuffix(port.FriendlyName, port.PortName),
             port.Manufacturer,
             BuildIdentityText(port, strings),
             health,
@@ -146,14 +174,12 @@ public static class DetectedComPortPresentation
 
         if (identity.HasChipset)
         {
+            // A controller already implies its vendor, so naming both would be noise.
             parts.Add(identity.Chipset!);
         }
-        else if (identity.HasVendorName && string.IsNullOrWhiteSpace(port.Manufacturer))
+        else if (VendorLabel(port, identity) is { } vendor)
         {
-            // Only when the device reported no manufacturer of its own. Repeating one that is
-            // already on the line above would be noise, and overriding it would be a second opinion
-            // about a fact the device itself already stated.
-            parts.Add(identity.VendorName!);
+            parts.Add(vendor);
         }
 
         if (identity.HasUsbIds)
@@ -168,6 +194,28 @@ public static class DetectedComPortPresentation
 
         return string.Join(Separator, parts);
     }
+
+    /// <summary>
+    /// The vendor to name here, given that the manufacturer has a column of its own at the end of
+    /// the row.
+    ///
+    /// A manufacturer the device reported is therefore never repeated on this line. The catalogue's
+    /// vendor is a fallback for a device that reported none at all — and even then it is dropped when
+    /// the description is already showing it, because "Prolific PL2303GT USB Serial COM Port" does
+    /// not need "Prolific Technology" appended to it.
+    /// </summary>
+    private static string? VendorLabel(NutComPortInfo port, NutSerialDeviceIdentity identity)
+    {
+        if (!string.IsNullOrWhiteSpace(port.Manufacturer) || !identity.HasVendorName)
+        {
+            return null;
+        }
+
+        return NamesVendor(port.FriendlyName, identity.VendorName!) ? null : identity.VendorName;
+    }
+
+    private static bool NamesVendor(string? friendlyName, string vendor) =>
+        friendlyName is not null && friendlyName.Contains(vendor, StringComparison.OrdinalIgnoreCase);
 
     private static string HealthKey(NutComPortHealth health) => health switch
     {

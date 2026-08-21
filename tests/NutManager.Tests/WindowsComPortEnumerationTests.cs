@@ -281,12 +281,39 @@ public sealed class WindowsComPortEnumerationTests
 
         Assert.True(presented.IsHealthy);
         Assert.Equal("COM3", presented.PortName);
-        Assert.Equal("Prolific PL2303GT USB Serial COM Port (COM3)", presented.FriendlyName);
-        Assert.Equal("Prolific", presented.Manufacturer);
-        // The catalogue stays at family level; the variant is already in the friendly name above.
+        // The row states the port, so the description no longer repeats it as "(COM3)".
+        Assert.Equal("Prolific PL2303GT USB Serial COM Port", presented.FriendlyName);
+        // The catalogue stays at family level; the variant is already in the description above, and
+        // "Prolific" is not appended because that description is already showing it.
         Assert.Equal("PL2303 · VID_067B / PID_23A3 · USB–Serial", presented.IdentityText);
+        Assert.DoesNotContain("(COM3)", presented.FriendlyName!, StringComparison.Ordinal);
     }
 
+
+
+    // ------------------------------------------------- the description does not repeat the port
+
+    [Theory]
+    [InlineData("Prolific PL2303GT USB Serial COM Port (COM3)", "COM3", "Prolific PL2303GT USB Serial COM Port")]
+    [InlineData("Communications Port (COM1)", "COM1", "Communications Port")]
+    [InlineData("USB Serial Device (com12)", "COM12", "USB Serial Device")]
+    // Only this port's own suffix, and only at the end.
+    [InlineData("Adapter (COM9)", "COM3", "Adapter (COM9)")]
+    [InlineData("Adapter (COM3) rev B", "COM3", "Adapter (COM3) rev B")]
+    // Nothing to strip.
+    [InlineData("Prolific USB-to-Serial Comm Port", "COM3", "Prolific USB-to-Serial Comm Port")]
+    // A name that is only the suffix keeps it rather than becoming an empty label.
+    [InlineData("(COM3)", "COM3", "(COM3)")]
+    public void ThePortSuffixIsDroppedFromTheDescription(string friendlyName, string portName, string expected) =>
+        Assert.Equal(expected, NutPortPresentation.WithoutPortSuffix(friendlyName, portName));
+
+    [Theory]
+    [InlineData(null, "COM3")]
+    [InlineData("", "COM3")]
+    [InlineData("Adapter (COM3)", null)]
+    [InlineData("Adapter (COM3)", "")]
+    public void AMissingNameOrPortLeavesTheDescriptionUntouched(string? friendlyName, string? portName) =>
+        Assert.Equal(friendlyName, NutPortPresentation.WithoutPortSuffix(friendlyName, portName));
 
     // ------------------------------------------------- the enumeration stays passive
 

@@ -28,7 +28,9 @@
     -->
     <StackPanel Spacing="16" IsVisible="{Binding IsDeviceInspectionAvailable}">
       <Border Classes="nut-card">
-        <StackPanel Spacing="12">
+        <StackPanel Spacing="18">
+          <!-- Section one: what ups.conf configures. -->
+          <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Spacing="3">
               <TextBlock Text="{Binding Strings[Administration.Drivers.Configured]}" Classes="nut-section-title" />
@@ -60,10 +62,11 @@
             <StackPanel Width="320" Margin="0,0,12,8"><TextBlock Text="driverpath" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.DriverPath}" TextWrapping="Wrap" /></StackPanel>
             <StackPanel Width="320" Margin="0,0,12,8" IsVisible="{Binding !IsRemoteDeviceInspection}"><TextBlock Text="{Binding Strings[Administration.Drivers.Executable]}" Classes="nut-metadata" /><TextBlock Text="{Binding SelectedConfiguredDriver.Executable.Path}" TextWrapping="Wrap" /><TextBlock Text="{Binding SelectedConfiguredDriverStateText}" Classes="nut-metadata" /></StackPanel>
           </WrapPanel>
-        </StackPanel>
-      </Border>
+          </StackPanel>
 
-      <Border Classes="nut-card">
+          <!-- Section two: what the inspected machine actually exposes. -->
+          <Border Classes="nut-divider" />
+
         <StackPanel Spacing="10">
           <StackPanel Spacing="3">
             <TextBlock Text="{Binding Strings[Administration.Drivers.ComPorts]}" Classes="nut-section-title" />
@@ -74,21 +77,24 @@
           <ItemsControl ItemsSource="{Binding DetectedComPorts}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Grid ColumnDefinitions="Auto,10,Auto,16,*,16,Auto" RowDefinitions="Auto,Auto" Margin="0,5">
+                <Grid ColumnDefinitions="Auto,10,Auto,8,Auto,8,*,16,Auto" RowDefinitions="Auto,Auto" Margin="0,5">
                   <Ellipse Grid.Row="0" Grid.Column="0" Classes="nut-port-status-dot"
                            Classes.healthy="{Binding IsHealthy}"
                            Classes.warning="{Binding IsWarning}"
                            Classes.critical="{Binding IsCritical}"
                            ToolTip.Tip="{Binding StatusText}" />
                   <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding PortName}" FontWeight="SemiBold" />
-                  <TextBlock Grid.Row="0" Grid.Column="4" Text="{Binding FriendlyName}" IsVisible="{Binding HasFriendlyName}" TextWrapping="Wrap" />
-                  <TextBlock Grid.Row="0" Grid.Column="6" Text="{Binding Manufacturer}" IsVisible="{Binding HasManufacturer}" Classes="nut-metadata" TextWrapping="Wrap" />
+                  <!-- Reads the port into its description. Hidden when there is no description to point at. -->
+                  <TextBlock Grid.Row="0" Grid.Column="4" Text="→" Classes="nut-metadata" IsVisible="{Binding HasFriendlyName}" />
+                  <TextBlock Grid.Row="0" Grid.Column="6" Text="{Binding FriendlyName}" IsVisible="{Binding HasFriendlyName}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="0" Grid.Column="8" Text="{Binding Manufacturer}" IsVisible="{Binding HasManufacturer}" Classes="nut-metadata" VerticalAlignment="Center" TextWrapping="Wrap" />
                   <!--
                     Chipset, identifiers and bus, and only what the device actually reported. The line
                     is composed in the view model, so what may be claimed about a device is decided in
-                    one testable place instead of in a binding.
+                    one testable place instead of in a binding. The manufacturer has its own column at
+                    the end of the row, so it is never repeated here.
                   -->
-                  <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="5"
+                  <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="7"
                              Text="{Binding IdentityText}"
                              IsVisible="{Binding HasIdentity}"
                              Classes="nut-metadata"
@@ -97,6 +103,7 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+        </StackPanel>
         </StackPanel>
       </Border>
 
