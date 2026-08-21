@@ -9,7 +9,8 @@
     equally weighted blocks, so the selected area and the working surface read as one workflow.
   -->
   <!-- Matches Overview: the scroll bar keeps its own gutter instead of floating over the cards. -->
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+  <ScrollViewer Classes="nut-page-scroll"
+                HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto"
                 AllowAutoHide="False">
     <StackPanel Spacing="18" Margin="0,0,10,0">

@@ -9,7 +9,8 @@
     Only the three surfaces backed by real state are offered, and every status below is a
     categorical projection of the current polling, discovery or installation state.
   -->
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+  <ScrollViewer Classes="nut-page-scroll"
+                HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto"
                 AllowAutoHide="False">
     <StackPanel Spacing="16" Margin="0,0,18,0">

@@ -29,6 +29,7 @@
   </UserControl.Resources>
 
   <ScrollViewer x:Name="SettingsScrollViewer"
+                Classes="nut-page-scroll"
                 HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto"
                 AllowAutoHide="False">

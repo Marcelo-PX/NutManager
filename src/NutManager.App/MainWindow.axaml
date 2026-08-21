@@ -87,6 +87,7 @@
 
     <!-- ==================== Integrated title bar ==================== -->
     <Border Grid.Row="0"
+            ZIndex="1"
             Classes="nut-titlebar"
             Padding="14,0,8,0"
             PointerPressed="TitleBar_OnPointerPressed"
@@ -383,30 +384,40 @@
       </Border>
 
       <!--
-        The tint and the content are separate layers on purpose. The fade below is an opacity mask,
-        and a mask applied to the painted background would dissolve the content area's own tint at
-        the edges, leaving a seam against the title bar and the footer. So the tint is its own layer
-        underneath and only the content is masked.
+        The tint and the content are separate layers on purpose. The tint stops at the row it belongs
+        to, while the content reaches past it under the bars, and one border could not do both.
       -->
       <Panel Grid.Column="1">
         <Border Background="{DynamicResource NutWindowBrush}" />
-        <Border Padding="{Binding ContentPadding}"
+        <!--
+          Reaches under the title bar and the footer so a page scrolls beneath the chrome instead of
+          being cut off against it. The numbers are NutHeaderHeight and NutFooterHeight negated.
+
+          The padding here is horizontal only, and that is the whole trick: this padding sits inside
+          this border, so a vertical value would push the scroll viewport back down by exactly what
+          the margin lifted it and the content would never reach the bars at all. The vertical inset
+          belongs inside the page's own scroll viewer, where it scrolls away with the content.
+
+          The mask below fades content into the bars as it arrives, so the chrome reads as glass
+          over the page rather than a lid on it.
+        -->
+        <Border Margin="0,-64,0,-30"
+                Padding="{Binding ContentPadding}"
                 ClipToBounds="True"
                 IsEnabled="{Binding IsBackgroundInteractionEnabled}">
           <!--
-            Content dissolves into the chrome instead of being cut off at a hard line. Fading to a
-            colour is not an option here: the shell is translucent, so the content has to fade to
-            genuine transparency and let the backdrop show through.
+            Content dissolves as it travels under the bars rather than simply disappearing behind
+            them, which is what makes the chrome read as glass over the page instead of a lid on it.
 
-            The band is a share of the height rather than a fixed number of pixels, which keeps it
-            inside the content padding at rest — so nothing is dimmed until it actually scrolls into
-            the edge.
+            The bands are a share of the height rather than pixel counts, sized to sit roughly over
+            the title bar and the footer: the mask is opaque again just below each one, so a page at
+            rest is never dimmed and only content that has actually reached a bar is faded.
           -->
           <Border.OpacityMask>
             <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
               <GradientStop Offset="0" Color="#00000000" />
-              <GradientStop Offset="0.02" Color="#FF000000" />
-              <GradientStop Offset="0.98" Color="#FF000000" />
+              <GradientStop Offset="0.06" Color="#FF000000" />
+              <GradientStop Offset="0.97" Color="#FF000000" />
               <GradientStop Offset="1" Color="#00000000" />
             </LinearGradientBrush>
           </Border.OpacityMask>
@@ -492,7 +503,7 @@
     </Grid>
 
     <!-- ==================== Footer ==================== -->
-    <Border Grid.Row="2" Classes="nut-footer" Padding="16,0">
+    <Border Grid.Row="2" ZIndex="1" Classes="nut-footer" Padding="16,0">
       <Grid>
         <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
           <PathIcon Data="{DynamicResource NutIconShield}" Width="13" Height="13" Foreground="{DynamicResource NutHealthyBrush}" />
