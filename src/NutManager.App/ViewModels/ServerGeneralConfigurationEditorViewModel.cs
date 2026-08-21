@@ -368,6 +368,46 @@ public sealed partial class ServerConfigurationFieldViewModel : ObservableObject
     public bool IsSensitive { get; }
     public bool HasChoices { get; }
     public bool IsText => !IsBoolean && !IsSensitive && !HasChoices;
+
+    /// <summary>
+    /// Whether this field holds a number, decided by the schema's declared kind rather than by the
+    /// label or the unit beside it. SHUTDOWNCMD and POWERDOWNFLAG sit in the same grid as FINALDELAY
+    /// and DEADTIME, and a command line offered a spinner would be a field the operator could not
+    /// type into — so the spinner appears only where the schema says a number is what the field is.
+    /// </summary>
+    public bool IsNumeric => IsText && Descriptor.FieldKind is
+        NutConfigurationFieldKind.Integer or NutConfigurationFieldKind.Decimal or NutConfigurationFieldKind.Port;
+
+    public bool IsFreeText => IsText && !IsNumeric;
+
+    /// <summary>
+    /// The bounds the schema declares, and no others. Inventing one — a floor of zero on a delay,
+    /// say — would refuse values this editor accepts today, so an undeclared bound stays open.
+    /// </summary>
+    public decimal Minimum => Descriptor.Presentation?.Minimum ?? decimal.MinValue;
+
+    public decimal Maximum => Descriptor.Presentation?.Maximum ?? decimal.MaxValue;
+
+    public decimal Increment => Descriptor.FieldKind == NutConfigurationFieldKind.Decimal ? 0.1m : 1m;
+
+    public string NumericFormat => Descriptor.FieldKind == NutConfigurationFieldKind.Decimal ? "0.####" : "0";
+
+    /// <summary>
+    /// The numeric face of <see cref="DraftValue"/>, which remains the single stored form. Empty maps
+    /// to null rather than to zero: an omitted directive means the daemon's own default, and zero is
+    /// a value the operator never typed.
+    /// </summary>
+    public decimal? NumericValue
+    {
+        get => decimal.TryParse(DraftValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+        set
+        {
+            var text = value?.ToString(NumericFormat, CultureInfo.InvariantCulture) ?? string.Empty;
+            if (!string.Equals(text, DraftValue, StringComparison.Ordinal)) DraftValue = text;
+        }
+    }
     public bool SupportsAutomatic => Descriptor.AutomaticPolicy == NutConfigurationAutomaticPolicy.OmitDirective;
     public IReadOnlyList<UpsFieldChoiceViewModel> Choices { get; }
 
@@ -388,6 +428,10 @@ public sealed partial class ServerConfigurationFieldViewModel : ObservableObject
             RestoreDraftValue();
             return;
         }
+
+        // NumericValue reads through to this one, so it has to be told when the text moves — a
+        // spinner bound to a stale projection would keep showing the value the field used to hold.
+        OnPropertyChanged(nameof(NumericValue));
 
         if (!_initializing && CanEdit) _owner.SetField(Descriptor, value);
     }
