@@ -536,41 +536,21 @@ public sealed class WindowsNutDriverDiagnostics : ILocalNutDriverDiagnostics
     };
 }
 
+/// <summary>
+/// The Windows enumeration's view of COM port naming.
+///
+/// It forwards to <see cref="NutComPortName"/> rather than restating the rule. Both the local
+/// enumeration here and the remote comparison against another machine's <c>ups.conf</c> have to
+/// agree on what <c>COM4</c> means, and the only way to guarantee that is for there to be one rule.
+/// </summary>
 public static class WindowsComPortNormalizer
 {
     /// <summary>Extracts the numeric part of a normalized COM name so ordering is natural.</summary>
-    public static bool TryGetNumber(string? value, out int number)
-    {
-        number = 0;
-        return TryNormalize(value, out var normalized) &&
-            int.TryParse(normalized[3..], System.Globalization.NumberStyles.None,
-                System.Globalization.CultureInfo.InvariantCulture, out number);
-    }
+    public static bool TryGetNumber(string? value, out int number) =>
+        NutComPortName.TryGetNumber(value, out number);
 
-    public static bool TryNormalize(string? value, out string normalized)
-    {
-        normalized = string.Empty;
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        var candidate = value.Trim();
-        if (candidate.StartsWith("\\\\.\\", StringComparison.Ordinal))
-        {
-            candidate = candidate[4..];
-        }
-
-        if (!candidate.StartsWith("COM", StringComparison.OrdinalIgnoreCase) ||
-            !int.TryParse(candidate[3..], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number) ||
-            number < 1)
-        {
-            return false;
-        }
-
-        normalized = "COM" + number.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        return true;
-    }
+    public static bool TryNormalize(string? value, out string normalized) =>
+        NutComPortName.TryNormalize(value, out normalized);
 }
 
 public static class WindowsNutDriverResolver

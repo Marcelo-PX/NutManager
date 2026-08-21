@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using NutManager.App.Localization;
 using NutManager.App.Services;
 using NutManager.Core.Administration;
+using NutManager.Core.Agent;
 using NutManager.Core.Configuration;
 using NutManager.Core.Configuration.Semantic;
 using NutManager.Core.Models;
@@ -21,6 +22,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private readonly ILocalNutDriverDiagnostics? _driverDiagnostics;
     private readonly ILocalNutDriverCatalogSource? _driverCatalogSource;
     private readonly ManagedNutServerRuntimeContext? _profileContext;
+
+    // The same agent client the remote service monitor uses, for one read-only operation. It is
+    // absent for a local profile, and its absence is the whole of the "no remote inspection here"
+    // decision — there is no second transport and no fallback to anything else.
+    private readonly INutManagerAgentClient? _agentClient;
     private readonly RemoteManagementSessionViewModel? _remoteManagement;
     private NutInstallationInfo? _currentInstallation;
     private NutConfigurationFileSnapshot? _loadedSnapshot;
@@ -47,7 +53,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         UiLanguagePreference language = UiLanguagePreference.PtBr,
         ILocalNutDriverCatalogSource? driverCatalogSource = null,
         RemoteWindowsServiceViewModel? remoteWindowsService = null,
-        RemoteWindowsServiceControlViewModel? remoteWindowsServiceControl = null)
+        RemoteWindowsServiceControlViewModel? remoteWindowsServiceControl = null,
+        INutManagerAgentClient? agentClient = null)
         : base(
             new NutManagerLocalizer(language).Get("Administration.Title"),
             profileContext?.Profile.Management.Mode == NutManagementMode.Remote
@@ -63,6 +70,14 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         _remoteManagement = remoteManagement;
         RemoteWindowsService = remoteWindowsService;
         RemoteWindowsServiceControl = remoteWindowsServiceControl;
+        _agentClient = agentClient;
+
+        // A local profile with diagnostics inspects locally from the outset. A remote profile starts
+        // with nothing established: whether that server can be inspected is a question only its
+        // agent can answer, and it is asked rather than assumed.
+        _deviceInspectionSource = IsLocalManagementProfile && _driverDiagnostics is not null
+            ? NutDeviceInspectionSource.Local
+            : NutDeviceInspectionSource.Unavailable;
         Strings = new NutManagerLocalizer(language);
         if (_remoteManagement is not null)
         {
@@ -272,6 +287,27 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     [ObservableProperty]
     private IReadOnlyList<NutComPortInfo> _comPorts = Array.Empty<NutComPortInfo>();
+
+    /// <summary>
+    /// The same ports, prepared for the screen: status, and the identity line composed from what the
+    /// device actually reported. Derived rather than stored twice — <see cref="ComPorts"/> stays the
+    /// record the ups.conf editor consumes for its port choices.
+    /// </summary>
+    [ObservableProperty]
+    private IReadOnlyList<DetectedComPortViewModel> _detectedComPorts = Array.Empty<DetectedComPortViewModel>();
+
+    [ObservableProperty]
+    private NutDeviceInspectionSource _deviceInspectionSource;
+
+    /// <summary>
+    /// Whether the port list on screen is an answer at all.
+    ///
+    /// False before the first reading and whenever the source could not be asked, and that is what
+    /// keeps an unreachable agent from being presented as a server with no serial ports. Every
+    /// statement about a configured port being present or absent is gated on this.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isComPortListKnown;
 
     [ObservableProperty]
     private IReadOnlyList<NutConfiguredDriver> _configuredDrivers = Array.Empty<NutConfiguredDriver>();
@@ -590,7 +626,42 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     public bool HasConfiguredDrivers => ConfiguredDrivers.Count > 0;
     public bool HasNoConfiguredDrivers => !HasConfiguredDrivers;
     public bool HasSelectedConfiguredDriver => SelectedConfiguredDriver is not null;
-    public bool HasNoComPorts => ComPorts.Count == 0;
+
+    /// <summary>
+    /// Only ever true once a source has actually answered. Before that, and whenever the source could
+    /// not be asked, the screen says why rather than claiming the machine has no ports.
+    /// </summary>
+    public bool HasNoComPorts => IsComPortListKnown && DetectedComPorts.Count == 0;
+
+    public bool IsDeviceInspectionAvailable => DeviceInspectionSource != NutDeviceInspectionSource.Unavailable;
+
+    public bool IsDeviceInspectionUnavailable => !IsDeviceInspectionAvailable;
+
+    public bool IsRemoteDeviceInspection => DeviceInspectionSource == NutDeviceInspectionSource.RemoteAgent;
+
+    /// <summary>
+    /// Names the source in the operator's own language. A remote reading is never described as a
+    /// local diagnostic: which machine was examined is the first thing that has to be unambiguous.
+    /// </summary>
+    public string DeviceInspectionSourceText => DeviceInspectionSource switch
+    {
+        NutDeviceInspectionSource.RemoteAgent => Strings.Get("Administration.Drivers.SourceRemoteAgent"),
+        NutDeviceInspectionSource.Local => Strings.Get("Administration.Drivers.SourceLocal"),
+        _ => Strings.Get("Administration.Drivers.Unavailable")
+    };
+
+    /// <summary>
+    /// The whole point of the remote view: active driver diagnostics stay local, and the screen says
+    /// so instead of presenting buttons that would have to be refused.
+    /// </summary>
+    public bool AreActiveDiagnosticsAvailable => IsLocalManagementProfile && IsDriverDiagnosticsAvailable;
+
+    /// <summary>
+    /// Selecting a configured driver is inspection, not action, so it follows the inspection source
+    /// rather than the diagnostics capability. A read-only or remote profile can still look at what
+    /// is configured and how it relates to what was detected; what it cannot do is run anything.
+    /// </summary>
+    public bool CanSelectConfiguredDriver => IsDeviceInspectionAvailable && !IsBusy && !HasPendingAdministrativeAction;
 
     /// <summary>
     /// Distinguishes "configured in ups.conf" from "currently enumerated by Windows" so a port that
@@ -598,13 +669,22 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     /// </summary>
     public bool IsSelectedDriverPortPresent => SelectedConfiguredDriver?.IsConfiguredComPortPresent == true;
 
-    public bool HasSelectedDriverPortState => SelectedConfiguredDriver?.NormalizedComPort is not null;
+    public bool HasSelectedDriverPortState => SelectedConfiguredDriver?.NormalizedComPort is not null && IsComPortListKnown;
 
+    /// <summary>
+    /// Whether the configured port is one the inspected machine currently exposes, and which machine
+    /// that was. The remote wording names the server on purpose: "not detected" about the operator's
+    /// own workstation would be a true statement about the wrong computer.
+    /// </summary>
     public string SelectedDriverPortStateText => SelectedConfiguredDriver?.NormalizedComPort is null
         ? Strings.Get("Status.Unavailable")
-        : Strings.Get(IsSelectedDriverPortPresent
-            ? "Administration.Drivers.PortConfiguredAndDetected"
-            : "Administration.Drivers.PortConfiguredNotDetected");
+        : Strings.Get((IsSelectedDriverPortPresent, IsRemoteDeviceInspection) switch
+        {
+            (true, true) => "Administration.Drivers.PortDetectedOnServer",
+            (false, true) => "Administration.Drivers.PortNotDetectedOnServer",
+            (true, false) => "Administration.Drivers.PortConfiguredAndDetected",
+            _ => "Administration.Drivers.PortConfiguredNotDetected"
+        });
 
     public string SelectedConfiguredDriverStateText => SelectedConfiguredDriver?.Executable.State switch
     {
@@ -666,6 +746,19 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanRefreshDriverDiagnostics => Capabilities.CanInspectLocalManagement && _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction;
 
+    /// <summary>
+    /// Whether the agent can be asked at all from here. It requires a remote profile and a client;
+    /// whether that particular agent offers hardware inspection is settled by its handshake, not by
+    /// this gate, because a gate cannot know what a server it has not spoken to supports.
+    /// </summary>
+    public bool CanRefreshRemoteDeviceInspection => IsRemoteManagementProfile && _agentClient is not null &&
+        !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction;
+
+    /// <summary>One Refresh button, routed by profile. The screen is the same; the source is not.</summary>
+    public bool CanRefreshDeviceInspection => IsRemoteManagementProfile
+        ? CanRefreshRemoteDeviceInspection
+        : CanRefreshDriverDiagnostics;
+
     public bool CanPrepareDriverDiagnostic => Capabilities.CanRunDriverDiagnostics && _driverDiagnostics is not null && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && _currentInstallation is { IsDetected: true };
 
     public bool CanExecuteDriverDiagnostic => Capabilities.CanRunDriverDiagnostics && HasPendingDriverDiagnostic && IsDriverDiagnosticConfirmed && !IsBusy && !IsDetectingInstallation && !HasDraftChanges && !HasPreview && !HasPendingAdministrativeAction && IsPendingDriverDiagnosticCurrent();
@@ -696,6 +789,10 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         {
             InstallationStatusText = "Gerenciamento remoto não conectado";
             SetStatus(ManagementAvailabilityText);
+
+            // The devices view is the one part of this page a remote profile can populate without a
+            // configuration session, because it asks the agent rather than the file transport.
+            await RefreshRemoteDeviceInspectionAsync(cancellationToken);
             return;
         }
 
@@ -1100,7 +1197,8 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
                 return;
             }
 
-            ComPorts = snapshot.ComPorts;
+            DeviceInspectionSource = NutDeviceInspectionSource.Local;
+            ApplyComPorts(snapshot.ComPorts, snapshot.IsPlatformSupported);
             ConfiguredDrivers = snapshot.ConfiguredDrivers;
             SelectedConfiguredDriver = snapshot.ConfiguredDrivers.Count == 1 ? snapshot.ConfiguredDrivers[0] : null;
             UpsdrvctlPath = snapshot.UpsdrvctlPath;
@@ -1121,6 +1219,136 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         {
             IsBusy = false;
         }
+    }
+
+    /// <summary>
+    /// One read-only reading of the managed server's serial hardware, through the agent.
+    ///
+    /// Two exchanges, in this order and for this reason. The handshake first, because whether that
+    /// agent offers hardware inspection at all is a fact only it can state — an agent built before
+    /// this capability existed does not advertise it, and the honest response to that is to say the
+    /// server cannot be inspected rather than to send it a request it will refuse. Then the snapshot.
+    ///
+    /// Nothing here can act on the server. The client has one method for this and it names no port,
+    /// no speed and no command; there is no path from this method to opening a device, running a
+    /// driver, or writing a configuration file.
+    /// </summary>
+    public async Task RefreshRemoteDeviceInspectionAsync(CancellationToken cancellationToken = default)
+    {
+        if (!CanRefreshRemoteDeviceInspection)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var host = _profileContext?.Endpoint.Host ?? string.Empty;
+            var handshake = await _agentClient!.HandshakeAsync(host, cancellationToken);
+            var observation = NutAgentObservation.From(host, handshake, null, DateTimeOffset.UtcNow);
+
+            if (!observation.AgentReachable)
+            {
+                SetRemoteInspectionUnavailable(Strings.Get("Administration.Drivers.RemoteAgentUnavailable"));
+                return;
+            }
+
+            // Read from the advertised capability list rather than from a version string. An agent
+            // whose control is unavailable — no pinned NUT service, no usable audit sink — still
+            // enumerates devices perfectly well, and a version test would hide that.
+            if (!observation.Advertises(NutAgentOperation.GetHardwareSnapshot))
+            {
+                SetRemoteInspectionUnavailable(Strings.Get("Administration.Drivers.RemoteCapabilityMissing"));
+                return;
+            }
+
+            var snapshot = await _agentClient.GetHardwareSnapshotAsync(host, cancellationToken);
+            if (!snapshot.Succeeded || snapshot.Value is not { } hardware)
+            {
+                SetRemoteInspectionUnavailable(Strings.Get("Administration.Drivers.RemoteSnapshotFailed"));
+                return;
+            }
+
+            DeviceInspectionSource = NutDeviceInspectionSource.RemoteAgent;
+            ApplyComPorts(hardware.ComPorts, hardware.EnumerationSucceeded);
+
+            // The agent answered and said it could not enumerate. That is not an empty machine, and
+            // the difference survives all the way to the screen.
+            DriverDiagnosticStatusMessage = hardware.EnumerationSucceeded
+                ? hardware.Detail
+                : Strings.Get("Administration.Drivers.RemoteEnumerationFailed");
+
+            await LoadRemoteConfiguredDriversAsync(
+                hardware.EnumerationSucceeded ? hardware.ComPorts : null, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            DriverDiagnosticStatusMessage = Strings.Get("Administration.Drivers.RefreshCancelled");
+        }
+        catch
+        {
+            SetRemoteInspectionUnavailable(Strings.Get("Administration.Drivers.RemoteSnapshotFailed"));
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Reads the managed server's <c>ups.conf</c> through the configuration transport that already
+    /// owns it, purely to relate what is configured to what was detected.
+    ///
+    /// This is a load and nothing else. It introduces no second reader, no writer, and no path that
+    /// could modify the document: the port relationship is reported so an operator can see it, and
+    /// acting on it stays where it belongs, in the graphical editor and its safe-write pipeline.
+    /// </summary>
+    private async Task LoadRemoteConfiguredDriversAsync(
+        IReadOnlyList<NutComPortInfo>? detectedPorts,
+        CancellationToken cancellationToken)
+    {
+        var upsConf = ConfigurationFiles.FirstOrDefault(file => file.FileKind == NutConfigurationFileKind.UpsConf);
+        if (_configurationPipeline is null || upsConf is not { IsManaged: true, FullPath: { } path })
+        {
+            // No remote session, or the profile does not manage ups.conf. Either way there is nothing
+            // to report, and inventing an empty driver list would look like a file with no sections.
+            ConfiguredDrivers = Array.Empty<NutConfiguredDriver>();
+            SelectedConfiguredDriver = null;
+            return;
+        }
+
+        var load = await _configurationPipeline.LoadAsync(path, NutConfigurationFileKind.UpsConf, cancellationToken);
+        if (load.Status != NutConfigurationLoadStatus.Success || load.Snapshot is null)
+        {
+            ConfiguredDrivers = Array.Empty<NutConfiguredDriver>();
+            SelectedConfiguredDriver = null;
+            return;
+        }
+
+        var drivers = NutRemoteConfiguredDriverReader.Read(load.Snapshot.Document, detectedPorts);
+        ConfiguredDrivers = drivers;
+        SelectedConfiguredDriver = drivers.Count == 1 ? drivers[0] : null;
+    }
+
+    /// <summary>
+    /// The server could not be inspected, and the screen has to say that rather than show an empty
+    /// port list. The known-list flag is cleared with the ports, which is what stops a configured
+    /// port from reading as absent when the truth is that nobody was able to look.
+    /// </summary>
+    private void SetRemoteInspectionUnavailable(string message)
+    {
+        DeviceInspectionSource = NutDeviceInspectionSource.Unavailable;
+        ApplyComPorts(Array.Empty<NutComPortInfo>(), known: false);
+        ConfiguredDrivers = Array.Empty<NutConfiguredDriver>();
+        SelectedConfiguredDriver = null;
+        DriverDiagnosticStatusMessage = message;
+    }
+
+    /// <summary>Publishes one port list and whether it is an answer, so the two can never disagree.</summary>
+    private void ApplyComPorts(IReadOnlyList<NutComPortInfo> ports, bool known)
+    {
+        ComPorts = ports;
+        IsComPortListKnown = known;
     }
 
     public void PrepareDriverDiagnostic(NutDriverDiagnosticKind kind)
@@ -1266,6 +1494,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     [RelayCommand]
     private Task RefreshWindowsAdministration() => RefreshWindowsAdministrationAsync();
+
+    // One button, two sources, no fallback: a remote profile never quietly inspects this machine
+    // instead, and a local profile never reaches for an agent.
+    [RelayCommand]
+    private Task RefreshDeviceInspection() => IsRemoteManagementProfile
+        ? RefreshRemoteDeviceInspectionAsync()
+        : RefreshDriverDiagnosticsAsync();
 
     [RelayCommand]
     private Task RefreshDriverDiagnostics() => RefreshDriverDiagnosticsAsync();
@@ -1505,7 +1740,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     private void ClearDriverDiagnostics()
     {
-        ComPorts = Array.Empty<NutComPortInfo>();
+        ApplyComPorts(Array.Empty<NutComPortInfo>(), known: false);
         ConfiguredDrivers = Array.Empty<NutConfiguredDriver>();
         SelectedConfiguredDriver = null;
         UpsdrvctlPath = null;
@@ -1592,10 +1827,13 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             IReadOnlyList<string>? installed = null;
             if (IsLocalManagementProfile && _driverCatalogSource is not null && _currentInstallation is not null)
                 installed = await _driverCatalogSource.GetInstalledDriverNamesAsync(_currentInstallation, cancellationToken);
+            // The port choices come from whatever source answered, provided it answered. A remote
+            // agent's list is as usable a set of choices as a local one; a list nobody could read is
+            // not offered at all.
             result.UpsEditor = new UpsConfigurationEditorViewModel(
                 snapshot,
                 installed,
-                IsLocalManagementProfile ? ComPorts : [],
+                IsComPortListKnown ? ComPorts : [],
                 Strings);
             return result;
         }
@@ -1950,6 +2188,12 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(PendingDriverDiagnosticHardwareText));
         OnPropertyChanged(nameof(NutServiceStateForDriverDiagnostic));
         OnPropertyChanged(nameof(CanRefreshDriverDiagnostics));
+        OnPropertyChanged(nameof(CanRefreshRemoteDeviceInspection));
+        OnPropertyChanged(nameof(CanRefreshDeviceInspection));
+        OnPropertyChanged(nameof(AreActiveDiagnosticsAvailable));
+        OnPropertyChanged(nameof(CanSelectConfiguredDriver));
+        OnPropertyChanged(nameof(HasSelectedDriverPortState));
+        OnPropertyChanged(nameof(SelectedDriverPortStateText));
         OnPropertyChanged(nameof(CanPrepareDriverDiagnostic));
         OnPropertyChanged(nameof(CanExecuteDriverDiagnostic));
         OnPropertyChanged(nameof(IsDriverDiagnosticCritical));
@@ -2054,7 +2298,33 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(HasNoConfiguredDrivers));
     }
 
-    partial void OnComPortsChanged(IReadOnlyList<NutComPortInfo> value) => OnPropertyChanged(nameof(HasNoComPorts));
+    partial void OnComPortsChanged(IReadOnlyList<NutComPortInfo> value)
+    {
+        // The presentation list is rebuilt here rather than by every caller, so a port can never be
+        // on screen with an identity line belonging to a previous reading.
+        DetectedComPorts = value.Select(port => DetectedComPortPresentation.Create(port, Strings)).ToArray();
+        OnPropertyChanged(nameof(HasNoComPorts));
+    }
+
+    partial void OnDetectedComPortsChanged(IReadOnlyList<DetectedComPortViewModel> value) =>
+        OnPropertyChanged(nameof(HasNoComPorts));
+
+    partial void OnIsComPortListKnownChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasNoComPorts));
+        OnPropertyChanged(nameof(HasSelectedDriverPortState));
+    }
+
+    partial void OnDeviceInspectionSourceChanged(NutDeviceInspectionSource value)
+    {
+        OnPropertyChanged(nameof(IsDeviceInspectionAvailable));
+        OnPropertyChanged(nameof(IsDeviceInspectionUnavailable));
+        OnPropertyChanged(nameof(IsRemoteDeviceInspection));
+        OnPropertyChanged(nameof(DeviceInspectionSourceText));
+        OnPropertyChanged(nameof(AreActiveDiagnosticsAvailable));
+        OnPropertyChanged(nameof(CanSelectConfiguredDriver));
+        OnPropertyChanged(nameof(SelectedDriverPortStateText));
+    }
 
     partial void OnSelectedAdministrationSectionChanged(AdministrationSectionItemViewModel value)
     {

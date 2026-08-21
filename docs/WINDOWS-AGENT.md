@@ -12,12 +12,14 @@ there is no longer on the path to controlling a service.
 
 - reports the state, process id and identity of the NUT service on its own machine;
 - starts, stops and restarts that one service;
+- reports the serial devices Windows already knows about on its own machine, read-only;
 - records every control operation in the Windows Event Log.
 
 ## What it does not do
 
 - it does not read or write NUT configuration files;
 - it does not accept a service name, a path or a command from a caller;
+- it does not open a serial port, transmit a byte or run a NUT driver;
 - it does not restart the NUT service after a configuration change;
 - it does not create its own operators group or its own Event Log source;
 - it does not terminate processes.
@@ -188,6 +190,74 @@ Start, Stop and Restart appear only when the agent advertises them. If the opera
 event source is missing, the agent reports control as unavailable with the reason, and no button is
 offered. Stop and Restart ask for confirmation first, naming the host and the service; Restart is a
 single request to the agent, which holds both phases under one lock.
+
+### Serial device inspection (T38)
+
+The Devices and drivers section of a remote profile now lists the serial devices the **server**
+exposes, read through the agent. It is the same screen a local profile uses; only the source
+differs, and the section says which machine was examined so a remote reading is never mistaken for a
+local one.
+
+What the agent does for this is enumerate. It reads the port names Windows publishes in the
+`SERIALCOMM` device map, which is authoritative for presence, and lets WMI add a friendly name, a
+manufacturer, a PnP identifier and a status where it happens to have them. It is the same passive
+source the local screen has always used, not a second implementation. **No port is opened, no byte
+is transmitted, no driver is run and no device setting is changed** — a NUT driver already talking to
+a UPS on COM4 is unaffected, because nothing in this path touches COM4.
+
+The request carries no port, no speed, no command and no path. There is no field through which a
+caller could redirect it, which is the same property the control operations have and for the same
+reason.
+
+Each port is shown with a status, and the four states mean different things:
+
+| State | Meaning |
+| --- | --- |
+| Green | Present, and Windows reported a fault code of zero. |
+| Amber | Present, and Windows reported a fault code or a status other than OK. |
+| Grey | Present, and nothing further is known — `SERIALCOMM` lists it and WMI has no record. Not a fault. |
+| Red | Named but not currently exposed by the operating system. |
+
+A second line names the controller, the USB vendor and product identifiers and the bus, and only
+where those are actually established. The identifiers are read out of the PnP device id; the
+controller comes from a small fixed table of verified vendor/product pairs. An unrecognised pair
+produces no controller name rather than the nearest guess, and a Prolific adapter is reported at
+family level as `PL2303` because this build has no verified mapping for the G-series suffixes. The
+driver's own friendly name is shown in full on the line above, so nothing is hidden by that
+restraint. There is no internet lookup of any kind.
+
+The configured `port` from the server's `ups.conf` is related to what was detected and reported as
+**detected on the server** or **not detected on the server**. That comparison is informational. The
+agent does not read `ups.conf` — the document is loaded through the profile's own configuration
+transport, SFTP or SMB, and only when that session is connected. Nothing here writes configuration;
+the graphical editor and the safe-write pipeline remain the only route to a change.
+
+An agent that cannot be reached, or one older than this capability, is reported as such. It is never
+presented as a server with no serial ports: "there are no ports" and "nobody could look" are
+different findings and the screen keeps them apart.
+
+Active driver diagnostics — `upsdrvctl`, driver help, version, variable listing and data capture —
+stay local. Every one of them opens the configured device through a NUT driver, which is exactly
+what remote inspection is built not to do, and the remote screen says so instead of offering buttons
+that would have to be refused.
+
+The reading is refreshed by the Refresh button on that section. There is no new poll and no timer:
+serial hardware does not change between two ticks of a monitor, and a read an operator can repeat
+deliberately does not need one. Consistent with that, the read is not written to the Event Log —
+the audit exists to preserve control records, and burying them under enumeration noise would defeat
+it. The audit policy for Start, Stop and Restart is unchanged.
+
+### Older agents
+
+The capability is negotiated in the handshake, not inferred from a version number. An agent built
+before T38 simply does not list the operation among its capabilities, and NutManager reads that and
+reports device inspection as unavailable for that server rather than sending a request the agent
+would refuse. The protocol version is unchanged at 1 for exactly this reason: raising it would make
+an older agent reject every request from a current client, including the handshake that carries the
+answer. In the other direction, a current agent answers an older client unchanged — the hardware
+payload is an optional field an older build ignores.
+
+The agent must be redeployed on the server for the capability to appear.
 
 ### Transport selection
 
