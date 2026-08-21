@@ -236,9 +236,14 @@
                       FlyoutPresenterClasses="nut-profile-flyout"
                       Opened="ProfileQuickMenuFlyout_OnOpened"
                       Closed="ProfileQuickMenuFlyout_OnClosed">
+                <!--
+                  Padding is narrower on the right so the scroll bar can sit further out. The gutter
+                  the cards leave for the bar is taken from this padding rather than from the cards
+                  themselves, which keeps them at their original width.
+                -->
                 <Border x:Name="ProfileQuickMenuSurface"
                         Width="{DynamicResource NutSidebarExpandedWidth}"
-                        Padding="12"
+                        Padding="12,12,2,12"
                         Margin="0,8,0,0"
                         Opacity="0"
                         Classes="nut-profile-flyout-surface">
@@ -266,11 +271,11 @@
                     <ScrollViewer Grid.Row="1" MaxHeight="280" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                       <!--
                         The cards stop short of the scroll bar instead of running under it. The bar
-                        is painted over the content, so without this gutter it crossed the right edge
-                        of every card — the same reason the pages elsewhere reserve the space rather
-                        than letting the bar float.
+                        is painted over the content, so without a gutter it crossed the right edge of
+                        every card. The room comes from the surface's right padding above, not from
+                        the cards — narrowing them instead pushed their own contents onto extra lines.
                       -->
-                      <ItemsControl ItemsSource="{Binding ManagedProfileCards}" Margin="0,0,10,0">
+                      <ItemsControl ItemsSource="{Binding ManagedProfileCards}" Margin="0,0,8,0">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
                             <Button Classes="nut-profile-menu-item"

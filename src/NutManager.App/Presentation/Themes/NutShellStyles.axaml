@@ -144,18 +144,12 @@
     <Setter Property="Padding" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <!--
-      The focus ring follows the card's own shape. The stock adorner is a rectangle, so after a click
-      the selector wore a square outline around a rounded surface — read as a glitch rather than as
-      focus. Replaced rather than removed: keyboard focus still has to be visible.
+      No adorner. The stock one is a rectangle drawn outside the control, so the selector wore a
+      square outline around its rounded surface and read as a glitch; a rounded replacement template
+      did not take either. Focus is shown by the card itself instead, below, which is already the
+      right shape — so this removes the ring without removing the feedback.
     -->
-    <Setter Property="FocusAdorner">
-      <FocusAdornerTemplate>
-        <Border BorderBrush="{DynamicResource NutAccentBrightBrush}"
-                BorderThickness="1"
-                CornerRadius="12"
-                Margin="-1" />
-      </FocusAdornerTemplate>
-    </Setter>
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
   </Style>
   <Style Selector="Button.nut-profile-card /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
@@ -183,6 +177,15 @@
     </Setter>
   </Style>
   <Style Selector="Button.nut-profile-card:pointerover Border.nut-profile-card-surface">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 10 0 #665FA8FF, 0 0 24 3 #335FA8FF" />
+  </Style>
+  <!--
+    Keyboard focus wears the same glow as hover. It follows the card's corner radius because the
+    surface draws it, which is what the rectangular adorner could not do.
+  -->
+  <Style Selector="Button.nut-profile-card:focus-visible Border.nut-profile-card-surface">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
     <Setter Property="BoxShadow" Value="0 0 10 0 #665FA8FF, 0 0 24 3 #335FA8FF" />
