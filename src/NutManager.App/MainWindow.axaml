@@ -382,13 +382,37 @@
         </Grid>
       </Border>
 
-      <Border Grid.Column="1"
-              Padding="{Binding ContentPadding}"
-              Background="{DynamicResource NutWindowBrush}"
-              ClipToBounds="True"
-              IsEnabled="{Binding IsBackgroundInteractionEnabled}">
-        <ContentControl Content="{Binding CurrentPage}" />
-      </Border>
+      <!--
+        The tint and the content are separate layers on purpose. The fade below is an opacity mask,
+        and a mask applied to the painted background would dissolve the content area's own tint at
+        the edges, leaving a seam against the title bar and the footer. So the tint is its own layer
+        underneath and only the content is masked.
+      -->
+      <Panel Grid.Column="1">
+        <Border Background="{DynamicResource NutWindowBrush}" />
+        <Border Padding="{Binding ContentPadding}"
+                ClipToBounds="True"
+                IsEnabled="{Binding IsBackgroundInteractionEnabled}">
+          <!--
+            Content dissolves into the chrome instead of being cut off at a hard line. Fading to a
+            colour is not an option here: the shell is translucent, so the content has to fade to
+            genuine transparency and let the backdrop show through.
+
+            The band is a share of the height rather than a fixed number of pixels, which keeps it
+            inside the content padding at rest — so nothing is dimmed until it actually scrolls into
+            the edge.
+          -->
+          <Border.OpacityMask>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+              <GradientStop Offset="0" Color="#00000000" />
+              <GradientStop Offset="0.02" Color="#FF000000" />
+              <GradientStop Offset="0.98" Color="#FF000000" />
+              <GradientStop Offset="1" Color="#00000000" />
+            </LinearGradientBrush>
+          </Border.OpacityMask>
+          <ContentControl Content="{Binding CurrentPage}" />
+        </Border>
+      </Panel>
 
       <controls:NutReviewDrawerHost Grid.Column="2"
                                     IsOpen="{Binding IsReviewDrawerInline}"
