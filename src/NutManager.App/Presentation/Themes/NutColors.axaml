@@ -77,6 +77,7 @@
       <SolidColorBrush x:Key="NutTextPrimaryBrush" Color="#EDF2F8" />
       <SolidColorBrush x:Key="NutTextSecondaryBrush" Color="#9AACC0" />
       <SolidColorBrush x:Key="NutTextMutedBrush" Color="#687D95" />
+      <SolidColorBrush x:Key="NutCardSmallTextBrush" Color="#B6C5D5" />
       <SolidColorBrush x:Key="NutSelectionBrush" Color="#14202F" />
       <SolidColorBrush x:Key="NutCodeSurfaceBrush" Color="#070B12" />
       <SolidColorBrush x:Key="NutOverlayScrimBrush" Color="#A6040910" />
@@ -136,6 +137,7 @@
       <SolidColorBrush x:Key="NutTextPrimaryBrush" Color="#111C2B" />
       <SolidColorBrush x:Key="NutTextSecondaryBrush" Color="#48586C" />
       <SolidColorBrush x:Key="NutTextMutedBrush" Color="#6B7C93" />
+      <SolidColorBrush x:Key="NutCardSmallTextBrush" Color="#48586C" />
       <SolidColorBrush x:Key="NutSelectionBrush" Color="#E1EBFD" />
       <SolidColorBrush x:Key="NutCodeSurfaceBrush" Color="#F1F5FA" />
       <SolidColorBrush x:Key="NutOverlayScrimBrush" Color="#59091426" />

@@ -4,19 +4,68 @@ using NutManager.App.Presentation.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using NutManager.App.ViewModels;
+using System.ComponentModel;
 
 namespace NutManager.App.Views;
 
 public partial class NutConfigurationAdministrationView : UserControl
 {
+    private AdministrationPageViewModel? _layoutViewModel;
+
+    public NutConfigurationAdministrationView()
+    {
+        InitializeComponent();
+        SizeChanged += (_, _) => UpdateResponsiveLayout();
+        DataContextChanged += (_, _) => ObserveLayoutViewModel();
+    }
+
     /// <summary>
-    /// The page used to rebuild its own grid on every resize, moving the file rail from beside the
-    /// editor to above it once the window got too narrow to hold both. The strip is above the editor
-    /// at every width now, so there is nothing left to reflow: narrowing wraps the chips onto a
-    /// second line and folds their labels, which the panel and the view model already handle
-    /// between them.
+    /// The five-file switcher needs its full 540 px run. A remote context card fills the remaining
+    /// wide-row space at the same height as the switcher; below that point it returns underneath
+    /// instead of squeezing or wrapping the tabs. This is presentation-only and does not change the
+    /// remote-session visibility or readiness rules.
     /// </summary>
-    public NutConfigurationAdministrationView() => InitializeComponent();
+    private void UpdateResponsiveLayout()
+    {
+        var wide = Bounds.Width >= 980;
+        var filesVisible = _layoutViewModel?.IsConfigurationEditorVisible ?? true;
+        var sideBySide = wide && filesVisible;
+        ConfigurationEditorLayout.ColumnDefinitions = sideBySide
+            ? new ColumnDefinitions("Auto,16,*")
+            : new ColumnDefinitions("*");
+        ConfigurationEditorLayout.RowDefinitions = sideBySide || !filesVisible
+            ? new RowDefinitions("Auto")
+            : new RowDefinitions("Auto,12,Auto");
+
+        Grid.SetColumn(ConfigurationFilesRegion, 0);
+        Grid.SetRow(ConfigurationFilesRegion, 0);
+        Grid.SetColumn(RemoteConfigurationCard, sideBySide ? 2 : 0);
+        Grid.SetRow(RemoteConfigurationCard, filesVisible && !sideBySide ? 2 : 0);
+    }
+
+    private void ObserveLayoutViewModel()
+    {
+        if (_layoutViewModel is not null)
+        {
+            _layoutViewModel.PropertyChanged -= LayoutViewModel_OnPropertyChanged;
+        }
+
+        _layoutViewModel = DataContext as AdministrationPageViewModel;
+        if (_layoutViewModel is not null)
+        {
+            _layoutViewModel.PropertyChanged += LayoutViewModel_OnPropertyChanged;
+        }
+
+        UpdateResponsiveLayout();
+    }
+
+    private void LayoutViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName == nameof(AdministrationPageViewModel.IsConfigurationEditorVisible))
+        {
+            UpdateResponsiveLayout();
+        }
+    }
 
     private async void SelectDirectoryButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {

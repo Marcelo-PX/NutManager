@@ -54,7 +54,7 @@ public sealed class ApplicationSettingsTests
             pollingInterval: TimeSpan.FromSeconds(9),
             connectionTimeout: TimeSpan.FromSeconds(3),
             theme: ThemePreference.Dark,
-            mockMode: true,
+            mockMode: false,
             language: UiLanguagePreference.EnUs,
             sidebarPreference: SidebarPreference.Collapsed,
             backgroundTransparency: false);
@@ -95,7 +95,7 @@ public sealed class ApplicationSettingsTests
         Assert.Equal("nut.local", settings.LegacyMonitoringEndpoint!.Host);
         Assert.Equal(1234, settings.LegacyMonitoringEndpoint.Port);
         Assert.Equal("ups-a", settings.LegacyMonitoringEndpoint.PreferredUpsName);
-        Assert.Equal(mockMode, settings.MockMode);
+        Assert.False(settings.MockMode);
         Assert.Equal(schemaVersion == 1 ? UiLanguagePreference.PtBr : UiLanguagePreference.EnUs, settings.Language);
         Assert.Equal(schemaVersion == 1 ? SidebarPreference.Expanded : SidebarPreference.Collapsed, settings.SidebarPreference);
         Assert.Equal(json, await File.ReadAllTextAsync(store.SettingsPath));

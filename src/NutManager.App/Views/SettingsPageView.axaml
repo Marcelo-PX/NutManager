@@ -28,7 +28,8 @@
     </DataTemplate>
   </UserControl.Resources>
 
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+  <ScrollViewer x:Name="SettingsScrollViewer"
+                HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="26" MaxWidth="1180">
       <StackPanel Spacing="2">
@@ -107,7 +108,7 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="nut-card">
+      <Border x:Name="ManagedServersCard" Classes="nut-card">
         <StackPanel Spacing="16">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
             <PathIcon Data="{DynamicResource NutIconServer}" Classes="accent" Width="17" Height="17" VerticalAlignment="Center" />
@@ -143,73 +144,131 @@
             </StackPanel>
           </Border>
 
-          <Grid x:Name="ManagedProfilesLayout" ColumnDefinitions="290,16,*" RowDefinitions="Auto">
-            <StackPanel x:Name="ProfileListPanel" Grid.Column="0" Spacing="10">
-              <ListBox ItemsSource="{Binding ManagedProfileCards}"
-                       SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
-                       MinHeight="180"
-                       MaxHeight="520">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
-                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220" RowSpacing="3">
-                      <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                      <Border Grid.Column="1" Classes="nut-pill healthy" Padding="8,2" IsVisible="{Binding IsActive}">
-                        <TextBlock Text="{Binding ActiveText}" Classes="healthy" FontSize="11" FontWeight="SemiBold" />
+          <Grid x:Name="ManagedProfilesLayout"
+                ColumnDefinitions="330,16,*"
+                RowDefinitions="Auto,14,Auto,16,Auto">
+            <Grid x:Name="ProfileListPanel"
+                  Grid.Row="2"
+                  Grid.Column="0"
+                  RowDefinitions="*,6,Auto">
+              <!--
+                A fixed height, so the buttons underneath never move. Anything elastic — a minimum, a
+                maximum, a stretch — still lets the list grow until it hits the bound, and until then
+                every added server pushes Tornar ativo and Excluir further down the page. Pinning the
+                height instead means one server or ten produce the same panel, and the overflow goes
+                to the ListBox's own ScrollViewer, where the shared scrollbar styling already
+                applies.
+
+                Both edges line up with the monitoring card opposite, and each for its own reason.
+
+                The bottom: the column opposite is a StackPanel, which takes the height of its
+                content and does not stretch, so whichever side is taller sizes the row. Set too
+                tall, this side won that measure, the row grew past the card, and the buttons — which
+                sit on the row's bottom edge — ended below where the card stopped. Kept short enough,
+                the card sizes the row and the buttons land level with it.
+
+                The top: anchored rather than stretched. A stretch bounded by a maximum centres what
+                is left over, which pushed the list down the row and opened a gap above it while the
+                bottom stayed put.
+              -->
+              <Border CornerRadius="12" ClipToBounds="True" VerticalAlignment="Top" Height="210">
+                <ListBox ItemsSource="{Binding ManagedProfileCards}"
+                         SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
+                      <!--
+                        A hairline under each row, so the servers read as separate entries rather
+                        than as one running column of text. It is drawn by the row itself rather than
+                        by a separator element placed between rows, because the list virtualises and
+                        anything that is not part of a row has nothing to be recycled with.
+                      -->
+                      <!--
+                        Emphasis rather than the subtle border: at #1A2230 against this surface the
+                        hairline was very nearly the background itself — a divider in the markup and
+                        nowhere else.
+                      -->
+                      <Border BorderBrush="{DynamicResource NutBorderEmphasisBrush}"
+                              BorderThickness="0,0,0,1"
+                              Padding="0,0,0,9"
+                              Margin="0,0,0,2">
+                      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220" RowSpacing="3">
+                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Classes="nut-pill healthy" Padding="8,2" IsVisible="{Binding IsActive}">
+                          <TextBlock Text="{Binding ActiveText}" Classes="healthy" FontSize="11" FontWeight="SemiBold" />
+                        </Border>
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Endpoint}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
+                        <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" ItemSpacing="5" LineSpacing="3">
+                          <Border Classes="nut-pill" Padding="7,1">
+                            <TextBlock Text="{Binding ManagementMode}" FontSize="11" Classes="nut-metadata" />
+                          </Border>
+                          <Border Classes="nut-pill" Padding="7,1">
+                            <TextBlock Text="{Binding AccessMode}" FontSize="11" Classes="nut-metadata" />
+                          </Border>
+                          <Border Classes="nut-pill" Padding="7,1" IsVisible="{Binding HasTransport}">
+                            <TextBlock Text="{Binding Transport}" FontSize="11" Classes="nut-metadata" />
+                          </Border>
+                        </WrapPanel>
+                      </Grid>
                       </Border>
-                      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Endpoint}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
-                      <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" ItemSpacing="5" LineSpacing="3">
-                        <Border Classes="nut-pill" Padding="7,1">
-                          <TextBlock Text="{Binding ManagementMode}" FontSize="11" Classes="nut-metadata" />
-                        </Border>
-                        <Border Classes="nut-pill" Padding="7,1">
-                          <TextBlock Text="{Binding AccessMode}" FontSize="11" Classes="nut-metadata" />
-                        </Border>
-                        <Border Classes="nut-pill" Padding="7,1" IsVisible="{Binding HasTransport}">
-                          <TextBlock Text="{Binding Transport}" FontSize="11" Classes="nut-metadata" />
-                        </Border>
-                      </WrapPanel>
-                    </Grid>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-              <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Border>
+              <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="14">
                 <Button Content="{Binding ActivateProfileText}"
                         Command="{Binding ActivateSelectedProfileCommand}"
-                        IsEnabled="{Binding CanActivateSelectedProfile}" />
+                        IsEnabled="{Binding CanActivateSelectedProfile}"
+                        HorizontalAlignment="Stretch" />
                 <Button Grid.Column="1"
                         Classes="nut-danger"
                         Content="{Binding DeleteProfileText}"
                         Command="{Binding DeleteSelectedProfileCommand}"
-                        IsEnabled="{Binding CanDeleteSelectedProfile}" />
+                        IsEnabled="{Binding CanDeleteSelectedProfile}"
+                        HorizontalAlignment="Stretch" />
               </Grid>
+            </Grid>
+
+            <!-- The list and the complete monitoring editor are peers in the first row. The
+                 server name belongs beside the host because both identify the endpoint; port and
+                 preferred UPS form the second row below them. -->
+            <StackPanel x:Name="ProfileEditorHeader"
+                        Grid.Column="2"
+                        Orientation="Horizontal"
+                        Spacing="10">
+              <PathIcon Data="{DynamicResource NutIconEdit}" Classes="accent" Width="16" Height="16" />
+              <TextBlock Text="{Binding EditorTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
             </StackPanel>
 
-            <StackPanel x:Name="ProfileEditorPanel" Grid.Column="2" Spacing="14">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <PathIcon Data="{DynamicResource NutIconEdit}" Classes="accent" Width="16" Height="16" />
-                <TextBlock Text="{Binding EditorTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
-              </StackPanel>
-
-              <Border Classes="nut-card-flat" Padding="14">
-                <StackPanel Spacing="10">
-                  <TextBlock Text="{Binding NameLabel}" FontWeight="SemiBold" />
-                  <TextBox Text="{Binding ProfileDraft.Name, Mode=TwoWay}"
-                           AutomationProperties.Name="{Binding NameLabel}" />
-                  <ItemsControl ItemsSource="{Binding NameValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
-                </StackPanel>
-              </Border>
-
-              <Border Classes="nut-card-flat" Padding="14">
+            <StackPanel x:Name="ProfileIdentityPanel" Grid.Row="2" Grid.Column="2">
+              <Border x:Name="ProfileMonitoringPanel" Classes="nut-card-flat" Padding="14">
                 <StackPanel Spacing="10">
                   <TextBlock Text="{Binding MonitoringSectionTitle}" FontWeight="SemiBold" FontSize="16" />
-                  <TextBlock Text="{Binding MonitoringHostLabel}" FontWeight="SemiBold" />
-                  <TextBox Text="{Binding ProfileDraft.MonitoringHost, Mode=TwoWay}"
-                           AutomationProperties.Name="{Binding MonitoringHostLabel}" />
-                  <ItemsControl ItemsSource="{Binding MonitoringHostValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="{Binding NameLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.Name, Mode=TwoWay}"
+                               AutomationProperties.Name="{Binding NameLabel}" />
+                      <ItemsControl ItemsSource="{Binding NameValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="6">
+                      <TextBlock Text="{Binding MonitoringHostLabel}" FontWeight="SemiBold" />
+                      <TextBox Text="{Binding ProfileDraft.MonitoringHost, Mode=TwoWay}"
+                               AutomationProperties.Name="{Binding MonitoringHostLabel}" />
+                      <ItemsControl ItemsSource="{Binding MonitoringHostValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
+                    </StackPanel>
+                  </Grid>
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                     <StackPanel Spacing="6">
                       <TextBlock Text="{Binding MonitoringPortLabel}" FontWeight="SemiBold" />
-                      <TextBox Text="{Binding ProfileDraft.MonitoringPort, Mode=TwoWay}" AutomationProperties.Name="{Binding MonitoringPortLabel}" />
+                      <NumericUpDown Value="{Binding ProfileDraft.MonitoringPortValue, Mode=TwoWay}"
+                                     Minimum="1"
+                                     Maximum="65535"
+                                     Increment="1"
+                                     ParsingNumberStyle="Integer"
+                                     FormatString="0"
+                                     AutomationProperties.Name="{Binding MonitoringPortLabel}" />
                       <ItemsControl ItemsSource="{Binding MonitoringPortValidationIssues}" ItemTemplate="{StaticResource ValidationIssueTemplate}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Spacing="6">
@@ -249,6 +308,12 @@
                   </StackPanel>
                 </StackPanel>
               </Border>
+            </StackPanel>
+
+            <StackPanel x:Name="ProfileEditorPanel"
+                        Grid.Row="4"
+                        Grid.ColumnSpan="3"
+                        Spacing="14">
 
               <Border Classes="nut-card-flat" Padding="14">
                 <StackPanel Spacing="10">
@@ -517,42 +582,64 @@
                 </StackPanel>
               </Border>
 
-              <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
-                <Button Classes="nut-success" Content="{Binding SaveProfileText}" Command="{Binding SaveProfileCommand}" IsEnabled="{Binding CanSaveProfile}" />
-                <Button Content="{Binding DiscardProfileText}" Command="{Binding DiscardProfileDraftCommand}" IsEnabled="{Binding IsProfileDraftDirty}" />
-              </WrapPanel>
-              <TextBlock Text="{Binding ProfileSavingText}" IsVisible="{Binding IsSavingProfile}" />
-              <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding HasProfileStatusMessage}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding HasProfileSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" AutomationProperties.Name="{Binding ProfileSaveError}" />
-              <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
             </StackPanel>
           </Grid>
-        </StackPanel>
-      </Border>
 
-      <Border Classes="nut-card">
-        <StackPanel Spacing="12">
+          <Border Classes="nut-divider" Margin="0,4" />
+          <StackPanel x:Name="GeneralSettingsSection" Spacing="12">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <PathIcon Data="{DynamicResource NutIconConnection}" Classes="cyan" Width="17" Height="17" />
             <TextBlock Text="{Binding GeneralSettingsTitle}" Classes="nut-card-title" VerticalAlignment="Center" />
           </StackPanel>
           <Border Classes="nut-divider" />
-          <Grid x:Name="GeneralPreferencesLayout" ColumnDefinitions="*,*" ColumnSpacing="14">
+          <Grid x:Name="GeneralPreferencesLayout" ColumnDefinitions="220,220" ColumnSpacing="18">
             <StackPanel x:Name="ConnectionTimeoutPanel" Spacing="5">
               <TextBlock Text="{Binding ConnectionTimeoutLabel}" Classes="nut-label" />
-              <TextBox Text="{Binding ConnectionTimeoutSeconds}" AutomationProperties.Name="{Binding ConnectionTimeoutLabel}" />
+              <NumericUpDown Value="{Binding ConnectionTimeoutSecondsValue, Mode=TwoWay}"
+                             Minimum="1"
+                             Increment="1"
+                             ParsingNumberStyle="Float"
+                             FormatString="0.##"
+                             Width="220"
+                             HorizontalAlignment="Left"
+                             AutomationProperties.Name="{Binding ConnectionTimeoutLabel}" />
             </StackPanel>
             <StackPanel x:Name="PollingIntervalPanel" Grid.Column="1" Spacing="5">
               <TextBlock Text="{Binding PollingIntervalLabel}" Classes="nut-label" />
-              <TextBox Text="{Binding PollingIntervalSeconds}" AutomationProperties.Name="{Binding PollingIntervalLabel}" />
+              <NumericUpDown Value="{Binding PollingIntervalSecondsValue, Mode=TwoWay}"
+                             Minimum="1"
+                             Increment="1"
+                             ParsingNumberStyle="Float"
+                             FormatString="0.##"
+                             Width="220"
+                             HorizontalAlignment="Left"
+                             AutomationProperties.Name="{Binding PollingIntervalLabel}" />
             </StackPanel>
           </Grid>
-          <CheckBox Content="{Binding MockModeLabel}" IsChecked="{Binding MockMode}" />
-          <Button Classes="nut-primary" Content="{Binding SaveSettingsText}" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
-          <TextBlock Text="{Binding SavingText}" IsVisible="{Binding IsSaving}" />
-          <TextBlock Text="{Binding SettingsSavedText}" IsVisible="{Binding IsSaved}" Foreground="{DynamicResource NutHealthyBrush}" />
-          <TextBlock Text="{Binding SaveError}" IsVisible="{Binding HasSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding LoadError}" IsVisible="{Binding HasLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+
+            <!-- One deliberate commit point for this card: the profile is persisted first and the
+                 general preferences follow only after it succeeds. -->
+            <Grid x:Name="SettingsCommitBar" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+              <Button Classes="nut-primary"
+                      Content="{Binding SaveSettingsText}"
+                      Click="SaveAllButton_OnClick"
+                      IsEnabled="{Binding CanSaveAll}" />
+              <Button Grid.Column="1"
+                      Content="{Binding DiscardProfileText}"
+                      Command="{Binding DiscardAllCommand}"
+                      IsEnabled="{Binding CanDiscardAll}" />
+              <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="4,0,0,0">
+                <TextBlock Text="{Binding ProfileSavingText}" IsVisible="{Binding IsSavingProfile}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SavingText}" IsVisible="{Binding IsSaving}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ProfileStatusMessage}" IsVisible="{Binding HasProfileStatusMessage}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SettingsSavedText}" IsVisible="{Binding IsSaved}" Foreground="{DynamicResource NutHealthyBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ProfileSaveError}" IsVisible="{Binding HasProfileSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" AutomationProperties.Name="{Binding ProfileSaveError}" />
+                <TextBlock Text="{Binding ProfileLoadError}" IsVisible="{Binding HasProfileLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SaveError}" IsVisible="{Binding HasSaveError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding LoadError}" IsVisible="{Binding HasLoadError}" Foreground="{DynamicResource NutCriticalBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
         </StackPanel>
       </Border>
     </StackPanel>

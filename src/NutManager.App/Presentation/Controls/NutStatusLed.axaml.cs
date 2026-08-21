@@ -2,7 +2,6 @@ using System.Numerics;
 using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Rendering.Composition;
 using Avalonia.Rendering.Composition.Animations;
@@ -22,7 +21,9 @@ public enum NutLedState
 /// The shell's status light. The breathing halo is the only continuous animation in the
 /// application and it is confined to this control: it runs on the render thread through the
 /// Composition API, so there is no timer and no UI-thread work per frame. Healthy, pending, and
-/// critical states breathe at their semantic cadence; unavailable stays still.
+/// critical states keep a semantic glow; healthy and pending share the same breathing wave while
+/// critical keeps a stronger static blur. The core remains stable throughout, so disabling motion
+/// never removes the state cue.
 /// </summary>
 public partial class NutStatusLed : UserControl
 {
@@ -37,8 +38,6 @@ public partial class NutStatusLed : UserControl
     public NutStatusLed()
     {
         InitializeComponent();
-        PointerEntered += (_, _) => ApplyHover(true);
-        PointerExited += (_, _) => ApplyHover(false);
     }
 
     public NutLedState State { get => GetValue(StateProperty); set => SetValue(StateProperty, value); }
@@ -80,12 +79,16 @@ public partial class NutStatusLed : UserControl
     {
         var period = PulsePeriodFor(State);
 
-        // The shadow colour lives in a style, so the state is handed over as a class.
-        Halo.Classes.Set("healthy", State == NutLedState.Healthy);
-        Halo.Classes.Set("pending", State == NutLedState.Pending);
-        Halo.Classes.Set("critical", State == NutLedState.Critical);
-        Highlight.Opacity = State == NutLedState.Unavailable ? 0.18 : 0.34;
-
+        // The shadow colour lives in a style, so the state is handed to both halo layers as a class.
+        ApplyStateClasses(AmbientHalo);
+        ApplyStateClasses(Halo);
+        AmbientHalo.Opacity = State switch
+        {
+            NutLedState.Healthy => 0.76,
+            NutLedState.Pending => 0.76,
+            NutLedState.Critical => 0.68,
+            _ => 0
+        };
         if (period == TimeSpan.Zero)
         {
             StopPulse();
@@ -97,10 +100,16 @@ public partial class NutStatusLed : UserControl
 
     public static TimeSpan PulsePeriodFor(NutLedState state) => state switch
     {
-        NutLedState.Healthy => TimeSpan.FromSeconds(2.0),
-        NutLedState.Pending or NutLedState.Critical => TimeSpan.FromSeconds(3.2),
+        NutLedState.Healthy or NutLedState.Pending => TimeSpan.FromSeconds(1.8),
         _ => TimeSpan.Zero
     };
+
+    private void ApplyStateClasses(Border halo)
+    {
+        halo.Classes.Set("healthy", State == NutLedState.Healthy);
+        halo.Classes.Set("pending", State == NutLedState.Pending);
+        halo.Classes.Set("critical", State == NutLedState.Critical);
+    }
 
     private void StartPulse(TimeSpan period)
     {
@@ -119,35 +128,20 @@ public partial class NutStatusLed : UserControl
         scale.Target = ScaleTarget;
         scale.Duration = period;
         scale.IterationBehavior = AnimationIterationBehavior.Forever;
-        scale.InsertKeyFrame(0f, new Vector3D(1, 1, 1), easing);
-        scale.InsertKeyFrame(0.5f, new Vector3D(1.45, 1.45, 1), easing);
-        scale.InsertKeyFrame(1f, new Vector3D(1, 1, 1), easing);
+        scale.InsertKeyFrame(0f, new Vector3D(0.85, 0.85, 1), easing);
+        scale.InsertKeyFrame(0.72f, new Vector3D(1.75, 1.75, 1), easing);
+        scale.InsertKeyFrame(1f, new Vector3D(1.9, 1.9, 1), easing);
 
         var opacity = halo.Compositor.CreateScalarKeyFrameAnimation();
         opacity.Target = OpacityTarget;
         opacity.Duration = period;
         opacity.IterationBehavior = AnimationIterationBehavior.Forever;
-        opacity.InsertKeyFrame(0f, 0.3f, easing);
-        opacity.InsertKeyFrame(0.5f, 1f, easing);
-        opacity.InsertKeyFrame(1f, 0.3f, easing);
+        opacity.InsertKeyFrame(0f, 0.92f, easing);
+        opacity.InsertKeyFrame(0.72f, 0.18f, easing);
+        opacity.InsertKeyFrame(1f, 0f, easing);
 
         halo.StartAnimation(ScaleTarget, scale);
         halo.StartAnimation(OpacityTarget, opacity);
-
-        // The ball itself brightens with its glow. Without this the core sits at a flat value while
-        // the halo breathes around it, and the light reads as a separate ring rather than as one
-        // component lighting up. The swing is small so the dot never looks like it is switching off.
-        if (ElementComposition.GetElementVisual(Core) is { } core)
-        {
-            var coreOpacity = core.Compositor.CreateScalarKeyFrameAnimation();
-            coreOpacity.Target = OpacityTarget;
-            coreOpacity.Duration = period;
-            coreOpacity.IterationBehavior = AnimationIterationBehavior.Forever;
-            coreOpacity.InsertKeyFrame(0f, 0.72f, easing);
-            coreOpacity.InsertKeyFrame(0.5f, 1f, easing);
-            coreOpacity.InsertKeyFrame(1f, 0.72f, easing);
-            core.StartAnimation(OpacityTarget, coreOpacity);
-        }
 
         _pulseRunning = true;
     }
@@ -161,21 +155,10 @@ public partial class NutStatusLed : UserControl
             halo.StopAnimation(ScaleTarget);
             halo.StopAnimation(OpacityTarget);
             halo.Scale = new Vector3D(1, 1, 1);
-            halo.Opacity = State == NutLedState.Unavailable ? 0f : 0.75f;
+            halo.Opacity = 0f;
         }
 
-        if (ElementComposition.GetElementVisual(Core) is { } core)
-        {
-            core.StopAnimation(OpacityTarget);
-            core.Opacity = 1f;
-        }
-    }
-
-    private void ApplyHover(bool over)
-    {
-        // Hover only deepens what is already there; it never changes the pulse rate, which would
-        // make the indicator look like it had changed state.
-        Highlight.Opacity = over ? 0.5 : State == NutLedState.Unavailable ? 0.18 : 0.34;
+        // The core is intentionally never animated. It remains the stable, non-motion state cue.
     }
 
     private static readonly DirectProperty<NutStatusLed, IBrush?> StateBrushProperty =

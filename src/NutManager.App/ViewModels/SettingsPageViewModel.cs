@@ -342,13 +342,13 @@ public sealed partial class SettingsPageViewModel : PageViewModel
                 });
             }
 
+            if (HasStoredAgentCredential) return Localizer.Get("Agent.Credential.Stored");
+
             if (ValidatedAgentAccount is { } validated)
             {
                 var key = RememberAgentCredential ? "Agent.Credential.ValidatedPending" : "Agent.Credential.ValidatedSession";
                 return string.Format(System.Globalization.CultureInfo.CurrentCulture, Localizer.Get(key), validated);
             }
-
-            if (HasStoredAgentCredential) return Localizer.Get("Agent.Credential.Stored");
 
             return string.IsNullOrWhiteSpace(ProfileDraft.AgentUsername)
                 ? Localizer.Get("Agent.Account.NotConfigured")
@@ -488,7 +488,6 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public string GeneralSettingsTitle => Localizer.Get("Settings.GeneralTitle");
     public string ConnectionTimeoutLabel => Localizer.Get("Settings.ConnectionTimeout");
     public string PollingIntervalLabel => Localizer.Get("Settings.PollingInterval");
-    public string MockModeLabel => Localizer.Get("Settings.MockMode");
     public string SaveSettingsText => Localizer.Get("Settings.Save");
     public string SavingText => Localizer.Get("Common.Saving");
     public string SettingsSavedText => Localizer.Get("Settings.SaveSuccess");
@@ -503,7 +502,22 @@ public sealed partial class SettingsPageViewModel : PageViewModel
 
     [ObservableProperty] private string _pollingIntervalSeconds = "5";
     [ObservableProperty] private string _connectionTimeoutSeconds = "5";
-    [ObservableProperty] private bool _mockMode;
+
+    /// <summary>
+    /// Numeric presentation boundaries for the duration fields. The existing string properties
+    /// remain the validation/persistence contract, while NumericUpDown prevents non-numeric input.
+    /// </summary>
+    public decimal? PollingIntervalSecondsValue
+    {
+        get => ParseNumericPresentationValue(PollingIntervalSeconds);
+        set => PollingIntervalSeconds = FormatNumericPresentationValue(value);
+    }
+
+    public decimal? ConnectionTimeoutSecondsValue
+    {
+        get => ParseNumericPresentationValue(ConnectionTimeoutSeconds);
+        set => ConnectionTimeoutSeconds = FormatNumericPresentationValue(value);
+    }
     [ObservableProperty] private ThemeOption? _selectedThemeOption;
     [ObservableProperty] private PresentationOption<UiLanguagePreference>? _selectedLanguageOption;
     [ObservableProperty] private PresentationOption<SidebarPreference>? _selectedSidebarOption;
@@ -567,6 +581,11 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public bool CanPersistProfiles => _profileStore is not null && _canPersistProfiles && !IsSavingProfile;
 
     public bool CanSaveProfile => CanPersistProfiles && IsProfileDraftDirty && !_profileValidation.HasErrors;
+
+    public bool CanSaveAll => !IsSaving && !IsSavingProfile &&
+        (!IsProfileDraftDirty || CanSaveProfile);
+
+    public bool CanDiscardAll => IsProfileDraftDirty || AreGeneralSettingsDirty;
 
     public bool CanDeleteSelectedProfile => CanPersistProfiles && SelectedManagedProfile is not null && ManagedProfiles.Count > 1 && SelectedManagedProfile.Id != _confirmedProfiles.ActiveProfileId;
 
@@ -633,6 +652,12 @@ public sealed partial class SettingsPageViewModel : PageViewModel
     public event Action<ThemePreference>? ThemeChanged;
     public event Action<SidebarPreference>? SidebarPreferenceChanged;
     public event Action<bool>? BackgroundTransparencyChanged;
+    /// <summary>
+    /// Raised only after the profile document has been persisted. Runtime consumers may use the
+    /// confirmed profile to refresh presentation-only profile scope without treating an unsaved
+    /// draft as authoritative.
+    /// </summary>
+    public event Action<ManagedNutServerProfile>? ProfilePersisted;
 
     [RelayCommand]
     private async Task SaveAsync(CancellationToken cancellationToken = default)
@@ -651,6 +676,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             _confirmedSettings = settings;
             _canPersistThemeAutomatically = true;
             IsSaved = true;
+            OnPropertyChanged(nameof(CanDiscardAll));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -664,6 +690,44 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         {
             IsSaving = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task SaveAllAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsProfileDraftDirty && !await SaveProfileCoreAsync(cancellationToken))
+        {
+            return;
+        }
+
+        await SaveAsync(cancellationToken);
+
+        // The unified action reports one success only. Keep non-success profile messages (for
+        // example, a protected credential that could not be persisted) because those still need
+        // the operator's attention.
+        if (IsSaved && string.Equals(ProfileStatusMessage, Localizer.Get("Profiles.SaveSuccess"), StringComparison.Ordinal))
+        {
+            IsProfileSaved = false;
+            ProfileStatusMessage = null;
+        }
+    }
+
+    [RelayCommand]
+    private void DiscardAll()
+    {
+        if (IsProfileDraftDirty)
+        {
+            DiscardProfileDraftCore();
+        }
+
+        PollingIntervalSeconds = _confirmedSettings.PollingInterval.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
+        ConnectionTimeoutSeconds = _confirmedSettings.ConnectionTimeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
+        IsSaved = false;
+        IsProfileSaved = false;
+        SaveError = null;
+        ProfileSaveError = null;
+        ProfileStatusMessage = null;
+        OnPropertyChanged(nameof(CanDiscardAll));
     }
 
     [RelayCommand]
@@ -715,7 +779,9 @@ public sealed partial class SettingsPageViewModel : PageViewModel
                 return false;
             }
 
-            ApplyConfirmedProfiles(document, updated.Id);
+            var persistedProfile = document.Profiles.Single(profile => profile.Id == updated.Id);
+            ApplyConfirmedProfiles(document, persistedProfile.Id);
+            ProfilePersisted?.Invoke(persistedProfile);
             IsProfileSaved = true;
             ProfileStatusMessage = Localizer.Get("Profiles.SaveSuccess");
 
@@ -1015,12 +1081,47 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             {
                 ValidatedAgentAccount = result.Username;
                 ProfileDraft.AgentUsername = result.Username;
+
+                // An existing, unchanged profile already owns this exact endpoint/account binding.
+                // Persist immediately when requested so closing the application after authenticating
+                // cannot silently discard the validated credential. New profiles and edited agent
+                // identities still wait for Save, which prevents orphaned or mis-bound secrets.
+                if (RememberAgentCredential &&
+                    _credentialStore is not null &&
+                    CanPersistAgentCredentialImmediately(profileId, endpoint, result.Username!))
+                {
+                    var persisted = await _agentCredentials.PersistAsync(
+                        profileId,
+                        result.Username!,
+                        _credentialStore,
+                        cancellationToken);
+                    HasStoredAgentCredential = persisted;
+                    if (!persisted)
+                    {
+                        ProfileStatusMessage = Localizer.Get("Agent.Credential.SaveFailed");
+                    }
+                }
             }
         }
         finally
         {
             if (generation == _agentCredentialGeneration) IsAuthenticatingAgentCredential = false;
         }
+    }
+
+    private bool CanPersistAgentCredentialImmediately(Guid profileId, string endpoint, string username)
+    {
+        if (_isCreatingProfile || _draftBaseProfile?.Id != profileId)
+        {
+            return false;
+        }
+
+        var saved = _confirmedProfiles.Profiles.SingleOrDefault(profile => profile.Id == profileId);
+        return saved is not null &&
+            saved.Management.Agent.Transport == NutAgentTransportKind.Https &&
+            saved.Management.Agent.Authentication == NutAgentAuthenticationMode.AlternateWindowsAccount &&
+            string.Equals(saved.Management.Agent.HttpsEndpoint, endpoint, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(saved.Management.Agent.Username, username, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -1142,15 +1243,24 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         pollingInterval: TimeSpan.FromSeconds(double.Parse(PollingIntervalSeconds, CultureInfo.InvariantCulture)),
         connectionTimeout: TimeSpan.FromSeconds(double.Parse(ConnectionTimeoutSeconds, CultureInfo.InvariantCulture)),
         theme: SelectedThemeOption?.Preference ?? ThemePreference.System,
-        mockMode: MockMode,
+        mockMode: false,
         language: SelectedLanguageOption?.Value ?? UiLanguagePreference.PtBr,
         sidebarPreference: SelectedSidebarOption?.Value ?? SidebarPreference.Expanded);
+
+    private bool AreGeneralSettingsDirty =>
+        !string.Equals(
+            PollingIntervalSeconds,
+            _confirmedSettings.PollingInterval.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture),
+            StringComparison.Ordinal) ||
+        !string.Equals(
+            ConnectionTimeoutSeconds,
+            _confirmedSettings.ConnectionTimeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture),
+            StringComparison.Ordinal);
 
     public void Apply(ApplicationSettings settings)
     {
         PollingIntervalSeconds = settings.PollingInterval.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
         ConnectionTimeoutSeconds = settings.ConnectionTimeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
-        MockMode = settings.MockMode;
         Localizer = new NutManagerLocalizer(settings.Language);
     }
 
@@ -1291,7 +1401,7 @@ public sealed partial class SettingsPageViewModel : PageViewModel
             _confirmedSettings.PollingInterval,
             _confirmedSettings.ConnectionTimeout,
             theme ?? _confirmedSettings.Theme,
-            _confirmedSettings.MockMode,
+            mockMode: false,
             language ?? _confirmedSettings.Language,
             sidebarPreference ?? _confirmedSettings.SidebarPreference,
             backgroundTransparency: backgroundTransparency ?? _confirmedSettings.BackgroundTransparency);
@@ -1479,6 +1589,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(SmbDirectoryValidationIssues));
         OnPropertyChanged(nameof(SmbUsernameValidationIssues));
         OnPropertyChanged(nameof(CanSaveProfile));
+        OnPropertyChanged(nameof(CanSaveAll));
+        OnPropertyChanged(nameof(CanDiscardAll));
         OnPropertyChanged(nameof(CanTestConnection));
     }
 
@@ -1495,6 +1607,8 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanForgetTrustedHostKey));
         OnPropertyChanged(nameof(CanPersistProfiles));
         OnPropertyChanged(nameof(CanSaveProfile));
+        OnPropertyChanged(nameof(CanSaveAll));
+        OnPropertyChanged(nameof(CanDiscardAll));
         OnPropertyChanged(nameof(IsSelectedProfileActive));
         OnPropertyChanged(nameof(ActiveProfileName));
         OnPropertyChanged(nameof(RuntimeProfileName));
@@ -1503,6 +1617,32 @@ public sealed partial class SettingsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanForgetStoredCredential));
         OnPropertyChanged(nameof(StoredCredentialText));
     }
+
+    partial void OnPollingIntervalSecondsChanged(string value)
+    {
+        IsSaved = false;
+        OnPropertyChanged(nameof(PollingIntervalSecondsValue));
+        OnPropertyChanged(nameof(CanDiscardAll));
+    }
+
+    partial void OnConnectionTimeoutSecondsChanged(string value)
+    {
+        IsSaved = false;
+        OnPropertyChanged(nameof(ConnectionTimeoutSecondsValue));
+        OnPropertyChanged(nameof(CanDiscardAll));
+    }
+
+    private static decimal? ParseNumericPresentationValue(string value) =>
+        decimal.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+
+    private static string FormatNumericPresentationValue(decimal? value) =>
+        value?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty;
+
+    partial void OnIsSavingChanged(bool value) => OnPropertyChanged(nameof(CanSaveAll));
+
+    partial void OnIsSavingProfileChanged(bool value) => OnPropertyChanged(nameof(CanSaveAll));
 
     private void NotifySelectionChanged()
     {

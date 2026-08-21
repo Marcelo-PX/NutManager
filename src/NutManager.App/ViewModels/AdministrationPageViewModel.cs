@@ -69,9 +69,9 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             _remoteManagement.ConfigurationContextChanged += OnRemoteConfigurationContextChanged;
             _remoteManagement.PropertyChanged += OnRemoteManagementPropertyChanged;
         }
-        // Only the files this profile is configured to manage reach the list. Disabling a file is a
-        // presentation decision: nothing on disk is touched, and a file that is enabled but absent
-        // still appears here and reports its missing state when opened.
+        // All five supported files remain in the navigation. The profile's managed-file selection
+        // is an enabled state, not a filter: disabling a file leaves its module discoverable but
+        // prevents selection and any pipeline work.
         ConfigurationFiles = new ObservableCollection<NutConfigurationFileItemViewModel>(
             CreateFileItems(_profileContext?.Profile.Management.ManagedFiles));
         Sections = Array.Empty<NutConfigurationSectionViewModel>();
@@ -113,7 +113,33 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public ObservableCollection<NutConfigurationFileItemViewModel> ConfigurationFiles { get; }
 
-    public bool IsConfigurationFileListEmpty => ConfigurationFiles.All(file => !file.CanLoad);
+    public bool IsConfigurationFileListEmpty => ConfigurationFiles.All(file => !file.IsManaged);
+
+    /// <summary>
+    /// Applies the confirmed managed-file scope of the profile already running in this process.
+    /// This deliberately does not replace the runtime profile, transport or session: endpoint and
+    /// connection changes still take effect on the next application start. If the open file was
+    /// disabled, its editor is closed immediately so a stale draft cannot reach the write pipeline.
+    /// </summary>
+    public void UpdateManagedConfigurationFiles(ManagedNutConfigurationFiles managedFiles)
+    {
+        ArgumentNullException.ThrowIfNull(managedFiles);
+
+        foreach (var file in ConfigurationFiles)
+        {
+            file.IsManaged = managedFiles.Contains(file.FileKind);
+        }
+
+        if (SelectedFile is { IsManaged: false })
+        {
+            ClearLoadedDocument(clearSelectedFile: true);
+            SetStatus(Strings.Get("Administration.File.NotEnabled"));
+        }
+
+        OnPropertyChanged(nameof(IsConfigurationFileListEmpty));
+        RefreshConfigurationFileTiles();
+        NotifyWorkflowPropertiesChanged();
+    }
 
     // ==================== Configuration file rail ====================
 
@@ -361,11 +387,19 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
 
     public bool CanBrowseRemoteDirectory => CanChangeRemoteSessionContext && _remoteManagement?.CanBrowse == true;
 
+    public bool CanChooseRemoteDirectory => CanChangeRemoteSessionContext && _remoteManagement?.CanChooseDirectory == true;
+
     public bool CanValidateRemoteDirectory => CanChangeRemoteSessionContext && _remoteManagement?.CanValidateDirectory == true;
 
     public bool CanUseRemoteDirectory => CanChangeRemoteSessionContext && _remoteManagement?.CanUseCurrentDirectory == true;
 
     public bool CanProbeRemoteWriteCapability => CanChangeRemoteSessionContext && _remoteManagement?.CanProbeWriteCapability == true;
+
+    public bool RequiresRemoteWriteAuthorization =>
+        HasLoadedFile &&
+        IsRemoteManagementProfile &&
+        _profileContext?.Profile.AccessMode == ManagedNutServerAccessMode.Manage &&
+        _remoteManagement is { CanReadConfiguration: true, IsWriteCapabilityUnverified: true };
 
     public bool HasBackupPath => !string.IsNullOrWhiteSpace(BackupPath);
 
@@ -769,14 +803,11 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
-        if (file is null || ReferenceEquals(file, SelectedFile))
+        if (file is null || ReferenceEquals(file, SelectedFile) && file.IsManaged)
         {
             return;
         }
 
-        // A file the profile does not manage is not in this list, so a reference to one can only be
-        // stale. Refusing it here means the selection can never point at something the profile no
-        // longer exposes, whatever produced the reference.
         if (!ConfigurationFiles.Contains(file))
         {
             SetStatus(Strings.Get("Administration.File.NotEnabled"));
@@ -799,6 +830,26 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
+        if (!file.IsManaged)
+        {
+            // A stale request can arrive after a profile edit or restored navigation state. Never
+            // leave a disabled tile current: migrate deterministically to the first managed file
+            // that can be loaded, or clear the editor when none exists. No disabled file is handed
+            // to the pipeline.
+            var fallback = ConfigurationFiles.FirstOrDefault(candidate => candidate.IsManaged && candidate.CanLoad);
+            if (fallback is not null)
+            {
+                await SelectFileAsync(fallback, cancellationToken);
+            }
+            else
+            {
+                ClearLoadedDocument(clearSelectedFile: true);
+                SetStatus(Strings.Get("Administration.File.NotEnabled"));
+            }
+
+            return;
+        }
+
         if (!file.CanLoad)
         {
             SetStatus(file.State switch
@@ -807,10 +858,6 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
                 NutConfigurationFileState.AccessDenied => "Permissão insuficiente. A elevação administrativa será tratada pela etapa de administração do Windows.",
                 _ => "O arquivo não está disponível para carregamento."
             });
-            // Reached without touching the pipeline. The list already moved its highlight onto the
-            // unavailable item, so push the real selection back or the highlight would name a file
-            // the editor is not showing.
-            OnPropertyChanged(nameof(SelectedFile));
             return;
         }
 
@@ -1867,6 +1914,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CanValidateRemoteDirectory));
         OnPropertyChanged(nameof(CanUseRemoteDirectory));
         OnPropertyChanged(nameof(CanProbeRemoteWriteCapability));
+        OnPropertyChanged(nameof(RequiresRemoteWriteAuthorization));
         NotifyAdministrativePropertiesChanged();
         NotifyDriverDiagnosticPropertiesChanged();
     }
@@ -1923,16 +1971,16 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
     private static IReadOnlyList<NutConfigurationFileItemViewModel> CreateFileItems(ManagedNutConfigurationFiles? managedFiles)
     {
         var enabled = managedFiles ?? ManagedNutConfigurationFiles.All;
-        return [.. AllFileItems().Where(item => enabled.Contains(item.FileKind))];
+        return AllFileItems(enabled);
     }
 
-    private static IReadOnlyList<NutConfigurationFileItemViewModel> AllFileItems() =>
+    private static IReadOnlyList<NutConfigurationFileItemViewModel> AllFileItems(ManagedNutConfigurationFiles enabled) =>
     [
-        new("Geral", "nut.conf", "nut.conf", NutConfigurationFileKind.NutConf),
-        new("UPS e drivers", "ups.conf", "ups.conf", NutConfigurationFileKind.UpsConf),
-        new("Servidor", "upsd.conf", "upsd.conf", NutConfigurationFileKind.UpsdConf),
-        new("Usuários", "upsd.users", "upsd.users", NutConfigurationFileKind.UpsdUsers),
-        new("Monitoramento", "upsmon.conf", "upsmon.conf", NutConfigurationFileKind.UpsmonConf)
+        new("Geral", "nut.conf", "nut.conf", NutConfigurationFileKind.NutConf, enabled.Contains(NutConfigurationFileKind.NutConf)),
+        new("UPS e drivers", "ups.conf", "ups.conf", NutConfigurationFileKind.UpsConf, enabled.Contains(NutConfigurationFileKind.UpsConf)),
+        new("Servidor", "upsd.conf", "upsd.conf", NutConfigurationFileKind.UpsdConf, enabled.Contains(NutConfigurationFileKind.UpsdConf)),
+        new("Usuários", "upsd.users", "upsd.users", NutConfigurationFileKind.UpsdUsers, enabled.Contains(NutConfigurationFileKind.UpsdUsers)),
+        new("Monitoramento", "upsmon.conf", "upsmon.conf", NutConfigurationFileKind.UpsmonConf, enabled.Contains(NutConfigurationFileKind.UpsmonConf))
     ];
 
     private static string ToEncodingText(NutConfigurationTextEncoding encoding) => encoding switch
@@ -2086,7 +2134,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
     }
 
-    private void OnRemoteConfigurationContextChanged(
+    private async void OnRemoteConfigurationContextChanged(
         INutConfigurationFilePipeline? pipeline,
         RemoteNutDirectoryValidationResult? validation,
         bool canWrite)
@@ -2102,9 +2150,18 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             return;
         }
 
+        var snapshot = _loadedSnapshot;
+        var selectedFile = SelectedFile;
+        var preservesLoadedFile = pipeline is not null &&
+            validation?.IsValid == true &&
+            snapshot is not null &&
+            selectedFile?.FullPath is not null &&
+            string.Equals(
+                snapshot.TargetPath,
+                GetRemoteFilePath(validation.Directory, selectedFile.FileName),
+                StringComparison.OrdinalIgnoreCase);
+
         _configurationPipeline = pipeline;
-        _installationContextVersion++;
-        ClearLoadedDocument(clearSelectedFile: true);
         foreach (var file in ConfigurationFiles)
         {
             var present = validation?.PresentFileNames.Contains(file.FileName, StringComparer.OrdinalIgnoreCase) == true;
@@ -2114,6 +2171,35 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
         }
 
         OnPropertyChanged(nameof(IsConfigurationFileListEmpty));
+
+        if (preservesLoadedFile)
+        {
+            try
+            {
+                // A successful write authorization changes capability, not file contents. Rebuild
+                // the in-memory editor against the snapshot already on screen so it becomes writable
+                // immediately without a second remote read, a scroll reset, or a full application
+                // restart. The candidate still carries the original T14 fingerprint.
+                using var editors = await BuildEditorsAsync(snapshot!, CancellationToken.None);
+                if (ReferenceEquals(_loadedSnapshot, snapshot) && ReferenceEquals(SelectedFile, selectedFile))
+                {
+                    PublishEditors(snapshot!, selectedFile!, editors);
+                    OnPropertyChanged(nameof(SelectedFileEncodingText));
+                    OnPropertyChanged(nameof(HasLoadedFile));
+                    OnPropertyChanged(nameof(HasNoLoadedFile));
+                }
+            }
+            catch (Exception)
+            {
+                SetStatus(Strings.Get("Administration.Configuration.CapabilityRefreshFailed"));
+            }
+
+            NotifyWorkflowPropertiesChanged();
+            return;
+        }
+
+        _installationContextVersion++;
+        ClearLoadedDocument(clearSelectedFile: true);
 
         NotifyWorkflowPropertiesChanged();
     }
@@ -2136,6 +2222,7 @@ public sealed partial class AdministrationPageViewModel : PageViewModel
             nameof(RemoteManagementSessionViewModel.CanDisconnect) or
             nameof(RemoteManagementSessionViewModel.CanTrustHostKey) or
             nameof(RemoteManagementSessionViewModel.CanBrowse) or
+            nameof(RemoteManagementSessionViewModel.CanChooseDirectory) or
             nameof(RemoteManagementSessionViewModel.CanValidateDirectory) or
             nameof(RemoteManagementSessionViewModel.CanUseCurrentDirectory) or
             nameof(RemoteManagementSessionViewModel.CanProbeWriteCapability))
@@ -2157,12 +2244,18 @@ public enum NutConfigurationFileState
 
 public sealed partial class NutConfigurationFileItemViewModel : ObservableObject
 {
-    public NutConfigurationFileItemViewModel(string category, string title, string fileName, NutConfigurationFileKind fileKind)
+    public NutConfigurationFileItemViewModel(
+        string category,
+        string title,
+        string fileName,
+        NutConfigurationFileKind fileKind,
+        bool isManaged = true)
     {
         Category = category;
         Title = title;
         FileName = fileName;
         FileKind = fileKind;
+        _isManaged = isManaged;
         State = NutConfigurationFileState.Missing;
     }
 
@@ -2173,6 +2266,10 @@ public sealed partial class NutConfigurationFileItemViewModel : ObservableObject
     public string FileName { get; }
 
     public NutConfigurationFileKind FileKind { get; }
+
+    /// <summary>Whether this profile authorizes NutManager to manage this file.</summary>
+    [ObservableProperty]
+    private bool _isManaged;
 
     // The rail stacks one icon per file and shows the matching one, which is the pattern the
     // Administration section list already uses. It avoids a value converter for what is a fixed,
@@ -2213,7 +2310,9 @@ public sealed partial class NutConfigurationFileItemViewModel : ObservableObject
         _ => "Não carregado"
     };
 
-    public bool CanLoad => State is NutConfigurationFileState.Available or NutConfigurationFileState.Loaded;
+    public bool CanLoad => IsManaged && State is (NutConfigurationFileState.Available or NutConfigurationFileState.Loaded);
+
+    partial void OnIsManagedChanged(bool value) => OnPropertyChanged(nameof(CanLoad));
 
     internal void ApplyInstallationInfo(NutConfigurationFileInfo? info)
     {

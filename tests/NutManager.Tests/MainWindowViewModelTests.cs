@@ -1,4 +1,6 @@
 using NutManager.App.ViewModels;
+using NutManager.Core.Agent;
+using NutManager.Core.Configuration;
 using NutManager.Core.Models;
 using Xunit;
 
@@ -189,6 +191,71 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void ActiveConfigurationUsesCurrentProfileTransportsAndDynamicManagedFileCount()
+    {
+        var overview = new OverviewPageViewModel();
+        var managedFiles = ManagedNutConfigurationFiles.Create(
+            [NutConfigurationFileKind.UpsConf, NutConfigurationFileKind.UpsdConf, NutConfigurationFileKind.UpsmonConf]);
+        var profile = CreateRemoteDashboardProfile(managedFiles);
+        var viewModel = new MainWindowViewModel(
+            ThemePreference.Dark,
+            overview,
+            new DevicesPageViewModel(),
+            activeProfile: profile);
+
+        Assert.Equal(
+            ["GANDALF", "Remoto", "Gerenciar", "NOBREAK"],
+            overview.ActiveProfileRows.Select(row => row.Value));
+        Assert.Equal("SMB", ValueFor(overview.ActiveConnectivityRows, "Configuração via"));
+        Assert.Equal("HTTPS", ValueFor(overview.ActiveConnectivityRows, "Controle via"));
+        Assert.Equal("3 gerenciados", ValueFor(overview.ActiveConnectivityRows, "Arquivos NUT"));
+
+        viewModel.UpdateManagedConfigurationFiles(
+            ManagedNutConfigurationFiles.Create([NutConfigurationFileKind.UpsConf]));
+        Assert.Equal("1 gerenciado", ValueFor(overview.ActiveConnectivityRows, "Arquivos NUT"));
+
+        viewModel.UpdateManagedConfigurationFiles(ManagedNutConfigurationFiles.Create([]));
+        Assert.Equal("0 gerenciados", ValueFor(overview.ActiveConnectivityRows, "Arquivos NUT"));
+    }
+
+    [Fact]
+    public void ActiveConfigurationMirrorsExistingAgentObservationWithStaticSemanticState()
+    {
+        var overview = new OverviewPageViewModel();
+        var profile = CreateRemoteDashboardProfile(ManagedNutConfigurationFiles.All);
+        var agent = new RemoteWindowsServiceViewModel(
+            profile.Monitoring.Host,
+            new NoOperationAgentClient(),
+            transport: profile.Management.Agent.Transport);
+        _ = new MainWindowViewModel(
+            ThemePreference.Dark,
+            overview,
+            new DevicesPageViewModel(),
+            activeProfile: profile,
+            remoteWindowsService: agent);
+
+        var unavailable = overview.ActiveConnectivityRows.Single(row => row.Label == "Agente");
+        Assert.Equal("Desconectado", unavailable.Value);
+        Assert.True(unavailable.IsCritical);
+        Assert.False(unavailable.IsHealthy);
+
+        agent.Observation = new NutAgentObservation(
+            profile.Monitoring.Host,
+            NutAgentClientStatus.Success,
+            null,
+            null,
+            null,
+            null,
+            null,
+            DateTimeOffset.Parse("2026-08-18T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
+
+        var connected = overview.ActiveConnectivityRows.Single(row => row.Label == "Agente");
+        Assert.Equal("Conectado", connected.Value);
+        Assert.True(connected.IsHealthy);
+        Assert.False(connected.IsCritical);
+    }
+
+    [Fact]
     public void ShellMirrorsExistingConnectionStateWithoutStartingAnotherOperation()
     {
         var overview = new OverviewPageViewModel();
@@ -310,6 +377,41 @@ public sealed class MainWindowViewModelTests
             ? new NutManagementProfile(managementMode, "management.example", "/etc/nut")
             : new NutManagementProfile(managementMode),
         accessMode);
+
+    private static ManagedNutServerProfile CreateRemoteDashboardProfile(ManagedNutConfigurationFiles managedFiles) => new(
+        Guid.NewGuid(),
+        "GANDALF",
+        new NutMonitoringProfile("gandalf.sbra.local", preferredUpsName: "NOBREAK"),
+        new NutManagementProfile(
+            NutManagementMode.Remote,
+            configurationTransport: RemoteConfigurationTransportKind.Smb,
+            smbSharePath: @"\\GANDALF\etc",
+            managedFiles: managedFiles,
+            agent: new NutAgentProfileSettings(
+                NutAgentTransportKind.Https,
+                "https://gandalf.sbra.local:5199/")),
+        ManagedNutServerAccessMode.Manage);
+
+    private static string ValueFor(IEnumerable<OverviewInfoRowViewModel> rows, string label) =>
+        rows.Single(row => row.Label == label).Value;
+
+    private sealed class NoOperationAgentClient : INutManagerAgentClient
+    {
+        public Task<NutAgentClientResult<NutAgentHandshake>> HandshakeAsync(string host, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The dashboard must not start agent I/O.");
+
+        public Task<NutAgentClientResult<NutAgentServiceStatus>> GetStatusAsync(string host, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The dashboard must not start agent I/O.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The dashboard must not mutate the agent.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StopAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The dashboard must not mutate the agent.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> RestartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The dashboard must not mutate the agent.");
+    }
 
     private static MainWindowViewModel CreateShell(SidebarPreference sidebarPreference) => new(
         ThemePreference.System,

@@ -135,9 +135,16 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel viewModel && sender is Button { DataContext: ManagedProfileCardViewModel profile })
         {
             viewModel.OpenManagedProfileCommand.Execute(profile);
-            ProfileQuickMenuButton.Flyout?.Hide();
+            ProfileQuickMenuPopup.IsOpen = false;
         }
     }
+
+    /// <summary>
+    /// Opens the profile list. A Flyout opened itself on click; a Popup does not, which is the price
+    /// of it being drawn inside this window instead of in one of its own.
+    /// </summary>
+    private void ProfileQuickMenuButton_OnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs) =>
+        ProfileQuickMenuPopup.IsOpen = !ProfileQuickMenuPopup.IsOpen;
 
     private void ProfileQuickMenuFlyout_OnOpened(object? sender, EventArgs eventArgs)
     {
@@ -164,7 +171,7 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.OpenManagedProfileCommand.Execute(null);
-            ProfileQuickMenuButton.Flyout?.Hide();
+            ProfileQuickMenuPopup.IsOpen = false;
         }
     }
 }

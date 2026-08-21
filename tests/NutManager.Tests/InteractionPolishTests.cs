@@ -46,21 +46,16 @@ public sealed class InteractionPolishTests
     }
 
     [Fact]
-    public void TheLedCoreIsSmallerThanItsHaloConstraintAllowsAtThePeakOfAPulse()
+    public void TheLedCoreAndWaveUseWholePixelGeometry()
     {
         var source = Controls("NutStatusLed.axaml");
 
         var core = LayerSize(source, "Core");
         var halo = LayerSize(source, "Halo");
 
-        // The ball was reduced to read as a discreet indicator rather than a lamp.
+        // The ball remains discreet while the larger source produces a stronger blurred wave.
         Assert.Equal(8, core);
-        Assert.Equal(4, halo);
-
-        // The invariant that keeps a dark rim from appearing: the shadow's source must still sit
-        // inside the core at the widest point of the breath, not just at rest.
-        const double peakScale = 1.45;
-        Assert.True(halo * peakScale < core, $"halo {halo} scaled by {peakScale} must stay under core {core}");
+        Assert.Equal(6, halo);
 
         // Whole-pixel centring: an odd size straddles a half pixel and the ball looks crooked.
         Assert.All(new[] { core, halo }, size => Assert.Equal(0, size % 2));
@@ -76,9 +71,9 @@ public sealed class InteractionPolishTests
     }
 
     [Theory]
-    [InlineData(NutLedState.Healthy, 2.0)]
-    [InlineData(NutLedState.Pending, 3.2)]
-    [InlineData(NutLedState.Critical, 3.2)]
+    [InlineData(NutLedState.Healthy, 1.8)]
+    [InlineData(NutLedState.Pending, 1.8)]
+    [InlineData(NutLedState.Critical, 0.0)]
     [InlineData(NutLedState.Unavailable, 0.0)]
     public void LedPulsePeriodsAreSemanticAndDeterministic(NutLedState state, double seconds)
     {
@@ -86,15 +81,19 @@ public sealed class InteractionPolishTests
     }
 
     [Fact]
-    public void PendingAndCriticalShareTheExactSamePulseImplementation()
+    public void HealthyAndPendingShareTheWaveWhileCriticalKeepsItsStaticBlur()
     {
+        Assert.NotEqual(TimeSpan.Zero, NutStatusLed.PulsePeriodFor(NutLedState.Healthy));
         Assert.Equal(
-            NutStatusLed.PulsePeriodFor(NutLedState.Pending),
-            NutStatusLed.PulsePeriodFor(NutLedState.Critical));
+            NutStatusLed.PulsePeriodFor(NutLedState.Healthy),
+            NutStatusLed.PulsePeriodFor(NutLedState.Pending));
+        Assert.Equal(TimeSpan.Zero, NutStatusLed.PulsePeriodFor(NutLedState.Critical));
 
         var source = Controls("NutStatusLed.axaml.cs");
-        Assert.Contains("NutLedState.Pending or NutLedState.Critical", source, StringComparison.Ordinal);
+        var visual = Controls("NutStatusLed.axaml");
         Assert.Equal(1, source.Split("private void StartPulse(", StringSplitOptions.None).Length - 1);
+        Assert.Contains("ApplyStateClasses(AmbientHalo)", source, StringComparison.Ordinal);
+        Assert.Contains("0 0 15 2 #F2F87171", visual, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -105,7 +104,8 @@ public sealed class InteractionPolishTests
         Assert.Contains("OnDetachedFromVisualTree", source, StringComparison.Ordinal);
         Assert.Contains("halo.StopAnimation(ScaleTarget)", source, StringComparison.Ordinal);
         Assert.Contains("halo.StopAnimation(OpacityTarget)", source, StringComparison.Ordinal);
-        Assert.Contains("core.StopAnimation(OpacityTarget)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("core.StartAnimation", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("core.StopAnimation", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -113,20 +113,20 @@ public sealed class InteractionPolishTests
     {
         var source = Controls("NutStatusLed.axaml");
 
-        foreach (var layer in new[] { "x:Name=\"Halo\"", "x:Name=\"Core\"", "x:Name=\"Highlight\"" })
+        foreach (var layer in new[] { "x:Name=\"AmbientHalo\"", "x:Name=\"Halo\"", "x:Name=\"Core\"" })
         {
             Assert.Contains(layer, source, StringComparison.Ordinal);
         }
 
-        // Concentric ellipses have hard edges and read as rings drawn around the dot. The glow has
-        // to be a shadow, and its spread must stay at zero: any spread starts the shadow outside
-        // the core and leaves a dark gap ringing the ball, which is the same look in reverse.
+        // The white lens point was intentionally removed; light comes from the solid green core and
+        // the blurred expanding shadow only.
+        Assert.DoesNotContain("x:Name=\"Highlight\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Fill=\"White\"", source, StringComparison.Ordinal);
+
+        // Concentric ellipses have hard edges. The glow remains a shadow, with a small spread that
+        // keeps the expanding wave luminous while it fades.
         Assert.DoesNotContain("x:Name=\"Glow\"", source, StringComparison.Ordinal);
-        Assert.Contains("BoxShadow", source, StringComparison.Ordinal);
-        // Blur is free to be tuned; the zero spread is the invariant that keeps the gap away.
-        Assert.All(
-            source.Split('\n').Where(line => line.Contains("BoxShadow", StringComparison.Ordinal)),
-            line => Assert.Matches(@"Value=""0 0 \d+ 0 #", line));
+        Assert.Contains("Value=\"0 0 12 1 #F23BEF88\"", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -158,6 +158,24 @@ public sealed class InteractionPolishTests
             Assert.Contains("TransformOperationsTransition", source, StringComparison.Ordinal);
             Assert.DoesNotContain("<Setter Property=\"RenderTransform\" Value=\"{Animation", source, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void NavigationGlyphViewportContainsEveryScaleAndRotationWithoutChangingItsLayoutFootprint()
+    {
+        var source = Controls("NutNavigationIcon.axaml");
+
+        Assert.Contains("Width=\"32\"", source, StringComparison.Ordinal);
+        Assert.Contains("Height=\"32\"", source, StringComparison.Ordinal);
+        Assert.Contains("Margin=\"-4\"", source, StringComparison.Ordinal);
+        Assert.Contains("ClipToBounds=\"False\"", source, StringComparison.Ordinal);
+        Assert.Contains("Classes=\"nut-nav-slot\"", source, StringComparison.Ordinal);
+        Assert.Contains("Width\" Value=\"20\"", Themes("NutShellStyles.axaml"), StringComparison.Ordinal);
+
+        // A 20px square rotating by 45 degrees reaches about 28.3px. The 32px viewport therefore
+        // contains the widest animation while its -4px margin keeps the measured footprint at 24.
+        Assert.True(20 * Math.Sqrt(2) < 32);
+        Assert.Equal(24, 32 - 8);
     }
 
     [Fact]

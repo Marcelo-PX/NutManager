@@ -204,6 +204,8 @@ public sealed partial class OverviewPageViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(ConnectionStateText));
         OnPropertyChanged(nameof(IsConnected));
+        OnPropertyChanged(nameof(IsConnectionPending));
+        OnPropertyChanged(nameof(IsConnectionCritical));
     }
 
     partial void OnDataFreshnessChanged(DataFreshness value) =>
@@ -356,6 +358,8 @@ public sealed partial class OverviewPageViewModel : PageViewModel
 
     public string PrimaryStatusText => PrimaryStatus?.StateText ?? UnavailableText;
 
+    public bool IsPrimaryStatusUnknown => PrimarySemanticState == StatusSemanticState.Unknown;
+
     private StatusSeverity? PrimarySeverity => Snapshot?.StatusTokens.Count > 0
         ? Snapshot.StatusTokens.Max(token => token.Severity)
         : null;
@@ -415,27 +419,39 @@ public sealed partial class OverviewPageViewModel : PageViewModel
 
     public bool IsConnected => ConnectionState == ConnectionState.Connected;
 
+    public bool IsConnectionPending => ConnectionState is ConnectionState.Connecting or ConnectionState.Reconnecting;
+
+    public bool IsConnectionCritical => ConnectionState is ConnectionState.Disconnected or ConnectionState.ConnectionFailed;
+
     // Active configuration and administration shortcuts are supplied by the shell, which already
     // owns this state. The dashboard only presents them; it performs no administrative action.
     [ObservableProperty]
-    private IReadOnlyList<OverviewInfoRowViewModel> _activeConfigurationRows = [];
+    private IReadOnlyList<OverviewInfoRowViewModel> _activeProfileRows = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<OverviewInfoRowViewModel> _activeConnectivityRows = [];
 
     [ObservableProperty]
     private IReadOnlyList<OverviewShortcutViewModel> _administrationShortcuts = [];
 
-    public bool HasActiveConfiguration => ActiveConfigurationRows.Count > 0;
+    public bool HasActiveConfiguration => ActiveProfileRows.Count > 0 || ActiveConnectivityRows.Count > 0;
 
     public bool HasAdministrationShortcuts => AdministrationShortcuts.Count > 0;
 
     public void SetDashboardContext(
-        IReadOnlyList<OverviewInfoRowViewModel> activeConfiguration,
+        IReadOnlyList<OverviewInfoRowViewModel> activeProfile,
+        IReadOnlyList<OverviewInfoRowViewModel> activeConnectivity,
         IReadOnlyList<OverviewShortcutViewModel> shortcuts)
     {
-        ActiveConfigurationRows = activeConfiguration ?? [];
+        ActiveProfileRows = activeProfile ?? [];
+        ActiveConnectivityRows = activeConnectivity ?? [];
         AdministrationShortcuts = shortcuts ?? [];
     }
 
-    partial void OnActiveConfigurationRowsChanged(IReadOnlyList<OverviewInfoRowViewModel> value) =>
+    partial void OnActiveProfileRowsChanged(IReadOnlyList<OverviewInfoRowViewModel> value) =>
+        OnPropertyChanged(nameof(HasActiveConfiguration));
+
+    partial void OnActiveConnectivityRowsChanged(IReadOnlyList<OverviewInfoRowViewModel> value) =>
         OnPropertyChanged(nameof(HasActiveConfiguration));
 
     partial void OnAdministrationShortcutsChanged(IReadOnlyList<OverviewShortcutViewModel> value) =>
@@ -464,9 +480,11 @@ public sealed partial class OverviewPageViewModel : PageViewModel
         nameof(TemperatureText), nameof(HasTemperature), nameof(DriverText), nameof(DriverVersionText),
         nameof(HasDriverVersion), nameof(UpsTypeText), nameof(HasUpsType),
         nameof(PrimaryStatus), nameof(HasPrimaryStatus), nameof(PrimaryStatusToken), nameof(PrimaryStatusText),
+        nameof(IsPrimaryStatusUnknown),
         nameof(IsStatusHealthy), nameof(IsStatusWarning), nameof(IsStatusCritical), nameof(IsStatusUnavailable),
         nameof(IsRunningOnMains), nameof(IsRunningOnBattery),
-        nameof(IsConnected), nameof(EndpointText), nameof(SelectedUpsText)
+        nameof(IsConnected), nameof(IsConnectionPending), nameof(IsConnectionCritical),
+        nameof(EndpointText), nameof(SelectedUpsText)
     ];
 
     private IReadOnlyList<OverviewMetricViewModel> CreateMetricCards(UpsSnapshot? snapshot) =>
@@ -519,15 +537,8 @@ public sealed partial class OverviewPageViewModel : PageViewModel
                 StatusSeverity.Warning => Strings.Get("Severity.Warning"),
                 StatusSeverity.Critical => Strings.Get("Severity.Critical"),
                 _ => Strings.Get("Common.Unknown")
-            });
-}
-
-/// <summary>Diagnostics surfaces that map to a real NutManager capability.</summary>
-public enum DiagnosticsTab
-{
-    Overview,
-    Connectivity,
-    Environment
+            },
+            token.State == StatusSemanticState.Unknown);
 }
 
 public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposable
@@ -586,33 +597,6 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
 
     public NutManagerLocalizer Strings { get; }
 
-    // ==================== T27A diagnostics presentation ====================
-    // Only tabs backed by a real capability exist. NutManager has no quick-test runner, no event
-    // log reader and no latency history, so no such surface is fabricated here.
-
-    [ObservableProperty]
-    private DiagnosticsTab _selectedTab = DiagnosticsTab.Overview;
-
-    public bool IsOverviewTab => SelectedTab == DiagnosticsTab.Overview;
-    public bool IsConnectivityTab => SelectedTab == DiagnosticsTab.Connectivity;
-    public bool IsEnvironmentTab => SelectedTab == DiagnosticsTab.Environment;
-
-    [RelayCommand]
-    private void ShowOverviewTab() => SelectedTab = DiagnosticsTab.Overview;
-
-    [RelayCommand]
-    private void ShowConnectivityTab() => SelectedTab = DiagnosticsTab.Connectivity;
-
-    [RelayCommand]
-    private void ShowEnvironmentTab() => SelectedTab = DiagnosticsTab.Environment;
-
-    partial void OnSelectedTabChanged(DiagnosticsTab value)
-    {
-        OnPropertyChanged(nameof(IsOverviewTab));
-        OnPropertyChanged(nameof(IsConnectivityTab));
-        OnPropertyChanged(nameof(IsEnvironmentTab));
-    }
-
     // Categorical states derived from the live polling/installation state. These are never
     // aggregated into a score: no health percentage or pass/fail tally is invented.
     public bool IsConnectionHealthy => _pollingState.ConnectionState == ConnectionState.Connected;
@@ -622,7 +606,6 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
     public bool HasSnapshot => _pollingState.Snapshot is not null;
     public bool HasLastError => !string.IsNullOrWhiteSpace(_pollingState.LastError);
     public bool IsLocalInstallationDetected => _localInstallation.IsDetected;
-    public bool IsMockMode => _settings.MockMode;
     public bool HasDevicesDiscovered => DiscoveredUpsCount > 0;
 
     public IReadOnlyList<string> DiagnosticGroups =>
@@ -649,13 +632,13 @@ public sealed partial class DiagnosticsPageViewModel : PageViewModel, IDisposabl
 
     public bool HasDiagnosticCopyStatusMessage => !string.IsNullOrWhiteSpace(DiagnosticCopyStatusMessage);
 
-    public string ApplicationName => "NutManager";
+    public string ApplicationName => "NUT Manager";
     public string ApplicationVersion => _runtimeInfo.Version;
     public string Runtime => _runtimeInfo.Runtime;
     public string OperatingSystem => _runtimeInfo.OperatingSystem;
     public string Architecture => _runtimeInfo.Architecture;
 
-    public string ModeText => _settings.MockMode ? Strings.Get("Shell.SimulationActive") : Strings.Get("Diagnostics.LiveServer");
+    public string ModeText => Strings.Get("Diagnostics.LiveServer");
     public string Host => _profileContext?.Endpoint.Host ?? Strings.Get("Status.Unavailable");
     public string Port => _profileContext?.Endpoint.Port.ToString(CultureInfo.InvariantCulture) ?? Strings.Get("Status.Unavailable");
     public string ConnectionTimeoutText => FormatDuration(_settings.ConnectionTimeout);

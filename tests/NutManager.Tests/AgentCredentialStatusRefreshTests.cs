@@ -48,6 +48,41 @@ public sealed class AgentCredentialStatusRefreshTests
     }
 
     [Fact]
+    public async Task ValidatedCredentialForAnUnchangedSavedProfilePersistsBeforeRestart()
+    {
+        var profile = GandalfProfile();
+        var credentials = new PerProfileCredentialStore();
+        using var session = new NutAgentSessionCredentialStore();
+        var profiles = new ManagedNutServerProfiles(
+            ManagedNutServerProfiles.CurrentSchemaVersion,
+            profile.Id,
+            [profile]);
+        var profileStore = new ProfileStore(profiles);
+        var coordinator = new NutAgentCredentialCoordinator(
+            new SuccessfulPrompt(),
+            session,
+            (_, _) => new SuccessfulAgentClient());
+        var settings = new SettingsPageViewModel(
+            new ApplicationSettings(),
+            null,
+            profiles,
+            profileStore,
+            new ManagedNutServerProfileUpdateService(profileStore, credentials),
+            credentials,
+            agentCredentials: coordinator);
+
+        await settings.AuthenticateAgentCredentialCommand.ExecuteAsync(null);
+
+        Assert.True(settings.HasStoredAgentCredential);
+        Assert.Equal(settings.Localizer.Get("Agent.Credential.Stored"), settings.AgentCredentialStatusText);
+
+        var restarted = CreateViewModel(profile, credentials);
+        await restarted.RefreshCredentialStatusesAsync();
+        Assert.True(restarted.HasStoredAgentCredential);
+        Assert.Equal(restarted.Localizer.Get("Agent.Credential.Stored"), restarted.AgentCredentialStatusText);
+    }
+
+    [Fact]
     public async Task RefreshingOnlyTheConfigurationCredentialIsNotEnough()
     {
         // The regression in its exact shape: the configuration refresh alone leaves the agent's
@@ -316,6 +351,40 @@ public sealed class AgentCredentialStatusRefreshTests
         public Task<WindowsCredentialPromptResult> RequestAsync(
             WindowsCredentialPromptRequest request, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Refreshing a status must never prompt.");
+    }
+
+    private sealed class SuccessfulPrompt : IWindowsCredentialPrompt
+    {
+        public Task<WindowsCredentialPromptResult> RequestAsync(
+            WindowsCredentialPromptRequest request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(WindowsCredentialPromptResult.Success(Account, Sentinel, false));
+    }
+
+    private sealed class SuccessfulAgentClient : INutManagerAgentClient
+    {
+        public Task<NutAgentClientResult<NutAgentHandshake>> HandshakeAsync(string host, CancellationToken cancellationToken) =>
+            Task.FromResult(NutAgentClientResult<NutAgentHandshake>.Ok(
+                new NutAgentHandshake(
+                    NutAgentOptions.ProtocolVersion,
+                    "1.0.0",
+                    "GANDALF",
+                    [NutAgentOperation.Handshake, NutAgentOperation.GetStatus],
+                    true,
+                    null),
+                NutAgentResultCode.Success));
+
+        public Task<NutAgentClientResult<NutAgentServiceStatus>> GetStatusAsync(string host, CancellationToken cancellationToken) =>
+            Task.FromResult(NutAgentClientResult<NutAgentServiceStatus>.Failure(NutAgentClientStatus.Failed));
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Credential validation must not mutate the service.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> StopAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Credential validation must not mutate the service.");
+
+        public Task<NutAgentClientResult<NutAgentOperationResult>> RestartAsync(string host, Guid operationId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Credential validation must not mutate the service.");
     }
 
     /// <summary>

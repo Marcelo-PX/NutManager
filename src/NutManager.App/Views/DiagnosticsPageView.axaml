@@ -10,7 +10,7 @@
     categorical projection of the current polling, discovery or installation state.
   -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="16">
+    <StackPanel Spacing="16" Margin="0,0,18,0">
 
       <!-- ==================== Header ==================== -->
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
@@ -36,23 +36,17 @@
         </StackPanel>
       </Grid>
 
-      <!-- ==================== Tabs ==================== -->
-      <StackPanel Spacing="0">
-        <StackPanel Orientation="Horizontal">
-          <Button Classes="nut-tab" Classes.selected="{Binding IsOverviewTab}" Command="{Binding ShowOverviewTabCommand}"
-                  Content="{Binding Strings[Diagnostics.Group.Overview]}" AutomationProperties.Name="{Binding Strings[Diagnostics.Group.Overview]}" />
-          <Button Classes="nut-tab" Classes.selected="{Binding IsConnectivityTab}" Command="{Binding ShowConnectivityTabCommand}"
-                  Content="{Binding Strings[Diagnostics.Group.Connection]}" AutomationProperties.Name="{Binding Strings[Diagnostics.Group.Connection]}" />
-          <Button Classes="nut-tab" Classes.selected="{Binding IsEnvironmentTab}" Command="{Binding ShowEnvironmentTabCommand}"
-                  Content="{Binding Strings[Diagnostics.Group.Environment]}" AutomationProperties.Name="{Binding Strings[Diagnostics.Group.Environment]}" />
-        </StackPanel>
-        <Border Classes="nut-divider" />
-      </StackPanel>
-
       <!-- ==================== Overview ==================== -->
-      <StackPanel Spacing="14" IsVisible="{Binding IsOverviewTab}">
-        <WrapPanel>
-          <Border Classes="nut-card" Width="252" MinHeight="96" Margin="0,0,13,13" Padding="15">
+      <StackPanel Spacing="14">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <PathIcon Data="{DynamicResource NutIconOverview}" Classes="accent" Width="17" Height="17" />
+            <TextBlock Text="{Binding Strings[Diagnostics.Group.Overview]}" Classes="nut-section-title" />
+          </StackPanel>
+          <Border Classes="nut-divider" />
+        </StackPanel>
+        <Grid x:Name="DiagnosticsSummaryGrid" ColumnDefinitions="*,*,*,*" ColumnSpacing="13" RowSpacing="13">
+          <Border x:Name="ConnectionSummaryCard" Classes="nut-card" MinHeight="110" Padding="15">
             <StackPanel Spacing="8">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <PathIcon Data="{DynamicResource NutIconConnection}" Classes="accent" Width="16" Height="16" />
@@ -68,7 +62,7 @@
             </StackPanel>
           </Border>
 
-          <Border Classes="nut-card" Width="252" MinHeight="96" Margin="0,0,13,13" Padding="15">
+          <Border x:Name="FreshnessSummaryCard" Grid.Column="1" Classes="nut-card" MinHeight="110" Padding="15">
             <StackPanel Spacing="8">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <PathIcon Data="{DynamicResource NutIconRefresh}" Classes="cyan" Width="16" Height="16" />
@@ -84,7 +78,7 @@
             </StackPanel>
           </Border>
 
-          <Border Classes="nut-card" Width="252" MinHeight="96" Margin="0,0,13,13" Padding="15">
+          <Border x:Name="DiscoverySummaryCard" Grid.Column="2" Classes="nut-card" MinHeight="110" Padding="15">
             <StackPanel Spacing="8">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <PathIcon Data="{DynamicResource NutIconDevices}" Classes="cyan" Width="16" Height="16" />
@@ -99,7 +93,7 @@
             </StackPanel>
           </Border>
 
-          <Border Classes="nut-card" Width="252" MinHeight="96" Margin="0,0,0,13" Padding="15">
+          <Border x:Name="TechnicalSummaryCard" Grid.Column="3" Classes="nut-card" MinHeight="110" Padding="15">
             <StackPanel Spacing="8">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <PathIcon Data="{DynamicResource NutIconService}" Classes="purple" Width="16" Height="16" />
@@ -114,7 +108,7 @@
               <TextBlock Text="{Binding LocalInstallationVersionText}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
             </StackPanel>
           </Border>
-        </WrapPanel>
+        </Grid>
 
         <Grid ColumnDefinitions="*,*" ColumnSpacing="13">
           <Border Classes="nut-card">
@@ -153,17 +147,20 @@
                 <PathIcon Data="{DynamicResource NutIconSuccess}" Classes="healthy" Width="15" Height="15" VerticalAlignment="Top" IsVisible="{Binding !HasLastError}" />
                 <TextBlock Text="{Binding LastErrorText}" Classes="nut-body" FontSize="13" TextWrapping="Wrap" />
               </StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="9" IsVisible="{Binding IsMockMode}">
-                <PathIcon Data="{DynamicResource NutIconInfo}" Classes="warning" Width="15" Height="15" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding ModeText}" Classes="warning" FontSize="13" VerticalAlignment="Center" />
-              </StackPanel>
             </StackPanel>
           </Border>
         </Grid>
       </StackPanel>
 
       <!-- ==================== Connectivity ==================== -->
-      <StackPanel Spacing="14" IsVisible="{Binding IsConnectivityTab}">
+      <StackPanel Spacing="14">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <PathIcon Data="{DynamicResource NutIconNetwork}" Classes="accent" Width="17" Height="17" />
+            <TextBlock Text="{Binding Strings[Diagnostics.Group.Connection]}" Classes="nut-section-title" />
+          </StackPanel>
+          <Border Classes="nut-divider" />
+        </StackPanel>
         <!-- Configured endpoint and measured state only: no probe, ping or latency history exists. -->
         <Border Classes="nut-card">
           <StackPanel Spacing="12">
@@ -239,7 +236,14 @@
       </StackPanel>
 
       <!-- ==================== Environment ==================== -->
-      <StackPanel Spacing="14" IsVisible="{Binding IsEnvironmentTab}">
+      <StackPanel Spacing="14">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <PathIcon Data="{DynamicResource NutIconInfo}" Classes="accent" Width="17" Height="17" />
+            <TextBlock Text="{Binding Strings[Diagnostics.Group.Environment]}" Classes="nut-section-title" />
+          </StackPanel>
+          <Border Classes="nut-divider" />
+        </StackPanel>
         <Border Classes="nut-card">
           <StackPanel Spacing="12">
             <StackPanel Orientation="Horizontal" Spacing="10">
@@ -252,7 +256,7 @@
                 <TextBlock Text="{Binding Strings[Diagnostics.Application]}" Classes="nut-metadata" />
                 <TextBlock Text="{Binding ApplicationName}" FontSize="13" />
               </StackPanel>
-              <StackPanel Width="140" Margin="0,0,16,10" Spacing="2">
+              <StackPanel Width="300" Margin="0,0,36,10" Spacing="2">
                 <TextBlock Text="{Binding Strings[Common.Version]}" Classes="nut-metadata" />
                 <TextBlock Text="{Binding ApplicationVersion}" FontSize="13" />
               </StackPanel>

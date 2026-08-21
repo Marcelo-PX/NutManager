@@ -137,41 +137,110 @@
   </Style>
 
   <Style Selector="Button.nut-profile-card">
-    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="Padding" Value="10" />
+    <Setter Property="Padding" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="BorderBrush" Duration="0:0:0.14" />
-        <BrushTransition Property="Background" Duration="0:0:0.14" />
-      </Transitions>
+    <Setter Property="ClipToBounds" Value="False" />
+    <!--
+      No adorner. The stock one is a rectangle drawn outside the control, so the selector wore a
+      square outline around its rounded surface and read as a glitch; a rounded replacement template
+      did not take either. Focus is shown by the card itself instead, below, which is already the
+      right shape — so this removes the ring without removing the feedback.
+    -->
+    <!--
+      An empty adorner rather than a null one. The stock ring is a rectangle drawn outside the
+      control, in the adorner layer, so it never took the card's corner radius and setting the
+      property to null did not dislodge it. Substituting a template that paints nothing does, and
+      focus stays visible through the card's own glow below, which is already the right shape.
+    -->
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Background="Transparent" BorderThickness="0" />
+      </FocusAdornerTemplate>
     </Setter>
   </Style>
   <Style Selector="Button.nut-profile-card /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <!--
+      The glow spreads well past the card, and the presenter's bounds are a rectangle. Clipped to
+      them, a soft round halo came out as a hard square outline — which is what the "square neon"
+      actually was, not the focus ring it was mistaken for.
+    -->
+    <Setter Property="ClipToBounds" Value="False" />
   </Style>
   <Style Selector="Button.nut-profile-card:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.nut-profile-card-surface">
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="10" />
+    <Setter Property="BoxShadow" Value="0 0 0 0 #00000000, 0 0 0 0 #00000000" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+        <BrushTransition Property="Background" Duration="0:0:0.18" />
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.22" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.nut-profile-card:pointerover Border.nut-profile-card-surface">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 10 0 #665FA8FF, 0 0 24 3 #335FA8FF" />
+  </Style>
+  <!--
+    The square ring came from the shared Button:focus-visible rule, which puts a 2px border on any
+    focused button and knows nothing about this card's rounded shape. Removing the adorner did not
+    touch it, because that rule draws on the button itself. This file is included after the control
+    styles, so cancelling the thickness here is what actually wins.
+  -->
+  <Style Selector="Button.nut-profile-card:focus-visible">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+
+  <!--
+    Keyboard focus wears the same glow as hover instead. It follows the card's corner radius because
+    the surface draws it, which is what a rectangular ring could never do.
+  -->
+  <Style Selector="Button.nut-profile-card:focus-visible Border.nut-profile-card-surface">
+    <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrightBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 10 0 #665FA8FF, 0 0 24 3 #335FA8FF" />
   </Style>
 
   <Style Selector="Button.nut-profile-menu-item">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Padding" Value="9" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="10" />
+    <Setter Property="Margin" Value="0,3" />
+    <!--
+      Width comes from the list, not from the contents. Stretching only the content left the button
+      itself sized to what it held, so the active profile — the one carrying the "Ativo" badge — came
+      out wider than every other card and the column read as ragged.
+    -->
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
   <Style Selector="Button.nut-profile-menu-item /template/ ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderSubtleBrush}" />
   </Style>
   <Style Selector="Button.nut-profile-menu-item:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderEmphasisBrush}" />
   </Style>
   <Style Selector="Button.nut-profile-manage">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -232,9 +301,8 @@
   </Style>
 
   <!--
-    Navigation icon states. Colour eases through a brush transition and the one-pixel lift through
-    a thickness transition; selection is still carried by the accent bar and the label weight, so
-    the motion is reinforcement rather than the signal itself.
+    Navigation icon states. Colour eases through a brush transition; selection is still carried by
+    the accent bar and the label weight, so motion reinforces the state without shifting its axis.
   -->
   <!--
     ==================== Navigation glyph states ====================
@@ -247,26 +315,13 @@
     RenderTransform, for which no animator is registered. Transitions are state driven, so a
     sidebar at rest costs nothing.
   -->
-  <Style Selector="Grid.nut-icon-motion, Path.nut-icon-motion">
-    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+  <!--
+    The wrapper never translates or scales. Every hover motion below is centred on the fixed 20 px
+    glyph through the compositor; composing a second RenderTransform on the 32 px viewport changed
+    the apparent axis when hover began and made an otherwise aligned icon jump sideways.
+  -->
+  <Style Selector="Grid.nut-icon-motion">
     <Setter Property="RenderTransform" Value="none" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut" />
-      </Transitions>
-    </Setter>
-  </Style>
-
-  <!-- Each family moves in the way its object would. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-lift">
-    <Setter Property="RenderTransform" Value="translateY(-1px) scale(1.04)" />
-  </Style>
-  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-nudge">
-    <Setter Property="RenderTransform" Value="scale(1.03)" />
-  </Style>
-  <!-- The gear's turn is a compositor loop on the glyph itself, so the grid only lends the scale. -->
-  <Style Selector="Button.nut-navigation-item:pointerover Grid.nut-icon-gear">
-    <Setter Property="RenderTransform" Value="scale(1.03)" />
   </Style>
   <!--
     Looping motion cannot be expressed here. A keyframe Animation targeting RenderTransform throws
@@ -383,12 +438,46 @@
     <Setter Property="BorderThickness" Value="0" />
   </Style>
 
+  <!--
+    The flyout carries the product's card surface, and it has to name a brush that exists: this asked
+    for NutSurfaceElevatedBrush, which is defined in neither theme. A DynamicResource that resolves
+    to nothing leaves the Border with no background at all rather than failing loudly, so the sidebar
+    underneath showed straight through the list of profiles. These are the same glass brushes
+    Border.nut-card uses, and both themes define them.
+  -->
+  <!--
+    With transparency switched off the flyout takes a solid surface. The glass brush carries its own
+    alpha, which is fine for a card sitting on the window's own background but not for a menu
+    floating over the sidebar: the profiles were legible only because of what happened to be behind
+    them. The rest of the shell honours this preference, and now so does this.
+  -->
   <Style Selector="Border.nut-profile-flyout-surface">
-    <Setter Property="Background" Value="{DynamicResource NutSurfaceElevatedBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{DynamicResource NutRadiusLarge}" />
+    <!--
+      A literal radius, because NutRadiusLarge is defined in neither theme. A DynamicResource that
+      resolves to nothing leaves the corners square rather than failing loudly — the same way this
+      surface's background was missing before it — so the flyout was drawn with no rounding at all.
+    -->
+    <Setter Property="CornerRadius" Value="16" />
     <Setter Property="BoxShadow" Value="0 12 32 0 #59000000" />
+    <!--
+      Clipped to its own rounded shape. The list inside scrolls, and without this the cards travelled
+      over the corners the surface had gone to the trouble of rounding.
+    -->
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+
+  <!--
+    With transparency switched off the flyout takes a solid surface, and this has to come after the
+    rule above to win. The glass brush carries its own alpha, which is fine for a card sitting on the
+    window's own background but not for a menu floating over the sidebar: the profile list stayed
+    see-through while the rest of the shell had gone opaque.
+  -->
+  <Style Selector="Border.nut-profile-flyout-surface.opaque">
+    <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
   </Style>
 
   <Style Selector="Border.nut-profile-avatar">
@@ -419,9 +508,11 @@
     <Setter Property="Padding" Value="0" />
   </Style>
   <Style Selector="ListBox.nut-section-tabs ListBoxItem">
-    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="Margin" Value="0" />
     <Setter Property="Padding" Value="13,9" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="MinHeight" Value="46" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
   </Style>
   <Style Selector="ListBox.nut-section-tabs ListBoxItem /template/ ContentPresenter">
@@ -474,7 +565,7 @@
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="CornerRadius" Value="20" />
     <Setter Property="ClipToBounds" Value="True" />
     <Setter Property="HorizontalAlignment" Value="Left" />
     <Setter Property="Transitions">
@@ -561,7 +652,9 @@
     <Setter Property="Background" Value="{DynamicResource NutAccentBrush}" />
   </Style>
   <Style Selector="Button.nut-file-tile:disabled">
-    <Setter Property="Opacity" Value="0.45" />
+    <!-- Muted enough to communicate profile scope, but still legible as an available module. -->
+    <Setter Property="Opacity" Value="0.62" />
+    <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
   </Style>
 
   <!-- Kept as a class so the two label lines are addressable as one unit. -->

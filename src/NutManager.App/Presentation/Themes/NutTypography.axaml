@@ -56,6 +56,51 @@
     <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
   </Style>
 
+  <!-- Small explanatory copy needs an extra contrast step on translucent cards. This is scoped to
+       the card surface the operator identified; titles and text elsewhere keep their hierarchy. -->
+  <Style Selector="Border.nut-card TextBlock.nut-metadata,
+                   Border.nut-card TextBlock.nut-body,
+                   Border.nut-card TextBlock.nut-label,
+                   Border.nut-card TextBlock.nut-metric-label">
+    <Setter Property="Foreground" Value="{DynamicResource NutCardSmallTextBrush}" />
+  </Style>
+  <Style Selector="Border.nut-card TextBlock.nut-metadata.healthy,
+                   Border.nut-card TextBlock.nut-body.healthy,
+                   Border.nut-card TextBlock.nut-label.healthy,
+                   Border.nut-card TextBlock.nut-metric-label.healthy">
+    <Setter Property="Foreground" Value="{DynamicResource NutHealthyBrush}" />
+  </Style>
+  <Style Selector="Border.nut-card TextBlock.nut-metadata.warning,
+                   Border.nut-card TextBlock.nut-body.warning,
+                   Border.nut-card TextBlock.nut-label.warning,
+                   Border.nut-card TextBlock.nut-metric-label.warning">
+    <Setter Property="Foreground" Value="{DynamicResource NutWarningBrush}" />
+  </Style>
+  <Style Selector="Border.nut-card TextBlock.nut-metadata.critical,
+                   Border.nut-card TextBlock.nut-body.critical,
+                   Border.nut-card TextBlock.nut-label.critical,
+                   Border.nut-card TextBlock.nut-metric-label.critical">
+    <Setter Property="Foreground" Value="{DynamicResource NutCriticalBrush}" />
+  </Style>
+  <Style Selector="Border.nut-card TextBlock.nut-metadata.accent,
+                   Border.nut-card TextBlock.nut-body.accent,
+                   Border.nut-card TextBlock.nut-label.accent,
+                   Border.nut-card TextBlock.nut-metric-label.accent">
+    <Setter Property="Foreground" Value="{DynamicResource NutAccentBrightBrush}" />
+  </Style>
+  <Style Selector="Border.nut-card TextBlock.nut-metadata.cyan,
+                   Border.nut-card TextBlock.nut-body.cyan,
+                   Border.nut-card TextBlock.nut-label.cyan,
+                   Border.nut-card TextBlock.nut-metric-label.cyan">
+    <Setter Property="Foreground" Value="{DynamicResource NutCyanBrush}" />
+  </Style>
+  <Style Selector="Border.nut-card TextBlock.nut-metadata.purple,
+                   Border.nut-card TextBlock.nut-body.purple,
+                   Border.nut-card TextBlock.nut-label.purple,
+                   Border.nut-card TextBlock.nut-metric-label.purple">
+    <Setter Property="Foreground" Value="{DynamicResource NutPurpleBrush}" />
+  </Style>
+
   <!-- Dominant numeric readout used by the dashboard metric cards. -->
   <Style Selector="TextBlock.nut-metric-value">
     <Setter Property="FontSize" Value="34" />

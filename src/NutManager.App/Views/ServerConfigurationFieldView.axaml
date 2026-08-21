@@ -45,9 +45,24 @@
       </ComboBox.ItemTemplate>
     </ComboBox>
 
+    <!--
+      Which of the two inputs appears is decided by the schema's declared field kind, never by the
+      unit or the label. SHUTDOWNCMD and POWERDOWNFLAG sit in the same grid as FINALDELAY and
+      DEADTIME, and a command line offered a spinner would be a field nobody could type into.
+    -->
     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding IsText}">
+      <NumericUpDown Value="{Binding NumericValue, Mode=TwoWay}"
+                     Minimum="{Binding Minimum}"
+                     Maximum="{Binding Maximum}"
+                     Increment="{Binding Increment}"
+                     FormatString="{Binding NumericFormat}"
+                     ParsingNumberStyle="Number"
+                     IsEnabled="{Binding CanEdit}"
+                     IsVisible="{Binding IsNumeric}"
+                     AutomationProperties.Name="{Binding Label}" />
       <TextBox Text="{Binding DraftValue, Mode=TwoWay}"
                IsReadOnly="{Binding !CanEdit}"
+               IsVisible="{Binding IsFreeText}"
                AutomationProperties.Name="{Binding Label}" />
       <TextBlock Grid.Column="1"
                  Text="{Binding Unit}"

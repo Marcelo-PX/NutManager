@@ -6,8 +6,9 @@
   <!--
     Remote management (T19 SSH/SFTP, T19B SMB). Secrets stay at this view boundary: the password
     and passphrase boxes are unbound and are read only at click time by the code-behind, so no
-    credential is ever projected into ordinary view-model state. Host-key trust, directory
-    validation and write-capability probing all remain explicit, reviewed operations.
+    credential is ever projected into ordinary view-model state. Host-key trust and write-
+    capability probing remain explicit; directory validation is read-only and follows each
+    successful connection or browse automatically.
   -->
   <StackPanel Spacing="16">
     <Border Classes="nut-card" IsVisible="{Binding IsLocalManagementProfile}">
@@ -71,6 +72,71 @@
                 <TextBlock Text="{Binding RemoteManagement.SmbUsername}" FontSize="13" TextTrimming="CharacterEllipsis" />
               </StackPanel>
             </WrapPanel>
+
+            <!--
+              Safe replacement belongs to the live remote connection, not to directory browsing.
+              The probe remains explicit because it creates and replaces temporary files; only the
+              read-only directory validation is automatic after connect or browse.
+            -->
+            <Border Classes="nut-card-flat"
+                    Padding="12"
+                    IsVisible="{Binding RemoteManagement.IsConnected}">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
+                <Grid Width="22" Height="22" VerticalAlignment="Center">
+                  <PathIcon Data="{DynamicResource NutIconHelp}"
+                            Classes="muted"
+                            Width="18"
+                            Height="18"
+                            IsVisible="{Binding RemoteManagement.IsWriteCapabilityUnverified}" />
+                  <PathIcon Data="{DynamicResource NutIconCheck}"
+                            Classes="healthy"
+                            Width="18"
+                            Height="18"
+                            IsVisible="{Binding RemoteManagement.IsWriteCapabilitySupported}" />
+                  <PathIcon Data="{DynamicResource NutIconWarning}"
+                            Classes="critical"
+                            Width="18"
+                            Height="18"
+                            IsVisible="{Binding RemoteManagement.IsWriteCapabilityRejected}" />
+                </Grid>
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Strings[Administration.Remote.SafeWrite.Help]}"
+                           Classes="nut-metadata"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="2"
+                        Classes="nut-danger"
+                        Content="{Binding Strings[Administration.Remote.SafeWrite.Verify]}"
+                        Click="RemoteProbeWriteButton_OnClick"
+                        IsEnabled="{Binding CanProbeRemoteWriteCapability}"
+                        IsVisible="{Binding !RemoteManagement.IsWriteCapabilitySupported}"
+                        AutomationProperties.Name="{Binding Strings[Administration.Remote.SafeWrite.Verify]}"
+                        Width="176"
+                        FontWeight="Bold"
+                        HorizontalContentAlignment="Center"
+                        VerticalAlignment="Center" />
+                <Button Grid.Column="2"
+                        Classes="nut-success-outline nut-status-locked"
+                        Content="{Binding Strings[Administration.Remote.SafeWrite.Verified]}"
+                        IsEnabled="False"
+                        IsVisible="{Binding RemoteManagement.IsWriteCapabilitySupported}"
+                        AutomationProperties.Name="{Binding Strings[Administration.Remote.SafeWrite.Verified]}"
+                        Width="176"
+                        FontWeight="Bold"
+                        HorizontalContentAlignment="Center"
+                        VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+
+            <Border Classes="nut-card-flat"
+                    Padding="12"
+                    IsVisible="{Binding RemoteManagement.IsWriteCapabilityCritical}"
+                    BorderBrush="{DynamicResource NutCriticalBrush}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Data="{DynamicResource NutIconWarning}" Classes="critical" Width="16" Height="16" VerticalAlignment="Top" />
+                <TextBlock Text="{Binding RemoteManagement.WriteCapabilityCriticalText}" Classes="critical" FontSize="12.5" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
 
             <Border Classes="nut-divider" />
 
@@ -193,8 +259,8 @@
         </StackPanel>
       </Border>
 
-      <!-- ==================== Directory browse and capability ==================== -->
-      <Border Classes="nut-card" IsVisible="{Binding RemoteManagement.IsConnected}">
+      <!-- SFTP keeps its directory browser; SMB uses the exact directory already fixed by the profile. -->
+      <Border Classes="nut-card" IsVisible="{Binding RemoteManagement.ShowsDirectoryBrowser}">
         <StackPanel Spacing="12">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <PathIcon Data="{DynamicResource NutIconFolder}" Classes="cyan" Width="17" Height="17" />
@@ -202,16 +268,25 @@
           </StackPanel>
           <Border Classes="nut-divider" />
 
-          <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="9">
-            <TextBox Text="{Binding RemoteManagement.CurrentDirectory, Mode=TwoWay}" PlaceholderText="{Binding Strings[Administration.Remote.DirectoryWatermark]}" />
-            <Button Grid.Column="1" Content="{Binding Strings[Administration.Remote.Browse]}" Click="RemoteBrowseButton_OnClick" IsEnabled="{Binding CanBrowseRemoteDirectory}" />
-            <Button Grid.Column="2" Content="{Binding Strings[Administration.Remote.Parent]}" Click="RemoteBrowseParentButton_OnClick" IsEnabled="{Binding CanBrowseRemoteDirectory}" />
-            <Button Grid.Column="3" Content="{Binding Strings[Administration.Remote.Validate]}" Click="RemoteValidateDirectoryButton_OnClick" IsEnabled="{Binding CanValidateRemoteDirectory}" />
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="9">
+            <TextBox Text="{Binding RemoteManagement.CurrentDirectory, Mode=TwoWay}"
+                     IsReadOnly="{Binding RemoteManagement.IsSmbDirectoryFixed}"
+                     PlaceholderText="{Binding Strings[Administration.Remote.DirectoryWatermark]}" />
+            <Button Grid.Column="1" Content="{Binding Strings[Administration.Remote.Browse]}" Click="RemoteBrowseButton_OnClick"
+                    IsVisible="{Binding RemoteManagement.IsSshSftp}" IsEnabled="{Binding CanChooseRemoteDirectory}" />
+            <Button Grid.Column="2" Content="{Binding Strings[Administration.Remote.Parent]}" Click="RemoteBrowseParentButton_OnClick"
+                    IsVisible="{Binding RemoteManagement.IsSshSftp}" IsEnabled="{Binding CanChooseRemoteDirectory}" />
           </Grid>
+
+          <TextBlock Text="{Binding Strings[Administration.Remote.SmbDirectory.Fixed]}"
+                     IsVisible="{Binding RemoteManagement.IsSmbDirectoryFixed}"
+                     Classes="nut-metadata"
+                     TextWrapping="Wrap" />
 
           <ListBox ItemsSource="{Binding RemoteManagement.DirectoryEntries}"
                    SelectionChanged="RemoteDirectoryList_OnSelectionChanged"
-                   IsEnabled="{Binding CanBrowseRemoteDirectory}"
+                   IsVisible="{Binding RemoteManagement.IsSshSftp}"
+                   IsEnabled="{Binding CanChooseRemoteDirectory}"
                    MaxHeight="230"
                    Background="Transparent"
                    BorderBrush="{DynamicResource NutBorderSubtleBrush}"
@@ -230,26 +305,21 @@
             </ListBox.ItemTemplate>
           </ListBox>
 
-          <Border Classes="nut-divider" />
-
-          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
-            <StackPanel Spacing="3" VerticalAlignment="Center">
-              <TextBlock Text="{Binding RemoteManagement.ReadCapabilityText}" Classes="nut-metadata" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding RemoteManagement.WriteCapabilityText}" Classes="nut-metadata" TextWrapping="Wrap" />
-            </StackPanel>
-            <Button Grid.Column="1" Content="{Binding Strings[Administration.Remote.ProbeWrite]}" Click="RemoteProbeWriteButton_OnClick" IsEnabled="{Binding CanProbeRemoteWriteCapability}" />
-            <Button Grid.Column="2" Classes="nut-primary" Content="{Binding Strings[Administration.Remote.UseDirectory]}" Click="RemoteUseDirectoryButton_OnClick" IsEnabled="{Binding CanUseRemoteDirectory}" />
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+            <PathIcon Data="{DynamicResource NutIconCheck}"
+                      Classes="healthy"
+                      Width="15"
+                      Height="15"
+                      IsVisible="{Binding RemoteManagement.IsDirectoryValidated}"
+                      VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       Text="{Binding RemoteManagement.ReadCapabilityText}"
+                       Classes="nut-metadata"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="nut-primary" Content="{Binding Strings[Administration.Remote.UseDirectory]}"
+                    Click="RemoteUseDirectoryButton_OnClick" IsVisible="{Binding RemoteManagement.IsSshSftp}" IsEnabled="{Binding CanUseRemoteDirectory}" />
           </Grid>
-
-          <Border Classes="nut-card-flat"
-                  Padding="12"
-                  IsVisible="{Binding RemoteManagement.IsWriteCapabilityCritical}"
-                  BorderBrush="{DynamicResource NutCriticalBrush}">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <PathIcon Data="{DynamicResource NutIconWarning}" Classes="critical" Width="16" Height="16" VerticalAlignment="Top" />
-              <TextBlock Text="{Binding RemoteManagement.WriteCapabilityCriticalText}" Classes="critical" FontSize="12.5" TextWrapping="Wrap" />
-            </StackPanel>
-          </Border>
         </StackPanel>
       </Border>
     </StackPanel>

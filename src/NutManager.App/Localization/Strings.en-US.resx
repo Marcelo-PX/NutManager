@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <data name="App.Name" xml:space="preserve"><value>NutManager</value></data>
+  <data name="App.Name" xml:space="preserve"><value>NUT Manager</value></data>
   <data name="Nav.Overview" xml:space="preserve"><value>Overview</value></data><data name="Nav.Devices" xml:space="preserve"><value>Devices</value></data><data name="Nav.Administration" xml:space="preserve"><value>Administration</value></data><data name="Nav.Diagnostics" xml:space="preserve"><value>Diagnostics</value></data><data name="Nav.Settings" xml:space="preserve"><value>Settings</value></data>
-  <data name="Shell.ToggleNavigation" xml:space="preserve"><value>Toggle navigation</value></data><data name="Shell.SimulationActive" xml:space="preserve"><value>Simulated data</value></data><data name="Shell.ReviewChanges" xml:space="preserve"><value>Changes</value></data><data name="Shell.Authorship" xml:space="preserve"><value>© 2026 · NutManager · Marcelo Pacheco</value></data><data name="Shell.OpenProfiles" xml:space="preserve"><value>Open profiles</value></data><data name="Shell.SavedProfiles" xml:space="preserve"><value>Saved profiles</value></data><data name="Shell.ManageProfiles" xml:space="preserve"><value>Manage profiles</value></data>
+  <data name="Shell.ToggleNavigation" xml:space="preserve"><value>Toggle navigation</value></data><data name="Shell.SimulationActive" xml:space="preserve"><value>Simulated data</value></data><data name="Shell.ReviewChanges" xml:space="preserve"><value>Changes</value></data><data name="Shell.Authorship" xml:space="preserve"><value>© 2026 · NUT Manager · Marcelo Pacheco</value></data><data name="Shell.OpenProfiles" xml:space="preserve"><value>Open profiles</value></data><data name="Shell.SavedProfiles" xml:space="preserve"><value>Saved profiles</value></data><data name="Shell.ManageProfiles" xml:space="preserve"><value>Manage profiles</value></data>
   <data name="Status.Connected" xml:space="preserve"><value>Connected</value></data><data name="Status.Connecting" xml:space="preserve"><value>Connecting</value></data><data name="Status.Reconnecting" xml:space="preserve"><value>Reconnecting</value></data><data name="Status.Disconnected" xml:space="preserve"><value>Disconnected</value></data><data name="Status.ConnectionFailed" xml:space="preserve"><value>Connection failed</value></data><data name="Status.Stale" xml:space="preserve"><value>Stale data</value></data><data name="Status.Unavailable" xml:space="preserve"><value>Unavailable</value></data>
   <data name="Appearance.Title" xml:space="preserve"><value>Appearance &amp; Language</value></data><data name="Appearance.Theme" xml:space="preserve"><value>Theme</value></data><data name="Appearance.Language" xml:space="preserve"><value>Language</value></data><data name="Appearance.Sidebar" xml:space="preserve"><value>Sidebar</value></data><data name="Appearance.RestartRequired" xml:space="preserve"><value>The language will be fully applied after restarting the application.</value></data><data name="Appearance.Transparency" xml:space="preserve"><value>Transparency</value></data><data name="Appearance.Transparency.On" xml:space="preserve"><value>On</value></data><data name="Appearance.Transparency.Off" xml:space="preserve"><value>Off</value></data><data name="Appearance.Transparency.DarkOnly" xml:space="preserve"><value>Acrylic transparency only takes effect in the dark theme. The light theme keeps an opaque background.</value></data><data name="Appearance.SaveError" xml:space="preserve"><value>The visual preferences could not be saved.</value></data>
   <data name="Theme.System" xml:space="preserve"><value>System</value></data><data name="Theme.Light" xml:space="preserve"><value>Light</value></data><data name="Theme.Dark" xml:space="preserve"><value>Dark</value></data><data name="Language.PtBr" xml:space="preserve"><value>Português (Brasil)</value></data><data name="Language.EnUs" xml:space="preserve"><value>English (United States)</value></data><data name="Sidebar.Expanded" xml:space="preserve"><value>Expanded</value></data><data name="Sidebar.Collapsed" xml:space="preserve"><value>Collapsed</value></data>
@@ -449,6 +449,14 @@
   <data name="Remote.Message.RequiresPassword" xml:space="preserve"><value>This profile requires SSH password authentication.</value></data>
   <data name="Remote.Message.SelectPrivateKey" xml:space="preserve"><value>Select a private key to connect.</value></data>
   <data name="Remote.Message.ProtectedCredentialUnavailable" xml:space="preserve"><value>The protected credential is unavailable.</value></data>
+  <data name="Remote.Message.AutoConnectCredentialRequired" xml:space="preserve"><value>Automatic connection requires this profile's protected SMB credential. Connect once and choose remember for future launches.</value></data>
+  <data name="Administration.Remote.SmbDirectory.Fixed" xml:space="preserve"><value>This directory is defined by the profile in Settings. NutManager only connects to and validates the saved location here.</value></data>
+  <data name="Administration.Remote.SafeWrite.Title" xml:space="preserve"><value>Safe replacement with File.Replace</value></data>
+  <data name="Administration.Remote.SafeWrite.Help" xml:space="preserve"><value>SMB writes require explicit authorization: the check creates temporary files, confirms atomic replacement with File.Replace, and removes every artifact before writes are enabled.</value></data>
+  <data name="Administration.Remote.SafeWrite.Verify" xml:space="preserve"><value>AUTHORIZE WRITE</value></data>
+  <data name="Administration.Remote.SafeWrite.Verified" xml:space="preserve"><value>AUTHORIZED</value></data>
+  <data name="Administration.Configuration.WriteAuthorizationRequired" xml:space="preserve"><value>Authorize safe writes in Remote access before saving changes to this file.</value></data>
+  <data name="Administration.Configuration.CapabilityRefreshFailed" xml:space="preserve"><value>Authorization was updated, but the current editor could not be reactivated. Select the file again.</value></data>
   <data name="Remote.Message.ConfigurePrivateKeyFirst" xml:space="preserve"><value>Configure the private key in the profile before using the saved passphrase.</value></data>
   <data name="Remote.Message.CredentialRemoved" xml:space="preserve"><value>The protected credential was removed.</value></data>
   <data name="Remote.Message.CredentialRemoveFailed" xml:space="preserve"><value>The protected credential could not be removed.</value></data>
@@ -815,6 +823,15 @@
   <data name="Overview.ActiveConfiguration" xml:space="preserve"><value>Active configuration</value></data>
   <data name="Overview.Administration" xml:space="preserve"><value>Administration</value></data>
   <data name="Overview.Profile" xml:space="preserve"><value>Profile</value></data>
+  <data name="Overview.Management" xml:space="preserve"><value>Management</value></data>
+  <data name="Overview.Access" xml:space="preserve"><value>Access</value></data>
+  <data name="Overview.PreferredUps" xml:space="preserve"><value>Preferred UPS</value></data>
+  <data name="Overview.ConfigurationVia" xml:space="preserve"><value>Configuration via</value></data>
+  <data name="Overview.ControlVia" xml:space="preserve"><value>Control via</value></data>
+  <data name="Overview.ManagedFiles" xml:space="preserve"><value>NUT files</value></data>
+  <data name="Overview.ManagedFiles.One" xml:space="preserve"><value>{0} managed</value></data>
+  <data name="Overview.ManagedFiles.Many" xml:space="preserve"><value>{0} managed</value></data>
+  <data name="Overview.Agent" xml:space="preserve"><value>Agent</value></data>
   <data name="Overview.MockState" xml:space="preserve"><value>Simulated data (mock)</value></data>
   <data name="Overview.AutoRefresh" xml:space="preserve"><value>Automatic refresh</value></data>
   <data name="Common.Enabled" xml:space="preserve"><value>Enabled</value></data>

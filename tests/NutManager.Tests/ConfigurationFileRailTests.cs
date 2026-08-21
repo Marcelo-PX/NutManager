@@ -12,9 +12,8 @@ namespace NutManager.Tests;
 ///
 /// It used to be a collapsible column, and most of this file used to defend the fold — that
 /// collapsing was presentation and nothing else. The fold is gone, along with its toggle, its
-/// persisted preference and the width threshold that folded it regardless, so what is left to
-/// defend is what the strip still owes: one tile per managed file, each announcing itself, joined
-/// into a single control rather than scattered into five.
+/// persisted preference and the width threshold that folded it regardless. The strip now keeps all
+/// five supported modules visible and uses disabled state to communicate profile scope.
 /// </summary>
 public sealed class ConfigurationFileRailTests
 {
@@ -53,7 +52,7 @@ public sealed class ConfigurationFileRailTests
     }
 
     [Fact]
-    public void TheRailListsOnlyTheFilesTheProfileManages()
+    public void TheRailKeepsAllFilesVisibleAndDisablesTheOnesTheProfileDoesNotManage()
     {
         var profile = new ManagedNutServerProfile(
             Guid.NewGuid(),
@@ -70,13 +69,18 @@ public sealed class ConfigurationFileRailTests
 
         var viewModel = new AdministrationPageViewModel(null, null, profileContext: context);
 
+        Assert.Equal(5, viewModel.ConfigurationFiles.Count);
+        Assert.Equal(
+            ["nut.conf", "ups.conf", "upsd.conf", "upsd.users", "upsmon.conf"],
+            viewModel.ConfigurationFiles.Select(file => file.FileName));
         Assert.Equal(
             ["nut.conf", "upsmon.conf"],
-            viewModel.ConfigurationFiles.Select(file => file.FileName));
+            viewModel.ConfigurationFiles.Where(file => file.IsManaged).Select(file => file.FileName));
+        Assert.Equal(3, viewModel.ConfigurationFiles.Count(file => !file.IsManaged));
     }
 
     [Fact]
-    public void AProfileThatManagesNothingLeavesAnEmptyRailRatherThanInventingAFile()
+    public void AProfileThatManagesNothingKeepsFiveDisabledModulesWithoutInventingASelection()
     {
         var profile = new ManagedNutServerProfile(
             Guid.NewGuid(),
@@ -90,8 +94,10 @@ public sealed class ConfigurationFileRailTests
 
         var viewModel = new AdministrationPageViewModel(null, null, profileContext: context);
 
-        Assert.Empty(viewModel.ConfigurationFiles);
+        Assert.Equal(5, viewModel.ConfigurationFiles.Count);
+        Assert.All(viewModel.ConfigurationFiles, file => Assert.False(file.IsManaged));
         Assert.True(viewModel.IsConfigurationFileListEmpty);
+        Assert.Null(viewModel.SelectedFile);
     }
 
     // ==================== Presentation ====================
@@ -129,6 +135,7 @@ public sealed class ConfigurationFileRailTests
         // under the icon is not enough on its own: it is the category, not the file name.
         Assert.Contains("AutomationProperties.Name=\"{Binding AccessibleName}\"", view, StringComparison.Ordinal);
         Assert.Contains("ToolTip.Tip=\"{Binding AccessibleName}\"", view, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding IsManaged}\"", view, StringComparison.Ordinal);
     }
 
     [Fact]

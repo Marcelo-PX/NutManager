@@ -10,7 +10,6 @@ using NutManager.Core.Agent;
 using NutManager.Core.Models;
 using NutManager.Core.Services;
 using NutManager.Infrastructure.Agent;
-using NutManager.Infrastructure.Mock;
 using NutManager.Infrastructure.Configuration;
 using NutManager.Infrastructure.Credentials.Windows;
 using NutManager.Infrastructure.NutProtocol;
@@ -60,16 +59,8 @@ public partial class App : Application
         var agentCredentials = new NutAgentCredentialCoordinator(new WindowsCredentialPrompt(), agentSessionCredentials);
         var profileMutator = new ManagedNutServerProfileUpdateService(profileStore, credentialStore);
 
-        INutClient client;
         var endpoint = runtimeProfile.Endpoint;
-        if (settings.MockMode)
-        {
-            client = new MockNutClient(MockScenario.Online, DateTimeOffset.UtcNow);
-        }
-        else
-        {
-            client = new NutTcpClient();
-        }
+        INutClient client = new NutTcpClient();
 
         var polling = new UpsPollingCoordinator(client, endpoint, settings.PollingInterval);
         var overview = new OverviewPageViewModel(polling, settings.Language, endpoint);
@@ -177,12 +168,14 @@ public partial class App : Application
             administration,
             settings.Language,
             settings.SidebarPreference,
-            settings.MockMode,
+            mockMode: false,
             $"{endpoint.Host}:{endpoint.Port}",
             runtimeProfile.Profile.Name,
             runtimeProfile.Profile.Management.Mode,
             runtimeProfile.Profile.AccessMode,
-            runtimeProfile.Profile.Monitoring.PreferredUpsName);
+            runtimeProfile.Profile.Monitoring.PreferredUpsName,
+            runtimeProfile.Profile,
+            remoteWindowsService);
         viewModel.SetTransparencyPreference(settings.BackgroundTransparency);
         administration.SemanticReviewChanged += viewModel.SetSemanticReview;
         viewModel.ThemeChanged += async preference =>
@@ -195,6 +188,17 @@ public partial class App : Application
         settingsPage.SidebarPreferenceChanged += preference => viewModel.SidebarPreference = preference;
         viewModel.SidebarPreferenceChanged += settingsPage.ApplySidebarPreference;
         settingsPage.BackgroundTransparencyChanged += viewModel.SetTransparencyPreference;
+        settingsPage.ProfilePersisted += profile =>
+        {
+            // The process keeps the endpoint, transport and credentials with which it started.
+            // Managed-file scope is presentation/write authorization for that same runtime profile,
+            // however, and can safely take effect immediately after its profile was persisted.
+            if (profile.Id == runtimeProfile.Profile.Id)
+            {
+                administration.UpdateManagedConfigurationFiles(profile.Management.ManagedFiles);
+                viewModel.UpdateManagedConfigurationFiles(profile.Management.ManagedFiles);
+            }
+        };
         viewModel.EffectiveThemeChanged += settingsPage.ApplyTransparencyAvailability;
         settingsPage.ApplyTransparencyAvailability(viewModel.IsEffectiveDark);
         ApplyTheme(settings.Theme);
@@ -208,6 +212,14 @@ public partial class App : Application
         if (remoteManagement is not null)
         {
             await remoteManagement.RefreshStoredCredentialStatusAsync();
+            await remoteManagement.TryConnectAndValidateConfiguredSmbAsync();
+        }
+        if (remoteWindowsService is not null)
+        {
+            // Runtime service state is never persisted as configuration. A single read on startup
+            // restores the actual state instead; the existing visible-page monitor then keeps it
+            // current without introducing another timer or another control path.
+            await remoteWindowsService.RefreshAsync();
         }
     }
 

@@ -4,7 +4,8 @@
         xmlns:controls="clr-namespace:NutManager.App.Presentation.Controls"
         x:Class="NutManager.App.MainWindow"
         x:DataType="viewModels:MainWindowViewModel"
-        Title="NutManager"
+             Title="NUT Manager"
+        Icon="/Assets/Branding/NutManager.ico"
         Width="1280"
         Height="800"
         MinWidth="680"
@@ -114,11 +115,6 @@
                                          IsUnavailable="{Binding IsConnectionUnavailable}" />
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <controls:NutStatusBadge Text="{Binding SimulationText}"
-                                   IsWarning="True"
-                                   IsVisible="{Binding IsMockMode}"
-                                   AutomationProperties.Name="{Binding SimulationText}" />
-
           <Border Classes="nut-theme-toggle" IsEnabled="{Binding IsBackgroundInteractionEnabled}">
             <StackPanel Orientation="Horizontal" Spacing="2">
               <Button Classes="nut-theme-option"
@@ -234,15 +230,51 @@
                   IsVisible="{Binding IsSidebarExpanded}"
                   Margin="0,12,0,8"
                   ToolTip.Tip="{Binding OpenProfilesText}"
+                  Click="ProfileQuickMenuButton_OnClick"
                   AutomationProperties.Name="{Binding OpenProfilesText}">
-            <Button.Flyout>
-              <Flyout Placement="Top"
-                      FlyoutPresenterClasses="nut-profile-flyout"
-                      Opened="ProfileQuickMenuFlyout_OnOpened"
-                      Closed="ProfileQuickMenuFlyout_OnClosed">
+            <Border Classes="nut-profile-card-surface">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                <Border Classes="nut-profile-avatar">
+                  <PathIcon Data="{DynamicResource NutIconProfile}" Width="17" Height="17" Foreground="{DynamicResource NutTextSecondaryBrush}" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding ActiveProfileName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding ActiveProfileModeText}" Classes="nut-metadata accent" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <PathIcon Grid.Column="2"
+                          Data="{DynamicResource NutIconChevronDown}"
+                          Width="14"
+                          Height="14"
+                          Foreground="{DynamicResource NutTextMutedBrush}"
+                          VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+          </Button>
+
+          <!--
+            A Popup on the window's overlay layer rather than a Flyout. A Flyout is an operating
+            system window: it positions itself against the screen, not against this one, so with the
+            app restored rather than maximised the profile list spilled onto the desktop beside it.
+            Drawn in the overlay layer, it is clipped by the window that owns it.
+          -->
+          <Popup x:Name="ProfileQuickMenuPopup"
+                 Grid.Row="2"
+                 PlacementTarget="{Binding #ProfileQuickMenuButton}"
+                 Placement="Top"
+                 HorizontalOffset="0"
+                 ShouldUseOverlayLayer="True"
+                 IsLightDismissEnabled="True"
+                 Opened="ProfileQuickMenuFlyout_OnOpened"
+                 Closed="ProfileQuickMenuFlyout_OnClosed">
+                <!--
+                  Padding is narrower on the right so the scroll bar can sit further out. The gutter
+                  the cards leave for the bar is taken from this padding rather than from the cards
+                  themselves, which keeps them at their original width.
+                -->
                 <Border x:Name="ProfileQuickMenuSurface"
                         Width="{DynamicResource NutSidebarExpandedWidth}"
-                        Padding="12"
+                        Classes.opaque="{Binding !IsBackgroundTransparent}"
+                        Padding="12,12,2,12"
                         Margin="0,8,0,0"
                         Opacity="0"
                         Classes="nut-profile-flyout-surface">
@@ -262,31 +294,65 @@
                   </Border.Transitions>
                   <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
                     <TextBlock Text="{Binding SavedProfilesText}" Classes="nut-card-title" Margin="8,5,8,0" />
-                    <ScrollViewer Grid.Row="1" MaxHeight="330" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                      <ItemsControl ItemsSource="{Binding ManagedProfileCards}">
+                    <!--
+                      Bounded so the flyout stays inside the sidebar it belongs to. Title, spacing
+                      and the manage button sit outside this height, so the list has to stop well
+                      short of the window or the surface runs past the selector below it.
+                    -->
+                    <ScrollViewer Grid.Row="1" MaxHeight="280" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                      <!--
+                        The cards stop short of the scroll bar instead of running under it. The bar
+                        is painted over the content, so without a gutter it crossed the right edge of
+                        every card. The room comes from the surface's right padding above, not from
+                        the cards — narrowing them instead pushed their own contents onto extra lines.
+                      -->
+                      <ItemsControl ItemsSource="{Binding ManagedProfileCards}" Margin="0,0,8,0">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
                             <Button Classes="nut-profile-menu-item"
                                     Click="ProfileQuickMenuItem_OnClick"
                                     AutomationProperties.Name="{Binding Name}">
-                              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                                <Border Classes="nut-profile-avatar" Width="30" Height="30">
-                                  <PathIcon Data="{DynamicResource NutIconProfile}" Width="15" Height="15" Foreground="{DynamicResource NutTextSecondaryBrush}" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Spacing="2">
-                                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                  <TextBlock Text="{Binding Endpoint}" Classes="nut-metadata" TextTrimming="CharacterEllipsis" />
-                                  <TextBlock Classes="nut-metadata accent" TextTrimming="CharacterEllipsis">
-                                    <Run Text="{Binding ManagementMode}" /><Run Text=" · " /><Run Text="{Binding AccessMode}" />
-                                  </TextBlock>
-                                  <TextBlock Text="{Binding Transport}"
+                              <Grid>
+                                <StackPanel Spacing="4">
+                                  <!--
+                                    The header row is given a height of its own so the active profile
+                                    and the inactive ones line up. The "Ativo" badge is taller than a
+                                    bare name, and with the row sized to its content the name sat at a
+                                    different height on the active card than on every other one — a
+                                    step in the list that reads as broken alignment.
+                                  -->
+                                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" MinHeight="24">
+                                    <TextBlock Text="{Binding Name}"
+                                               FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                    <Border Grid.Column="1"
+                                            Classes="nut-pill healthy"
+                                            Padding="7,2"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding IsActive}">
+                                      <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <PathIcon Data="{DynamicResource NutIconCheck}" Width="11" Height="11" Foreground="{DynamicResource NutHealthyBrush}" />
+                                        <TextBlock Text="{Binding ActiveText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource NutHealthyBrush}" />
+                                      </StackPanel>
+                                    </Border>
+                                  </Grid>
+                                  <TextBlock Text="{Binding Endpoint}"
                                              Classes="nut-metadata"
-                                             IsVisible="{Binding HasTransport}"
-                                             TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" IsVisible="{Binding IsActive}">
-                                  <PathIcon Data="{DynamicResource NutIconCheck}" Width="13" Height="13" Foreground="{DynamicResource NutHealthyBrush}" />
-                                  <TextBlock Text="{Binding ActiveText}" Classes="nut-metadata" Foreground="{DynamicResource NutHealthyBrush}" />
+                                             TextWrapping="Wrap"
+                                             MaxLines="2"
+                                             ToolTip.Tip="{Binding Endpoint}" />
+                                  <WrapPanel Orientation="Horizontal" ItemSpacing="5" LineSpacing="4">
+                                    <Border Classes="nut-pill" Padding="6,1">
+                                      <TextBlock Text="{Binding ManagementMode}" Classes="nut-metadata accent" FontSize="11" />
+                                    </Border>
+                                    <Border Classes="nut-pill" Padding="6,1">
+                                      <TextBlock Text="{Binding AccessMode}" Classes="nut-metadata accent" FontSize="11" />
+                                    </Border>
+                                    <Border Classes="nut-pill" Padding="6,1" IsVisible="{Binding HasTransport}">
+                                      <TextBlock Text="{Binding Transport}" Classes="nut-metadata" FontSize="11" />
+                                    </Border>
+                                  </WrapPanel>
                                 </StackPanel>
                               </Grid>
                             </Button>
@@ -301,24 +367,7 @@
                             AutomationProperties.Name="{Binding ManageProfilesText}" />
                   </Grid>
                 </Border>
-              </Flyout>
-            </Button.Flyout>
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-              <Border Classes="nut-profile-avatar">
-                <PathIcon Data="{DynamicResource NutIconProfile}" Width="17" Height="17" Foreground="{DynamicResource NutTextSecondaryBrush}" />
-              </Border>
-              <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                <TextBlock Text="{Binding ActiveProfileName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding ActiveProfileModeText}" Classes="nut-metadata accent" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-              <PathIcon Grid.Column="2"
-                        Data="{DynamicResource NutIconChevronDown}"
-                        Width="14"
-                        Height="14"
-                        Foreground="{DynamicResource NutTextMutedBrush}"
-                        VerticalAlignment="Center" />
-            </Grid>
-          </Button>
+          </Popup>
 
           <TextBlock Grid.Row="3"
                      Text="{Binding ApplicationVersionText}"

@@ -84,29 +84,32 @@
         availability inside its panel anyway.
       -->
       <StackPanel Spacing="18">
-        <ListBox Classes="nut-section-tabs"
-                 ItemsSource="{Binding AdministrationSections}"
-                 SelectedItem="{Binding SelectedAdministrationSection, Mode=TwoWay}"
-                 AutomationProperties.Name="{Binding Strings[Administration.Context.Title]}">
-          <ListBox.ItemsPanel>
-            <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-          </ListBox.ItemsPanel>
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="viewModels:AdministrationSectionItemViewModel">
-              <StackPanel Orientation="Horizontal"
-                          Spacing="9"
-                          ToolTip.Tip="{Binding AvailabilityText}">
-                <Grid Width="18" Height="18" VerticalAlignment="Center">
-                  <PathIcon Data="{DynamicResource NutIconGeneral}" Width="18" Height="18" IsVisible="{Binding IsNutConfiguration}" />
-                  <PathIcon Data="{DynamicResource NutIconService}" Width="18" Height="18" IsVisible="{Binding IsWindowsService}" />
-                  <PathIcon Data="{DynamicResource NutIconDriver}" Width="18" Height="18" IsVisible="{Binding IsDevicesAndDrivers}" />
-                  <PathIcon Data="{DynamicResource NutIconRemote}" Width="18" Height="18" IsVisible="{Binding IsRemoteAccess}" />
-                </Grid>
-                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+        <Border Classes="nut-card" Padding="8">
+          <ListBox Classes="nut-section-tabs"
+                   ItemsSource="{Binding AdministrationSections}"
+                   SelectedItem="{Binding SelectedAdministrationSection, Mode=TwoWay}"
+                   AutomationProperties.Name="{Binding Strings[Administration.Context.Title]}">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><UniformGrid Columns="4" Rows="1" /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="viewModels:AdministrationSectionItemViewModel">
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Spacing="9"
+                            ToolTip.Tip="{Binding AvailabilityText}">
+                  <Grid Width="18" Height="18" VerticalAlignment="Center">
+                    <PathIcon Data="{DynamicResource NutIconGeneral}" Width="18" Height="18" IsVisible="{Binding IsNutConfiguration}" />
+                    <PathIcon Data="{DynamicResource NutIconService}" Width="18" Height="18" IsVisible="{Binding IsWindowsService}" />
+                    <PathIcon Data="{DynamicResource NutIconDriver}" Width="18" Height="18" IsVisible="{Binding IsDevicesAndDrivers}" />
+                    <PathIcon Data="{DynamicResource NutIconRemote}" Width="18" Height="18" IsVisible="{Binding IsRemoteAccess}" />
+                  </Grid>
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Border>
 
         <StackPanel Spacing="16">
           <views:NutConfigurationAdministrationView IsVisible="{Binding IsNutConfigurationSectionSelected}" />

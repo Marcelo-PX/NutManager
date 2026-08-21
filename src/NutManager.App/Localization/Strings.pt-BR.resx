@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <data name="App.Name" xml:space="preserve"><value>NutManager</value></data>
+  <data name="App.Name" xml:space="preserve"><value>NUT Manager</value></data>
   <data name="Nav.Overview" xml:space="preserve"><value>Visão geral</value></data><data name="Nav.Devices" xml:space="preserve"><value>Dispositivos</value></data><data name="Nav.Administration" xml:space="preserve"><value>Administração</value></data><data name="Nav.Diagnostics" xml:space="preserve"><value>Diagnóstico</value></data><data name="Nav.Settings" xml:space="preserve"><value>Configurações</value></data>
-  <data name="Shell.ToggleNavigation" xml:space="preserve"><value>Alternar navegação</value></data><data name="Shell.SimulationActive" xml:space="preserve"><value>Dados simulados</value></data><data name="Shell.ReviewChanges" xml:space="preserve"><value>Alterações</value></data><data name="Shell.Authorship" xml:space="preserve"><value>© 2026 · NutManager · Marcelo Pacheco</value></data><data name="Shell.OpenProfiles" xml:space="preserve"><value>Abrir perfis</value></data><data name="Shell.SavedProfiles" xml:space="preserve"><value>Perfis cadastrados</value></data><data name="Shell.ManageProfiles" xml:space="preserve"><value>Gerenciar perfis</value></data>
+  <data name="Shell.ToggleNavigation" xml:space="preserve"><value>Alternar navegação</value></data><data name="Shell.SimulationActive" xml:space="preserve"><value>Dados simulados</value></data><data name="Shell.ReviewChanges" xml:space="preserve"><value>Alterações</value></data><data name="Shell.Authorship" xml:space="preserve"><value>© 2026 · NUT Manager · Marcelo Pacheco</value></data><data name="Shell.OpenProfiles" xml:space="preserve"><value>Abrir perfis</value></data><data name="Shell.SavedProfiles" xml:space="preserve"><value>Perfis cadastrados</value></data><data name="Shell.ManageProfiles" xml:space="preserve"><value>Gerenciar perfis</value></data>
   <data name="Status.Connected" xml:space="preserve"><value>Conectado</value></data><data name="Status.Connecting" xml:space="preserve"><value>Conectando</value></data><data name="Status.Reconnecting" xml:space="preserve"><value>Reconectando</value></data><data name="Status.Disconnected" xml:space="preserve"><value>Desconectado</value></data><data name="Status.ConnectionFailed" xml:space="preserve"><value>Falha de conexão</value></data><data name="Status.Stale" xml:space="preserve"><value>Dados desatualizados</value></data><data name="Status.Unavailable" xml:space="preserve"><value>Indisponível</value></data>
   <data name="Appearance.Title" xml:space="preserve"><value>Aparência e idioma</value></data><data name="Appearance.Theme" xml:space="preserve"><value>Tema</value></data><data name="Appearance.Language" xml:space="preserve"><value>Idioma</value></data><data name="Appearance.Sidebar" xml:space="preserve"><value>Navegação lateral</value></data><data name="Appearance.RestartRequired" xml:space="preserve"><value>O idioma será aplicado completamente após reiniciar o aplicativo.</value></data><data name="Appearance.Transparency" xml:space="preserve"><value>Transparência</value></data><data name="Appearance.Transparency.On" xml:space="preserve"><value>Ativada</value></data><data name="Appearance.Transparency.Off" xml:space="preserve"><value>Desativada</value></data><data name="Appearance.Transparency.DarkOnly" xml:space="preserve"><value>A transparência acrílica só tem efeito no tema escuro. No tema claro o fundo permanece opaco.</value></data><data name="Appearance.SaveError" xml:space="preserve"><value>Não foi possível salvar as preferências visuais.</value></data>
   <data name="Theme.System" xml:space="preserve"><value>Seguir o sistema</value></data><data name="Theme.Light" xml:space="preserve"><value>Claro</value></data><data name="Theme.Dark" xml:space="preserve"><value>Escuro</value></data><data name="Language.PtBr" xml:space="preserve"><value>Português (Brasil)</value></data><data name="Language.EnUs" xml:space="preserve"><value>English (United States)</value></data><data name="Sidebar.Expanded" xml:space="preserve"><value>Expandida</value></data><data name="Sidebar.Collapsed" xml:space="preserve"><value>Recolhida</value></data>
@@ -449,6 +449,14 @@
   <data name="Remote.Message.RequiresPassword" xml:space="preserve"><value>Este perfil exige autenticação SSH por senha.</value></data>
   <data name="Remote.Message.SelectPrivateKey" xml:space="preserve"><value>Selecione uma chave privada para conectar.</value></data>
   <data name="Remote.Message.ProtectedCredentialUnavailable" xml:space="preserve"><value>A credencial protegida não está disponível.</value></data>
+  <data name="Remote.Message.AutoConnectCredentialRequired" xml:space="preserve"><value>A conexão automática requer a credencial SMB protegida deste perfil. Conecte uma vez e escolha lembrar para os próximos inícios.</value></data>
+  <data name="Administration.Remote.SmbDirectory.Fixed" xml:space="preserve"><value>Este diretório é definido pelo perfil em Configurações. Aqui o NutManager apenas conecta e valida o local salvo.</value></data>
+  <data name="Administration.Remote.SafeWrite.Title" xml:space="preserve"><value>Substituição segura com File.Replace</value></data>
+  <data name="Administration.Remote.SafeWrite.Help" xml:space="preserve"><value>A escrita SMB requer autorização explícita: a verificação cria arquivos temporários, confirma a substituição atômica com File.Replace e remove todos os artefatos antes de liberar gravações.</value></data>
+  <data name="Administration.Remote.SafeWrite.Verify" xml:space="preserve"><value>AUTORIZAR ESCRITA</value></data>
+  <data name="Administration.Remote.SafeWrite.Verified" xml:space="preserve"><value>AUTORIZADO</value></data>
+  <data name="Administration.Configuration.WriteAuthorizationRequired" xml:space="preserve"><value>Autorize a escrita segura na seção Acesso remoto para salvar alterações neste arquivo.</value></data>
+  <data name="Administration.Configuration.CapabilityRefreshFailed" xml:space="preserve"><value>A autorização foi atualizada, mas não foi possível reativar o editor atual. Selecione o arquivo novamente.</value></data>
   <data name="Remote.Message.ConfigurePrivateKeyFirst" xml:space="preserve"><value>Configure a chave privada no perfil antes de usar a passphrase salva.</value></data>
   <data name="Remote.Message.CredentialRemoved" xml:space="preserve"><value>A credencial protegida foi removida.</value></data>
   <data name="Remote.Message.CredentialRemoveFailed" xml:space="preserve"><value>Não foi possível remover a credencial protegida.</value></data>
@@ -815,6 +823,15 @@
   <data name="Overview.ActiveConfiguration" xml:space="preserve"><value>Configurações ativas</value></data>
   <data name="Overview.Administration" xml:space="preserve"><value>Administração</value></data>
   <data name="Overview.Profile" xml:space="preserve"><value>Perfil</value></data>
+  <data name="Overview.Management" xml:space="preserve"><value>Gerenciamento</value></data>
+  <data name="Overview.Access" xml:space="preserve"><value>Acesso</value></data>
+  <data name="Overview.PreferredUps" xml:space="preserve"><value>UPS preferido</value></data>
+  <data name="Overview.ConfigurationVia" xml:space="preserve"><value>Configuração via</value></data>
+  <data name="Overview.ControlVia" xml:space="preserve"><value>Controle via</value></data>
+  <data name="Overview.ManagedFiles" xml:space="preserve"><value>Arquivos NUT</value></data>
+  <data name="Overview.ManagedFiles.One" xml:space="preserve"><value>{0} gerenciado</value></data>
+  <data name="Overview.ManagedFiles.Many" xml:space="preserve"><value>{0} gerenciados</value></data>
+  <data name="Overview.Agent" xml:space="preserve"><value>Agente</value></data>
   <data name="Overview.MockState" xml:space="preserve"><value>Dados simulados (mock)</value></data>
   <data name="Overview.AutoRefresh" xml:space="preserve"><value>Atualização automática</value></data>
   <data name="Common.Enabled" xml:space="preserve"><value>Ativado</value></data>

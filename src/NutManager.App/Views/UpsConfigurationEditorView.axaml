@@ -93,7 +93,8 @@
     </Border>
 
     <!-- Global (non-section) options -->
-    <StackPanel Spacing="10" IsVisible="{Binding HasGlobalFields}">
+    <Border Classes="nut-card" IsVisible="{Binding HasGlobalFields}">
+    <StackPanel Spacing="10">
       <StackPanel Orientation="Horizontal" Spacing="9">
         <PathIcon Data="{DynamicResource NutIconSettings}" Classes="accent" Width="16" Height="16" />
         <TextBlock Text="{Binding Strings[Ups.Editor.GlobalOptions]}" Classes="nut-card-title" VerticalAlignment="Center" />
@@ -106,6 +107,7 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </StackPanel>
+    </Border>
 
     <StackPanel Spacing="18" IsVisible="{Binding HasSections}">
 
@@ -132,10 +134,11 @@
       </StackPanel>
 
       <!-- ==================== Documented sections ==================== -->
-      <ItemsControl ItemsSource="{Binding BasicFieldGroups}" IsVisible="{Binding IsBasicSelected}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="viewModels:UpsFieldGroupViewModel">
-            <StackPanel Spacing="10" Margin="0,0,0,20">
+      <Border Classes="nut-card" IsVisible="{Binding IsBasicSelected}">
+        <ItemsControl ItemsSource="{Binding BasicFieldGroups}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:UpsFieldGroupViewModel">
+              <StackPanel Spacing="10" Margin="0,0,0,20">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <Grid Width="16" Height="16">
                   <PathIcon Data="{DynamicResource NutIconGeneral}" Classes="accent" Width="16" Height="16" IsVisible="{Binding IsIdentity}" />
@@ -156,15 +159,17 @@
                   <DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><views:UpsConfigurationFieldView /></DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-            </StackPanel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
 
-      <ItemsControl ItemsSource="{Binding AdvancedFieldGroups}" IsVisible="{Binding ShowAdvanced}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="viewModels:UpsFieldGroupViewModel">
-            <StackPanel Spacing="10" Margin="0,0,0,20">
+      <Border Classes="nut-card" IsVisible="{Binding ShowAdvanced}">
+        <ItemsControl ItemsSource="{Binding AdvancedFieldGroups}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:UpsFieldGroupViewModel">
+              <StackPanel Spacing="10" Margin="0,0,0,20">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <Grid Width="16" Height="16">
                   <PathIcon Data="{DynamicResource NutIconGeneral}" Classes="accent" Width="16" Height="16" IsVisible="{Binding IsIdentity}" />
@@ -185,10 +190,11 @@
                   <DataTemplate x:DataType="viewModels:UpsConfigurationFieldViewModel"><views:UpsConfigurationFieldView /></DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-            </StackPanel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
 
       <!-- ==================== Runtime calibration assistant ==================== -->
       <Border Classes="nut-card" IsVisible="{Binding IsRuntimeCalibrationAvailable}">
@@ -201,19 +207,19 @@
           <WrapPanel>
             <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
               <TextBlock Text="{Binding Strings[Ups.Runtimecal.HighRuntime]}" Classes="nut-label" />
-              <NumericUpDown Value="{Binding RuntimeHighSeconds, Mode=TwoWay}" Minimum="1" />
+              <NumericUpDown Value="{Binding RuntimeHighSeconds, Mode=TwoWay}" Minimum="1" ParsingNumberStyle="Integer" />
             </StackPanel>
             <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
               <TextBlock Text="{Binding Strings[Ups.Runtimecal.HighLoad]}" Classes="nut-label" />
-              <NumericUpDown Value="{Binding RuntimeHighLoad, Mode=TwoWay}" Minimum="1" Maximum="100" />
+              <NumericUpDown Value="{Binding RuntimeHighLoad, Mode=TwoWay}" Minimum="1" Maximum="100" ParsingNumberStyle="Integer" />
             </StackPanel>
             <StackPanel Width="180" Margin="0,0,14,10" Spacing="4">
               <TextBlock Text="{Binding Strings[Ups.Runtimecal.LowRuntime]}" Classes="nut-label" />
-              <NumericUpDown Value="{Binding RuntimeLowSeconds, Mode=TwoWay}" Minimum="1" />
+              <NumericUpDown Value="{Binding RuntimeLowSeconds, Mode=TwoWay}" Minimum="1" ParsingNumberStyle="Integer" />
             </StackPanel>
             <StackPanel Width="180" Margin="0,0,0,10" Spacing="4">
               <TextBlock Text="{Binding Strings[Ups.Runtimecal.LowLoad]}" Classes="nut-label" />
-              <NumericUpDown Value="{Binding RuntimeLowLoad, Mode=TwoWay}" Minimum="1" Maximum="100" />
+              <NumericUpDown Value="{Binding RuntimeLowLoad, Mode=TwoWay}" Minimum="1" Maximum="100" ParsingNumberStyle="Integer" />
             </StackPanel>
           </WrapPanel>
           <TextBlock Text="{Binding Strings[Ups.Runtimecal.Safety]}" Classes="nut-metadata" TextWrapping="Wrap" />

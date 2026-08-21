@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <data name="App.Name" xml:space="preserve"><value>NutManager</value></data>
+  <data name="App.Name" xml:space="preserve"><value>NUT Manager</value></data>
   <data name="Nav.Overview" xml:space="preserve"><value>Visão geral</value></data>
   <data name="Nav.Devices" xml:space="preserve"><value>Dispositivos</value></data>
   <data name="Nav.Administration" xml:space="preserve"><value>Administração</value></data>
@@ -10,7 +10,7 @@
   <data name="Shell.ToggleTheme" xml:space="preserve"><value>Alternar tema</value></data>
   <data name="Shell.SimulationActive" xml:space="preserve"><value>Dados simulados</value></data>
   <data name="Shell.ReviewChanges" xml:space="preserve"><value>Alterações</value></data>
-  <data name="Shell.Authorship" xml:space="preserve"><value>© 2026 · NutManager · Marcelo Pacheco</value></data>
+  <data name="Shell.Authorship" xml:space="preserve"><value>© 2026 · NUT Manager · Marcelo Pacheco</value></data>
   <data name="Shell.OpenProfiles" xml:space="preserve"><value>Abrir perfis</value></data>
   <data name="Shell.SavedProfiles" xml:space="preserve"><value>Perfis cadastrados</value></data>
   <data name="Shell.ManageProfiles" xml:space="preserve"><value>Gerenciar perfis</value></data>

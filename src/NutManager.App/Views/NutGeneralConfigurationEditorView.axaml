@@ -27,19 +27,23 @@
       <Border Classes="nut-divider" />
     </StackPanel>
 
-    <ItemsControl ItemsSource="{Binding BasicFields}" IsVisible="{Binding !ShowAdvanced}">
-      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <Border Classes="nut-card" IsVisible="{Binding !ShowAdvanced}">
+      <ItemsControl ItemsSource="{Binding BasicFields}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
 
-    <ItemsControl ItemsSource="{Binding AdvancedFields}" IsVisible="{Binding ShowAdvanced}">
-      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <Border Classes="nut-card" IsVisible="{Binding ShowAdvanced}">
+      <ItemsControl ItemsSource="{Binding AdvancedFields}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="viewModels:ServerConfigurationFieldViewModel"><views:ServerConfigurationFieldView /></DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
 
     <views:ServerCustomParametersView DataContext="{Binding}" />
 

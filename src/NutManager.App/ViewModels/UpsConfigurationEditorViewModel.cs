@@ -467,6 +467,48 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
     public bool IsRisky { get; }
     public bool IsFlag { get; }
     public bool IsValue => !IsFlag && !IsSensitive && (!HasChoices || AllowsTechnicalInput);
+
+    /// <summary>
+    /// Whether this field holds a number, decided by the schema's declared kind rather than by the
+    /// label or the unit beside it. A "seconds" caption sits on integers and on free text alike, and
+    /// the driver directory would read as numeric to anything guessing from its neighbours — so the
+    /// spinner is offered only where the schema says a number is what the field is.
+    /// </summary>
+    public bool IsNumeric => IsValue && Descriptor.FieldKind is
+        NutConfigurationFieldKind.Integer or NutConfigurationFieldKind.Decimal or NutConfigurationFieldKind.Port;
+
+    public bool IsFreeText => IsValue && !IsNumeric;
+
+    /// <summary>
+    /// The bounds the schema declares, and no others. Inventing one — a floor of zero on a delay,
+    /// say — would refuse values this editor accepts today, so an undeclared bound stays open.
+    /// </summary>
+    public decimal Minimum => Descriptor.Presentation?.Minimum ?? decimal.MinValue;
+
+    public decimal Maximum => Descriptor.Presentation?.Maximum ?? decimal.MaxValue;
+
+    public decimal Increment => Descriptor.FieldKind == NutConfigurationFieldKind.Decimal ? 0.1m : 1m;
+
+    public string NumericFormat => Descriptor.FieldKind == NutConfigurationFieldKind.Decimal ? "0.####" : "0";
+
+    /// <summary>
+    /// The numeric face of <see cref="DraftValue"/>, which remains the single stored form.
+    ///
+    /// Empty maps to null rather than to zero. An omitted field means the driver's own default, and
+    /// zero is a value the operator never typed — writing it would turn "leave this alone" into an
+    /// explicit instruction.
+    /// </summary>
+    public decimal? NumericValue
+    {
+        get => decimal.TryParse(DraftValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+        set
+        {
+            var text = value?.ToString(NumericFormat, CultureInfo.InvariantCulture) ?? string.Empty;
+            if (!string.Equals(text, DraftValue, StringComparison.Ordinal)) DraftValue = text;
+        }
+    }
     public bool IsSensitive { get; }
     public bool HasChoices { get; }
     public bool AllowsTechnicalInput { get; }
@@ -487,6 +529,10 @@ public sealed partial class UpsConfigurationFieldViewModel : ObservableObject
             RestoreDraftValue();
             return;
         }
+
+        // NumericValue reads through to this one, so it has to be told when the text moves — a
+        // spinner bound to a stale projection would keep showing the value the field used to hold.
+        OnPropertyChanged(nameof(NumericValue));
 
         // The restore below re-enters with the committed value; that is this view model putting its
         // own value back, not the user editing, so it must not register a change.

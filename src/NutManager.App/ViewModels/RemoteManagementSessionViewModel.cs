@@ -77,6 +77,13 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public bool IsSmb => _profile.Management.ConfigurationTransport == RemoteConfigurationTransportKind.Smb;
 
+    /// <summary>
+    /// SMB profiles bind the exact configuration location to the saved share. Administration may
+    /// validate that location, but changing it belongs to the profile editor so there is only one
+    /// persisted source of truth.
+    /// </summary>
+    public bool IsSmbDirectoryFixed => IsSmb;
+
     public bool UsesSmbExplicitCredentials => IsSmb && _profile.Management.SmbAuthenticationMode == SmbAuthenticationMode.ExplicitCredentials;
 
     public bool UsesSmbCurrentWindowsIdentity => IsSmb && !UsesSmbExplicitCredentials;
@@ -115,6 +122,8 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public bool IsConnected => _session is not null;
 
+    public bool ShowsDirectoryBrowser => IsConnected && IsSshSftp;
+
     public bool IsDirectoryValidated => _directoryValidation?.IsValid == true;
 
     /// <summary>
@@ -149,7 +158,9 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
     public bool CanValidateDirectory => CanBrowse && !string.IsNullOrWhiteSpace(CurrentDirectory);
 
-    public bool CanUseCurrentDirectory => CanBrowse && IsDirectoryValidated && _profileUpdater is not null;
+    public bool CanChooseDirectory => IsSshSftp && CanBrowse;
+
+    public bool CanUseCurrentDirectory => IsSshSftp && CanBrowse && IsDirectoryValidated && _profileUpdater is not null;
 
     public bool CanProbeWriteCapability =>
         CanBrowse &&
@@ -162,6 +173,12 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     public bool CanEditConfiguration =>
         _profile.AccessMode == ManagedNutServerAccessMode.Manage &&
         WriteCapability is { IsSupported: true } && (IsSmb || Platform == RemoteNutPlatform.Windows);
+
+    public bool IsWriteCapabilityUnverified => WriteCapability is null;
+
+    public bool IsWriteCapabilitySupported => CanEditConfiguration;
+
+    public bool IsWriteCapabilityRejected => WriteCapability is { IsSupported: false };
 
     public string ConnectionStateText => ConnectionState switch
     {
@@ -372,6 +389,39 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     }
 
     /// <summary>
+    /// Restores a saved SMB context without prompting. Current Windows identity can be reused
+    /// directly; an explicit account is reused only when its protected credential already exists.
+    /// A successful connection is followed by read-only validation of the exact saved directory.
+    /// The write-capability probe remains explicit because it creates temporary remote files.
+    /// </summary>
+    public async Task TryConnectAndValidateConfiguredSmbAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsSmb || IsConnected || IsBusy)
+        {
+            return;
+        }
+
+        if (UsesSmbCurrentWindowsIdentity)
+        {
+            await ConnectWithCurrentWindowsIdentityAsync(cancellationToken);
+        }
+        else
+        {
+            await RefreshStoredCredentialStatusAsync(cancellationToken);
+            if (!HasStoredCredential)
+            {
+                StatusMessage = L("Remote.Message.AutoConnectCredentialRequired");
+                return;
+            }
+
+            await ConnectWithStoredCredentialAsync(cancellationToken);
+        }
+
+        // Every successful transport connection validates its configured directory before it
+        // returns. No second request is necessary here.
+    }
+
+    /// <summary>
     /// Opens the Windows credential dialog and, only if the share actually accepts what came back,
     /// records the account and honours the dialog's remember choice.
     ///
@@ -523,6 +573,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
             return;
         }
 
+        var listed = false;
         IsBusy = true;
         try
         {
@@ -536,6 +587,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
 
             InvalidateDirectoryValidation();
             StatusMessage = null;
+            listed = true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -548,6 +600,11 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         finally
         {
             IsBusy = false;
+        }
+
+        if (listed)
+        {
+            await ValidateCurrentDirectoryAsync(cancellationToken);
         }
     }
 
@@ -727,6 +784,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
             return false;
         }
 
+        var connected = false;
         IsBusy = true;
         ConnectionState = RemoteNutConnectionState.Connecting;
         StatusMessage = null;
@@ -742,7 +800,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
                     authentication),
                 cancellationToken);
             AcceptConnectionResult(result, _profile.Management.RemoteConfigurationDirectory);
-            return result.State == RemoteNutConnectionState.Connected && result.Session is not null;
+            connected = result.State == RemoteNutConnectionState.Connected && result.Session is not null;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -760,6 +818,13 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         {
             IsBusy = false;
         }
+
+        if (connected && !string.IsNullOrWhiteSpace(CurrentDirectory))
+        {
+            await ValidateCurrentDirectoryAsync(cancellationToken);
+        }
+
+        return connected;
     }
 
     /// <param name="username">
@@ -773,6 +838,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
             return false;
         }
 
+        var connected = false;
         IsBusy = true;
         ConnectionState = RemoteNutConnectionState.Connecting;
         StatusMessage = null;
@@ -789,7 +855,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
                     _profile.AccessMode == ManagedNutServerAccessMode.Manage),
                 cancellationToken);
             AcceptConnectionResult(result, management.SmbConfigurationDirectory ?? management.SmbSharePath);
-            return result.State == RemoteNutConnectionState.Connected && result.Session is not null;
+            connected = result.State == RemoteNutConnectionState.Connected && result.Session is not null;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -807,6 +873,13 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         {
             IsBusy = false;
         }
+
+        if (connected && !string.IsNullOrWhiteSpace(CurrentDirectory))
+        {
+            await ValidateCurrentDirectoryAsync(cancellationToken);
+        }
+
+        return connected;
     }
 
     private async Task SaveCredentialAfterSuccessfulConnectionAsync(RemoteCredentialKind kind, ReadOnlyMemory<char> secret, CancellationToken cancellationToken)
@@ -874,6 +947,8 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
             : null;
         ConfigurationContextChanged?.Invoke(pipeline, _directoryValidation, CanEditConfiguration);
         OnPropertyChanged(nameof(IsDirectoryValidated));
+        OnPropertyChanged(nameof(IsConnected));
+        OnPropertyChanged(nameof(ShowsDirectoryBrowser));
         OnPropertyChanged(nameof(CanReadConfiguration));
         OnPropertyChanged(nameof(CanEditConfiguration));
         OnPropertyChanged(nameof(ReadCapabilityText));
@@ -895,6 +970,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         OnPropertyChanged(nameof(SmbUsername));
         OnPropertyChanged(nameof(IsSshSftp));
         OnPropertyChanged(nameof(IsSmb));
+        OnPropertyChanged(nameof(ShowsDirectoryBrowser));
         OnPropertyChanged(nameof(UsesSmbExplicitCredentials));
         OnPropertyChanged(nameof(UsesSmbCurrentWindowsIdentity));
         OnPropertyChanged(nameof(UsesSshPassword));
@@ -931,6 +1007,7 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
         OnPropertyChanged(nameof(CanDisconnect));
         OnPropertyChanged(nameof(CanTrustHostKey));
         OnPropertyChanged(nameof(CanBrowse));
+        OnPropertyChanged(nameof(CanChooseDirectory));
         OnPropertyChanged(nameof(CanValidateDirectory));
         OnPropertyChanged(nameof(CanUseCurrentDirectory));
         OnPropertyChanged(nameof(CanProbeWriteCapability));
@@ -942,6 +1019,9 @@ public sealed partial class RemoteManagementSessionViewModel : ObservableObject,
     {
         OnPropertyChanged(nameof(CanProbeWriteCapability));
         OnPropertyChanged(nameof(CanEditConfiguration));
+        OnPropertyChanged(nameof(IsWriteCapabilityUnverified));
+        OnPropertyChanged(nameof(IsWriteCapabilitySupported));
+        OnPropertyChanged(nameof(IsWriteCapabilityRejected));
         OnPropertyChanged(nameof(WriteCapabilityText));
         OnPropertyChanged(nameof(IsWriteCapabilityCritical));
     }

@@ -159,7 +159,7 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
                 TimeSpan.FromSeconds(PollingIntervalSeconds),
                 TimeSpan.FromSeconds(ConnectionTimeoutSeconds),
                 Theme,
-                MockMode.Value,
+                mockMode: false,
                 SchemaVersion == 1 ? UiLanguagePreference.PtBr : Language,
                 SchemaVersion == 1 ? SidebarPreference.Expanded : SidebarPreference,
                 legacyEndpoint,
@@ -172,7 +172,7 @@ public sealed class JsonApplicationSettingsStore : IApplicationSettingsStore
             PollingIntervalSeconds = settings.PollingInterval.TotalSeconds,
             ConnectionTimeoutSeconds = settings.ConnectionTimeout.TotalSeconds,
             Theme = settings.Theme,
-            MockMode = settings.MockMode,
+            MockMode = false,
             Language = settings.Language,
             SidebarPreference = settings.SidebarPreference,
             BackgroundTransparency = settings.BackgroundTransparency
