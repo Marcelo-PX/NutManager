@@ -182,8 +182,19 @@
     <Setter Property="BoxShadow" Value="0 0 10 0 #665FA8FF, 0 0 24 3 #335FA8FF" />
   </Style>
   <!--
-    Keyboard focus wears the same glow as hover. It follows the card's corner radius because the
-    surface draws it, which is what the rectangular adorner could not do.
+    The square ring came from the shared Button:focus-visible rule, which puts a 2px border on any
+    focused button and knows nothing about this card's rounded shape. Removing the adorner did not
+    touch it, because that rule draws on the button itself. This file is included after the control
+    styles, so cancelling the thickness here is what actually wins.
+  -->
+  <Style Selector="Button.nut-profile-card:focus-visible">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+
+  <!--
+    Keyboard focus wears the same glow as hover instead. It follows the card's corner radius because
+    the surface draws it, which is what a rectangular ring could never do.
   -->
   <Style Selector="Button.nut-profile-card:focus-visible Border.nut-profile-card-surface">
     <Setter Property="Background" Value="{DynamicResource NutSurfaceHoverBrush}" />
