@@ -264,7 +264,13 @@
                       short of the window or the surface runs past the selector below it.
                     -->
                     <ScrollViewer Grid.Row="1" MaxHeight="280" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                      <ItemsControl ItemsSource="{Binding ManagedProfileCards}">
+                      <!--
+                        The cards stop short of the scroll bar instead of running under it. The bar
+                        is painted over the content, so without this gutter it crossed the right edge
+                        of every card — the same reason the pages elsewhere reserve the space rather
+                        than letting the bar float.
+                      -->
+                      <ItemsControl ItemsSource="{Binding ManagedProfileCards}" Margin="0,0,10,0">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
                             <Button Classes="nut-profile-menu-item"

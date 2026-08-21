@@ -38,7 +38,14 @@
                     </StackPanel>
                     <StackPanel Spacing="2" Width="120">
                       <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.PowerValue]}" Classes="nut-metadata" />
-                      <TextBox Text="{Binding PowerValueText, Mode=TwoWay}" IsEnabled="{Binding CanEdit}" />
+                      <!-- Supply count: whole and never negative, so it gets the same spinner the
+                           rest of the numeric configuration fields use. -->
+                      <NumericUpDown Value="{Binding PowerValue, Mode=TwoWay}"
+                                     Minimum="0"
+                                     Increment="1"
+                                     FormatString="0"
+                                     ParsingNumberStyle="Integer"
+                                     IsEnabled="{Binding CanEdit}" />
                     </StackPanel>
                     <StackPanel Spacing="2" Width="160">
                       <TextBlock Text="{Binding $parent[ItemsControl].((viewModels:UpsmonConfigurationEditorViewModel)DataContext).Strings[Upsmon.Monitor.Username]}" Classes="nut-metadata" />
@@ -102,7 +109,12 @@
               </StackPanel>
               <StackPanel Spacing="2" Width="120">
                 <TextBlock Text="{Binding Strings[Upsmon.Monitor.PowerValue]}" Classes="nut-metadata" />
-                <TextBox Text="{Binding NewMonitorPowerValue, Mode=TwoWay}" AutomationProperties.Name="{Binding Strings[Upsmon.Monitor.PowerValue]}" />
+                <NumericUpDown Value="{Binding NewMonitorPowerValueNumber, Mode=TwoWay}"
+                               Minimum="0"
+                               Increment="1"
+                               FormatString="0"
+                               ParsingNumberStyle="Integer"
+                               AutomationProperties.Name="{Binding Strings[Upsmon.Monitor.PowerValue]}" />
               </StackPanel>
               <StackPanel Spacing="2" Width="160">
                 <TextBlock Text="{Binding Strings[Upsmon.Monitor.Username]}" Classes="nut-metadata" />

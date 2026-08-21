@@ -143,6 +143,19 @@
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <!--
+      The focus ring follows the card's own shape. The stock adorner is a rectangle, so after a click
+      the selector wore a square outline around a rounded surface — read as a glitch rather than as
+      focus. Replaced rather than removed: keyboard focus still has to be visible.
+    -->
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border BorderBrush="{DynamicResource NutAccentBrightBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Margin="-1" />
+      </FocusAdornerTemplate>
+    </Setter>
   </Style>
   <Style Selector="Button.nut-profile-card /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
@@ -405,7 +418,12 @@
     <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{DynamicResource NutRadiusLarge}" />
+    <!--
+      A literal radius, because NutRadiusLarge is defined in neither theme. A DynamicResource that
+      resolves to nothing leaves the corners square rather than failing loudly — the same way this
+      surface's background was missing before it — so the flyout was drawn with no rounding at all.
+    -->
+    <Setter Property="CornerRadius" Value="16" />
     <Setter Property="BoxShadow" Value="0 12 32 0 #59000000" />
     <!--
       Clipped to its own rounded shape. The list inside scrolls, and without this the cards travelled

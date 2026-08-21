@@ -45,6 +45,28 @@ public sealed partial class UpsmonConfigurationEditorViewModel : ServerGeneralCo
     [ObservableProperty] private bool _isAddingMonitor;
     [ObservableProperty] private string _newMonitorSystem = string.Empty;
     [ObservableProperty] private string _newMonitorPowerValue = "1";
+
+    /// <summary>
+    /// The numeric face of <see cref="NewMonitorPowerValue"/>, which stays the stored form. MONITOR's
+    /// power value counts supplies, so it is whole and never negative; the check that already guards
+    /// the add still runs, because a spinner narrows what can be typed but does not replace
+    /// validation.
+    /// </summary>
+    public decimal? NewMonitorPowerValueNumber
+    {
+        get => int.TryParse(NewMonitorPowerValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+        set
+        {
+            var text = value is null
+                ? string.Empty
+                : ((int)decimal.Truncate(value.Value)).ToString(CultureInfo.InvariantCulture);
+            if (!string.Equals(text, NewMonitorPowerValue, StringComparison.Ordinal)) NewMonitorPowerValue = text;
+        }
+    }
+
+    partial void OnNewMonitorPowerValueChanged(string value) => OnPropertyChanged(nameof(NewMonitorPowerValueNumber));
     [ObservableProperty] private string _newMonitorUsername = string.Empty;
     [ObservableProperty] private string _newMonitorRole = NutUpsmonConfigurationCatalog.RolePrimary;
 
@@ -317,6 +339,26 @@ public sealed partial class UpsmonMonitorRowViewModel : ObservableObject
 
     [ObservableProperty] private string _system;
     [ObservableProperty] private string _powerValueText;
+
+    /// <summary>
+    /// The numeric face of <see cref="PowerValueText"/>, which stays the stored form. Whole and never
+    /// negative, like the value MONITOR carries; the save path still validates it.
+    /// </summary>
+    public decimal? PowerValue
+    {
+        get => int.TryParse(PowerValueText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+        set
+        {
+            var text = value is null
+                ? string.Empty
+                : ((int)decimal.Truncate(value.Value)).ToString(CultureInfo.InvariantCulture);
+            if (!string.Equals(text, PowerValueText, StringComparison.Ordinal)) PowerValueText = text;
+        }
+    }
+
+    partial void OnPowerValueTextChanged(string value) => OnPropertyChanged(nameof(PowerValue));
     [ObservableProperty] private string _username;
     [ObservableProperty] private string _role;
     [ObservableProperty] private bool _isChangingPassword;
