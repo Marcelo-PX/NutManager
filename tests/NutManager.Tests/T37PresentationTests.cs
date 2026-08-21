@@ -163,7 +163,7 @@ public sealed class T37PresentationTests
     {
         var view = Read("src", "NutManager.App", "Views", "SettingsPageView.axaml");
         var listPanel = view.IndexOf("x:Name=\"ProfileListPanel\"", StringComparison.Ordinal);
-        var roundedList = view.IndexOf("<Border CornerRadius=\"8\" ClipToBounds=\"True\">", StringComparison.Ordinal);
+        var roundedList = view.IndexOf("<Border CornerRadius=\"12\" ClipToBounds=\"True\"", StringComparison.Ordinal);
         var list = view.IndexOf("<ListBox ItemsSource=\"{Binding ManagedProfileCards}\"", StringComparison.Ordinal);
 
         Assert.True(listPanel >= 0 && roundedList > listPanel && list > roundedList);

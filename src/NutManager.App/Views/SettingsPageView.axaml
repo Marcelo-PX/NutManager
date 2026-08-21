@@ -152,17 +152,23 @@
                   Grid.Column="0"
                   RowDefinitions="*,10,Auto">
               <!--
-                The list scrolls inside itself rather than growing the page. Its row in the parent
-                grid is Auto, so without an upper bound the list's height is the section's height:
-                every added server pushed the buttons below it, and the rest of the page, further
-                down. The bound keeps the area a fixed shape and hands the overflow to the ListBox's
-                own ScrollViewer, where the shared scrollbar styling already applies.
+                A fixed height, so the buttons underneath never move. Anything elastic — a minimum, a
+                maximum, a stretch — still lets the list grow until it hits the bound, and until then
+                every added server pushes Tornar ativo and Excluir further down the page. Pinning the
+                height instead means one server or ten produce the same panel, and the overflow goes
+                to the ListBox's own ScrollViewer, where the shared scrollbar styling already
+                applies.
+
+                The cap plus Stretch is what keeps the buttons level with the monitoring card rather
+                than a hand-measured height: capped, the panel never outgrows the card, so the row is
+                sized by the card; stretched, the panel fills that row, and the button row — being
+                the last one — lands on its bottom edge. The alignment then holds by construction
+                instead of depending on a number that would drift the moment the card's contents
+                changed.
               -->
-              <Border CornerRadius="8" ClipToBounds="True">
+              <Border CornerRadius="12" ClipToBounds="True" VerticalAlignment="Stretch" MaxHeight="216">
                 <ListBox ItemsSource="{Binding ManagedProfileCards}"
                          SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
-                         MinHeight="180"
-                         MaxHeight="320"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                   <ListBox.ItemTemplate>
