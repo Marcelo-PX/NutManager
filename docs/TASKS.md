@@ -1421,6 +1421,28 @@ to a UPS on the configured port is unaffected by an inspection running, and that
 contract rather than of a check: the request has no port, speed, command, executable or path field,
 so there is nothing in it through which a caller could ask for any of that.
 
+
+### Enumeration sources and who decides existence
+
+Acceptance on the real server corrected the enrichment model. `Win32_SerialPort` returned nothing at
+all for the Prolific USB-to-serial adapter on `COM3`, so the port was listed bare — no name, no
+manufacturer, no identifier and no fault code — and read as grey on a device that was working
+perfectly. `Win32_PnPEntity` knew all of it.
+
+The rule is now explicit and enforced by `WindowsComPortEnumeration.Merge`:
+
+- `SERIALCOMM` is the only source of existence. A port disabled in Device Manager leaves the device
+  map and stays a findable PnP entity, so a `COM2` in that state must not be listed.
+- `Win32_SerialPort` enriches first, being the more specific class.
+- `Win32_PnPEntity` fills only what is still missing, matched to its port by the `(COM3)` suffix
+  Windows appends to the display name. A row that resolves to no port enriches nothing.
+- Neither WMI class may introduce a port. The merge looks the resolved name up in the map built from
+  `SERIALCOMM` and drops the row when it is absent.
+
+`ConfigManagerErrorCode` is read as the number Windows stores. `CM_PROB_NONE` is zero and is a real
+answer, so it is filled in only when absent rather than when falsy, and a clean port cannot be
+overwritten by a later, less specific row. No localized description is parsed anywhere.
+
 ### The capability, not a version
 
 `GetHardwareSnapshot` is announced in the handshake's capability list. An agent built before this

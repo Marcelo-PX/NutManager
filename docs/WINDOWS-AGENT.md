@@ -199,11 +199,25 @@ differs, and the section says which machine was examined so a remote reading is 
 local one.
 
 What the agent does for this is enumerate. It reads the port names Windows publishes in the
-`SERIALCOMM` device map, which is authoritative for presence, and lets WMI add a friendly name, a
-manufacturer, a PnP identifier and a status where it happens to have them. It is the same passive
-source the local screen has always used, not a second implementation. **No port is opened, no byte
-is transmitted, no driver is run and no device setting is changed** — a NUT driver already talking to
-a UPS on COM4 is unaffected, because nothing in this path touches COM4.
+`SERIALCOMM` device map, and that map alone decides which ports exist — a port disabled in Device
+Manager leaves `SERIALCOMM` while remaining a perfectly findable PnP entity, and listing it would
+offer an operator a port they cannot use. WMI only fills in blanks on a port that is already there:
+`Win32_SerialPort` first, then `Win32_PnPEntity` for whatever is still missing. The second class is
+not a nicety — `Win32_SerialPort` commonly returns nothing at all for USB-to-serial adapters, and
+without the fallback a working port is listed with no name, no manufacturer, no identifier and no
+fault code. The PnP entity is matched to its port by the `(COM3)` suffix Windows appends to the
+display name, and a row that names no port enriches nothing rather than being attached to a guess.
+
+The fault code is read as the number Windows stores. `CM_PROB_NONE` is zero and is a real answer —
+"no fault reported" — never a missing value, and nothing parses a description that would be localized
+on the machine being inspected.
+
+It is the same passive source the local screen has always used, not a second implementation. **No
+port is opened, no byte is transmitted, no driver is run, no device setting is changed and no
+registry value is written** — a NUT driver already talking to a UPS on the configured port is
+unaffected, because nothing in this path touches it. Nothing shells out either: there is no
+`Get-PnpDevice`, no PowerShell and no `cmd`, only the WMI and registry reads the application already
+performed.
 
 The request carries no port, no speed, no command and no path. There is no field through which a
 caller could redirect it, which is the same property the control operations have and for the same
