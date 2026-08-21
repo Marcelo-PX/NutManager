@@ -182,6 +182,12 @@
     <Setter Property="CornerRadius" Value="10" />
     <Setter Property="Padding" Value="10" />
     <Setter Property="Margin" Value="0,3" />
+    <!--
+      Width comes from the list, not from the contents. Stretching only the content left the button
+      itself sized to what it held, so the active profile — the one carrying the "Ativo" badge — came
+      out wider than every other card and the column read as ragged.
+    -->
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
   <Style Selector="Button.nut-profile-menu-item /template/ ContentPresenter">
@@ -401,6 +407,11 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource NutRadiusLarge}" />
     <Setter Property="BoxShadow" Value="0 12 32 0 #59000000" />
+    <!--
+      Clipped to its own rounded shape. The list inside scrolls, and without this the cards travelled
+      over the corners the surface had gone to the trouble of rounding.
+    -->
+    <Setter Property="ClipToBounds" Value="True" />
   </Style>
 
   <Style Selector="Border.nut-profile-avatar">

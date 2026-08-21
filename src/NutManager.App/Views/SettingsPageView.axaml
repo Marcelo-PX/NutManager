@@ -178,6 +178,16 @@
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
+                      <!--
+                        A hairline under each row, so the servers read as separate entries rather
+                        than as one running column of text. It is drawn by the row itself rather than
+                        by a separator element placed between rows, because the list virtualises and
+                        anything that is not part of a row has nothing to be recycled with.
+                      -->
+                      <Border BorderBrush="{DynamicResource NutBorderSubtleBrush}"
+                              BorderThickness="0,0,0,1"
+                              Padding="0,0,0,9"
+                              Margin="0,0,0,2">
                       <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220" RowSpacing="3">
                         <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                         <Border Grid.Column="1" Classes="nut-pill healthy" Padding="8,2" IsVisible="{Binding IsActive}">
@@ -196,6 +206,7 @@
                           </Border>
                         </WrapPanel>
                       </Grid>
+                      </Border>
                     </DataTemplate>
                   </ListBox.ItemTemplate>
                 </ListBox>
