@@ -360,7 +360,12 @@
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
                     </ScrollViewer>
+                    <!--
+                      The same right gutter the cards take, so the button ends where they end. The
+                      surface pads only 2px on that side, and the 8px belongs to the scroll bar.
+                    -->
                     <Button Grid.Row="2"
+                            Margin="0,0,8,0"
                             Classes="nut-profile-manage"
                             Content="{Binding ManageProfilesText}"
                             Click="ManageProfiles_OnClick"

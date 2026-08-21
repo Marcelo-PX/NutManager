@@ -85,7 +85,7 @@
                            ToolTip.Tip="{Binding StatusText}" />
                   <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding PortName}" FontWeight="SemiBold" />
                   <!-- Reads the port into its description. Hidden when there is no description to point at. -->
-                  <TextBlock Grid.Row="0" Grid.Column="4" Text="→" Classes="nut-metadata" IsVisible="{Binding HasFriendlyName}" />
+                  <TextBlock Grid.Row="0" Grid.Column="4" Text="→" Classes="nut-metadata" FontSize="17" VerticalAlignment="Center" IsVisible="{Binding HasFriendlyName}" />
                   <TextBlock Grid.Row="0" Grid.Column="6" Text="{Binding FriendlyName}" IsVisible="{Binding HasFriendlyName}" TextWrapping="Wrap" />
                   <TextBlock Grid.Row="0" Grid.Column="8" Text="{Binding Manufacturer}" IsVisible="{Binding HasManufacturer}" Classes="nut-metadata" VerticalAlignment="Center" TextWrapping="Wrap" />
                   <!--
