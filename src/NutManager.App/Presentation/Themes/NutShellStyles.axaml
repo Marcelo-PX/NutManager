@@ -388,9 +388,16 @@
     <Setter Property="BorderThickness" Value="0" />
   </Style>
 
+  <!--
+    The flyout carries the product's card surface, and it has to name a brush that exists: this asked
+    for NutSurfaceElevatedBrush, which is defined in neither theme. A DynamicResource that resolves
+    to nothing leaves the Border with no background at all rather than failing loudly, so the sidebar
+    underneath showed straight through the list of profiles. These are the same glass brushes
+    Border.nut-card uses, and both themes define them.
+  -->
   <Style Selector="Border.nut-profile-flyout-surface">
-    <Setter Property="Background" Value="{DynamicResource NutSurfaceElevatedBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NutGlassSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NutGlassBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource NutRadiusLarge}" />
     <Setter Property="BoxShadow" Value="0 12 32 0 #59000000" />

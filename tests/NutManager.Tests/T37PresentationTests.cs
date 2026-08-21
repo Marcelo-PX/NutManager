@@ -138,8 +138,24 @@ public sealed class T37PresentationTests
         Assert.Contains("ButtonSpinner#PART_Spinner", numericStyles, StringComparison.Ordinal);
         Assert.Contains("Property=\"CornerRadius\" Value=\"8\"", numericStyles, StringComparison.Ordinal);
         Assert.Contains("Property=\"ShowButtonSpinner\" Value=\"True\"", numericStyles, StringComparison.Ordinal);
-        Assert.True(numericStyles.Split("Property=\"ClipToBounds\" Value=\"True\"", StringSplitOptions.None).Length - 1 >= 2);
-        Assert.DoesNotContain("RepeatButton#PART_DecreaseButton", numericStyles, StringComparison.Ordinal);
+        // Not clipping: ClipToBounds clips to the rectangular bounds rather than to the rounded
+        // geometry, so clipping the control and the spinner left the square corners exactly as they
+        // were. And not a style either — the stock spinner gives its RepeatButtons a control theme of
+        // their own, which no outside selector can outrank; targeting them through
+        // NumericUpDown /template/ ButtonSpinner /template/ RepeatButton changed nothing, not even
+        // their background. The template is replaced instead, which is how the scroll bar is handled.
+        Assert.DoesNotContain("Property=\"ClipToBounds\"", numericStyles, StringComparison.Ordinal);
+
+        // Both PART names have to survive the replacement: the ButtonSpinner binds its spin events to
+        // them, so losing one would leave a control that looks right and no longer counts.
+        Assert.Contains("Name=\"PART_IncreaseButton\"", numericStyles, StringComparison.Ordinal);
+        Assert.Contains("Name=\"PART_DecreaseButton\"", numericStyles, StringComparison.Ordinal);
+
+        // The decrease button is the one touching the right edge, so it carries the radius. 7 rather
+        // than 8 because the container's 1px border sits outside it, and an inner curve has to be the
+        // outer curve minus that thickness or the two are not concentric.
+        Assert.Contains("CornerRadius=\"0,7,7,0\"", numericStyles, StringComparison.Ordinal);
+        Assert.Contains("NutSpinnerButton", numericStyles, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -15,6 +15,45 @@
       Clicking the empty track still pages, because the track buttons are kept and only made
       invisible to painting.
     -->
+    <!--
+      Spinner button, replaced for the same reason the scroll thumb is. The Fluent ButtonSpinner
+      gives its two RepeatButtons a ControlTheme of their own, and a control theme applied to the
+      element is not something an outside selector can outrank: styling them through
+      NumericUpDown /template/ ButtonSpinner /template/ RepeatButton changes nothing at all — not
+      the corner radius, not even the background. Handing the buttons this theme from inside the
+      spinner template is what actually reaches them.
+    -->
+    <ControlTheme x:Key="NutSpinnerButton" TargetType="RepeatButton">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource NutTextSecondaryBrush}" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
+        <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed">
+        <Setter Property="Background" Value="{DynamicResource NutSurface3Brush}" />
+        <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Foreground" Value="{DynamicResource NutTextMutedBrush}" />
+      </Style>
+    </ControlTheme>
+
     <ControlTheme x:Key="NutScrollThumb" TargetType="Thumb">
       <Setter Property="Background" Value="{DynamicResource NutBorderEmphasisBrush}" />
       <Setter Property="Template">
@@ -683,9 +722,24 @@
     <Setter Property="FontSize" Value="12.5" />
   </Style>
 
-  <!-- Keep numeric input visually aligned with the other NutManager fields while preserving the
-       native increment/decrement affordance. Clipping the shared spinner surface keeps both button
-       states inside the rounded outer edge instead of exposing square corners. -->
+  <!--
+    Numeric input, aligned with the other NutManager fields while keeping the native spinner.
+
+    The right-hand corners are the whole difficulty. The Fluent template lays the spinner out as
+    Border > DockPanel > [ ContentPresenter | StackPanel(PART_IncreaseButton, PART_DecreaseButton) ]
+    and sets no CornerRadius on those two RepeatButtons, so they fall back to the theme's default
+    button radius. A button rounded to the theme's radius, sitting inside a container rounded to 8,
+    paints its corner short of the container's curve: that is the sliver along the right edge and the
+    cut-looking bottom-right corner.
+
+    Clipping cannot fix it. ClipToBounds clips to the rectangular bounds, not to the rounded
+    geometry, which is why clipping the control and the spinner left the defect exactly as it was.
+
+    The buttons are therefore given the geometry they need. The decrease button is the one touching
+    the right edge, and its radius is 7 rather than 8 because the container's 1px border sits outside
+    it — an inner curve has to be the outer curve minus that thickness, or the two are not concentric
+    and the difference reads as a seam.
+  -->
   <Style Selector="NumericUpDown">
     <Setter Property="MinHeight" Value="38" />
     <Setter Property="CornerRadius" Value="8" />
@@ -695,14 +749,13 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource NutTextPrimaryBrush}" />
     <Setter Property="ShowButtonSpinner" Value="True" />
-    <Setter Property="ClipToBounds" Value="True" />
   </Style>
+
+  <!-- Background, border thickness and radius already arrive by template binding from NumericUpDown;
+       only the surface colours need restating so the spinner matches the other fields. -->
   <Style Selector="NumericUpDown /template/ ButtonSpinner#PART_Spinner">
     <Setter Property="Background" Value="{DynamicResource NutSurface1Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutBorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="ClipToBounds" Value="True" />
   </Style>
   <Style Selector="NumericUpDown:pointerover /template/ ButtonSpinner#PART_Spinner">
     <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
@@ -711,6 +764,45 @@
   <Style Selector="NumericUpDown:focus-within /template/ ButtonSpinner#PART_Spinner">
     <Setter Property="Background" Value="{DynamicResource NutSurface2Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NutAccentBrush}" />
+  </Style>
+
+  <!--
+    The spinner's template is replaced so the buttons can be given their real geometry. The stock
+    template hands its RepeatButtons a control theme of their own, which no outside selector can
+    outrank, so the corners could not be reached from a style at all. Rebuilt here, the decrease
+    button is the one touching the right edge and carries the radius; the increase button sits
+    between the text and it, so it stays square. Both PART names are preserved, which is what the
+    ButtonSpinner binds its spin events to.
+  -->
+  <Style Selector="NumericUpDown /template/ ButtonSpinner#PART_Spinner">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+          <DockPanel LastChildFill="True">
+            <StackPanel Name="PART_SpinnerPanel" DockPanel.Dock="Right" Orientation="Horizontal">
+              <RepeatButton Name="PART_IncreaseButton"
+                            Theme="{StaticResource NutSpinnerButton}"
+                            CornerRadius="0">
+                <PathIcon Data="{DynamicResource NutIconChevronUp}" Width="10" Height="10" />
+              </RepeatButton>
+              <RepeatButton Name="PART_DecreaseButton"
+                            Theme="{StaticResource NutSpinnerButton}"
+                            CornerRadius="0,7,7,0">
+                <PathIcon Data="{DynamicResource NutIconChevronDown}" Width="10" Height="10" />
+              </RepeatButton>
+            </StackPanel>
+            <ContentPresenter Name="PART_ContentPresenter"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </DockPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
   </Style>
 
   <Style Selector="ComboBox">

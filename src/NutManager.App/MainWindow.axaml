@@ -258,7 +258,12 @@
                   </Border.Transitions>
                   <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
                     <TextBlock Text="{Binding SavedProfilesText}" Classes="nut-card-title" Margin="8,5,8,0" />
-                    <ScrollViewer Grid.Row="1" MaxHeight="330" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <!--
+                      Bounded so the flyout stays inside the sidebar it belongs to. Title, spacing
+                      and the manage button sit outside this height, so the list has to stop well
+                      short of the window or the surface runs past the selector below it.
+                    -->
+                    <ScrollViewer Grid.Row="1" MaxHeight="280" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                       <ItemsControl ItemsSource="{Binding ManagedProfileCards}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
@@ -267,7 +272,14 @@
                                     AutomationProperties.Name="{Binding Name}">
                               <Grid>
                                 <StackPanel Spacing="4">
-                                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                  <!--
+                                    The header row is given a height of its own so the active profile
+                                    and the inactive ones line up. The "Ativo" badge is taller than a
+                                    bare name, and with the row sized to its content the name sat at a
+                                    different height on the active card than on every other one — a
+                                    step in the list that reads as broken alignment.
+                                  -->
+                                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" MinHeight="24">
                                     <TextBlock Text="{Binding Name}"
                                                FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis"
@@ -275,6 +287,7 @@
                                     <Border Grid.Column="1"
                                             Classes="nut-pill healthy"
                                             Padding="7,2"
+                                            VerticalAlignment="Center"
                                             IsVisible="{Binding IsActive}">
                                       <StackPanel Orientation="Horizontal" Spacing="4">
                                         <PathIcon Data="{DynamicResource NutIconCheck}" Width="11" Height="11" Foreground="{DynamicResource NutHealthyBrush}" />

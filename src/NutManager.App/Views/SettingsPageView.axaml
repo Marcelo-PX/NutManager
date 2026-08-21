@@ -151,11 +151,20 @@
                   Grid.Row="2"
                   Grid.Column="0"
                   RowDefinitions="*,10,Auto">
+              <!--
+                The list scrolls inside itself rather than growing the page. Its row in the parent
+                grid is Auto, so without an upper bound the list's height is the section's height:
+                every added server pushed the buttons below it, and the rest of the page, further
+                down. The bound keeps the area a fixed shape and hands the overflow to the ListBox's
+                own ScrollViewer, where the shared scrollbar styling already applies.
+              -->
               <Border CornerRadius="8" ClipToBounds="True">
                 <ListBox ItemsSource="{Binding ManagedProfileCards}"
                          SelectedItem="{Binding SelectedProfileCard, Mode=TwoWay}"
                          MinHeight="180"
-                         MaxHeight="520">
+                         MaxHeight="320"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="viewModels:ManagedProfileCardViewModel">
                       <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" MinWidth="220" RowSpacing="3">
