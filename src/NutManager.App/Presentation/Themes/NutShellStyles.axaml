@@ -143,19 +143,36 @@
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="ClipToBounds" Value="False" />
     <!--
       No adorner. The stock one is a rectangle drawn outside the control, so the selector wore a
       square outline around its rounded surface and read as a glitch; a rounded replacement template
       did not take either. Focus is shown by the card itself instead, below, which is already the
       right shape — so this removes the ring without removing the feedback.
     -->
-    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <!--
+      An empty adorner rather than a null one. The stock ring is a rectangle drawn outside the
+      control, in the adorner layer, so it never took the card's corner radius and setting the
+      property to null did not dislodge it. Substituting a template that paints nothing does, and
+      focus stays visible through the card's own glow below, which is already the right shape.
+    -->
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Background="Transparent" BorderThickness="0" />
+      </FocusAdornerTemplate>
+    </Setter>
   </Style>
   <Style Selector="Button.nut-profile-card /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="12" />
+    <!--
+      The glow spreads well past the card, and the presenter's bounds are a rectangle. Clipped to
+      them, a soft round halo came out as a hard square outline — which is what the "square neon"
+      actually was, not the focus ring it was mistaken for.
+    -->
+    <Setter Property="ClipToBounds" Value="False" />
   </Style>
   <Style Selector="Button.nut-profile-card:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />

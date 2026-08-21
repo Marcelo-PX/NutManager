@@ -180,7 +180,12 @@ public sealed class T37PresentationTests
         Assert.Contains("TextWrapping=\"Wrap\"", menu, StringComparison.Ordinal);
         Assert.Contains("Classes=\"nut-pill healthy\"", menu, StringComparison.Ordinal);
         Assert.Contains("ToolTip.Tip=\"{Binding Endpoint}\"", menu, StringComparison.Ordinal);
-        var profileItems = menu[..menu.IndexOf("Classes=\"nut-profile-manage\"", StringComparison.Ordinal)];
+        // The profile rows live in the popup, which now follows the button rather than being nested
+        // inside it — the selector's own avatar sits between the two, so the slice has to start at
+        // the popup or it picks up an avatar that was never in the list.
+        var popup = menu.IndexOf("x:Name=\"ProfileQuickMenuPopup\"", StringComparison.Ordinal);
+        Assert.True(popup >= 0, "the profile list is presented by a popup on the window's overlay layer");
+        var profileItems = menu[popup..menu.IndexOf("Classes=\"nut-profile-manage\"", StringComparison.Ordinal)];
         Assert.DoesNotContain("Classes=\"nut-profile-avatar\"", profileItems, StringComparison.Ordinal);
         Assert.Contains("Style Selector=\"Button.nut-profile-menu-item\"", styles, StringComparison.Ordinal);
         Assert.Contains("Property=\"CornerRadius\" Value=\"10\"", styles, StringComparison.Ordinal);
