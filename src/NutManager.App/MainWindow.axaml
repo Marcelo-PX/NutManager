@@ -426,18 +426,24 @@
 
         <!--
           The frosted bands: one below the title bar, one above the footer. Content travelling under
-          the chrome is blurred on its way out rather than merely tinted, which is what makes the bars
-          read as glass sitting on the page instead of lids closing over it.
+          the chrome is blurred rather than tinted, so the bars read as glass resting on the page.
 
-          The blur is a real backdrop filter — see NutBackdropBlur for why Avalonia's own effects,
-          acrylic material and VisualBrush cannot provide one, and what Skia exposes that can.
+          Two passes each, and that is the whole reason the blur is strong. The working surface is
+          only as tall as the band, so a single pass has almost no vertical neighbourhood to sample
+          and stops responding once the radius passes the band's own height — raising it from 34 to
+          90 changed nothing. Gaussian blurs compose, so a second pass over the first pass's own
+          output reaches roughly the square root of two further, and it costs one more snapshot
+          rather than a larger surface. Inflating the surface by the radius instead was tried and
+          produced no blur at all.
 
-          The mask is what keeps the band from ending at a line of its own: the blur is strongest
-          against the bar it continues and gone by the far edge, so the transition is into the page
-          rather than into another border. Inert, so the page underneath keeps the pointer.
+          No tint: the glass is meant to be colourless, with only the blur marking it. No opacity
+          mask either, and one cannot be added — a mask makes Avalonia render the element into its
+          own layer, and the snapshot then captures that empty layer rather than the window.
         -->
-        <controls:NutBackdropBlur Height="22" VerticalAlignment="Top" IsHitTestVisible="False" Radius="16" />
-        <controls:NutBackdropBlur Height="22" VerticalAlignment="Bottom" IsHitTestVisible="False" Radius="16" />
+        <controls:NutBackdropBlur Height="20" VerticalAlignment="Top" IsHitTestVisible="False" Radius="40" Tint="Transparent" />
+        <controls:NutBackdropBlur Height="20" VerticalAlignment="Top" IsHitTestVisible="False" Radius="40" Tint="Transparent" />
+        <controls:NutBackdropBlur Height="20" VerticalAlignment="Bottom" IsHitTestVisible="False" Radius="40" Tint="Transparent" />
+        <controls:NutBackdropBlur Height="20" VerticalAlignment="Bottom" IsHitTestVisible="False" Radius="40" Tint="Transparent" />
       </Panel>
 
       <controls:NutReviewDrawerHost Grid.Column="2"
