@@ -82,7 +82,7 @@
            border is a dark opaque navy that read well against an opaque bar and disappears entirely
            once the bar is translucent over a colourful backdrop. It matches NutGlassBorderBrush
            below, because the bars and the cards are meant to be the same material. -->
-      <SolidColorBrush x:Key="NutChromeEdgeBrush" Color="#40FFFFFF" />
+      <SolidColorBrush x:Key="NutChromeEdgeBrush" Color="#1FFFFFFF" />
       <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#2E3D50" />
       <SolidColorBrush x:Key="NutTextPrimaryBrush" Color="#EDF2F8" />
       <SolidColorBrush x:Key="NutTextSecondaryBrush" Color="#9AACC0" />
@@ -143,7 +143,7 @@
       <SolidColorBrush x:Key="NutSurfaceSelectedBrush" Color="#E1EBFD" />
       <SolidColorBrush x:Key="NutBorderBrush" Color="#C6D2E2" />
       <SolidColorBrush x:Key="NutBorderSubtleBrush" Color="#DFE6F0" />
-      <SolidColorBrush x:Key="NutChromeEdgeBrush" Color="#33000000" />
+      <SolidColorBrush x:Key="NutChromeEdgeBrush" Color="#1A000000" />
       <SolidColorBrush x:Key="NutBorderEmphasisBrush" Color="#9DB6DA" />
       <SolidColorBrush x:Key="NutTextPrimaryBrush" Color="#111C2B" />
       <SolidColorBrush x:Key="NutTextSecondaryBrush" Color="#48586C" />
