@@ -440,10 +440,8 @@
           mask either, and one cannot be added — a mask makes Avalonia render the element into its
           own layer, and the snapshot then captures that empty layer rather than the window.
         -->
-        <controls:NutBackdropBlur Height="20" VerticalAlignment="Top" IsHitTestVisible="False" Radius="40" Tint="Transparent" />
-        <controls:NutBackdropBlur Height="20" VerticalAlignment="Top" IsHitTestVisible="False" Radius="40" Tint="Transparent" />
-        <controls:NutBackdropBlur Height="20" VerticalAlignment="Bottom" IsHitTestVisible="False" Radius="40" Tint="Transparent" />
-        <controls:NutBackdropBlur Height="20" VerticalAlignment="Bottom" IsHitTestVisible="False" Radius="40" Tint="Transparent" />
+        <controls:NutBackdropBlur Height="12" VerticalAlignment="Top" IsHitTestVisible="False" Radius="7" Tint="Transparent" />
+        <controls:NutBackdropBlur Height="20" VerticalAlignment="Bottom" IsHitTestVisible="False" Radius="15" Tint="Transparent" />
       </Panel>
 
       <controls:NutReviewDrawerHost Grid.Column="2"
