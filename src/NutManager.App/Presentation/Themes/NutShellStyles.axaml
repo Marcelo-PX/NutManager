@@ -497,19 +497,6 @@
   </Style>
 
 
-  <!--
-    A page's scroll viewer fills a content area that reaches under the title bar and the footer, so
-    the inset that keeps content clear of them lives here rather than outside the scroll. Inside, it
-    scrolls away with the content: the page opens below the bars and travels under them as it moves.
-
-    64 and 30 are NutHeaderHeight and NutFooterHeight; the extra 28 is the page's own breathing room,
-    fixed rather than following the layout state because a scroll viewer cannot reach the shell's
-    view model to ask.
-  -->
-  <Style Selector="ScrollViewer.nut-page-scroll">
-    <Setter Property="Padding" Value="0,92,0,58" />
-  </Style>
-
   <!-- Opaque for the same reason as the title bar above: the authorship line has to stay legible
        over whatever the page is showing, and the page scrolls underneath it. -->
   <Style Selector="Border.nut-footer">
