@@ -425,35 +425,19 @@
         </Border>
 
         <!--
-          The glass bands: one below the title bar, one above the footer. They are the pane the
-          chrome sits on, extended a little way into the page so the bars do not simply stop at a
-          line — content travelling under them is tinted by the glass on its way out.
+          The frosted bands: one below the title bar, one above the footer. Content travelling under
+          the chrome is blurred on its way out rather than merely tinted, which is what makes the bars
+          read as glass sitting on the page instead of lids closing over it.
 
-          Not blurred, and that is a limit rather than a choice. Avalonia has no backdrop filter: a
-          blur effect blurs the element it is set on together with its children, the acrylic material
-          reaches the window's backdrop rather than the application's own content, and a VisualBrush
-          pointed at a visual already in the tree does not paint it — raising the blur radius from 14
-          to 32 changed nothing on screen, which is what settled it.
+          The blur is a real backdrop filter — see NutBackdropBlur for why Avalonia's own effects,
+          acrylic material and VisualBrush cannot provide one, and what Skia exposes that can.
 
-          The gradient runs away from the bar, brightest against the edge it continues. Inert: the
-          page underneath keeps the pointer.
+          The mask is what keeps the band from ending at a line of its own: the blur is strongest
+          against the bar it continues and gone by the far edge, so the transition is into the page
+          rather than into another border. Inert, so the page underneath keeps the pointer.
         -->
-        <Border Height="22" VerticalAlignment="Top" IsHitTestVisible="False">
-          <Border.Background>
-            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-              <GradientStop Offset="0" Color="#1FFFFFFF" />
-              <GradientStop Offset="1" Color="#00FFFFFF" />
-            </LinearGradientBrush>
-          </Border.Background>
-        </Border>
-        <Border Height="22" VerticalAlignment="Bottom" IsHitTestVisible="False">
-          <Border.Background>
-            <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
-              <GradientStop Offset="0" Color="#1FFFFFFF" />
-              <GradientStop Offset="1" Color="#00FFFFFF" />
-            </LinearGradientBrush>
-          </Border.Background>
-        </Border>
+        <controls:NutBackdropBlur Height="22" VerticalAlignment="Top" IsHitTestVisible="False" Radius="16" />
+        <controls:NutBackdropBlur Height="22" VerticalAlignment="Bottom" IsHitTestVisible="False" Radius="16" />
       </Panel>
 
       <controls:NutReviewDrawerHost Grid.Column="2"
